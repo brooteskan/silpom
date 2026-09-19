@@ -71,6 +71,17 @@ reports when ray tracing is unsupported. CPU tests compare the shared shader
 kernel against an independent double-precision oracle, including finite ray
 intervals, tangent hits, camera entry, UV seams and signed displacement.
 
+The standalone build also contains the research-only curved-mesh feasibility
+targets `SilPOM.CurvedCPU` and a curved compute phase in `SilPOM.GPU`. They do not
+change the runtime component or asset ABI. See
+[`Docs/CurvedIntersectionFeasibility.md`](Docs/CurvedIntersectionFeasibility.md)
+for the surface contract, measured costs, explicit failure semantics, and the
+remaining proof gates before curved asset/runtime work may begin.
+
+The Blender-to-O3DE export/import fixture is documented in
+[`Docs/ExportImportRoundTrip.md`](Docs/ExportImportRoundTrip.md), including captured
+baseline data, validation and a same-path reordered reimport runner.
+
 ## v0 limits
 
 Static patches only; no skinned or arbitrary curved meshes, collision changes,

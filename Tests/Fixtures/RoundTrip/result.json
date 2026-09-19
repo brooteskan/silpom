@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "faces": 4,
+  "selected": 3,
+  "materials": [
+    "SilPOM_Material_A",
+    "SilPOM_Material_B"
+  ],
+  "nodes": [
+    "RootNode.SilPOM_Ordinary",
+    "RootNode.SilPOM_Selected"
+  ],
+  "shared_edges": 3,
+  "selected_ordinary_edges": 1,
+  "semantic_sha256": "6a096b4455daeee4a838b863ed9298ac878d0593c46371849ce44f7893ec046c",
+  "blender": "5.0.1",
+  "negative_checks": 5
+}

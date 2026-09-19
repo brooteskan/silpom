@@ -1,0 +1,13 @@
+{
+  "values": [
+    {
+      "$type": "ScriptProcessorRule",
+      "scriptFilename": "Gems/silpom/Tools/roundtrip_scene.py"
+    },
+    {
+      "$type": "{07B356B7-3635-40B5-878A-FAC4EFD5AD86} MeshGroup",
+      "name": "RoundTrip",
+      "nodeSelectionList": { "selectedNodes": ["RootNode", "RootNode.SilPOM_Selected", "RootNode.SilPOM_Ordinary"] }
+    }
+  ]
+}

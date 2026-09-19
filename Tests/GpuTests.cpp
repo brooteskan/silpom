@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #include "CpuShader.h"
+#include "Curved/CurvedPrototype.h"
 #include <windows.h>
 #include <d3d12.h>
 #include <dxgi1_6.h>
@@ -18,7 +19,7 @@ int main(int argc,char** argv)
 {
     try
     {
-        if(argc!=3) throw std::runtime_error("Usage: silpom_gpu_tests compute.dxil rays.dxil");
+        if(argc!=4) throw std::runtime_error("Usage: silpom_gpu_tests compute.dxil rays.dxil curved.dxil");
         static_assert(sizeof(SilPomPatch)==48 && sizeof(SilPomRay)==32 && sizeof(SilPomHit)==44);
         ComPtr<IDXGIFactory6> factory;Check(CreateDXGIFactory2(0,IID_PPV_ARGS(&factory)));
         ComPtr<IDXGIAdapter1> adapter;
@@ -122,6 +123,121 @@ int main(int argc,char** argv)
         auto cs=Read(argv[1]);D3D12_COMPUTE_PIPELINE_STATE_DESC pd{};pd.pRootSignature=root.Get();pd.CS={cs.data(),cs.size()};
         ComPtr<ID3D12PipelineState> pipeline;Check(device->CreateComputePipelineState(&pd,IID_PPV_ARGS(&pipeline)));
         bind();list->SetPipelineState(pipeline.Get());list->Dispatch((count+63)/64,1,1);verify("Compute");
+
+        struct Float4 {float x,y,z,w;};
+        struct CurvedConstants
+        {
+            float baseScale,amplitude,reference;uint addressMode;
+            uint textureWidth,textureHeight,fragmentCount,maxNodes,maxDepth,rayCount,firstRay,reserved0,reserved1;
+        };
+        struct CurvedResult
+        {
+            uint status,primitiveId,nodes,maximumDepth;
+            float t,tError;
+            float barycentric[3];
+            float unresolvedT;
+            uint singular;
+        };
+        static_assert(sizeof(CurvedConstants)==52 && sizeof(CurvedResult)==44 && sizeof(Float4)==16);
+        namespace Curved=SilPOM::Curved;
+        Curved::Texture curvedTexture{texture.width,texture.height,std::vector<double>(texture.width*texture.height)};
+        for(uint y=0;y<texture.height;++y)for(uint x=0;x<texture.width;++x)
+            curvedTexture.pixels[y*texture.width+x]=double(x)/8.0;
+        const Curved::Vec3 a{0,0,0},b{1,0,0},c{0,1,0},d{2,0,.25};
+        const Curved::Vec3 up{0,0,1},tilted{1,0,0};
+        std::vector<Curved::Triangle> curvedTriangles{
+            Curved::Triangle{{a,b,c},{Curved::Vec2{.125,.125},Curved::Vec2{.375,.125},Curved::Vec2{.125,.375}},{up,tilted,up},7},
+            Curved::Triangle{{b,d,c},{Curved::Vec2{.375,.125},Curved::Vec2{.625,.125},Curved::Vec2{.125,.375}},{tilted,up,up},11}};
+        Curved::Surface curvedSurface{1,.5,.5,0};
+        std::vector<Float4> packedFragments;
+        uint curvedFragmentCount=0;
+        auto pack=[](Curved::Vec3 value,float w=0.f)
+        {return Float4{float(value.x),float(value.y),float(value.z),w};};
+        for(const auto& triangle:curvedTriangles)
+        {
+            for(const auto& fragment:Curved::BuildFragments(triangle,curvedTexture))
+            {
+                ++curvedFragmentCount;
+                packedFragments.push_back(pack(triangle.position[0]));packedFragments.push_back(pack(triangle.position[1]));packedFragments.push_back(pack(triangle.position[2]));
+                packedFragments.push_back(pack(triangle.direction[0]));packedFragments.push_back(pack(triangle.direction[1]));packedFragments.push_back(pack(triangle.direction[2]));
+                packedFragments.push_back({float(triangle.uv[0].x),float(triangle.uv[0].y),float(triangle.uv[1].x),float(triangle.uv[1].y)});
+                float primitiveBits;memcpy(&primitiveBits,&triangle.primitiveId,sizeof(primitiveBits));
+                packedFragments.push_back({float(triangle.uv[2].x),float(triangle.uv[2].y),primitiveBits,0});
+                packedFragments.push_back(pack(fragment.domain[0]));packedFragments.push_back(pack(fragment.domain[1]));packedFragments.push_back(pack(fragment.domain[2]));
+            }
+        }
+        constexpr uint curvedCount=256;
+        std::vector<SilPomRay> curvedRays(curvedCount);
+        for(uint index=0;index<curvedCount;++index)
+        {
+            const auto& triangle=curvedTriangles[0];
+            const double u=index+1==curvedCount?.25:(double(index%32)+.5)/64.0;
+            const double v=index+1==curvedCount?.25:(double(index/32)+.5)/64.0;
+            const auto sample=Curved::Evaluate(triangle,curvedSurface,curvedTexture,{1-u-v,u,v});
+            const auto point=sample.position;
+            const Curved::Vec3 direction=index+1==curvedCount?sample.du:Curved::Vec3{.15,.07,-1};
+            const auto origin=point-direction;
+            curvedRays[index]={{float(origin.x),float(origin.y),float(origin.z)},
+                {float(direction.x),float(direction.y),float(direction.z)},0,4};
+        }
+        auto curvedRayBuffer=upload(curvedRays.data(),curvedRays.size()*sizeof(SilPomRay));
+        auto curvedFragmentBuffer=upload(packedFragments.data(),packedFragments.size()*sizeof(Float4));
+        CurvedConstants curvedConstants{1,.5f,.5f,0,texture.width,texture.height,curvedFragmentCount,32768,16,curvedCount,0,0,0};
+        auto curvedCs=Read(argv[3]);pd.CS={curvedCs.data(),curvedCs.size()};
+        ComPtr<ID3D12PipelineState> curvedPipeline;Check(device->CreateComputePipelineState(&pd,IID_PPV_ARGS(&curvedPipeline)));
+        ComPtr<ID3D12Resource> curvedImage;Check(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&td,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&curvedImage)));
+        std::vector<char> curvedPadded(256*texture.height);
+        for(uint y=0;y<texture.height;++y)
+        {
+            std::vector<float> row(texture.width);
+            for(uint x=0;x<texture.width;++x)row[x]=float(curvedTexture.pixels[y*texture.width+x]);
+            memcpy(curvedPadded.data()+y*256,row.data(),row.size()*sizeof(float));
+        }
+        auto curvedImageUpload=upload(curvedPadded.data(),curvedPadded.size());
+        src.pResource=curvedImageUpload.Get();dst.pResource=curvedImage.Get();
+        list->CopyTextureRegion(&dst,0,0,0,&src,nullptr);barrier(curvedImage.Get(),D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        device->CreateShaderResourceView(curvedImage.Get(),&srv,heap->GetCPUDescriptorHandleForHeapStart());
+        D3D12_QUERY_HEAP_DESC queryDescription{D3D12_QUERY_HEAP_TYPE_TIMESTAMP,2,0};
+        ComPtr<ID3D12QueryHeap> queryHeap;Check(device->CreateQueryHeap(&queryDescription,IID_PPV_ARGS(&queryHeap)));
+        auto queryReadback=buffer(16,D3D12_HEAP_TYPE_READBACK,D3D12_RESOURCE_STATE_COPY_DEST);
+        ID3D12DescriptorHeap* curvedHeaps[]={heap.Get()};list->SetDescriptorHeaps(1,curvedHeaps);list->SetComputeRootSignature(root.Get());
+        list->SetComputeRootDescriptorTable(0,heap->GetGPUDescriptorHandleForHeapStart());
+        list->SetComputeRootShaderResourceView(1,curvedRayBuffer->GetGPUVirtualAddress());
+        list->SetComputeRootUnorderedAccessView(2,output->GetGPUVirtualAddress());
+        list->SetComputeRoot32BitConstants(3,13,&curvedConstants,0);
+        list->SetComputeRootShaderResourceView(4,curvedFragmentBuffer->GetGPUVirtualAddress());
+        list->SetPipelineState(curvedPipeline.Get());
+        list->EndQuery(queryHeap.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0);
+        list->Dispatch((curvedCount+63)/64,1,1);
+        list->EndQuery(queryHeap.Get(),D3D12_QUERY_TYPE_TIMESTAMP,1);
+        list->ResolveQueryData(queryHeap.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0,2,queryReadback.Get(),0);
+        barrier(output.Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);
+        list->CopyResource(readback.Get(),output.Get());barrier(output.Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);submit();
+        UINT64* timestamps=nullptr;Check(queryReadback->Map(0,nullptr,reinterpret_cast<void**>(&timestamps)));
+        UINT64 frequency=0;Check(queue->GetTimestampFrequency(&frequency));
+        const double curvedMilliseconds=1000.0*double(timestamps[1]-timestamps[0])/double(frequency);queryReadback->Unmap(0,nullptr);
+        CurvedResult* curvedValues=nullptr;Check(readback->Map(0,nullptr,reinterpret_cast<void**>(&curvedValues)));
+        uint curvedHits=0,curvedMaxNodes=0;
+        for(uint index=0;index<curvedCount;++index)
+        {
+            const auto& input=curvedRays[index];
+            Curved::Ray referenceRay{{input.origin.x,input.origin.y,input.origin.z},{input.direction.x,input.direction.y,input.direction.z},input.tMin,input.tMax};
+            const auto reference=Curved::Intersect(curvedTriangles,curvedSurface,curvedTexture,referenceRay);
+            const auto& actual=curvedValues[index];curvedMaxNodes=std::max(curvedMaxNodes,actual.nodes);
+            if(reference.status!=Curved::Status::Hit || actual.status!=uint(Curved::Status::Hit) ||
+                std::abs(actual.t-(reference.tLower+reference.tUpper)*.5)>actual.tError)
+                throw std::runtime_error("Curved compute mismatch at ray "+std::to_string(index)+
+                    " status="+std::to_string(actual.status)+" t="+std::to_string(actual.t)+
+                    " reference="+std::to_string((reference.tLower+reference.tUpper)*.5)+
+                    " nodes="+std::to_string(actual.nodes)+" unresolved="+std::to_string(actual.unresolvedT));
+            if(index+1==curvedCount && actual.singular==0)
+                throw std::runtime_error("Curved tangent ray did not use the singular-root path");
+            ++curvedHits;
+        }
+        readback->Unmap(0,nullptr);
+        device->CreateShaderResourceView(image.Get(),&srv,heap->GetCPUDescriptorHandleForHeapStart());
+        std::cout<<"Curved compute: "<<curvedCount<<" fixture rays passed ("<<curvedHits<<" hits), "
+            <<curvedMilliseconds<<" ms, max "<<curvedMaxNodes<<" nodes.\n";
 
         D3D12_FEATURE_DATA_D3D12_OPTIONS5 options{};Check(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5,&options,sizeof(options)));
         if(options.RaytracingTier==D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
