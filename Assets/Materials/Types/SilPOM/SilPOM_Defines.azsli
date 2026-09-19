@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#include <Atom/Feature/Common/Assets/Materials/Types/StandardPBR_Defines.azsli>
+
+// Sample interpolation makes the intersection ray agree with MSAA depth samples.
+#define VsOutput VsOutput_SilPom
+struct VsOutput_SilPom
+{
+    precise linear centroid float4 position : SV_Position;
+    float3 normal : NORMAL;
+    float4 tangent : TANGENT;
+    float2 uvs[UvSetCount] : UV0;
+    float3 worldPosition : UV4;
+    float3 worldPosPrev : UV6;
+    float4 color0 : UV7;
+    sample float2 ndc : UV9;
+    uint m_instanceId : SV_InstanceID;
+};

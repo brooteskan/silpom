@@ -1,0 +1,181 @@
+{
+    "description": "Finite bilinear heightfield. Use with a SilPOM Patch component. Height texture must be linear, normalized, and single mip.",
+    "version": 1,
+    "propertyLayout": {
+        "propertyGroups": [
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/BaseColorPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/VertexColorPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/MetallicPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/RoughnessPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/SpecularPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/NormalPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/OcclusionPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/EmissivePropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/ClearCoatPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/ParallaxPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/OpacityPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/UvPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/IrradiancePropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/GeneralCommonPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/SilhouetteBlockerPropertyGroup.json"
+            },
+            {
+                "name": "surface",
+                "displayName": "SilPOM Surface",
+                "properties": [
+                    {
+                        "name": "heightMap",
+                        "type": "Image",
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomHeightMap"
+                        }
+                    },
+                    {
+                        "name": "width",
+                        "type": "Float",
+                        "defaultValue": 2,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomWidth"
+                        }
+                    },
+                    {
+                        "name": "height",
+                        "type": "Float",
+                        "defaultValue": 2,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomHeight"
+                        }
+                    },
+                    {
+                        "name": "scale",
+                        "type": "Float",
+                        "defaultValue": 0.1,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomScale"
+                        }
+                    },
+                    {
+                        "name": "reference",
+                        "type": "Float",
+                        "defaultValue": 0.5,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomReference"
+                        }
+                    },
+                    {
+                        "name": "tileU",
+                        "type": "Float",
+                        "defaultValue": 1,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomTileU"
+                        }
+                    },
+                    {
+                        "name": "tileV",
+                        "type": "Float",
+                        "defaultValue": 1,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomTileV"
+                        }
+                    },
+                    {
+                        "name": "offsetU",
+                        "type": "Float",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomOffsetU"
+                        }
+                    },
+                    {
+                        "name": "offsetV",
+                        "type": "Float",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomOffsetV"
+                        }
+                    },
+                    {
+                        "name": "addressMode",
+                        "type": "UInt",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomAddressMode"
+                        }
+                    },
+                    {
+                        "name": "maxCells",
+                        "type": "UInt",
+                        "defaultValue": 1024,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomMaxCells"
+                        }
+                    },
+                    {
+                        "name": "debug",
+                        "type": "UInt",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomDebug"
+                        }
+                    }
+                ]
+            }
+        ]
+    },
+    "lightingModel": "Standard",
+    "materialShaderDefines": "SilPOM_Defines.azsli",
+    "materialShaderCode": "SilPOM.azsli",
+    "functors": [
+        {
+            "type": "Lua",
+            "args": {
+                "file": "Materials/Types/SilPOM/SilPOM_State.lua"
+            }
+        }
+    ],
+    "uvNameMap": {
+        "UV0": "Tiled",
+        "UV1": "Unwrapped"
+    }
+}

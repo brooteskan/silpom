@@ -1,0 +1,172 @@
+// SPDX-License-Identifier: MIT
+// The surface/intersection contract is independent of the raster and RT adapters.
+// Texel centers are at (i + .5f)/size; geometry uses explicit, bilinear mip zero.
+#pragma once
+#ifndef SILPOM_CPU
+#define SP_REF(T) inout T
+#define SP_TEX Texture2D
+#define SP_FETCH(texture, x, y) texture.Load(int3(x, y, 0)).r
+#define SP_ZERO(T) (T)0
+#endif
+
+static const uint SP_MISS = 0;
+static const uint SP_HIT = 1;
+static const uint SP_EXHAUSTED = 2;
+static const uint SP_INVALID = 3;
+static const uint SP_SURFACE_VERSION = 1;
+
+struct SilPomPatch
+{
+    float width;
+    float height;
+    float scale;
+    float reference;
+    float tileU;
+    float tileV;
+    float offsetU;
+    float offsetV;
+    uint textureWidth;
+    uint textureHeight;
+    uint addressMode; // 0 = repeat, 1 = clamp
+    uint maxCells;
+};
+struct SilPomRay { float3 origin; float3 direction; float tMin; float tMax; };
+struct SilPomHit
+{
+    uint status;
+    uint cells;
+    float t;
+    float3 position;
+    float2 uv;
+    float3 normal;
+};
+
+int SilPomAddress(int i, int size, uint mode)
+{
+    return mode == 0 ? ((i % size) + size) % size : min(max(i, 0), size - 1);
+}
+float SilPomTexel(SP_TEX texture, SilPomPatch p, int x, int y)
+{
+    return SP_FETCH(texture, SilPomAddress(x, int(p.textureWidth), p.addressMode),
+        SilPomAddress(y, int(p.textureHeight), p.addressMode));
+}
+bool SilPomInterval(SilPomRay ray, SilPomPatch p, SP_REF(float) begin, SP_REF(float) end)
+{
+    begin = ray.tMin;
+    end = ray.tMax;
+    float h0 = -p.scale * p.reference;
+    float h1 = p.scale * (1.0f - p.reference);
+    float3 lo = float3(-p.width * .5f, -p.height * .5f, min(h0, h1) - 1e-5f);
+    float3 hi = float3( p.width * .5f,  p.height * .5f, max(h0, h1) + 1e-5f);
+    for (int axis = 0; axis != 3; ++axis)
+    {
+        float o = ray.origin[axis];
+        float d = ray.direction[axis];
+        if (d == 0.0f)
+        {
+            if (o < lo[axis] || o > hi[axis]) { return false; }
+        }
+        else
+        {
+            float a = (lo[axis] - o) / d;
+            float b = (hi[axis] - o) / d;
+            begin = max(begin, min(a, b));
+            end = min(end, max(a, b));
+        }
+    }
+    return begin <= end;
+}
+
+// Nearest root on [0,1]. Coefficients use the *cell interval*, avoiding large t^2.f
+bool SilPomRoot(float a, float b, float c, SP_REF(float) root)
+{
+    float magnitude = max(max(abs(a), abs(b)), max(abs(c), 1e-20f));
+    a /= magnitude; b /= magnitude; c /= magnitude;
+    root = 2.0f;
+    if (abs(a) < 1e-7f)
+    {
+        if (abs(b) < 1e-7f)
+        {
+            if (abs(c) < 1e-7f) { root = 0.0f; }
+        }
+        else { root = -c / b; }
+    }
+    else
+    {
+        float discriminant = b*b - 4.0f*a*c;
+        if (discriminant < -1e-7f) { return false; }
+        float q = -.5f * (b + (b < 0.0f ? -1.0f : 1.0f) * sqrt(max(discriminant, 0.0f)));
+        float r0 = q / a;
+        float r1 = q == 0.0f ? r0 : c / q;
+        if (r0 >= -1e-6f && r0 <= 1.000001f) { root = r0; }
+        if (r1 >= -1e-6f && r1 <= 1.000001f) { root = min(root, r1); }
+    }
+    if (root < -1e-6f || root > 1.000001f) { return false; }
+    root = min(max(root, 0.0f), 1.0f);
+    return true;
+}
+
+SilPomHit SilPomIntersect(SP_TEX texture, SilPomPatch p, SilPomRay ray)
+{
+    SilPomHit hit = SP_ZERO(SilPomHit);
+    if (p.width <= 0.0f || p.height <= 0.0f || p.textureWidth == 0 || p.textureHeight == 0
+        || p.maxCells == 0 || ray.tMin > ray.tMax || dot(ray.direction, ray.direction) == 0.0f)
+    { hit.status = SP_INVALID; return hit; }
+    float begin = 0.0f, end = 0.0f;
+    if (!SilPomInterval(ray, p, begin, end)) { return hit; }
+    float du = p.tileU * float(p.textureWidth) / p.width;
+    float dv = p.tileV * float(p.textureHeight) / p.height;
+    float qdx = ray.direction.x * du;
+    float qdy = ray.direction.y * dv;
+    float3 pos = ray.origin + ray.direction * begin;
+    float qx = (pos.x / p.width + .5f) * p.tileU * float(p.textureWidth) + p.offsetU * float(p.textureWidth) - .5f;
+    float qy = (pos.y / p.height + .5f) * p.tileV * float(p.textureHeight) + p.offsetV * float(p.textureHeight) - .5f;
+    int ix = int(floor(qx)), iy = int(floor(qy));
+    if (qdx < 0.0f && qx == float(ix)) { --ix; }
+    if (qdy < 0.0f && qy == float(iy)) { --iy; }
+    float t = begin;
+    for (uint cell = 0; cell < p.maxCells; ++cell)
+    {
+        hit.cells = cell + 1;
+        float dx = qdx == 0.0f ? 1e30f : (float(ix + (qdx > 0.0f ? 1 : 0)) - qx) / qdx;
+        float dy = qdy == 0.0f ? 1e30f : (float(iy + (qdy > 0.0f ? 1 : 0)) - qy) / qdy;
+        float dt = max(0.0f, min(end - t, min(dx, dy)));
+        float h00 = SilPomTexel(texture, p, ix, iy);
+        float h10 = SilPomTexel(texture, p, ix + 1, iy);
+        float h01 = SilPomTexel(texture, p, ix, iy + 1);
+        float h11 = SilPomTexel(texture, p, ix + 1, iy + 1);
+        float b = h10 - h00, c = h01 - h00, d = h11 - h10 - h01 + h00;
+        float fx = qx - float(ix), fy = qy - float(iy);
+        float sx = qdx * dt, sy = qdy * dt;
+        float qa = -p.scale * d * sx * sy;
+        float qb = ray.direction.z * dt - p.scale * (b*sx + c*sy + d*(fx*sy + fy*sx));
+        float qc = (ray.origin.z + ray.direction.z*t) - p.scale * (h00 + b*fx + c*fy + d*fx*fy - p.reference);
+        float root = 0.0f;
+        if (SilPomRoot(qa, qb, qc, root))
+        {
+            hit.status = SP_HIT;
+            hit.t = t + root * dt;
+            hit.position = ray.origin + ray.direction * hit.t;
+            hit.uv = float2((hit.position.x / p.width + .5f) * p.tileU + p.offsetU,
+                (hit.position.y / p.height + .5f) * p.tileV + p.offsetV);
+            hit.normal = normalize(float3(-p.scale * (b + d*(fy + sy*root)) * du,
+                -p.scale * (c + d*(fx + sx*root)) * dv, 1.0f));
+            return hit;
+        }
+        if (dt >= end - t) { return hit; }
+        qx += qdx * dt; qy += qdy * dt; t += dt;
+        // Advance both axes at a corner. Snap to the crossed edge to avoid zero-step loops.
+        if (dx <= dy)
+        {
+            ix += qdx > 0.0f ? 1 : -1;
+            qx = float(ix + (qdx < 0.0f ? 1 : 0));
+        }
+        if (dy <= dx)
+        {
+            iy += qdy > 0.0f ? 1 : -1;
+            qy = float(iy + (qdy < 0.0f ? 1 : 0));
+        }
+    }
+    hit.status = SP_EXHAUSTED;
+    return hit;
+}

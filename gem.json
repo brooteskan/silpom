@@ -1,0 +1,11 @@
+{
+    "gem_name": "SilPOM",
+    "version": "0.1.0",
+    "display_name": "SilPOM",
+    "summary": "Bounded heightfield surfaces with shared raster and procedural ray tracing intersections.",
+    "type": "Code",
+    "license": "MIT",
+    "canonical_tags": ["Gem"],
+    "user_tags": ["Rendering", "Displacement"],
+    "dependencies": ["Atom_Feature_Common"]
+}

@@ -1,0 +1,30 @@
+// SPDX-License-Identifier: MIT
+// Optional Atom adapter. Production registration is opt-in, never proxy triangles.
+#include <Atom/Features/RayTracing/RayTracingSrgs.azsli>
+#include <Atom/Features/RayTracing/RayTracingIntersectionAttributes.azsli>
+#include <Atom/Features/RayTracing/RayTracingSceneUtils.azsli>
+#include "Heightfield.azsli"
+[shader("intersection")]
+void Intersection()
+{
+    ByteAddressBuffer data=Bindless::GetByteAddressBuffer(GetBindlessBufferIndex());
+    uint address=GetLocalInstanceIndex()*64;
+    if(data.Load(address+52)!=SP_SURFACE_VERSION) return;
+    float4 a=asfloat(data.Load4(address));
+    float4 b=asfloat(data.Load4(address+16));
+    uint4 c=data.Load4(address+32);
+    SilPomPatch p;
+    p.width=a.x;p.height=a.y;p.scale=a.z;p.reference=a.w;
+    p.tileU=b.x;p.tileV=b.y;p.offsetU=b.z;p.offsetV=b.w;
+    p.textureWidth=c.x;p.textureHeight=c.y;p.addressMode=c.z;p.maxCells=c.w;
+    SilPomRay ray;
+    ray.origin=ObjectRayOrigin();ray.direction=ObjectRayDirection();ray.tMin=RayTMin();ray.tMax=RayTCurrent();
+    SilPomHit hit=SilPomIntersect(Bindless::GetTexture2D(data.Load(address+48)),p,ray);
+    if(hit.status==SP_HIT)
+    {
+        ProceduralGeometryIntersectionAttributes attributes;
+        attributes.SetPosition(hit.position);attributes.SetUv(hit.uv);attributes.SetNormal(hit.normal);
+        attributes.SetTangent(float4(normalize(float3(1,0,-hit.normal.x/max(hit.normal.z,1e-8))),1));
+        ReportHit(hit.t,0,attributes);
+    }
+}
