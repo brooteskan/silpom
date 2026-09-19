@@ -81,6 +81,11 @@ remaining proof gates before curved asset/runtime work may begin.
 The Blender-to-O3DE export/import fixture is documented in
 [`Docs/ExportImportRoundTrip.md`](Docs/ExportImportRoundTrip.md), including captured
 baseline data, validation and a same-path reordered reimport runner.
+It now also documents `Tools/export_mesh.py` for existing authored meshes,
+persistent identities, varying displacement fields, and multi-object validation.
+See [traversal experiments](Docs/CurvedTraversalExperiments.md) for measured compact
+representations, GPU attribute validation, and the remaining coverage/performance
+gates. These tools do **not** yet enable curved rendering in the runtime Gem.
 
 ## v0 limits
 

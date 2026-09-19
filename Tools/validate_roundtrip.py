@@ -23,14 +23,36 @@ def integer(value):
 
 
 def validate(sidecar, imported, fbx_bytes):
-    require(sidecar['version'] == 1, 'unsupported sidecar version')
+    require(sidecar['version'] in (1, 2), 'unsupported sidecar version')
     require(hashlib.sha256(fbx_bytes).hexdigest() == sidecar['fbx_sha256'], 'FBX/sidecar generation mismatch')
     require(imported.get('fbx_sha256') == sidecar['fbx_sha256'], 'stale importer report')
     require(not imported.get('error'), str(imported.get('error')))
-    canonical = json.dumps({'vertices': sidecar['vertices'], 'faces': sidecar['faces']}, sort_keys=True).encode()
+    semantic_keys = ('vertices', 'faces') if sidecar['version'] == 1 else ('vertices', 'logical_vertex_ids', 'faces', 'objects', 'materials')
+    canonical = json.dumps({key: sidecar[key] for key in semantic_keys}, sort_keys=True).encode()
     require(hashlib.sha256(canonical).hexdigest() == sidecar['semantic_sha256'], 'corrupt semantic signature')
     expected = {f['id']: f for f in sidecar['faces']}
     require(len(expected) == len(sidecar['faces']), 'duplicate authored face ID')
+    if sidecar['version'] == 2:
+        require(len({f['stable_id'] for f in expected.values()}) == len(expected), 'duplicate stable face identity')
+        logical_ids = sidecar['logical_vertex_ids']
+        require(set(logical_ids) == set(sidecar['vertices']) and len(set(logical_ids.values())) == len(logical_ids),
+                'ambiguous logical vertex identity')
+        materials = {m['id']: m for m in sidecar['materials']}
+        require(len(materials) == len(sidecar['materials']), 'duplicate material identity')
+        objects = {o['id'] for o in sidecar['objects']}
+        require(len(objects) == len(sidecar['objects']), 'duplicate object identity')
+        require(all(isinstance(value, str) and value for value in logical_ids.values()), 'empty logical identity')
+        for f in expected.values():
+            require(f['object_id'] in objects and f['stable_id'].startswith(f['object_id'] + ':'), 'unknown face object')
+            require(all(str(vid) in logical_ids and logical_ids[str(vid)].startswith(f['object_id'] + ':')
+                        for vid in f['vertices']), 'vertex object namespace mismatch')
+            require(f['material_id'] in materials and materials[f['material_id']]['export_name'] == f['material'],
+                    'material mapping disagrees with authored identity')
+            require(f['region'] >= 0 and f['profile'] >= 0 and (not f['region'] or f['profile'] > 0), 'invalid profile')
+            require(0 < f['id'] < (1 << 24) and len(f['vertices']) == 3, 'invalid face transport ID')
+            require(all(0 < vid < (1 << 24) for vid in f['vertices']), 'invalid vertex transport ID')
+            require(all(len(d) == 3 and all(math.isfinite(x) for x in d) and abs(sum(x*x for x in d)-1) < 2e-5
+                        for d in f['directions']), 'invalid displacement direction')
     seen = {}
     nodes = set()
     for mesh in imported['meshes']:
@@ -73,7 +95,14 @@ def validate(sidecar, imported, fbx_bytes):
             edges.setdefault(edge, []).append(fid)
     shared = [v for v in edges.values() if len(v) == 2]
     cross_partition = [v for v in shared if bool(expected[v[0]]['region']) != bool(expected[v[1]]['region'])]
-    require(len(shared) == 3 and len(cross_partition) == 1, 'adjacency across partition lost')
+    authored_edges = {}
+    for fid, record in expected.items():
+        for i in range(3):
+            edge = tuple(sorted((record['vertices'][i], record['vertices'][(i+1) % 3])))
+            authored_edges.setdefault(edge, []).append(fid)
+    require({edge: sorted(faces) for edge, faces in edges.items()} ==
+            {edge: sorted(faces) for edge, faces in authored_edges.items()}, 'adjacency across partition lost')
+    require(all(len(faces) <= 2 for faces in edges.values()), 'nonmanifold edge is unsupported')
     return {'passed': True, 'faces': len(seen), 'selected': sum(bool(f['region']) for f in expected.values()),
             'materials': sorted(set(f['material'] for f in expected.values())), 'nodes': sorted(nodes),
             'shared_edges': len(shared), 'selected_ordinary_edges': len(cross_partition),

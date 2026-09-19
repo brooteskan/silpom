@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "CpuShader.h"
 #include "Curved/CurvedPrototype.h"
+#include "Curved/CurvedPacking.h"
 #include <windows.h>
 #include <d3d12.h>
 #include <dxgi1_6.h>
@@ -124,11 +125,11 @@ int main(int argc,char** argv)
         ComPtr<ID3D12PipelineState> pipeline;Check(device->CreateComputePipelineState(&pd,IID_PPV_ARGS(&pipeline)));
         bind();list->SetPipelineState(pipeline.Get());list->Dispatch((count+63)/64,1,1);verify("Compute");
 
-        struct Float4 {float x,y,z,w;};
+        using Float4 = SilPOM::Curved::PackedFloat4;
         struct CurvedConstants
         {
             float baseScale,amplitude,reference;uint addressMode;
-            uint textureWidth,textureHeight,fragmentCount,maxNodes,maxDepth,rayCount,firstRay;float requiredDepthAccuracy;uint reserved1;
+            uint textureWidth,textureHeight,fragmentCount,maxNodes,maxDepth,rayCount,firstRay;float requiredDepthAccuracy;uint packedTriangleCount;
         };
         struct CurvedResult
         {
@@ -139,8 +140,10 @@ int main(int argc,char** argv)
             float unresolvedUpper;
             uint singular;
             uint exhaustionReasons;
+            float uv[2];
+            float normal[3];
         };
-        static_assert(sizeof(CurvedConstants)==52 && sizeof(CurvedResult)==52 && sizeof(Float4)==16);
+        static_assert(sizeof(CurvedConstants)==52 && sizeof(CurvedResult)==72 && sizeof(Float4)==16);
         namespace Curved=SilPOM::Curved;
         Curved::Texture curvedTexture{texture.width,texture.height,std::vector<double>(texture.width*texture.height)};
         for(uint y=0;y<texture.height;++y)for(uint x=0;x<texture.width;++x)
@@ -168,12 +171,11 @@ int main(int argc,char** argv)
                 packedFragments.push_back(pack(fragment.domain[0]));packedFragments.push_back(pack(fragment.domain[1]));packedFragments.push_back(pack(fragment.domain[2]));
             }
         }
-        std::vector<Float4> reversedPackedFragments;
-        reversedPackedFragments.reserve(packedFragments.size());
-        for(uint fragment=curvedFragmentCount;fragment-- > 0;)
-            reversedPackedFragments.insert(reversedPackedFragments.end(),packedFragments.begin()+size_t(fragment)*11,
-                packedFragments.begin()+size_t(fragment+1)*11);
+        const auto compactMesh=Curved::PackMesh(curvedTriangles,curvedSurface,curvedTexture,1048576,true);
+        if(compactMesh.fragmentCount!=curvedFragmentCount)throw std::runtime_error("Packed fragment count changed");
+        const auto reversedPackedFragments=compactMesh.ReversedFragments();
         constexpr uint curvedCount=288;
+        static_assert(curvedCount*sizeof(CurvedResult)<=count*sizeof(SilPomHit), "Curved output exceeds readback allocation");
         constexpr uint tangentIndex=248;
         std::vector<SilPomRay> curvedRays(curvedCount);
         for(uint index=0;index<curvedCount;++index)
@@ -223,9 +225,10 @@ int main(int argc,char** argv)
         }
         if(multipleIntersectionFixtures==0)throw std::runtime_error("Curved corpus failed to construct multiple intersections");
         auto curvedRayBuffer=upload(curvedRays.data(),curvedRays.size()*sizeof(SilPomRay));
-        auto curvedFragmentBuffer=upload(packedFragments.data(),packedFragments.size()*sizeof(Float4));
+        auto legacyFragmentBuffer=upload(packedFragments.data(),packedFragments.size()*sizeof(Float4));
+        auto curvedFragmentBuffer=upload(compactMesh.data.data(),compactMesh.data.size()*sizeof(Float4));
         auto curvedReverseFragmentBuffer=upload(reversedPackedFragments.data(),reversedPackedFragments.size()*sizeof(Float4));
-        CurvedConstants curvedConstants{1,.5f,.5f,0,texture.width,texture.height,curvedFragmentCount,32768,12,curvedCount,0,5e-4f,0};
+        CurvedConstants curvedConstants{1,.5f,.5f,0,texture.width,texture.height,curvedFragmentCount,32768,12,curvedCount,0,5e-4f,compactMesh.ShaderHeader()};
         auto curvedCs=Read(argv[3]);pd.CS={curvedCs.data(),curvedCs.size()};
         ComPtr<ID3D12PipelineState> curvedPipeline;Check(device->CreateComputePipelineState(&pd,IID_PPV_ARGS(&curvedPipeline)));
         ComPtr<ID3D12Resource> curvedImage;Check(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&td,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&curvedImage)));
@@ -287,17 +290,17 @@ int main(int argc,char** argv)
                 throw std::runtime_error("Curved tangent ray lacks an uncertified-singular diagnostic");
             if(actual.status==uint(Curved::Status::Hit))
             {
-                if(actual.primitiveId!=reference.primitiveId||actual.tError>=5e-3f)
+                const float numericalFloor=32*std::numeric_limits<float>::epsilon()*std::max(1.f,std::abs(actual.t)+actual.tError);
+                if(actual.primitiveId!=reference.primitiveId||actual.tError>std::max(curvedConstants.requiredDepthAccuracy,numericalFloor)*1.001f)
                     throw std::runtime_error("Curved hit ownership/depth bound mismatch at ray "+std::to_string(index)+
                         " primitive="+std::to_string(actual.primitiveId)+" reference="+std::to_string(reference.primitiveId)+
                         " error="+std::to_string(actual.tError));
                 Curved::Vec3 actualBarycentric{actual.barycentric[0],actual.barycentric[1],actual.barycentric[2]};
                 if(Curved::Length(actualBarycentric-reference.barycentric)>3e-3)
                     throw std::runtime_error("Curved barycentric mismatch at ray "+std::to_string(index));
-                const auto actualSample=Curved::Evaluate(curvedTriangles[actual.primitiveId==7?0:1],curvedSurface,
-                    curvedTexture,actualBarycentric);
-                if(std::abs(actualSample.uv.x-reference.uv.x)>1e-3||std::abs(actualSample.uv.y-reference.uv.y)>1e-3||
-                    Curved::Dot(actualSample.normal,reference.normal)<.999f)
+                const Curved::Vec3 actualNormal{actual.normal[0],actual.normal[1],actual.normal[2]};
+                if(std::abs(actual.uv[0]-reference.uv.x)>1e-3||std::abs(actual.uv[1]-reference.uv.y)>1e-3||
+                    std::abs(Curved::Length(actualNormal)-1)>2e-5||Curved::Dot(actualNormal,reference.normal)<.999f)
                     throw std::runtime_error("Curved UV/normal mismatch at ray "+std::to_string(index));
             }
             curvedHits+=actual.status==uint(Curved::Status::Hit);
@@ -310,7 +313,7 @@ int main(int argc,char** argv)
         std::vector<CurvedResult> forwardResults(curvedValues,curvedValues+curvedCount);
         readback->Unmap(0,nullptr);
 
-        auto dispatchCurvedPass=[&](ID3D12Resource* fragments,const CurvedConstants& constants,uint dispatchCount)
+        auto dispatchCurvedPass=[&](ID3D12Resource* fragments,const CurvedConstants& constants,uint dispatchCount,bool timed=false)
         {
             ID3D12DescriptorHeap* heaps[]={heap.Get()};list->SetDescriptorHeaps(1,heaps);list->SetComputeRootSignature(root.Get());
             list->SetComputeRootDescriptorTable(0,heap->GetGPUDescriptorHandleForHeapStart());
@@ -318,11 +321,42 @@ int main(int argc,char** argv)
             list->SetComputeRootUnorderedAccessView(2,output->GetGPUVirtualAddress());
             list->SetComputeRoot32BitConstants(3,13,&constants,0);
             list->SetComputeRootShaderResourceView(4,fragments->GetGPUVirtualAddress());
-            list->SetPipelineState(curvedPipeline.Get());list->Dispatch((dispatchCount+63)/64,1,1);
+            list->SetPipelineState(curvedPipeline.Get());
+            if(timed)list->EndQuery(queryHeap.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0);
+            list->Dispatch((dispatchCount+63)/64,1,1);
+            if(timed)
+            {
+                list->EndQuery(queryHeap.Get(),D3D12_QUERY_TYPE_TIMESTAMP,1);
+                list->ResolveQueryData(queryHeap.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0,2,queryReadback.Get(),0);
+            }
             barrier(output.Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);
             list->CopyResource(readback.Get(),output.Get());
             barrier(output.Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);submit();
+            double milliseconds=0;
+            if(timed)
+            {
+                UINT64* values=nullptr;Check(queryReadback->Map(0,nullptr,reinterpret_cast<void**>(&values)));
+                milliseconds=1000.0*double(values[1]-values[0])/double(frequency);queryReadback->Unmap(0,nullptr);
+            }
+            return milliseconds;
         };
+
+        CurvedConstants legacyConstants=curvedConstants;legacyConstants.packedTriangleCount=0;
+        dispatchCurvedPass(legacyFragmentBuffer.Get(),legacyConstants,curvedCount);
+        CurvedResult* legacyValues=nullptr;Check(readback->Map(0,nullptr,reinterpret_cast<void**>(&legacyValues)));
+        uint newlyResolved=0;
+        for(uint index=0;index<curvedCount;++index)
+        {
+            const auto& legacy=legacyValues[index];const auto& compact=forwardResults[index];
+            if(legacy.status==uint(Curved::Status::Hit)&&compact.status==uint(Curved::Status::Hit)&&
+                (legacy.primitiveId!=compact.primitiveId||std::abs(legacy.t-compact.t)>legacy.tError+compact.tError))
+                throw std::runtime_error("Compact/legacy hit differs at ray "+std::to_string(index));
+            if((legacy.status==uint(Curved::Status::Hit)&&compact.status==uint(Curved::Status::Miss))||
+                (legacy.status==uint(Curved::Status::Miss)&&compact.status==uint(Curved::Status::Hit)))
+                throw std::runtime_error("Compact/legacy surface classification differs at ray "+std::to_string(index));
+            newlyResolved+=legacy.status==uint(Curved::Status::Exhausted)&&compact.status!=uint(Curved::Status::Exhausted);
+        }
+        readback->Unmap(0,nullptr);
 
         dispatchCurvedPass(curvedReverseFragmentBuffer.Get(),curvedConstants,curvedCount);
         CurvedResult* reversedValues=nullptr;Check(readback->Map(0,nullptr,reinterpret_cast<void**>(&reversedValues)));
@@ -342,13 +376,108 @@ int main(int argc,char** argv)
         const CurvedResult forced=exhaustedValues[0];readback->Unmap(0,nullptr);
         if(forced.status!=uint(Curved::Status::Exhausted)||(forced.exhaustionReasons&Curved::ExhaustionNodeBudget)==0||
             !std::isfinite(forced.unresolvedT)||forced.unresolvedUpper<forced.unresolvedT)
-            throw std::runtime_error("Curved forced exhaustion failed to account for every pending candidate");
+                throw std::runtime_error("Curved forced exhaustion failed to account for every pending candidate");
+
+        uint exhaustedAfterCandidate=0;
+        for(uint budget: {16u,64u,256u})
+        {
+            CurvedConstants limited=curvedConstants;limited.maxNodes=budget;
+            dispatchCurvedPass(curvedFragmentBuffer.Get(),limited,curvedCount);
+            CurvedResult* values=nullptr;Check(readback->Map(0,nullptr,reinterpret_cast<void**>(&values)));
+            for(uint index=0;index<curvedCount;++index)
+            {
+                const auto& actual=values[index];const auto& complete=forwardResults[index];
+                if(actual.status==uint(Curved::Status::Hit)&&
+                    (complete.status!=uint(Curved::Status::Hit)||actual.primitiveId!=complete.primitiveId||
+                     std::abs(actual.t-complete.t)>actual.tError+complete.tError))
+                    throw std::runtime_error("Work-budget exit promoted an uncertified nearest hit");
+                exhaustedAfterCandidate+=actual.status==uint(Curved::Status::Exhausted)&&actual.primitiveId!=0xffffffffu;
+                if(actual.status==uint(Curved::Status::Exhausted)&&
+                    (!std::isfinite(actual.unresolvedT)||actual.unresolvedT>actual.unresolvedUpper||actual.exhaustionReasons==0))
+                    throw std::runtime_error("Work-budget exit lost pending interval diagnostics at ray "+std::to_string(index)+
+                        " budget="+std::to_string(budget)+" reasons="+std::to_string(actual.exhaustionReasons));
+            }
+            readback->Unmap(0,nullptr);
+        }
+        if(exhaustedAfterCandidate==0)throw std::runtime_error("Budget sweep did not exercise exhaustion after a candidate hit");
+        std::cout<<"Curved budget sweep: "<<exhaustedAfterCandidate<<" candidate hits correctly retained as Exhausted.\n";
+
+        auto benchmark=[&](const char* label,ID3D12Resource* fragments,CurvedConstants constants,uint first,uint samples)
+        {
+            constants.firstRay=first;constants.rayCount=first+samples;
+            dispatchCurvedPass(fragments,constants,samples);
+            std::vector<double> times;
+            for(int iteration=0;iteration!=5;++iteration)times.push_back(dispatchCurvedPass(fragments,constants,samples,true));
+            std::sort(times.begin(),times.end());
+            std::cout<<"Curved benchmark "<<label<<": "<<samples<<" rays, median="<<times[2]<<" ms, max="<<times.back()<<" ms (5 warm runs).\n";
+        };
+        benchmark("compact/front",curvedFragmentBuffer.Get(),curvedConstants,0,192);
+        benchmark("compact/grazing",curvedFragmentBuffer.Get(),curvedConstants,224,25);
+        benchmark("legacy/front",legacyFragmentBuffer.Get(),legacyConstants,0,192);
+        benchmark("legacy/grazing",legacyFragmentBuffer.Get(),legacyConstants,224,25);
+        CurvedConstants fineConstants=curvedConstants;fineConstants.packedTriangleCount|=0x40000000u;
+        benchmark("compact/fine-grazing",curvedFragmentBuffer.Get(),fineConstants,224,25);
+
+        // Exercise nonzero bilinear cross terms, clamp addressing, signed height
+        // and instance-resolved bounds. Compare actual shader outputs, not CPU
+        // reconstruction of UV/normal from the returned barycentrics.
+        Curved::Texture noisyTexture{texture.width,texture.height,std::vector<double>(texture.pixels.begin(),texture.pixels.end())};
+        device->CreateShaderResourceView(image.Get(),&srv,heap->GetCPUDescriptorHandleForHeapStart());
+        for(double baseScale: {.125,8.})for(double amplitude: {-.04,.04})
+        {
+            const Curved::Surface surface{baseScale,amplitude,.25,1};
+            const auto mesh=Curved::PackMesh(curvedTriangles,surface,noisyTexture,1048576,true);
+            const auto fragments=upload(mesh.data.data(),mesh.data.size()*sizeof(Float4));
+            std::vector<SilPomRay> inputs(48);
+            for(uint index=0;index<inputs.size();++index)
+            {
+                const double u=(index%8+.371)/18.,v=(index/8+.613)/18.;
+                const auto sample=Curved::Evaluate(curvedTriangles[index%2],surface,noisyTexture,{1-u-v,u,v});
+                const Curved::Vec3 direction{.15,.07,-1},origin=sample.position-direction;
+                inputs[index]={{float(origin.x),float(origin.y),float(origin.z)},{float(direction.x),float(direction.y),float(direction.z)},0,4};
+            }
+            curvedRayBuffer=upload(inputs.data(),inputs.size()*sizeof(SilPomRay));
+            CurvedConstants constants{float(baseScale),float(amplitude),.25f,1,texture.width,texture.height,
+                mesh.fragmentCount,32768,12,uint(inputs.size()),0,5e-4f,mesh.ShaderHeader(true)};
+            dispatchCurvedPass(fragments.Get(),constants,uint(inputs.size()));
+            CurvedResult* values=nullptr;Check(readback->Map(0,nullptr,reinterpret_cast<void**>(&values)));
+            uint hits=0,exhaustions=0;
+            for(uint index=0;index<inputs.size();++index)
+            {
+                const auto& input=inputs[index];const auto& actual=values[index];
+                const Curved::Ray ray{{input.origin.x,input.origin.y,input.origin.z},{input.direction.x,input.direction.y,input.direction.z},input.tMin,input.tMax};
+                const auto expected=Curved::Intersect(curvedTriangles,surface,noisyTexture,ray);
+                if(actual.status==uint(Curved::Status::Exhausted))
+                {
+                    if(actual.exhaustionReasons==0||!std::isfinite(actual.unresolvedT))throw std::runtime_error("Missing scaled-case exhaustion diagnostic");
+                    ++exhaustions;continue;
+                }
+                if(actual.status!=uint(expected.status))throw std::runtime_error("Scaled cubic classification differs at ray "+std::to_string(index));
+                if(actual.status==uint(Curved::Status::Hit))
+                {
+                    const double t=(expected.tLower+expected.tUpper)*.5;
+                    const float floor=32*std::numeric_limits<float>::epsilon()*std::max(1.f,std::abs(actual.t)+actual.tError);
+                    if(actual.primitiveId!=expected.primitiveId||std::abs(actual.t-t)>actual.tError+2e-6||
+                        actual.tError>std::max(constants.requiredDepthAccuracy,floor)*1.001f||
+                        std::abs(actual.uv[0]-expected.uv.x)>1e-3||std::abs(actual.uv[1]-expected.uv.y)>1e-3||
+                        Curved::Dot({actual.normal[0],actual.normal[1],actual.normal[2]},expected.normal)<.999f)
+                        throw std::runtime_error("Scaled cubic hit attributes differ at ray "+std::to_string(index));
+                    ++hits;
+                }
+            }
+            readback->Unmap(0,nullptr);
+            if(hits<8)throw std::runtime_error("Too few certified hits in scaled cubic corpus");
+            std::cout<<"Curved cubic/scale="<<baseScale<<" amplitude="<<amplitude<<": "<<hits<<" hits, "<<exhaustions<<" exhausted.\n";
+        }
 
         device->CreateShaderResourceView(image.Get(),&srv,heap->GetCPUDescriptorHandleForHeapStart());
         std::cout<<"Curved compute: "<<curvedCount<<" mixed rays passed ("<<curvedHits<<" certified hits, "
             <<curvedMisses<<" misses, "<<curvedInvalid<<" invalid, "<<curvedExhausted<<" exhausted), "
             <<multipleIntersectionFixtures<<" multiple-intersection fixtures plus reversed order and forced exhaustion, "
             <<curvedMilliseconds<<" ms, max "<<curvedMaxNodes<<" nodes.\n";
+        std::cout<<"Curved storage: "<<curvedTriangles.size()<<" shared triangles, "<<curvedFragmentCount
+            <<" fragments, "<<packedFragments.size()*sizeof(Float4)<<" legacy bytes -> "
+            <<compactMesh.data.size()*sizeof(Float4)<<" compact bytes; "<<newlyResolved<<" additional rays resolved.\n";
 
         D3D12_FEATURE_DATA_D3D12_OPTIONS5 options{};Check(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5,&options,sizeof(options)));
         if(options.RaytracingTier==D3D12_RAYTRACING_TIER_NOT_SUPPORTED)

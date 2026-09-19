@@ -13,17 +13,26 @@ def main():
     parser.add_argument('--blender', required=True, type=Path)
     parser.add_argument('--asset-processor', required=True, type=Path)
     parser.add_argument('--project', required=True, type=Path)
+    parser.add_argument('--blend', type=Path, help='Export an existing authoring file instead of constructing the legacy fixture')
     args = parser.parse_args()
     root = Path(__file__).resolve().parent.parent
-    source = args.project.resolve() / 'Assets/SilPOMRoundTrip'
+    source_name = 'SilPOMAuthoredRoundTrip' if args.blend else 'SilPOMRoundTrip'
+    source = args.project.resolve() / 'Assets' / source_name
     source.mkdir(parents=True, exist_ok=True)
-    output = root / 'build/roundtrip'
+    output = root / 'build' / ('authored-roundtrip' if args.blend else 'roundtrip')
     results = []
     for generation in ('initial', 'reordered'):
         generated = output / generation
         generated.mkdir(parents=True, exist_ok=True)
-        command = [str(args.blender), '--background', '--factory-startup', '--python-exit-code', '1',
-                   '--python', str(root / 'Tools/roundtrip_fixture.py'), '--', '--output', str(generated)]
+        if args.blend:
+            blend = args.blend.resolve() if generation == 'initial' else output / 'initial/authoring.blend'
+            command = [str(args.blender), '--background', str(blend), '--python-exit-code', '1',
+                       '--python', str(root / 'Tools/export_mesh.py'), '--', '--output', str(generated)]
+            if generation == 'initial':
+                command.append('--initialize-identities')
+        else:
+            command = [str(args.blender), '--background', '--factory-startup', '--python-exit-code', '1',
+                       '--python', str(root / 'Tools/roundtrip_fixture.py'), '--', '--output', str(generated)]
         if generation == 'reordered':
             command.append('--reorder')
         subprocess.run(command, check=True, timeout=120)
@@ -39,7 +48,7 @@ def main():
         fbx = (generated / 'roundtrip.fbx').read_bytes()
         result = validate(sidecar, imported, fbx)
         result['negative_checks'] = negative_tests(sidecar, imported, fbx)
-        product = args.project / 'Cache/pc/assets/silpomroundtrip/roundtrip.fbx.azmodel'
+        product = args.project / 'Cache/pc/assets' / source_name.lower() / 'roundtrip.fbx.azmodel'
         if not product.is_file():
             raise RuntimeError('Missing stock model product: ' + str(product))
         result['generation'] = generation

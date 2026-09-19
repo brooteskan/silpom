@@ -71,6 +71,70 @@ handles these names explicitly; this is not a warning-free run.
 
 The diagnostic model intentionally includes both selected and ordinary geometry.
 Production selected-face removal, stripping transport channels, sidecar dependency
-tracking, duplicate-object ID assignment, modifier mapping, and varying-direction
-field fixtures remain separate work. This fixture does not establish the curved
-intersection solver's correctness or rendering performance.
+tracking, and modifier mapping remain separate work. This fixture does not
+establish the curved intersection solver's correctness or rendering performance.
+
+## General authoring exporter (transport version 2)
+
+`Tools/export_mesh.py` exports meshes from an existing `.blend` instead of building
+the fixed fixture. Example from the Gem directory:
+
+```powershell
+& '<blender.exe>' --background '<source.blend>' --python-exit-code 1 --python Tools/export_mesh.py -- --output build/my-export --initialize-identities
+```
+
+Use `--object NAME` (repeatable) to restrict export; otherwise all scene meshes are
+included. The input file is never overwritten. Continue authoring in the generated
+`authoring.blend`, which preserves allocated IDs. Subsequent exports from that
+copy do not need `--initialize-identities`. Use a new output directory when the
+input itself is named `authoring.blend` in the previous output directory.
+
+Required authoring data:
+
+- An active UV map, assigned material on every face, and an integer FACE-domain
+  `silpom_region_id`; zero denotes ordinary geometry.
+- Optional integer FACE-domain `silpom_profile_id`; selected faces default to
+  profile 1. These are stable profile references, not cooked displacement assets.
+- Optional FLOAT_VECTOR POINT- or CORNER-domain `silpom_direction`. Without it,
+  captured corner shading normals define displacement directions. Supply an
+  explicit field when a hard shading edge must not split displacement geometry.
+- Persistent integer `silpom_vertex_id`/`silpom_face_id` attributes and object/
+  material identity properties. Initialization allocates missing IDs and repairs
+  duplicates in the saved copy. Without initialization, ambiguous IDs are errors.
+
+Object identity namespaces distinguish duplicated or linked meshes. Face identity
+combines the object ID, persistent polygon ID, and a rotation-independent oriented
+triangle key. Triangulation and corner-data capture happen before partitioning.
+Material identities survive renaming; temporary FBX material names carry a stable
+identity-derived token. Dense export-local face/vertex keys must be below `2^24`;
+they map to persistent identities in the hash-bound sidecar rather than pretending
+that arbitrarily large authoring IDs fit into float UV channels.
+
+The helper bakes positive uniform object transforms and scene units into metre
+positions. Nonuniform/reflected/sheared transforms, active modifiers, linked
+library meshes, and shape keys are rejected. Bake unsupported topology explicitly;
+this milestone does not invent modifier identity propagation.
+
+Run authoring regressions and then the actual two-pass engine import:
+
+```powershell
+& '<blender.exe>' --background --factory-startup --python-exit-code 1 --python Tests/blender_authoring_tests.py -- --output build/authoring-tests
+& '<python.exe>' Tools/run_roundtrip.py --blender '<blender.exe>' --asset-processor '<AssetProcessorBatch.exe>' --project '<project>' --blend build/authoring-tests/duplicate/authoring.blend
+```
+
+The generalized runner owns reserved assets in `Assets/SilPOMAuthoredRoundTrip`
+and logs/reports in `build/authored-roundtrip`. It does not edit the source blend
+or unrelated scene manifests. Decoder-only tests run with
+`python Tests/test_roundtrip_metadata.py`, or through CTest when `SILPOM_PYTHON`
+is configured.
+
+Verified with Blender 5.0.1 and the local O3DE development build: initial and
+reordered imports preserve two objects, eight triangles, six selected faces,
+two materials, six shared edges, two selected/ordinary boundaries, varying
+directions, and multiple profiles. Both passes share the same semantic hash and
+pass all five decoder corruption checks. Asset Processor reports zero failures,
+zero errors, and the same four UV-channel merge warnings as the legacy fixture.
+Nine Blender authoring checks cover identity initialization, reordering, material
+rename, duplicate identity rejection/repair, varying fields/profiles, nonuniform
+scale rejection, modifier rejection, and polygon triangulation. Six decoder unit
+tests also cover namespaces, stable-ID duplication, winding, and non-finite data.

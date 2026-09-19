@@ -25,6 +25,8 @@ struct Result
     float unresolvedUpper;
     uint singular;
     uint exhaustionReasons;
+    float2 uv;
+    float3 normal;
 };
 RWStructuredBuffer<Result> results : register(u0);
 
@@ -42,7 +44,7 @@ cbuffer Parameters : register(b0)
     uint rayCount;
     uint firstRay;
     float requiredDepthAccuracy;
-    uint reserved1;
+    uint packedTriangleCount; // low 30 bits: shared triangle count; bit 31: cached bounds; bit 30: fine subdivision
 };
 
 static const uint Miss = 0;
@@ -55,6 +57,10 @@ static const uint ReasonParameterResolution = 1u << 2;
 static const uint ReasonDepthResolution = 1u << 3;
 static const uint ReasonUncertifiedLeaf = 1u << 4;
 static const uint ReasonStackCapacity = 1u << 5;
+// Four-way depth-first subdivision needs at most 1 + 3 * depth entries.
+// The default depth 12 therefore needs 37, not 128, entries per ray. Larger
+// requested depths still fail explicitly if this capacity is insufficient.
+static const uint StackCapacity = 48;
 
 int Address(int value, int size)
 {
@@ -80,12 +86,25 @@ struct Fragment
     float2 uv[3];
     float3 domain[3];
     uint primitiveId;
+    float2 cell;
+    float4 height; // h00, dh/dx, dh/dy, d2h/dxdy; not multiplied by amplitude
 };
 
 Fragment LoadFragment(uint index)
 {
     uint offset = index * 11;
-    Fragment f;
+    Fragment f = (Fragment)0;
+    if(packedTriangleCount != 0)
+    {
+        uint fragmentOffset=(packedTriangleCount&0x3fffffffu)*8+index*((packedTriangleCount&0x80000000u)!=0?5:4);
+        float4 b01=fragmentData[fragmentOffset],b2=fragmentData[fragmentOffset+1];
+        f.domain[0]=float3(1-b01.x-b01.y,b01.xy);
+        f.domain[1]=float3(1-b01.z-b01.w,b01.zw);
+        f.domain[2]=float3(1-b2.x-b2.y,b2.xy);
+        f.height=fragmentData[fragmentOffset+2];
+        f.cell=fragmentData[fragmentOffset+3].xy;
+        offset=asuint(b2.z)*8;
+    }
     f.position[0] = fragmentData[offset + 0].xyz;
     f.position[1] = fragmentData[offset + 1].xyz;
     f.position[2] = fragmentData[offset + 2].xyz;
@@ -97,10 +116,35 @@ Fragment LoadFragment(uint index)
     f.uv[1] = uv01.zw;
     f.uv[2] = fragmentData[offset + 7].xy;
     f.primitiveId = asuint(fragmentData[offset + 7].z);
-    f.domain[0] = fragmentData[offset + 8].xyz;
-    f.domain[1] = fragmentData[offset + 9].xyz;
-    f.domain[2] = fragmentData[offset + 10].xyz;
+    if(packedTriangleCount == 0)
+    {
+        f.domain[0] = fragmentData[offset + 8].xyz;
+        f.domain[1] = fragmentData[offset + 9].xyz;
+        f.domain[2] = fragmentData[offset + 10].xyz;
+    }
     return f;
+}
+
+bool FragmentMayIntersect(uint index,Ray ray,Result result)
+{
+    if((packedTriangleCount&0x80000000u)==0)return true;
+    uint offset=(packedTriangleCount&0x3fffffffu)*8+index*5;
+    float4 a=fragmentData[offset+3],b=fragmentData[offset+4];
+    float3 low=float3(a.z,a.w,b.x),high=b.yzw;
+    float begin=ray.tMin,end=result.status==Hit?min(ray.tMax,result.t+result.tError):ray.tMax;
+    [unroll] for(uint axis=0;axis!=3;++axis)
+    {
+        float error=16.0f*1.192092896e-7f*max(1.0f,max(abs(ray.origin[axis]),max(abs(low[axis]),abs(high[axis]))));
+        low[axis]-=error;high[axis]+=error;
+        if(ray.direction[axis]==0)
+        {if(ray.origin[axis]<low[axis]||ray.origin[axis]>high[axis])return false;}
+        else
+        {
+            float t0=(low[axis]-ray.origin[axis])/ray.direction[axis],t1=(high[axis]-ray.origin[axis])/ray.direction[axis];
+            begin=max(begin,min(t0,t1));end=min(end,max(t0,t1));
+        }
+    }
+    return begin<=end;
 }
 
 float3 SurfacePoint(Fragment f, float3 barycentric)
@@ -108,7 +152,41 @@ float3 SurfacePoint(Fragment f, float3 barycentric)
     float3 p = f.position[0] * barycentric.x + f.position[1] * barycentric.y + f.position[2] * barycentric.z;
     float3 d = f.direction[0] * barycentric.x + f.direction[1] * barycentric.y + f.direction[2] * barycentric.z;
     float2 uv = f.uv[0] * barycentric.x + f.uv[1] * barycentric.y + f.uv[2] * barycentric.z;
-    return baseScale * p + amplitude * (Height(uv) - reference) * d;
+    float2 q=uv*float2(textureWidth,textureHeight)-.5f-f.cell;
+    float height=packedTriangleCount==0?Height(uv):
+        f.height.x+f.height.y*q.x+f.height.z*q.y+f.height.w*q.x*q.y;
+    return baseScale * p + amplitude * (height - reference) * d;
+}
+
+// Polar form of a quadratic height polynomial. Evaluating at equal arguments
+// gives height; unequal arguments give the mixed quadratic Bernstein controls.
+float HeightBlossom(Fragment f,float2 a,float2 b)
+{
+    return amplitude*(f.height.x-reference+.5f*f.height.y*(a.x+b.x)+
+        .5f*f.height.z*(a.y+b.y)+.5f*f.height.w*(a.x*b.y+a.y*b.x));
+}
+
+void SurfaceFrame(Fragment f,float3 barycentric,out float2 uv,out float3 du,out float3 dv)
+{
+    uv=f.uv[0]*barycentric.x+f.uv[1]*barycentric.y+f.uv[2]*barycentric.z;
+    float2 q=uv*float2(textureWidth,textureHeight)-.5f-f.cell;
+    float4 h=f.height;
+    if(packedTriangleCount==0)
+    {
+        float2 texel=uv*float2(textureWidth,textureHeight)-.5f;int2 cell=int2(floor(texel));q=texel-cell;
+        float h00=heightImage.Load(int3(Address(cell.x,textureWidth),Address(cell.y,textureHeight),0));
+        float h10=heightImage.Load(int3(Address(cell.x+1,textureWidth),Address(cell.y,textureHeight),0));
+        float h01=heightImage.Load(int3(Address(cell.x,textureWidth),Address(cell.y+1,textureHeight),0));
+        float h11=heightImage.Load(int3(Address(cell.x+1,textureWidth),Address(cell.y+1,textureHeight),0));
+        h=float4(h00,h10-h00,h01-h00,h11-h10-h01+h00);
+    }
+    float displacement=amplitude*(h.x+h.y*q.x+h.z*q.y+h.w*q.x*q.y-reference);
+    float2 gradient=amplitude*float2(h.y+h.w*q.y,h.z+h.w*q.x)*float2(textureWidth,textureHeight);
+    float3 direction=f.direction[0]*barycentric.x+f.direction[1]*barycentric.y+f.direction[2]*barycentric.z;
+    du=baseScale*(f.position[1]-f.position[0])+direction*dot(gradient,f.uv[1]-f.uv[0])+
+        displacement*(f.direction[1]-f.direction[0]);
+    dv=baseScale*(f.position[2]-f.position[0])+direction*dot(gradient,f.uv[2]-f.uv[0])+
+        displacement*(f.direction[2]-f.direction[0]);
 }
 
 float3 DomainPoint(float3 a, float3 b, float3 c, float3 local)
@@ -156,6 +234,30 @@ void EdgeControls(inout float3 lo, inout float3 hi, float3 p0, float3 p3, float3
 void PatchControls(Fragment fragment, Ray ray, Projection projection, float3 a, float3 b, float3 c,
     out float3 controls[10])
 {
+    if(packedTriangleCount!=0)
+    {
+        float3 bary[3]={a,b,c};float3 p[3],d[3];float2 q[3];
+        [unroll] for(uint i=0;i!=3;++i)
+        {
+            p[i]=baseScale*(fragment.position[0]*bary[i].x+fragment.position[1]*bary[i].y+fragment.position[2]*bary[i].z);
+            d[i]=fragment.direction[0]*bary[i].x+fragment.direction[1]*bary[i].y+fragment.direction[2]*bary[i].z;
+            q[i]=(fragment.uv[0]*bary[i].x+fragment.uv[1]*bary[i].y+fragment.uv[2]*bary[i].z)*
+                float2(textureWidth,textureHeight)-.5f-fragment.cell;
+        }
+        float h0=HeightBlossom(fragment,q[0],q[0]),h1=HeightBlossom(fragment,q[1],q[1]);
+        float h2=HeightBlossom(fragment,q[2],q[2]),h01=HeightBlossom(fragment,q[0],q[1]);
+        float h12=HeightBlossom(fragment,q[1],q[2]),h20=HeightBlossom(fragment,q[2],q[0]);
+        controls[0]=p[0]+h0*d[0];controls[1]=p[1]+h1*d[1];controls[2]=p[2]+h2*d[2];
+        controls[3]=(2*p[0]+p[1]+h0*d[1]+2*h01*d[0])/3;
+        controls[4]=(p[0]+2*p[1]+h1*d[0]+2*h01*d[1])/3;
+        controls[5]=(2*p[1]+p[2]+h1*d[2]+2*h12*d[1])/3;
+        controls[6]=(p[1]+2*p[2]+h2*d[1]+2*h12*d[2])/3;
+        controls[7]=(2*p[2]+p[0]+h2*d[0]+2*h20*d[2])/3;
+        controls[8]=(p[2]+2*p[0]+h0*d[2]+2*h20*d[0])/3;
+        controls[9]=(p[0]+p[1]+p[2]+h01*d[2]+h12*d[0]+h20*d[1])/3;
+        [unroll] for(uint j=0;j!=10;++j)controls[j]=Project(ray,projection,controls[j]);
+        return;
+    }
     #define EVAL(local) Project(ray, projection, SurfacePoint(fragment, DomainPoint(a,b,c,local)))
     controls[0] = EVAL(float3(1,0,0));
     controls[1] = EVAL(float3(0,1,0));
@@ -194,11 +296,9 @@ void PatchBounds(Fragment fragment, Ray ray, Projection projection, float3 a, fl
 float3 DeflatedValue(Fragment fragment, Ray ray, Projection projection, float3 barycentric)
 {
     float3 value=Project(ray,projection,SurfacePoint(fragment,barycentric));
-    const float epsilon=1e-3f;
-    float3 bu=barycentric+float3(-epsilon,epsilon,0);
-    float3 bv=barycentric+float3(-epsilon,0,epsilon);
-    float2 ju=(Project(ray,projection,SurfacePoint(fragment,bu)).xy-value.xy)/epsilon;
-    float2 jv=(Project(ray,projection,SurfacePoint(fragment,bv)).xy-value.xy)/epsilon;
+    float2 uv;float3 du,dv;SurfaceFrame(fragment,barycentric,uv,du,dv);
+    Ray vectorRay=ray;vectorRay.origin=0;
+    float2 ju=Project(vectorRay,projection,du).xy,jv=Project(vectorRay,projection,dv).xy;
     float scale=max(1.0f,max(max(abs(ju.x),abs(ju.y)),max(abs(jv.x),abs(jv.y))));
     return float3(value.xy,(ju.x*jv.y-jv.x*ju.y)/(scale*scale));
 }
@@ -208,15 +308,14 @@ bool Newton(Fragment fragment, Ray ray, Projection projection, float3 a, float3 
 {
     local = float3(1.0f/3.0f,1.0f/3.0f,1.0f/3.0f);
     singular = false;
-    const float epsilon = 2e-4f;
     [loop] for (uint iteration = 0; iteration != 20; ++iteration)
     {
         barycentric = DomainPoint(a,b,c,local);
         float3 value = Project(ray, projection, SurfacePoint(fragment,barycentric));
-        float3 lu = float3(local.x-epsilon,local.y+epsilon,local.z);
-        float3 lv = float3(local.x-epsilon,local.y,local.z+epsilon);
-        float2 ju = (Project(ray,projection,SurfacePoint(fragment,DomainPoint(a,b,c,lu))).xy-value.xy)/epsilon;
-        float2 jv = (Project(ray,projection,SurfacePoint(fragment,DomainPoint(a,b,c,lv))).xy-value.xy)/epsilon;
+        float2 uv;float3 duSource,dvSource;SurfaceFrame(fragment,barycentric,uv,duSource,dvSource);
+        Ray vectorRay=ray;vectorRay.origin=0;
+        float2 ju=Project(vectorRay,projection,duSource*(b.y-a.y)+dvSource*(b.z-a.z)).xy;
+        float2 jv=Project(vectorRay,projection,duSource*(c.y-a.y)+dvSource*(c.z-a.z)).xy;
         float determinant = ju.x*jv.y-jv.x*ju.y;
         float scale = max(1e-20f,max(max(abs(ju.x),abs(ju.y)),max(abs(jv.x),abs(jv.y))));
         if(abs(determinant)<64.0f*1.192092896e-7f*scale*scale) {singular=true;break;}
@@ -322,10 +421,8 @@ bool StrictDomainContains(float3 domain[3],float3 barycentric,float margin)
 // Success proves a unique regular root.  Singular/boundary leaves remain
 // Exhausted instead of being accepted from a small sampled residual.
 bool IntervalInclusion(Fragment fragment,Ray ray,Projection projection,float3 a,float3 b,float3 c,
-    float3 local,out float4 enclosure)
+    float3 local,float3 controls[10],out float4 enclosure)
 {
-    float3 controls[10];
-    PatchControls(fragment,ray,projection,a,b,c,controls);
     float2 dx[6],dy[6];
     dx[0]=3.0f*(controls[3].xy-controls[0].xy);
     dx[1]=3.0f*(controls[4].xy-controls[3].xy);
@@ -366,7 +463,10 @@ bool IntervalInclusion(Fragment fragment,Ray ray,Projection projection,float3 a,
     float2 ky=AddInterval(float2(centerY,centerY),AddInterval(MultiplyInterval(m10,deltaX),MultiplyInterval(m11,deltaY)));
     enclosure=float4(kx,ky);
     float margin=256.0f*1.192092896e-7f;
-    if(kx.x<=margin||ky.x<=margin||kx.y>=1.0f-margin||ky.y>=1.0f-margin)return false;
+    // The depth enclosure belongs to this child triangle, not to its parent
+    // fragment or to the surrounding unit square. The complete root enclosure
+    // must lie inside this triangle before that depth bound can be returned.
+    if(kx.x<=margin||ky.x<=margin||kx.y+ky.y>=1.0f-margin)return false;
     float2 xs=float2(kx.x,kx.y),ys=float2(ky.x,ky.y);
     [unroll] for(uint ix=0;ix!=2;++ix)[unroll] for(uint iy=0;iy!=2;++iy)
     {
@@ -380,9 +480,8 @@ bool IntervalInclusion(Fragment fragment,Ray ray,Projection projection,float3 a,
 // when interval Newton is too pessimistic.  Each cubic boundary segment is
 // subdivided with de Casteljau; an outward-expanded control hull must fit wholly
 // in one open coordinate half-plane before its angle contribution is used.
-bool WindingInclusion(Fragment fragment,Ray ray,Projection projection,float3 a,float3 b,float3 c)
+bool WindingInclusion(float3 patch[10])
 {
-    float3 patch[10];PatchControls(fragment,ray,projection,a,b,c,patch);
     uint edgeIndices[12]={0,3,4,1, 1,5,6,2, 2,7,8,0};
     float winding=0;
     [unroll] for(uint edge=0;edge!=3;++edge)
@@ -448,8 +547,9 @@ void Main(uint3 dispatchId : SV_DispatchThreadID)
     bool abortAll=false;
     [loop] for(uint fragmentIndex=0;fragmentIndex<fragmentCount;++fragmentIndex)
     {
+        if(!FragmentMayIntersect(fragmentIndex,ray,result))continue;
         Fragment fragment=LoadFragment(fragmentIndex);
-        float3 stackA[128],stackB[128],stackC[128];uint stackDepth[128];
+        float3 stackA[StackCapacity],stackB[StackCapacity],stackC[StackCapacity];uint stackDepth[StackCapacity];
         uint stackSize=1;
         stackA[0]=fragment.domain[0];stackB[0]=fragment.domain[1];stackC[0]=fragment.domain[2];stackDepth[0]=0;
         [loop] while(stackSize)
@@ -476,13 +576,19 @@ void Main(uint3 dispatchId : SV_DispatchThreadID)
             }
             --stackSize;float3 a=stackA[stackSize],b=stackB[stackSize],c=stackC[stackSize];uint depth=stackDepth[stackSize];
             ++result.nodes;result.maximumDepth=max(result.maximumDepth,depth);
-            float3 lo,hi;PatchBounds(fragment,ray,projection,a,b,c,lo,hi);
+            float3 controls[10];PatchControls(fragment,ray,projection,a,b,c,controls);
+            float3 lo=controls[0],hi=controls[0];
+            [unroll] for(uint ci=1;ci!=10;++ci)Include(lo,hi,controls[ci]);
+            float outward=max(1e-6f,64.0f*1.192092896e-7f*max(1.0f,max(max(abs(lo.x),abs(hi.x)),
+                max(max(abs(lo.y),abs(hi.y)),max(abs(lo.z),abs(hi.z))))));
+            lo-=outward;hi+=outward;
             if(!CouldIntersect(lo,hi,ray,result))continue;
             float diameter=max(length(a-b),max(length(b-c),length(c-a)));
-            // Cubic controls are reconstructed from point samples.  Their
-            // subtraction error grows like eps/diameter, so subdivision stops at
-            // a scale-derived O(sqrt(eps)) floor rather than a magic UV epsilon.
-            float parameterFloor=2.0f*sqrt(1.192092896e-7f);
+            // The legacy sample reconstruction loses accuracy as domains shrink.
+            // Analytic product controls do not divide cancellation error by the
+            // domain diameter, so the compact path can use a linear epsilon
+            // floor. Depth/stack/node budgets remain separately enforced.
+            float parameterFloor=(packedTriangleCount&0x40000000u)!=0?64.0f*1.192092896e-7f:2.0f*sqrt(1.192092896e-7f);
             float depthFloor=32.0f*1.192092896e-7f*max(1.0f,max(abs(lo.z),abs(hi.z)));
             float t=0;float3 barycentric=0,local=float3(1.0f/3.0f,1.0f/3.0f,1.0f/3.0f);bool singular=false;
             float4 enclosure=0;
@@ -495,19 +601,41 @@ void Main(uint3 dispatchId : SV_DispatchThreadID)
                 float residualScale=max(1.0f,max(max(abs(lo.x),abs(hi.x)),max(abs(lo.y),abs(hi.y))));
                 bool locatorValid=all(local>=-parameterFloor)&&all(local<=1.0f+parameterFloor)&&
                     max(abs(locatedResidual.x),abs(locatedResidual.y))<=512.0f*1.192092896e-7f*residualScale;
-                bool intervalCertified=IntervalInclusion(fragment,ray,projection,a,b,c,local,enclosure);
-                bool windingCertified=!singular&&WindingInclusion(fragment,ray,projection,a,b,c);
+                bool intervalCertified=IntervalInclusion(fragment,ray,projection,a,b,c,local,controls,enclosure);
+                bool windingCertified=!intervalCertified&&!singular&&
+                    hi.z-lo.z<=max(requiredDepthAccuracy,depthFloor)&&WindingInclusion(controls);
+                float hitLower=lo.z,hitUpper=hi.z;
+                if(intervalCertified&&packedTriangleCount!=0)
+                {
+                    // Krawczyk proves a unique root in this domain. Bound its
+                    // small enclosure, rather than subdividing the whole leaf
+                    // until every point on it has nearly identical depth.
+                    // The doubled right triangle contains the enclosure box.
+                    // The cell polynomial is extended only for bounding; the
+                    // inclusion test already proves the root is inside its cell.
+                    float x=enclosure.x,y=enclosure.z;
+                    float dx=enclosure.y-x,dy=enclosure.w-y;
+                    float3 rootA=DomainPoint(a,b,c,float3(1-x-y,x,y));
+                    float3 rootB=DomainPoint(a,b,c,float3(1-x-y-2*dx,x+2*dx,y));
+                    float3 rootC=DomainPoint(a,b,c,float3(1-x-y-2*dy,x,y+2*dy));
+                    float3 rootLo,rootHi;PatchBounds(fragment,ray,projection,rootA,rootB,rootC,rootLo,rootHi);
+                    hitLower=rootLo.z;hitUpper=rootHi.z;
+                }
+                float2 hitUv;float3 hitDu,hitDv;SurfaceFrame(fragment,barycentric,hitUv,hitDu,hitDv);
+                float3 hitNormal=cross(hitDu,hitDv);float normalLength=length(hitNormal);
                 if(locatorValid&&(intervalCertified||windingCertified)&&
+                    isfinite(normalLength)&&normalLength>1e-12f&&
                     t>=ray.tMin-depthFloor&&t<=ray.tMax+depthFloor&&
-                    t>=lo.z-depthFloor&&t<=hi.z+depthFloor&&
-                    hi.z-lo.z<=max(requiredDepthAccuracy,depthFloor))
+                    t>=hitLower-depthFloor&&t<=hitUpper+depthFloor&&
+                    hitUpper-hitLower<=max(requiredDepthAccuracy,depthFloor))
                 {
                     certified=true;
-                    float error=max(max(abs(t-lo.z),abs(hi.z-t)),depthFloor);
+                    float error=max(max(abs(t-hitLower),abs(hitUpper-t)),depthFloor);
                     if(t+error<result.t-result.tError||
                         (t-error<=result.t+result.tError&&fragment.primitiveId<result.primitiveId))
                     {result.status=Hit;result.t=t;result.tError=error;
-                        result.barycentric=barycentric;result.primitiveId=fragment.primitiveId;result.singular=0;}
+                        result.barycentric=barycentric;result.primitiveId=fragment.primitiveId;result.singular=0;
+                        result.uv=hitUv;result.normal=hitNormal/normalLength;}
                 }
             }
             if(certified)continue;
@@ -521,7 +649,7 @@ void Main(uint3 dispatchId : SV_DispatchThreadID)
                 RecordUnresolved(result,lo,hi,reason);
                 continue;
             }
-            if(stackSize+4>128)
+            if(stackSize+4>StackCapacity)
             {
                 exhausted=true;abortAll=true;RecordUnresolved(result,lo,hi,ReasonStackCapacity);
                 [loop] for(uint pending=0;pending<stackSize;++pending)
@@ -549,6 +677,10 @@ void Main(uint3 dispatchId : SV_DispatchThreadID)
         }
         if(abortAll)break;
     }
-    if(exhausted&&(result.status!=Hit||result.unresolvedT<result.t-result.tError))result.status=Exhausted;
+    // Reaching a budget is not itself an unresolved intersection: the exit
+    // audit may reject every pending node. Only recorded candidate intervals
+    // can turn a proven miss (or a certified nearer hit) into Exhausted.
+    if(exhausted&&result.exhaustionReasons!=0&&
+        (result.status!=Hit||result.unresolvedT<result.t-result.tError))result.status=Exhausted;
     results[rayIndex]=result;
 }

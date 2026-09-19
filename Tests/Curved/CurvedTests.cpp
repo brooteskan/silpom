@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "CurvedPrototype.h"
 #include "CurvedExactReference.h"
+#include "CurvedPacking.h"
 
 #include <chrono>
 #include <cstdlib>
@@ -257,6 +258,57 @@ void ReferenceAndFuzzTests()
               << maximumNodes << " subdivision nodes.\n";
 }
 
+void PackingTests()
+{
+    auto triangles=MakeTriangles();
+    const Texture texture=MakeTexture(true);
+    const Ray ray{{2,-1,.5},{.25,.5,-1},0,10};
+    const auto projection=MakeProjection(ray.direction);
+    for(uint address: {0u,1u})for(double scale: {.125,1.,8.})for(double amplitude: {-.35,.35})
+    {
+        const Surface surface{scale,amplitude,.5,address};
+        const PackedMesh packed=PackMesh(triangles,surface,texture);
+        const PackedMesh bounded=PackMesh(triangles,surface,texture,1048576,true);
+        Require(bounded.data.size()==bounded.triangleCount*PackedTriangleStride+bounded.fragmentCount*5u,
+            "bounded compact representation has an 80-byte fragment stride");
+        Require(packed.data.size()==packed.triangleCount*PackedTriangleStride+packed.fragmentCount*PackedFragmentStride,
+            "compact representation has shared triangle and bounded fragment strides");
+        auto twice=packed;
+        twice.data=packed.ReversedFragments();
+        const auto reversedTwice=twice.ReversedFragments();
+        Require(std::memcmp(reversedTwice.data(),packed.data.data(),packed.data.size()*sizeof(PackedFloat4))==0,
+            "reversing fragments preserves triangle table and all fragment fields");
+        size_t fragmentIndex=0;
+        for(const Triangle& triangle:triangles)for(const Fragment& fragment:BuildFragments(triangle,texture))
+        {
+            const auto algebraic=AnalyticControls(fragment,surface,texture);
+            const auto sampled=CubicControls(fragment,surface,texture,ray,projection);
+            for(size_t i=0;i!=10;++i)
+            {
+                const auto actual=Project(ray,projection,algebraic[i]);
+                Require(std::abs(actual.x-sampled[i].x)<2e-12&&std::abs(actual.y-sampled[i].y)<2e-12&&
+                    std::abs(actual.t-sampled[i].t)<2e-12,"analytic controls match independent sampled reconstruction");
+            }
+            const size_t offset=bounded.triangleCount*PackedTriangleStride+fragmentIndex++*5;
+            const auto& packedLow=bounded.data[offset+3];const auto& packedHigh=bounded.data[offset+4];
+            const Vec3 lo{packedLow.z,packedLow.w,packedHigh.x},hi{packedHigh.y,packedHigh.z,packedHigh.w};
+            for(Vec3 bary: {Vec3{1,0,0},Vec3{0,1,0},Vec3{0,0,1},Vec3{.2,.3,.5},Vec3{.5,.5,0}})
+            {
+                const auto point=Evaluate(triangle,surface,texture,DomainPoint(fragment.domain,bary)).position;
+                Require(point.x>=lo.x&&point.y>=lo.y&&point.z>=lo.z&&point.x<=hi.x&&point.y<=hi.y&&point.z<=hi.z,
+                    "cached bounds enclose the surface under signed displacement and resolved scale");
+            }
+        }
+    }
+    bool rejected=false;
+    try {PackMesh(triangles,Surface{1,.35,.5,0},texture,1);}catch(const std::invalid_argument&){rejected=true;}
+    Require(rejected,"preprocessing rejects excessive cell expansion before allocation");
+    auto invalidTexture=texture;invalidTexture.pixels[0]=std::numeric_limits<double>::quiet_NaN();
+    rejected=false;
+    try {PackMesh(triangles,Surface{1,.35,.5,0},invalidTexture);}catch(const std::invalid_argument&){rejected=true;}
+    Require(rejected,"packing rejects non-finite height data");
+}
+
 void CostSmoke()
 {
     const Texture texture = MakeTexture(true);
@@ -326,6 +378,7 @@ int main()
     ContractTests();
     TangentTest();
     ReferenceAndFuzzTests();
+    PackingTests();
     CostSmoke();
     std::cout << "SilPOM curved prototype: " << g_checks << " checks passed.\n";
 }

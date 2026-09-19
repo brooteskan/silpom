@@ -95,7 +95,7 @@ allowance is gone. Singular and boundary cases without an inclusion proof return
 `Exhausted`. The fixed local stack uses the same globally audited pending-work
 semantics as the CPU path.
 
-## Validation snapshot
+## Baseline validation snapshot (`efbaf7c`)
 
 On the local AMD Radeon RX 7900 XTX validation system:
 
@@ -129,10 +129,14 @@ work is observable as `Exhausted`. The eleven CPU grazing rays, the constructed
 tangent, and GPU singular/boundary leaves without inclusion are explicit
 unsupported cases, not false hits or misses.
 
-The next gate is traversal representation and cost. Measure alternatives to the
-176-byte per-cell-fragment test record, avoid reconstructing cubic controls at
-every node, and choose the cooked representation only from correctness, memory,
-and representative rendering-cost measurements.
+The next gate remains traversal representation, cost, and usable coverage. The
+compact representation, analytic controls/derivatives, actual GPU hit attributes,
+cached bounds, and fast/fine subdivision experiments are now implemented. See
+[CurvedTraversalExperiments.md](CurvedTraversalExperiments.md) for results and
+reproduction. The original mixed corpus still contains 28 GPU exhaustions. A
+reported failure is safer than a false hit/miss but does not satisfy the issue's
+grazing/silhouette rendering acceptance criteria. Do not freeze the cooked layout
+or claim production readiness from these test passes.
 
 ## Deliberate non-commitments
 
