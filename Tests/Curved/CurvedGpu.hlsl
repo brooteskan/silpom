@@ -22,7 +22,9 @@ struct Result
     float tError;
     float3 barycentric;
     float unresolvedT;
+    float unresolvedUpper;
     uint singular;
+    uint exhaustionReasons;
 };
 RWStructuredBuffer<Result> results : register(u0);
 
@@ -39,7 +41,7 @@ cbuffer Parameters : register(b0)
     uint maxDepth;
     uint rayCount;
     uint firstRay;
-    uint reserved0;
+    float requiredDepthAccuracy;
     uint reserved1;
 };
 
@@ -47,6 +49,12 @@ static const uint Miss = 0;
 static const uint Hit = 1;
 static const uint Exhausted = 2;
 static const uint Invalid = 3;
+static const uint ReasonNodeBudget = 1u << 0;
+static const uint ReasonMaximumDepth = 1u << 1;
+static const uint ReasonParameterResolution = 1u << 2;
+static const uint ReasonDepthResolution = 1u << 3;
+static const uint ReasonUncertifiedLeaf = 1u << 4;
+static const uint ReasonStackCapacity = 1u << 5;
 
 int Address(int value, int size)
 {
@@ -145,33 +153,42 @@ void EdgeControls(inout float3 lo, inout float3 hi, float3 p0, float3 p3, float3
     Include(lo, hi, c2);
 }
 
-void PatchBounds(Fragment fragment, Ray ray, Projection projection, float3 a, float3 b, float3 c,
-    out float3 lo, out float3 hi)
+void PatchControls(Fragment fragment, Ray ray, Projection projection, float3 a, float3 b, float3 c,
+    out float3 controls[10])
 {
     #define EVAL(local) Project(ray, projection, SurfacePoint(fragment, DomainPoint(a,b,c,local)))
-    float3 p0 = EVAL(float3(1,0,0));
-    float3 p1 = EVAL(float3(0,1,0));
-    float3 p2 = EVAL(float3(0,0,1));
-    lo = min(p0, min(p1, p2));
-    hi = max(p0, max(p1, p2));
+    controls[0] = EVAL(float3(1,0,0));
+    controls[1] = EVAL(float3(0,1,0));
+    controls[2] = EVAL(float3(0,0,1));
+    float3 lo = min(controls[0], min(controls[1], controls[2]));
+    float3 hi = max(controls[0], max(controls[1], controls[2]));
+    float3 p0=controls[0],p1=controls[1],p2=controls[2];
     float3 e01a = EVAL(float3(2.0f/3.0f,1.0f/3.0f,0));
     float3 e01b = EVAL(float3(1.0f/3.0f,2.0f/3.0f,0));
     float3 e12a = EVAL(float3(0,2.0f/3.0f,1.0f/3.0f));
     float3 e12b = EVAL(float3(0,1.0f/3.0f,2.0f/3.0f));
     float3 e20a = EVAL(float3(1.0f/3.0f,0,2.0f/3.0f));
     float3 e20b = EVAL(float3(2.0f/3.0f,0,1.0f/3.0f));
-    float3 c01a,c01b,c12a,c12b,c20a,c20b;
-    EdgeControls(lo, hi, p0, p1, e01a, e01b, c01a, c01b);
-    EdgeControls(lo, hi, p1, p2, e12a, e12b, c12a, c12b);
-    EdgeControls(lo, hi, p2, p0, e20a, e20b, c20a, c20b);
+    EdgeControls(lo, hi, p0, p1, e01a, e01b, controls[3], controls[4]);
+    EdgeControls(lo, hi, p1, p2, e12a, e12b, controls[5], controls[6]);
+    EdgeControls(lo, hi, p2, p0, e20a, e20b, controls[7], controls[8]);
     float3 center = EVAL(float3(1.0f/3.0f,1.0f/3.0f,1.0f/3.0f));
-    float3 centerControl=4.5f*(center-(p0+p1+p2)/27.0f-(c01a+c01b+c12a+c12b+c20a+c20b)/9.0f);
-    Include(lo, hi, centerControl);
+    controls[9]=4.5f*(center-(p0+p1+p2)/27.0f-
+        (controls[3]+controls[4]+controls[5]+controls[6]+controls[7]+controls[8])/9.0f);
+    #undef EVAL
+}
+
+void PatchBounds(Fragment fragment, Ray ray, Projection projection, float3 a, float3 b, float3 c,
+    out float3 lo, out float3 hi)
+{
+    float3 controls[10];
+    PatchControls(fragment,ray,projection,a,b,c,controls);
+    lo=controls[0];hi=controls[0];
+    [unroll] for(uint index=1;index!=10;++index)Include(lo,hi,controls[index]);
     float outward = max(1e-6f, 64.0f * 1.192092896e-7f * max(1.0f, max(max(abs(lo.x),abs(hi.x)),
         max(max(abs(lo.y),abs(hi.y)),max(abs(lo.z),abs(hi.z))))));
     lo -= outward;
     hi += outward;
-    #undef EVAL
 }
 
 float3 DeflatedValue(Fragment fragment, Ray ray, Projection projection, float3 barycentric)
@@ -187,9 +204,9 @@ float3 DeflatedValue(Fragment fragment, Ray ray, Projection projection, float3 b
 }
 
 bool Newton(Fragment fragment, Ray ray, Projection projection, float3 a, float3 b, float3 c,
-    out float t, out float3 barycentric, out bool singular)
+    out float t, out float3 barycentric, out float3 local, out bool singular)
 {
-    float3 local = float3(1.0f/3.0f,1.0f/3.0f,1.0f/3.0f);
+    local = float3(1.0f/3.0f,1.0f/3.0f,1.0f/3.0f);
     singular = false;
     const float epsilon = 2e-4f;
     [loop] for (uint iteration = 0; iteration != 20; ++iteration)
@@ -202,13 +219,14 @@ bool Newton(Fragment fragment, Ray ray, Projection projection, float3 a, float3 
         float2 jv = (Project(ray,projection,SurfacePoint(fragment,DomainPoint(a,b,c,lv))).xy-value.xy)/epsilon;
         float determinant = ju.x*jv.y-jv.x*ju.y;
         float scale = max(1e-20f,max(max(abs(ju.x),abs(ju.y)),max(abs(jv.x),abs(jv.y))));
-        if(abs(determinant)<2e-5f*scale*scale) {singular=true;break;}
+        if(abs(determinant)<64.0f*1.192092896e-7f*scale*scale) {singular=true;break;}
         float du=(-value.x*jv.y+jv.x*value.y)/determinant;
         float dv=(-ju.x*value.y+value.x*ju.y)/determinant;
         local.y+=du;local.z+=dv;local.x=1.0f-local.y-local.z;
         if(max(abs(du),abs(dv))<2e-6f) break;
     }
-    singular=singular||abs(DeflatedValue(fragment,ray,projection,DomainPoint(a,b,c,local)).z)<2e-2f;
+    singular=singular||abs(DeflatedValue(fragment,ray,projection,DomainPoint(a,b,c,local)).z)<
+        256.0f*1.192092896e-7f;
     if(singular)
     {
         [loop] for(uint iteration=0;iteration!=20;++iteration)
@@ -239,6 +257,176 @@ bool Newton(Fragment fragment, Ray ray, Projection projection, float3 a, float3 
         t>=ray.tMin-2e-5f && t<=ray.tMax+2e-5f;
 }
 
+float IntervalError(float2 value)
+{
+    return max(1e-30f,32.0f*1.192092896e-7f*max(1.0f,max(abs(value.x),abs(value.y))));
+}
+
+float2 ExpandInterval(float2 value)
+{
+    float error=IntervalError(value);
+    return float2(value.x-error,value.y+error);
+}
+
+float2 AddInterval(float2 a,float2 b)
+{
+    return ExpandInterval(float2(a.x+b.x,a.y+b.y));
+}
+
+float2 ScaleInterval(float scale,float2 value)
+{
+    float2 product=scale>=0?float2(scale*value.x,scale*value.y):float2(scale*value.y,scale*value.x);
+    return ExpandInterval(product);
+}
+
+float2 MultiplyInterval(float2 a,float2 b)
+{
+    float4 products=float4(a.x*b.x,a.x*b.y,a.y*b.x,a.y*b.y);
+    return ExpandInterval(float2(min(min(products.x,products.y),min(products.z,products.w)),
+        max(max(products.x,products.y),max(products.z,products.w))));
+}
+
+void IncludeValue(inout float2 interval,float value)
+{
+    interval=float2(min(interval.x,value),max(interval.y,value));
+}
+
+float2 QuadraticSquareBounds(float q200,float q110,float q101,float q020,float q011,float q002)
+{
+    float coefficients[5];
+    coefficients[0]=2.0f*(q110-q200);
+    coefficients[1]=2.0f*(q101-q200);
+    coefficients[2]=q200-2.0f*q110+q020;
+    coefficients[3]=2.0f*(q200-q110-q101+q011);
+    coefficients[4]=q200-2.0f*q101+q002;
+    float2 result=float2(q200,q200);
+    [unroll] for(uint index=0;index!=5;++index)
+        result+=float2(min(0.0f,coefficients[index]),max(0.0f,coefficients[index]));
+    return ExpandInterval(result);
+}
+
+bool StrictDomainContains(float3 domain[3],float3 barycentric,float margin)
+{
+    float3 e0=domain[1]-domain[0],e1=domain[2]-domain[0],relative=barycentric-domain[0];
+    float aa=dot(e0,e0),ab=dot(e0,e1),bb=dot(e1,e1);
+    float determinant=aa*bb-ab*ab;
+    if(abs(determinant)<1e-30f)return false;
+    float u=(dot(relative,e0)*bb-dot(relative,e1)*ab)/determinant;
+    float v=(dot(relative,e1)*aa-dot(relative,e0)*ab)/determinant;
+    return u>margin&&v>margin&&u+v<1.0f-margin;
+}
+
+// Krawczyk inclusion over the current triangular parameter domain.  The
+// derivative ranges come from the exact derivative Bernstein control nets;
+// every arithmetic operation is expanded by a float-rounding error bound.
+// Success proves a unique regular root.  Singular/boundary leaves remain
+// Exhausted instead of being accepted from a small sampled residual.
+bool IntervalInclusion(Fragment fragment,Ray ray,Projection projection,float3 a,float3 b,float3 c,
+    float3 local,out float4 enclosure)
+{
+    float3 controls[10];
+    PatchControls(fragment,ray,projection,a,b,c,controls);
+    float2 dx[6],dy[6];
+    dx[0]=3.0f*(controls[3].xy-controls[0].xy);
+    dx[1]=3.0f*(controls[4].xy-controls[3].xy);
+    dx[2]=3.0f*(controls[9].xy-controls[8].xy);
+    dx[3]=3.0f*(controls[1].xy-controls[4].xy);
+    dx[4]=3.0f*(controls[5].xy-controls[9].xy);
+    dx[5]=3.0f*(controls[6].xy-controls[7].xy);
+    dy[0]=3.0f*(controls[8].xy-controls[0].xy);
+    dy[1]=3.0f*(controls[9].xy-controls[3].xy);
+    dy[2]=3.0f*(controls[7].xy-controls[8].xy);
+    dy[3]=3.0f*(controls[5].xy-controls[4].xy);
+    dy[4]=3.0f*(controls[6].xy-controls[5].xy);
+    dy[5]=3.0f*(controls[2].xy-controls[7].xy);
+    float2 j00=QuadraticSquareBounds(dx[0].x,dx[1].x,dx[2].x,dx[3].x,dx[4].x,dx[5].x);
+    float2 j10=QuadraticSquareBounds(dx[0].y,dx[1].y,dx[2].y,dx[3].y,dx[4].y,dx[5].y);
+    float2 j01=QuadraticSquareBounds(dy[0].x,dy[1].x,dy[2].x,dy[3].x,dy[4].x,dy[5].x);
+    float2 j11=QuadraticSquareBounds(dy[0].y,dy[1].y,dy[2].y,dy[3].y,dy[4].y,dy[5].y);
+
+    float3 barycentric=DomainPoint(a,b,c,local);
+    float2 residual=Project(ray,projection,SurfacePoint(fragment,barycentric)).xy;
+    float2 column0=float2((j00.x+j00.y)*.5f,(j10.x+j10.y)*.5f);
+    float2 column1=float2((j01.x+j01.y)*.5f,(j11.x+j11.y)*.5f);
+    float determinant=column0.x*column1.y-column1.x*column0.y;
+    float derivativeScale=max(1e-20f,max(max(abs(column0.x),abs(column0.y)),max(abs(column1.x),abs(column1.y))));
+    if(!isfinite(determinant)||abs(determinant)<=256.0f*1.192092896e-7f*derivativeScale*derivativeScale)
+    {enclosure=float4(-3,-3,3,3);return false;}
+    float c00=column1.y/determinant,c01=-column1.x/determinant;
+    float c10=-column0.y/determinant,c11=column0.x/determinant;
+    float centerX=local.y-(c00*residual.x+c01*residual.y);
+    float centerY=local.z-(c10*residual.x+c11*residual.y);
+    float2 m00=AddInterval(AddInterval(float2(1,1),ScaleInterval(-c00,j00)),ScaleInterval(-c01,j10));
+    float2 m01=AddInterval(ScaleInterval(-c00,j01),ScaleInterval(-c01,j11));
+    float2 m10=AddInterval(ScaleInterval(-c10,j00),ScaleInterval(-c11,j10));
+    float2 m11=AddInterval(AddInterval(float2(1,1),ScaleInterval(-c10,j01)),ScaleInterval(-c11,j11));
+    float2 deltaX=float2(-local.y,1.0f-local.y);
+    float2 deltaY=float2(-local.z,1.0f-local.z);
+    float2 kx=AddInterval(float2(centerX,centerX),AddInterval(MultiplyInterval(m00,deltaX),MultiplyInterval(m01,deltaY)));
+    float2 ky=AddInterval(float2(centerY,centerY),AddInterval(MultiplyInterval(m10,deltaX),MultiplyInterval(m11,deltaY)));
+    enclosure=float4(kx,ky);
+    float margin=256.0f*1.192092896e-7f;
+    if(kx.x<=margin||ky.x<=margin||kx.y>=1.0f-margin||ky.y>=1.0f-margin)return false;
+    float2 xs=float2(kx.x,kx.y),ys=float2(ky.x,ky.y);
+    [unroll] for(uint ix=0;ix!=2;++ix)[unroll] for(uint iy=0;iy!=2;++iy)
+    {
+        float3 candidatePoint=DomainPoint(a,b,c,float3(1.0f-xs[ix]-ys[iy],xs[ix],ys[iy]));
+        if(!StrictDomainContains(fragment.domain,candidatePoint,margin))return false;
+    }
+    return true;
+}
+
+// A non-zero degree of the projected patch boundary is an existence proof even
+// when interval Newton is too pessimistic.  Each cubic boundary segment is
+// subdivided with de Casteljau; an outward-expanded control hull must fit wholly
+// in one open coordinate half-plane before its angle contribution is used.
+bool WindingInclusion(Fragment fragment,Ray ray,Projection projection,float3 a,float3 b,float3 c)
+{
+    float3 patch[10];PatchControls(fragment,ray,projection,a,b,c,patch);
+    uint edgeIndices[12]={0,3,4,1, 1,5,6,2, 2,7,8,0};
+    float winding=0;
+    [unroll] for(uint edge=0;edge!=3;++edge)
+    {
+        float2 s0[8],s1[8],s2[8],s3[8];uint depths[8];uint size=1;
+        s0[0]=patch[edgeIndices[edge*4+0]].xy;s1[0]=patch[edgeIndices[edge*4+1]].xy;
+        s2[0]=patch[edgeIndices[edge*4+2]].xy;s3[0]=patch[edgeIndices[edge*4+3]].xy;depths[0]=0;
+        [loop] while(size)
+        {
+            --size;float2 p0=s0[size],p1=s1[size],p2=s2[size],p3=s3[size];uint depth=depths[size];
+            if(depth!=4)
+            {
+                float2 a01=(p0+p1)*.5f,a12=(p1+p2)*.5f,a23=(p2+p3)*.5f;
+                float2 b01=(a01+a12)*.5f,b12=(a12+a23)*.5f,center=(b01+b12)*.5f;
+                s0[size]=center;s1[size]=b12;s2[size]=a23;s3[size]=p3;depths[size++]=depth+1;
+                s0[size]=p0;s1[size]=a01;s2[size]=b01;s3[size]=center;depths[size++]=depth+1;
+                continue;
+            }
+            float2 lo=min(min(p0,p1),min(p2,p3)),hi=max(max(p0,p1),max(p2,p3));
+            float outward=64.0f*1.192092896e-7f*max(1.0f,max(max(abs(lo.x),abs(hi.x)),max(abs(lo.y),abs(hi.y))));
+            lo-=outward;hi+=outward;
+            if(!(lo.x>0||hi.x<0||lo.y>0||hi.y<0))return false;
+            float first=atan2(p0.y,p0.x),last=atan2(p3.y,p3.x),delta=last-first;
+            if(delta>3.141592654f)delta-=6.283185307f;
+            if(delta<-3.141592654f)delta+=6.283185307f;
+            winding+=delta;
+        }
+    }
+    return abs(winding)>4.0f;
+}
+
+bool CouldIntersect(float3 lo,float3 hi,Ray ray,Result result)
+{
+    return !(lo.x>0||hi.x<0||lo.y>0||hi.y<0||hi.z<ray.tMin||lo.z>ray.tMax||
+        (result.status==Hit&&lo.z>result.t+result.tError));
+}
+
+void RecordUnresolved(inout Result result,float3 lo,float3 hi,uint reason)
+{
+    result.unresolvedT=min(result.unresolvedT,lo.z);
+    result.unresolvedUpper=max(result.unresolvedUpper,hi.z);
+    result.exhaustionReasons|=reason;
+}
+
 [numthreads(64,1,1)]
 void Main(uint3 dispatchId : SV_DispatchThreadID)
 {
@@ -249,12 +437,15 @@ void Main(uint3 dispatchId : SV_DispatchThreadID)
     result.status=Miss;
     result.primitiveId=0xffffffffu;
     result.t=ray.tMax;
-    result.tError=1e-2f;
+    result.tError=0;
     result.unresolvedT=3.402823466e+38f;
-    if(any(!isfinite(ray.origin))||any(!isfinite(ray.direction))||dot(ray.direction,ray.direction)==0||ray.tMin>ray.tMax)
+    result.unresolvedUpper=-3.402823466e+38f;
+    if(any(!isfinite(ray.origin))||any(!isfinite(ray.direction))||dot(ray.direction,ray.direction)==0||
+        !isfinite(ray.tMin)||isnan(ray.tMax)||ray.tMin>ray.tMax)
     {result.status=Invalid;results[rayIndex]=result;return;}
     Projection projection=MakeProjection(ray.direction);
     bool exhausted=false;
+    bool abortAll=false;
     [loop] for(uint fragmentIndex=0;fragmentIndex<fragmentCount;++fragmentIndex)
     {
         Fragment fragment=LoadFragment(fragmentIndex);
@@ -263,32 +454,100 @@ void Main(uint3 dispatchId : SV_DispatchThreadID)
         stackA[0]=fragment.domain[0];stackB[0]=fragment.domain[1];stackC[0]=fragment.domain[2];stackDepth[0]=0;
         [loop] while(stackSize)
         {
-            if(result.nodes>=maxNodes){exhausted=true;break;}
+            if(result.nodes>=maxNodes)
+            {
+                exhausted=true;abortAll=true;
+                [loop] for(uint pending=0;pending<stackSize;++pending)
+                {
+                    float3 pendingLo,pendingHi;
+                    PatchBounds(fragment,ray,projection,stackA[pending],stackB[pending],stackC[pending],pendingLo,pendingHi);
+                    if(CouldIntersect(pendingLo,pendingHi,ray,result))
+                        RecordUnresolved(result,pendingLo,pendingHi,ReasonNodeBudget);
+                }
+                [loop] for(uint remaining=fragmentIndex+1;remaining<fragmentCount;++remaining)
+                {
+                    Fragment pendingFragment=LoadFragment(remaining);float3 pendingLo,pendingHi;
+                    PatchBounds(pendingFragment,ray,projection,pendingFragment.domain[0],pendingFragment.domain[1],
+                        pendingFragment.domain[2],pendingLo,pendingHi);
+                    if(CouldIntersect(pendingLo,pendingHi,ray,result))
+                        RecordUnresolved(result,pendingLo,pendingHi,ReasonNodeBudget);
+                }
+                break;
+            }
             --stackSize;float3 a=stackA[stackSize],b=stackB[stackSize],c=stackC[stackSize];uint depth=stackDepth[stackSize];
             ++result.nodes;result.maximumDepth=max(result.maximumDepth,depth);
             float3 lo,hi;PatchBounds(fragment,ray,projection,a,b,c,lo,hi);
-            if(lo.x>0||hi.x<0||lo.y>0||hi.y<0||hi.z<ray.tMin||lo.z>ray.tMax||lo.z>result.t+result.tError)continue;
+            if(!CouldIntersect(lo,hi,ray,result))continue;
             float diameter=max(length(a-b),max(length(b-c),length(c-a)));
-            if(depth>=maxDepth||diameter<2e-3f||hi.z-lo.z<2e-4f)
+            // Cubic controls are reconstructed from point samples.  Their
+            // subtraction error grows like eps/diameter, so subdivision stops at
+            // a scale-derived O(sqrt(eps)) floor rather than a magic UV epsilon.
+            float parameterFloor=2.0f*sqrt(1.192092896e-7f);
+            float depthFloor=32.0f*1.192092896e-7f*max(1.0f,max(abs(lo.z),abs(hi.z)));
+            float t=0;float3 barycentric=0,local=float3(1.0f/3.0f,1.0f/3.0f,1.0f/3.0f);bool singular=false;
+            float4 enclosure=0;
+            bool certified=false;
+            float inclusionScale=4.0f*sqrt(sqrt(1.192092896e-7f));
+            if(diameter<inclusionScale)
             {
-                float t;float3 barycentric;bool singular;
-                if(Newton(fragment,ray,projection,a,b,c,t,barycentric,singular))
+                Newton(fragment,ray,projection,a,b,c,t,barycentric,local,singular);
+                float2 locatedResidual=Project(ray,projection,SurfacePoint(fragment,barycentric)).xy;
+                float residualScale=max(1.0f,max(max(abs(lo.x),abs(hi.x)),max(abs(lo.y),abs(hi.y))));
+                bool locatorValid=all(local>=-parameterFloor)&&all(local<=1.0f+parameterFloor)&&
+                    max(abs(locatedResidual.x),abs(locatedResidual.y))<=512.0f*1.192092896e-7f*residualScale;
+                bool intervalCertified=IntervalInclusion(fragment,ray,projection,a,b,c,local,enclosure);
+                bool windingCertified=!singular&&WindingInclusion(fragment,ray,projection,a,b,c);
+                if(locatorValid&&(intervalCertified||windingCertified)&&
+                    t>=ray.tMin-depthFloor&&t<=ray.tMax+depthFloor&&
+                    t>=lo.z-depthFloor&&t<=hi.z+depthFloor&&
+                    hi.z-lo.z<=max(requiredDepthAccuracy,depthFloor))
                 {
-                    if(t<result.t-result.tError||(abs(t-result.t)<=result.tError&&fragment.primitiveId<result.primitiveId))
-                    {result.status=Hit;result.t=t;result.tError=1e-2f;
-                        result.barycentric=barycentric;result.primitiveId=fragment.primitiveId;result.singular=singular;}
+                    certified=true;
+                    float error=max(max(abs(t-lo.z),abs(hi.z-t)),depthFloor);
+                    if(t+error<result.t-result.tError||
+                        (t-error<=result.t+result.tError&&fragment.primitiveId<result.primitiveId))
+                    {result.status=Hit;result.t=t;result.tError=error;
+                        result.barycentric=barycentric;result.primitiveId=fragment.primitiveId;result.singular=0;}
                 }
-                else {exhausted=true;result.unresolvedT=min(result.unresolvedT,lo.z);}
+            }
+            if(certified)continue;
+            if(depth>=maxDepth||diameter<parameterFloor||hi.z-lo.z<depthFloor)
+            {
+                exhausted=true;
+                uint reason=ReasonUncertifiedLeaf;
+                if(depth>=maxDepth)reason|=ReasonMaximumDepth;
+                if(diameter<parameterFloor)reason|=ReasonParameterResolution;
+                if(hi.z-lo.z<depthFloor)reason|=ReasonDepthResolution;
+                RecordUnresolved(result,lo,hi,reason);
                 continue;
             }
-            if(stackSize+4>128){exhausted=true;result.unresolvedT=min(result.unresolvedT,lo.z);break;}
+            if(stackSize+4>128)
+            {
+                exhausted=true;abortAll=true;RecordUnresolved(result,lo,hi,ReasonStackCapacity);
+                [loop] for(uint pending=0;pending<stackSize;++pending)
+                {
+                    float3 pendingLo,pendingHi;
+                    PatchBounds(fragment,ray,projection,stackA[pending],stackB[pending],stackC[pending],pendingLo,pendingHi);
+                    if(CouldIntersect(pendingLo,pendingHi,ray,result))
+                        RecordUnresolved(result,pendingLo,pendingHi,ReasonStackCapacity);
+                }
+                [loop] for(uint remaining=fragmentIndex+1;remaining<fragmentCount;++remaining)
+                {
+                    Fragment pendingFragment=LoadFragment(remaining);float3 pendingLo,pendingHi;
+                    PatchBounds(pendingFragment,ray,projection,pendingFragment.domain[0],pendingFragment.domain[1],
+                        pendingFragment.domain[2],pendingLo,pendingHi);
+                    if(CouldIntersect(pendingLo,pendingHi,ray,result))
+                        RecordUnresolved(result,pendingLo,pendingHi,ReasonStackCapacity);
+                }
+                break;
+            }
             float3 ab=(a+b)*.5f,bc=(b+c)*.5f,ca=(c+a)*.5f;
             stackA[stackSize]=a;stackB[stackSize]=ab;stackC[stackSize]=ca;stackDepth[stackSize++]=depth+1;
             stackA[stackSize]=ab;stackB[stackSize]=b;stackC[stackSize]=bc;stackDepth[stackSize++]=depth+1;
             stackA[stackSize]=ca;stackB[stackSize]=bc;stackC[stackSize]=c;stackDepth[stackSize++]=depth+1;
             stackA[stackSize]=ab;stackB[stackSize]=bc;stackC[stackSize]=ca;stackDepth[stackSize++]=depth+1;
         }
-        if(exhausted&&result.unresolvedT<result.t-result.tError)break;
+        if(abortAll)break;
     }
     if(exhausted&&(result.status!=Hit||result.unresolvedT<result.t-result.tError))result.status=Exhausted;
     results[rayIndex]=result;

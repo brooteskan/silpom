@@ -94,6 +94,17 @@ struct Ray
 
 enum class Status : uint { Miss, Hit, Exhausted, Invalid };
 
+enum ExhaustionReason : uint
+{
+    ExhaustionNone = 0,
+    ExhaustionNodeBudget = 1u << 0,
+    ExhaustionMaximumDepth = 1u << 1,
+    ExhaustionParameterResolution = 1u << 2,
+    ExhaustionDepthResolution = 1u << 3,
+    ExhaustionUncertifiedLeaf = 1u << 4,
+    ExhaustionStackCapacity = 1u << 5
+};
+
 struct Hit
 {
     Status status = Status::Miss;
@@ -109,6 +120,7 @@ struct Hit
     uint maximumDepth = 0;
     double lowestUnresolvedT = std::numeric_limits<double>::infinity();
     double highestUnresolvedT = -std::numeric_limits<double>::infinity();
+    uint exhaustionReasons = ExhaustionNone;
     bool singularPath = false;
 };
 
@@ -118,7 +130,17 @@ struct Limits
     uint maxDepth = 28;
     double parameterTolerance = 1e-8;
     double residualTolerance = 2e-11;
+    double singularResidualTolerance = 2e-13;
     double tTolerance = 2e-9;
+};
+
+struct NumericalTolerances
+{
+    double parameter = 0.0;
+    double residual = 0.0;
+    double singularResidual = 0.0;
+    double depth = 0.0;
+    double boundary = 0.0;
 };
 
 struct Sample
@@ -338,6 +360,33 @@ inline Projection MakeProjection(Vec3 direction)
     {
         result = { 1, 0, 2 };
     }
+    return result;
+}
+
+inline NumericalTolerances DeriveTolerances(const std::vector<Triangle>& triangles, const Surface& surface,
+    const Ray& ray, Projection projection, const Limits& requested)
+{
+    double worldScale = std::max({ 1.0, std::abs(ray.origin.x), std::abs(ray.origin.y), std::abs(ray.origin.z),
+        std::abs(surface.amplitude) });
+    for (const Triangle& triangle : triangles)
+    {
+        for (size_t corner = 0; corner != 3; ++corner)
+        {
+            worldScale = std::max(worldScale, Length(triangle.position[corner]) * surface.baseScale +
+                std::abs(surface.amplitude) * Length(triangle.direction[corner]));
+        }
+    }
+    const double directionScale = std::max({ std::abs(ray.direction.x), std::abs(ray.direction.y),
+        std::abs(ray.direction.z), 1e-300 });
+    const double projectedScale = worldScale * directionScale;
+    const double epsilon = std::numeric_limits<double>::epsilon();
+    NumericalTolerances result;
+    result.parameter = std::max(requested.parameterTolerance, 16.0 * epsilon);
+    result.residual = std::max(requested.residualTolerance * 10.0, 512.0 * epsilon * projectedScale);
+    result.singularResidual = std::max(requested.singularResidualTolerance, 1024.0 * epsilon * projectedScale);
+    result.depth = std::max(requested.tTolerance,
+        512.0 * epsilon * worldScale / std::abs(ray.direction[projection.major]));
+    result.boundary = std::max(8.0 * std::sqrt(epsilon), result.parameter * 0.125);
     return result;
 }
 
@@ -571,7 +620,8 @@ inline bool WindingCertificate(const Fragment& fragment, const Surface& surface,
 }
 
 inline bool SolveCandidate(const Fragment& fragment, const Surface& surface, const Texture& texture,
-    const Ray& ray, Projection projection, Vec3& barycentric, double& t, bool& singular)
+    const Ray& ray, Projection projection, const NumericalTolerances& tolerances,
+    Vec3& barycentric, double& t, bool& singular)
 {
     Vec3 local{ 1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0 };
     singular = false;
@@ -700,7 +750,7 @@ inline bool SolveCandidate(const Fragment& fragment, const Surface& surface, con
     const Projected value = Project(ray, projection, sample.position);
     const double residual = std::max(std::abs(value.x), std::abs(value.y));
     t = value.t;
-    const double acceptedResidual = singular ? 2e-13 : 2e-10;
+    const double acceptedResidual = singular ? tolerances.singularResidual : tolerances.residual;
     bool singularCertified = true;
     if (singular)
     {
@@ -709,13 +759,14 @@ inline bool SolveCandidate(const Fragment& fragment, const Surface& surface, con
         const double scale = std::max({ 1.0, std::abs(projectedU.x), std::abs(projectedU.y),
             std::abs(projectedV.x), std::abs(projectedV.y) });
         const double determinant = (projectedU.x * projectedV.y - projectedV.x * projectedU.y) / (scale * scale);
-        singularCertified = std::abs(determinant) <= 2e-10;
+        singularCertified = std::abs(determinant) <= std::max(2e-10, tolerances.residual * 8.0);
     }
     const double minimumLocal = std::min({ local.x, local.y, local.z });
-    const bool boundaryCertificate = minimumLocal <= 1e-7 && residual <= 2e-14;
+    const bool boundaryCertificate = minimumLocal <= tolerances.boundary && residual <= tolerances.residual;
     const bool existenceCertificate = singular ? singularCertified :
         (boundaryCertificate || WindingCertificate(fragment, surface, texture, ray, projection));
-    return residual <= acceptedResidual && existenceCertificate && t >= ray.tMin - 1e-10 && t <= ray.tMax + 1e-10 && sample.validNormal;
+    return residual <= acceptedResidual && existenceCertificate && t >= ray.tMin - tolerances.depth &&
+        t <= ray.tMax + tolerances.depth && sample.validNormal;
 }
 
 inline std::array<std::array<Vec3, 3>, 4> Subdivide(const std::array<Vec3, 3>& domain)
@@ -761,6 +812,7 @@ inline Hit Intersect(const std::vector<Triangle>& triangles, const Surface& surf
         }
     }
     const Projection projection = MakeProjection(ray.direction);
+    const NumericalTolerances tolerances = DeriveTolerances(triangles, surface, ray, projection, limits);
     std::priority_queue<Work, std::vector<Work>, WorkLater> queue;
     auto enqueue = [&](Fragment fragment, uint depth)
     {
@@ -781,12 +833,25 @@ inline Hit Intersect(const std::vector<Triangle>& triangles, const Surface& surf
             enqueue(fragment, 0);
         }
     }
-    std::vector<Bounds> unresolved;
+    struct Unresolved
+    {
+        Bounds bounds{};
+        uint reason = ExhaustionNone;
+    };
+    std::vector<Unresolved> unresolved;
     while (!queue.empty())
     {
         if (result.subdivisionNodes >= limits.maxNodes)
         {
-            unresolved.push_back(queue.top().bounds);
+            // Preserve every queued candidate for both nearest-hit correctness and
+            // complete diagnostics.  Keeping only queue.top() happened to preserve
+            // the minimum lower bound, but lost the unresolved upper range and made
+            // future ordering changes unsafe.
+            while (!queue.empty())
+            {
+                unresolved.push_back({ queue.top().bounds, ExhaustionNodeBudget });
+                queue.pop();
+            }
             break;
         }
         Work work = queue.top();
@@ -797,17 +862,17 @@ inline Hit Intersect(const std::vector<Triangle>& triangles, const Surface& surf
         {
             continue;
         }
-        const bool leaf = work.depth >= limits.maxDepth || DomainDiameter(work.fragment.domain) <= limits.parameterTolerance ||
-            (work.bounds.tMax - work.bounds.tMin) <= limits.tTolerance;
+        const bool leaf = work.depth >= limits.maxDepth || DomainDiameter(work.fragment.domain) <= tolerances.parameter ||
+            (work.bounds.tMax - work.bounds.tMin) <= tolerances.depth;
         if (leaf)
         {
             Vec3 barycentric{};
             double t = 0.0;
             bool singular = false;
-            if (SolveCandidate(work.fragment, surface, texture, ray, projection, barycentric, t, singular))
+            if (SolveCandidate(work.fragment, surface, texture, ray, projection, tolerances, barycentric, t, singular))
             {
                 const Sample sample = Evaluate(*work.fragment.triangle, surface, texture, barycentric);
-                double error = std::max(limits.tTolerance,
+                double error = std::max(tolerances.depth,
                     32.0 * std::numeric_limits<double>::epsilon() * std::max(1.0, std::abs(t)));
                 if (singular)
                 {
@@ -817,7 +882,7 @@ inline Hit Intersect(const std::vector<Triangle>& triangles, const Surface& surf
                     const double inverseMajor = 1.0 / ray.direction[projection.major];
                     const double tGradient = (std::abs(sample.du[projection.major]) +
                         std::abs(sample.dv[projection.major])) * std::abs(inverseMajor);
-                    const double parameterError = 8.0 * std::sqrt(2e-13);
+                    const double parameterError = 8.0 * std::sqrt(tolerances.singularResidual);
                     error = std::max(error, parameterError * std::max(1.0, tGradient));
                 }
                 if (t + error < result.tUpper || (std::abs(t - result.tUpper) <= error &&
@@ -842,16 +907,22 @@ inline Hit Intersect(const std::vector<Triangle>& triangles, const Surface& surf
                 // nearer interval.
                 const bool samePrimitiveBoundary = work.fragment.triangle->primitiveId == result.primitiveId &&
                     DomainContains(work.fragment.domain, result.barycentric);
-                const double tieMargin = std::max(limits.tTolerance * 64.0,
+                const double tieMargin = std::max(tolerances.depth * 64.0,
                     128.0 * std::numeric_limits<double>::epsilon() * std::max(1.0, std::abs(result.tUpper)));
-                const bool tiedPrimitiveBoundary = work.bounds.tMax - work.bounds.tMin <= tieMargin &&
-                    work.bounds.tMin >= result.tLower - tieMargin && work.bounds.tMax <= result.tUpper + tieMargin;
+                const bool tiedPrimitiveBoundary = work.bounds.tMin >= result.tLower - tieMargin &&
+                    work.bounds.tMax <= result.tUpper + tieMargin;
                 const bool duplicateBoundary = result.status == Status::Hit &&
                     work.bounds.tMin <= result.tUpper + tieMargin && work.bounds.tMax >= result.tLower - tieMargin &&
                     (samePrimitiveBoundary || tiedPrimitiveBoundary);
                 if (!duplicateBoundary)
                 {
-                    unresolved.push_back(work.bounds);
+                    uint reason = ExhaustionUncertifiedLeaf;
+                    if (work.depth >= limits.maxDepth) reason |= ExhaustionMaximumDepth;
+                    if (DomainDiameter(work.fragment.domain) <= tolerances.parameter)
+                        reason |= ExhaustionParameterResolution;
+                    if (work.bounds.tMax - work.bounds.tMin <= tolerances.depth)
+                        reason |= ExhaustionDepthResolution;
+                    unresolved.push_back({ work.bounds, reason });
                 }
                 else
                 {
@@ -871,18 +942,20 @@ inline Hit Intersect(const std::vector<Triangle>& triangles, const Surface& surf
     bool blockingUnresolved = false;
     result.lowestUnresolvedT = std::numeric_limits<double>::infinity();
     result.highestUnresolvedT = -std::numeric_limits<double>::infinity();
-    for (const Bounds& bounds : unresolved)
+    for (const Unresolved& pending : unresolved)
     {
-        const double tieMargin = std::max(limits.tTolerance * 64.0,
+        const Bounds& bounds = pending.bounds;
+        const double tieMargin = std::max(tolerances.depth * 64.0,
             128.0 * std::numeric_limits<double>::epsilon() * std::max(1.0, std::abs(result.tUpper)));
-        const bool tied = result.status == Status::Hit && bounds.tMax - bounds.tMin <= tieMargin &&
-            bounds.tMin >= result.tLower - tieMargin && bounds.tMax <= result.tUpper + tieMargin;
+        const bool tied = result.status == Status::Hit && bounds.tMin >= result.tLower - tieMargin &&
+            bounds.tMax <= result.tUpper + tieMargin;
         const bool farther = result.status == Status::Hit && bounds.tMin > result.tUpper;
         if (!tied && !farther)
         {
             blockingUnresolved = true;
             result.lowestUnresolvedT = std::min(result.lowestUnresolvedT, bounds.tMin);
             result.highestUnresolvedT = std::max(result.highestUnresolvedT, bounds.tMax);
+            result.exhaustionReasons |= pending.reason;
         }
     }
     if (blockingUnresolved)

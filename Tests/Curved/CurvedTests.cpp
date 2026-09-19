@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #include "CurvedPrototype.h"
+#include "CurvedExactReference.h"
 
 #include <chrono>
 #include <cstdlib>
@@ -84,7 +85,8 @@ void ContractTests()
         "non-unit corner direction is invalid");
 
     const Vec3 sharedPoint = Evaluate(triangles[0], surface, curved, { 0, .5, .5 }).position;
-    hit = Intersect(triangles, surface, curved, { sharedPoint + Vec3{ 0, 0, 1 }, { 0, 0, -1 }, 0, 4 });
+    const Ray sharedRay{ sharedPoint + Vec3{ 0, 0, 1 }, { 0, 0, -1 }, 0, 4 };
+    hit = Intersect(triangles, surface, curved, sharedRay);
     if (hit.status != Status::Hit)
     {
         std::cerr << std::setprecision(17) << "shared-edge diagnostic: status=" << uint(hit.status) << " nodes=" << hit.subdivisionNodes
@@ -94,6 +96,10 @@ void ContractTests()
     }
     Require(hit.status == Status::Hit, "shared-edge hit");
     Require(hit.primitiveId == 7, "shared-edge ownership uses lower primitive id");
+    const Exact::Result exactShared = Exact::IntersectAll(triangles, surface, curved, sharedRay);
+    Require(exactShared.status == Exact::Status::Complete && !exactShared.roots.empty(),
+        "exact oracle includes the shared-triangle-edge root");
+    Require(exactShared.roots.front().primitiveId == 7, "exact shared-edge ownership uses lower primitive id");
 
     const Vec3 b{ .30, .30, .40 };
     const Sample sample = Evaluate(triangles[0], surface, curved, b);
@@ -110,20 +116,24 @@ void ContractTests()
     Hit exhausted = Intersect(triangles, surface, curved, { { -.4, -.2, 1 }, { .2, .05, -1 }, 0, 4 }, exhaustedLimits);
     Require(exhausted.status == Status::Exhausted, "budget exhaustion differs from miss");
     Require(std::isfinite(exhausted.lowestUnresolvedT), "exhaustion records nearest unresolved interval");
+    Require((exhausted.exhaustionReasons & ExhaustionNodeBudget) != 0, "budget exhaustion has an explicit reason");
 }
 
 void TangentTest()
 {
-    const Texture texture{ 2, 2, { 0.0, 1.0, 0.0, 1.0 } };
+    Texture texture{ 8, 8, std::vector<double>(64) };
+    for (uint y = 0; y != texture.height; ++y)
+        for (uint x = 0; x != texture.width; ++x)
+            texture.pixels[size_t(y) * texture.width + x] = double(x) / 8.0;
     const Vec3 up{ 0, 0, 1 };
-    const Vec3 tilted{ .6, 0, .8 };
+    const Vec3 tilted{ 1, 0, 0 };
     std::vector<Triangle> triangles{
         Triangle{ { Vec3{ 0, 0, 0 }, Vec3{ 1, 0, 0 }, Vec3{ 0, 1, 0 } },
-            { Vec2{ .25, .25 }, Vec2{ .70, .25 }, Vec2{ .25, .70 } }, { up, tilted, up }, 3 },
+            { Vec2{ .125, .125 }, Vec2{ .375, .125 }, Vec2{ .125, .375 } }, { up, tilted, up }, 3 },
         Triangle{ { Vec3{ 1, 0, 0 }, Vec3{ 2, 0, .25 }, Vec3{ 0, 1, 0 } },
-            { Vec2{ .70, .25 }, Vec2{ .95, .25 }, Vec2{ .25, .70 } }, { tilted, up, up }, 5 }
+            { Vec2{ .375, .125 }, Vec2{ .625, .125 }, Vec2{ .125, .375 } }, { tilted, up, up }, 5 }
     };
-    Surface surface{ 1.0, 0.45, 0.5, 1 };
+    Surface surface{ 1.0, 0.5, 0.5, 0 };
     const Vec3 barycentric{ .5, .25, .25 };
     const Sample contact = Evaluate(triangles[0], surface, texture, barycentric);
     Ray tangent = Through(contact.position, contact.du, 1.0);
@@ -134,15 +144,19 @@ void TangentTest()
     limits.parameterTolerance = 1e-11;
     limits.tTolerance = 1e-12;
     Hit hit = Intersect(triangles, surface, texture, tangent, limits);
+    const Exact::Result exact = Exact::IntersectAll(triangles, surface, texture, tangent);
     const auto tangentReference = ReferenceAll(triangles, surface, texture, tangent, 512);
-    if (hit.status != Status::Hit)
+    if (hit.status != Status::Exhausted)
     {
         std::cerr << std::setprecision(17) << "tangent diagnostic: status=" << uint(hit.status)
                   << " nodes=" << hit.subdivisionNodes << " depth=" << hit.maximumDepth
                   << " hit=[" << hit.tLower << ',' << hit.tUpper << "] primitive=" << hit.primitiveId
                   << " unresolved=[" << hit.lowestUnresolvedT << ',' << hit.highestUnresolvedT << "]\n";
     }
-    Require(hit.status == Status::Hit, "isolated tangent contact is retained");
+    Require(hit.status == Status::Exhausted, "uncertified tangent work is not promoted to a hit");
+    Require((hit.exhaustionReasons & ExhaustionNodeBudget) != 0,
+        "tangent exhaustion records the global node budget");
+    Require(hit.singularPath, "tangent candidate uses the singular-root path");
     if (!(hit.tLower <= 1.0 && hit.tUpper >= 1.0))
     {
         std::cerr << std::setprecision(17) << "tangent hit interval=[" << hit.tLower << ',' << hit.tUpper
@@ -151,6 +165,29 @@ void TangentTest()
                   << ") reference=" << (tangentReference.empty() ? -1.0 : tangentReference.front().first) << '\n';
     }
     Require(hit.tLower <= 1.0 && hit.tUpper >= 1.0, "tangent t enclosure contains constructed contact");
+    Require(exact.status == Exact::Status::Complete, "exact tangent oracle completes");
+    if (exact.roots.empty() || std::abs(exact.roots.front().t - 1.0) >= 1e-8)
+    {
+        const auto projection = MakeProjection(tangent.direction);
+        const auto system = Exact::BuildSystem(triangles[0], surface, texture, tangent, projection, 1, 1);
+        const auto resultantX = Exact::Resultant(system.first, system.second, true);
+        const auto resultantY = Exact::Resultant(system.first, system.second, false);
+        const auto rootsX = Exact::IsolateUnitRoots(resultantX);
+        const auto rootsY = Exact::IsolateUnitRoots(resultantY);
+        std::cerr << "exact tangent roots=" << exact.roots.size();
+        std::cerr << " resultants=" << resultantX.size() << ',' << resultantY.size()
+                  << " coordinates=" << rootsX.size() << ',' << rootsY.size()
+                  << " signs-x=" << Exact::Evaluate(resultantX, 0.0).Sign() << ','
+                  << Exact::Evaluate(resultantX, .25).Sign() << ',' << Exact::Evaluate(resultantX, 1.0).Sign();
+        for (const auto& root : rootsX) std::cerr << " x[" << root.lower << ',' << root.upper << ']';
+        for (const auto& root : rootsY) std::cerr << " y[" << root.lower << ',' << root.upper << ']';
+        for (const auto& root : exact.roots)
+            std::cerr << " [t=" << std::setprecision(17) << root.t << " b=" << root.barycentric.x << ','
+                      << root.barycentric.y << ',' << root.barycentric.z << "]";
+        std::cerr << '\n';
+    }
+    Require(!exact.roots.empty() && std::abs(exact.roots.front().t - 1.0) < 1e-8,
+        "exact resultant/Sturm oracle retains the repeated tangent root");
 }
 
 void ReferenceAndFuzzTests()
@@ -163,6 +200,7 @@ void ReferenceAndFuzzTests()
     std::uniform_real_distribution<double> slope(-.45, .45);
     int compared = 0;
     int hits = 0;
+    int exactCompared = 0;
     uint maximumNodes = 0;
     for (int i = 0; i != 300; ++i)
     {
@@ -192,10 +230,30 @@ void ReferenceAndFuzzTests()
             Require(std::abs((actual.tLower + actual.tUpper) * .5 - fine.front().first) < 3e-4,
                 "candidate/reference nearest distance");
         }
+        if (exactCompared < 12)
+        {
+            const Exact::Result exact = Exact::IntersectAll(triangles, surface, texture, ray);
+            Require(exact.status == Exact::Status::Complete, "exact fuzz oracle completes");
+            Require((actual.status == Status::Hit) == !exact.roots.empty(), "exact oracle hit classification");
+            if (!exact.roots.empty())
+            {
+                const Exact::Root& reference = exact.roots.front();
+                Require(reference.t >= actual.tLower - 2e-8 && reference.t <= actual.tUpper + 2e-8,
+                    "exact nearest distance is enclosed");
+                Require(reference.primitiveId == actual.primitiveId, "exact primitive ownership");
+                Require(Length(reference.barycentric - actual.barycentric) < 2e-6, "exact barycentric coordinates");
+                Require(std::abs(reference.uv.x - actual.uv.x) < 2e-6 &&
+                    std::abs(reference.uv.y - actual.uv.y) < 2e-6, "exact UV coordinates");
+                Require(Dot(reference.normal, actual.normal) > 1.0 - 2e-8, "exact geometric normal");
+            }
+            ++exactCompared;
+        }
     }
     Require(compared >= 250, "reference refinement converges for the fuzz corpus");
+    Require(exactCompared == 12, "exact oracle covers the deterministic fuzz prefix");
     Require(hits >= 40, "fuzz corpus contains useful hits");
-    std::cout << "Curved fuzz: " << compared << " converged rays, " << hits << " hits, max "
+    std::cout << "Curved fuzz: " << compared << " converged rays, " << hits << " hits, " << exactCompared
+              << " exact resultant/Sturm comparisons, max "
               << maximumNodes << " subdivision nodes.\n";
 }
 
@@ -221,14 +279,24 @@ void CostSmoke()
     const auto begin = std::chrono::steady_clock::now();
     uint hits = 0;
     uint exhausted = 0;
+    std::vector<size_t> exhaustedIndices;
     std::uint64_t nodes = 0;
     std::vector<uint> nodeCounts;
     Limits grazingLimits;
     grazingLimits.maxNodes=131072;
     grazingLimits.maxDepth=32;
-    for (const Ray& ray : rays)
+    for (size_t rayIndex = 0; rayIndex != rays.size(); ++rayIndex)
     {
+        const Ray& ray = rays[rayIndex];
         const Hit hit = Intersect(triangles, surface, texture, ray,grazingLimits);
+        if (hit.status == Status::Exhausted)
+        {
+            exhaustedIndices.push_back(rayIndex);
+            Require((hit.exhaustionReasons & ExhaustionUncertifiedLeaf) != 0,
+                "grazing exhaustion identifies an uncertified leaf");
+            Require((hit.exhaustionReasons & ExhaustionParameterResolution) != 0,
+                "grazing exhaustion identifies the parameter-resolution boundary");
+        }
         hits += hit.status == Status::Hit;
         exhausted += hit.status == Status::Exhausted;
         nodes += hit.subdivisionNodes;
@@ -239,6 +307,14 @@ void CostSmoke()
     std::sort(nodeCounts.begin(), nodeCounts.end());
     const uint p95 = nodeCounts[size_t(nodeCounts.size() * .95)];
     const uint p99 = nodeCounts[size_t(nodeCounts.size() * .99)];
+    const std::vector<size_t> expectedUnsupported{ 148, 150, 152, 154, 156, 158, 171, 173, 175, 177, 960 };
+    if (exhaustedIndices != expectedUnsupported)
+    {
+        std::cerr << "grazing exhausted indices:";
+        for (size_t index : exhaustedIndices) std::cerr << ' ' << index;
+        std::cerr << '\n';
+    }
+    Require(exhaustedIndices == expectedUnsupported, "the explicit unsupported grazing corpus is stable");
     std::cout << std::fixed << std::setprecision(3) << "Curved CPU grazing smoke: " << rays.size() << " rays in "
               << milliseconds << " ms, " << hits << " hits, " << exhausted << " exhausted, "
               << double(nodes) / rays.size() << " mean nodes/ray, p95=" << p95 << ", p99=" << p99 << ".\n";

@@ -128,7 +128,7 @@ int main(int argc,char** argv)
         struct CurvedConstants
         {
             float baseScale,amplitude,reference;uint addressMode;
-            uint textureWidth,textureHeight,fragmentCount,maxNodes,maxDepth,rayCount,firstRay,reserved0,reserved1;
+            uint textureWidth,textureHeight,fragmentCount,maxNodes,maxDepth,rayCount,firstRay;float requiredDepthAccuracy;uint reserved1;
         };
         struct CurvedResult
         {
@@ -136,9 +136,11 @@ int main(int argc,char** argv)
             float t,tError;
             float barycentric[3];
             float unresolvedT;
+            float unresolvedUpper;
             uint singular;
+            uint exhaustionReasons;
         };
-        static_assert(sizeof(CurvedConstants)==52 && sizeof(CurvedResult)==44 && sizeof(Float4)==16);
+        static_assert(sizeof(CurvedConstants)==52 && sizeof(CurvedResult)==52 && sizeof(Float4)==16);
         namespace Curved=SilPOM::Curved;
         Curved::Texture curvedTexture{texture.width,texture.height,std::vector<double>(texture.width*texture.height)};
         for(uint y=0;y<texture.height;++y)for(uint x=0;x<texture.width;++x)
@@ -166,23 +168,64 @@ int main(int argc,char** argv)
                 packedFragments.push_back(pack(fragment.domain[0]));packedFragments.push_back(pack(fragment.domain[1]));packedFragments.push_back(pack(fragment.domain[2]));
             }
         }
-        constexpr uint curvedCount=256;
+        std::vector<Float4> reversedPackedFragments;
+        reversedPackedFragments.reserve(packedFragments.size());
+        for(uint fragment=curvedFragmentCount;fragment-- > 0;)
+            reversedPackedFragments.insert(reversedPackedFragments.end(),packedFragments.begin()+size_t(fragment)*11,
+                packedFragments.begin()+size_t(fragment+1)*11);
+        constexpr uint curvedCount=288;
+        constexpr uint tangentIndex=248;
         std::vector<SilPomRay> curvedRays(curvedCount);
         for(uint index=0;index<curvedCount;++index)
         {
             const auto& triangle=curvedTriangles[0];
-            const double u=index+1==curvedCount?.25:(double(index%32)+.5)/64.0;
-            const double v=index+1==curvedCount?.25:(double(index/32)+.5)/64.0;
+            const double u=(double(index%24)+.371)/58.0;
+            const double v=(double((index/24)%8)+.613)/58.0;
             const auto sample=Curved::Evaluate(triangle,curvedSurface,curvedTexture,{1-u-v,u,v});
             const auto point=sample.position;
-            const Curved::Vec3 direction=index+1==curvedCount?sample.du:Curved::Vec3{.15,.07,-1};
+            Curved::Vec3 direction{.15,.07,-1};
             const auto origin=point-direction;
             curvedRays[index]={{float(origin.x),float(origin.y),float(origin.z)},
                 {float(direction.x),float(direction.y),float(direction.z)},0,4};
+            if(index>=192&&index<208)
+                curvedRays[index]={{3.0f+float(index-192)*.05f,3,1},{0,0,-1},0,4};
+            else if(index>=208&&index<224)
+                curvedRays[index].tMax=.5f;
+            else if(index>=224&&index<240)
+            {
+                const Curved::Vec3 tangentOrigin=point-sample.du+sample.normal*(2e-4*double(index-223));
+                curvedRays[index]={{float(tangentOrigin.x),float(tangentOrigin.y),float(tangentOrigin.z)},
+                    {float(sample.du.x),float(sample.du.y),float(sample.du.z)},0,2};
+            }
+            else if(index>=240&&index<248)
+            {
+                const Curved::Vec3 twoHitOrigin=point-sample.du-sample.normal*(2e-4*double(index-239));
+                curvedRays[index]={{float(twoHitOrigin.x),float(twoHitOrigin.y),float(twoHitOrigin.z)},
+                    {float(sample.du.x),float(sample.du.y),float(sample.du.z)},0,2};
+            }
         }
+        {
+            const auto sample=Curved::Evaluate(curvedTriangles[0],curvedSurface,curvedTexture,{.5,.25,.25});
+            const auto origin=sample.position-sample.du;
+            curvedRays[tangentIndex]={{float(origin.x),float(origin.y),float(origin.z)},
+                {float(sample.du.x),float(sample.du.y),float(sample.du.z)},0,2};
+        }
+        curvedRays[249].direction={0,0,0};
+        curvedRays[250].origin.x=std::numeric_limits<float>::quiet_NaN();
+        curvedRays[251].tMin=3;curvedRays[251].tMax=2;
+        uint multipleIntersectionFixtures=0;
+        for(uint index=240;index<248;++index)
+        {
+            const auto& input=curvedRays[index];
+            Curved::Ray ray{{input.origin.x,input.origin.y,input.origin.z},
+                {input.direction.x,input.direction.y,input.direction.z},input.tMin,input.tMax};
+            multipleIntersectionFixtures+=Curved::ReferenceAll(curvedTriangles,curvedSurface,curvedTexture,ray,256).size()>1;
+        }
+        if(multipleIntersectionFixtures==0)throw std::runtime_error("Curved corpus failed to construct multiple intersections");
         auto curvedRayBuffer=upload(curvedRays.data(),curvedRays.size()*sizeof(SilPomRay));
         auto curvedFragmentBuffer=upload(packedFragments.data(),packedFragments.size()*sizeof(Float4));
-        CurvedConstants curvedConstants{1,.5f,.5f,0,texture.width,texture.height,curvedFragmentCount,32768,16,curvedCount,0,0,0};
+        auto curvedReverseFragmentBuffer=upload(reversedPackedFragments.data(),reversedPackedFragments.size()*sizeof(Float4));
+        CurvedConstants curvedConstants{1,.5f,.5f,0,texture.width,texture.height,curvedFragmentCount,32768,12,curvedCount,0,5e-4f,0};
         auto curvedCs=Read(argv[3]);pd.CS={curvedCs.data(),curvedCs.size()};
         ComPtr<ID3D12PipelineState> curvedPipeline;Check(device->CreateComputePipelineState(&pd,IID_PPV_ARGS(&curvedPipeline)));
         ComPtr<ID3D12Resource> curvedImage;Check(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&td,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&curvedImage)));
@@ -217,26 +260,94 @@ int main(int argc,char** argv)
         UINT64 frequency=0;Check(queue->GetTimestampFrequency(&frequency));
         const double curvedMilliseconds=1000.0*double(timestamps[1]-timestamps[0])/double(frequency);queryReadback->Unmap(0,nullptr);
         CurvedResult* curvedValues=nullptr;Check(readback->Map(0,nullptr,reinterpret_cast<void**>(&curvedValues)));
-        uint curvedHits=0,curvedMaxNodes=0;
+        uint curvedHits=0,curvedMisses=0,curvedInvalid=0,curvedExhausted=0,curvedMaxNodes=0;
         for(uint index=0;index<curvedCount;++index)
         {
             const auto& input=curvedRays[index];
             Curved::Ray referenceRay{{input.origin.x,input.origin.y,input.origin.z},{input.direction.x,input.direction.y,input.direction.z},input.tMin,input.tMax};
             const auto reference=Curved::Intersect(curvedTriangles,curvedSurface,curvedTexture,referenceRay);
             const auto& actual=curvedValues[index];curvedMaxNodes=std::max(curvedMaxNodes,actual.nodes);
-            if(reference.status!=Curved::Status::Hit || actual.status!=uint(Curved::Status::Hit) ||
-                std::abs(actual.t-(reference.tLower+reference.tUpper)*.5)>actual.tError)
+            const bool tangent=index==tangentIndex;
+            const bool diagnosedNearMiss=index>=224&&index<240&&actual.status==uint(Curved::Status::Exhausted);
+            const double referenceT=(reference.tLower+reference.tUpper)*.5;
+            const bool diagnosedHit=reference.status==Curved::Status::Hit&&actual.status==uint(Curved::Status::Exhausted)&&
+                actual.unresolvedT<=referenceT+1e-3&&actual.unresolvedUpper>=referenceT-1e-3&&actual.exhaustionReasons!=0;
+            if((tangent&&actual.status!=uint(Curved::Status::Exhausted)) ||
+                (!tangent&&!diagnosedNearMiss&&!diagnosedHit&&actual.status!=uint(reference.status)) ||
+                (actual.status==uint(Curved::Status::Hit)&&
+                    std::abs(actual.t-referenceT)>actual.tError))
                 throw std::runtime_error("Curved compute mismatch at ray "+std::to_string(index)+
                     " status="+std::to_string(actual.status)+" t="+std::to_string(actual.t)+
                     " reference="+std::to_string((reference.tLower+reference.tUpper)*.5)+
-                    " nodes="+std::to_string(actual.nodes)+" unresolved="+std::to_string(actual.unresolvedT));
-            if(index+1==curvedCount && actual.singular==0)
-                throw std::runtime_error("Curved tangent ray did not use the singular-root path");
-            ++curvedHits;
+                    " nodes="+std::to_string(actual.nodes)+" depth="+std::to_string(actual.maximumDepth)+
+                    " unresolved=["+std::to_string(actual.unresolvedT)+","+std::to_string(actual.unresolvedUpper)+"] reasons="+
+                    std::to_string(actual.exhaustionReasons));
+            if((tangent||diagnosedNearMiss||diagnosedHit) &&
+                (actual.exhaustionReasons&Curved::ExhaustionUncertifiedLeaf)==0)
+                throw std::runtime_error("Curved tangent ray lacks an uncertified-singular diagnostic");
+            if(actual.status==uint(Curved::Status::Hit))
+            {
+                if(actual.primitiveId!=reference.primitiveId||actual.tError>=5e-3f)
+                    throw std::runtime_error("Curved hit ownership/depth bound mismatch at ray "+std::to_string(index)+
+                        " primitive="+std::to_string(actual.primitiveId)+" reference="+std::to_string(reference.primitiveId)+
+                        " error="+std::to_string(actual.tError));
+                Curved::Vec3 actualBarycentric{actual.barycentric[0],actual.barycentric[1],actual.barycentric[2]};
+                if(Curved::Length(actualBarycentric-reference.barycentric)>3e-3)
+                    throw std::runtime_error("Curved barycentric mismatch at ray "+std::to_string(index));
+                const auto actualSample=Curved::Evaluate(curvedTriangles[actual.primitiveId==7?0:1],curvedSurface,
+                    curvedTexture,actualBarycentric);
+                if(std::abs(actualSample.uv.x-reference.uv.x)>1e-3||std::abs(actualSample.uv.y-reference.uv.y)>1e-3||
+                    Curved::Dot(actualSample.normal,reference.normal)<.999f)
+                    throw std::runtime_error("Curved UV/normal mismatch at ray "+std::to_string(index));
+            }
+            curvedHits+=actual.status==uint(Curved::Status::Hit);
+            curvedMisses+=actual.status==uint(Curved::Status::Miss);
+            curvedInvalid+=actual.status==uint(Curved::Status::Invalid);
+            curvedExhausted+=actual.status==uint(Curved::Status::Exhausted);
+        }
+        if(curvedHits<128||curvedMisses<24||curvedInvalid!=3||curvedExhausted==0)
+            throw std::runtime_error("Curved corpus lacks required hit/miss/invalid/exhausted coverage");
+        std::vector<CurvedResult> forwardResults(curvedValues,curvedValues+curvedCount);
+        readback->Unmap(0,nullptr);
+
+        auto dispatchCurvedPass=[&](ID3D12Resource* fragments,const CurvedConstants& constants,uint dispatchCount)
+        {
+            ID3D12DescriptorHeap* heaps[]={heap.Get()};list->SetDescriptorHeaps(1,heaps);list->SetComputeRootSignature(root.Get());
+            list->SetComputeRootDescriptorTable(0,heap->GetGPUDescriptorHandleForHeapStart());
+            list->SetComputeRootShaderResourceView(1,curvedRayBuffer->GetGPUVirtualAddress());
+            list->SetComputeRootUnorderedAccessView(2,output->GetGPUVirtualAddress());
+            list->SetComputeRoot32BitConstants(3,13,&constants,0);
+            list->SetComputeRootShaderResourceView(4,fragments->GetGPUVirtualAddress());
+            list->SetPipelineState(curvedPipeline.Get());list->Dispatch((dispatchCount+63)/64,1,1);
+            barrier(output.Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);
+            list->CopyResource(readback.Get(),output.Get());
+            barrier(output.Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);submit();
+        };
+
+        dispatchCurvedPass(curvedReverseFragmentBuffer.Get(),curvedConstants,curvedCount);
+        CurvedResult* reversedValues=nullptr;Check(readback->Map(0,nullptr,reinterpret_cast<void**>(&reversedValues)));
+        for(uint index=0;index<curvedCount;++index)
+        {
+            const auto& forward=forwardResults[index];const auto& reversed=reversedValues[index];
+            if(forward.status!=reversed.status||
+                (forward.status==uint(Curved::Status::Hit)&&(forward.primitiveId!=reversed.primitiveId||
+                    std::abs(forward.t-reversed.t)>forward.tError+reversed.tError)))
+                throw std::runtime_error("Curved reversed candidate order mismatch at ray "+std::to_string(index));
         }
         readback->Unmap(0,nullptr);
+
+        CurvedConstants exhaustedConstants=curvedConstants;exhaustedConstants.maxNodes=1;exhaustedConstants.rayCount=1;
+        dispatchCurvedPass(curvedFragmentBuffer.Get(),exhaustedConstants,1);
+        CurvedResult* exhaustedValues=nullptr;Check(readback->Map(0,nullptr,reinterpret_cast<void**>(&exhaustedValues)));
+        const CurvedResult forced=exhaustedValues[0];readback->Unmap(0,nullptr);
+        if(forced.status!=uint(Curved::Status::Exhausted)||(forced.exhaustionReasons&Curved::ExhaustionNodeBudget)==0||
+            !std::isfinite(forced.unresolvedT)||forced.unresolvedUpper<forced.unresolvedT)
+            throw std::runtime_error("Curved forced exhaustion failed to account for every pending candidate");
+
         device->CreateShaderResourceView(image.Get(),&srv,heap->GetCPUDescriptorHandleForHeapStart());
-        std::cout<<"Curved compute: "<<curvedCount<<" fixture rays passed ("<<curvedHits<<" hits), "
+        std::cout<<"Curved compute: "<<curvedCount<<" mixed rays passed ("<<curvedHits<<" certified hits, "
+            <<curvedMisses<<" misses, "<<curvedInvalid<<" invalid, "<<curvedExhausted<<" exhausted), "
+            <<multipleIntersectionFixtures<<" multiple-intersection fixtures plus reversed order and forced exhaustion, "
             <<curvedMilliseconds<<" ms, max "<<curvedMaxNodes<<" nodes.\n";
 
         D3D12_FEATURE_DATA_D3D12_OPTIONS5 options{};Check(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5,&options,sizeof(options)));
