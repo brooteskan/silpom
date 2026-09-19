@@ -39,11 +39,12 @@ fragment is represented as a degree-three triangular Bernstein patch.
 For each ray, two components perpendicular to its dominant direction form a
 bivariate root problem. Bernstein convex hulls conservatively reject empty
 parameter intervals. Remaining fragments are subdivided nearest-first using
-their conservative ray-parameter bounds. A regular root requires a non-zero
-winding certificate. A tangent locator still uses determinant deflation and a
-separate square-root error propagation appropriate to a double root, but a
-located tangent is not returned as `Hit` when the globally audited work queue
-still contains an indistinguishably near candidate.
+their conservative ray-parameter bounds. Regular roots now also use outward
+interval evaluation and Krawczyk inclusion before the legacy leaf path. A
+restricted exact rational certificate resolves affine projected constraints and
+isolated quadratic double roots, including the original dyadic tangent. Singular
+locator residuals alone cannot produce a hit. See
+[CurvedCoverageGate.md](CurvedCoverageGate.md) for the precise supported domain.
 
 Closed texture-cell and source-triangle domains intentionally overlap at their
 boundaries. Equal root intervals are deduplicated, and the lowest stable primitive
@@ -88,12 +89,13 @@ tests remain separate and mandatory.
 
 `CurvedGpu.hlsl` is a native D3D12 compute prototype over CPU-generated cell
 fragments. Newton is only a locator: acceptance comes from outward-expanded
-Bernstein boundary winding or Krawczyk interval inclusion. A caller supplies the
+Bernstein boundary winding, direct interval inclusion, or a restricted exact
+quadratic fallback. A caller supplies the
 required depth accuracy, the shader combines it with scale-derived float error,
 and the returned `tError` encloses the accepted leaf; the former fixed `0.01`
-allowance is gone. Singular and boundary cases without an inclusion proof return
-`Exhausted`. The fixed local stack uses the same globally audited pending-work
-semantics as the CPU path.
+allowance is gone. Singular and boundary cases without a proof return
+`Exhausted`. The main stack and separate fallback retain globally audited
+pending-work semantics and a shared node budget.
 
 ## Baseline validation snapshot (`efbaf7c`)
 
@@ -123,17 +125,19 @@ of cubic controls are too expensive to adopt unchanged.
 
 ## Remaining proof gates
 
-The numerical correctness gate is closed for the supported domain: `Hit` needs
-an independent inclusion proof and a requested depth enclosure, while incomplete
-work is observable as `Exhausted`. The eleven CPU grazing rays, the constructed
-tangent, and GPU singular/boundary leaves without inclusion are explicit
-unsupported cases, not false hits or misses.
+The new CPU interval and exact rational paths require independent inclusion and
+requested depth enclosures; incomplete work remains observable as `Exhausted`.
+They resolve the eleven named grazing rays and constructed tangent. General
+singular/boundary handling, including the legacy leaf logic, still needs a full
+correctness audit before runtime promotion.
 
 The next gate remains traversal representation, cost, and usable coverage. The
 compact representation, analytic controls/derivatives, actual GPU hit attributes,
 cached bounds, and fast/fine subdivision experiments are now implemented. See
 [CurvedTraversalExperiments.md](CurvedTraversalExperiments.md) for results and
-reproduction. The original mixed corpus still contains 28 GPU exhaustions. A
+reproduction. The original mixed corpus now resolves all 28 former GPU
+exhaustions, with further silhouette and finite-endpoint checks documented in
+[CurvedCoverageGate.md](CurvedCoverageGate.md). A
 reported failure is safer than a false hit/miss but does not satisfy the issue's
 grazing/silhouette rendering acceptance criteria. Do not freeze the cooked layout
 or claim production readiness from these test passes.

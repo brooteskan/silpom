@@ -526,6 +526,9 @@ void RecordUnresolved(inout Result result,float3 lo,float3 hi,uint reason)
     result.exhaustionReasons|=reason;
 }
 
+#include "CurvedGpuInterval.hlsli"
+#include "CurvedGpuRational.hlsli"
+
 [numthreads(64,1,1)]
 void Main(uint3 dispatchId : SV_DispatchThreadID)
 {
@@ -583,6 +586,28 @@ void Main(uint3 dispatchId : SV_DispatchThreadID)
                 max(max(abs(lo.y),abs(hi.y)),max(abs(lo.z),abs(hi.z))))));
             lo-=outward;hi+=outward;
             if(!CouldIntersect(lo,hi,ray,result))continue;
+            if(packedTriangleCount!=0&&depth>=3)
+            {
+                float3 proofBary;float2 proofDepth;
+                uint proof=ProofRegular(fragment,ray,projection,a,b,c,proofBary,proofDepth);
+                if(proof==2)continue;
+                if(proof==1)
+                {
+                    float t=(proofDepth.x+proofDepth.y)*.5f;
+                    float error=ProofUp(max(t-proofDepth.x,proofDepth.y-t));
+                    float2 hitUv;float3 hitDu,hitDv;SurfaceFrame(fragment,proofBary,hitUv,hitDu,hitDv);
+                    float3 hitNormal=cross(hitDu,hitDv);float normalLength=length(hitNormal);
+                    if(!isfinite(normalLength)||normalLength<=1e-12f)
+                    {result.status=Invalid;results[rayIndex]=result;return;}
+                    if(t+error<result.t-result.tError||
+                        (t-error<=result.t+result.tError&&fragment.primitiveId<result.primitiveId))
+                    {
+                        result.status=Hit;result.t=t;result.tError=error;result.barycentric=proofBary;
+                        result.primitiveId=fragment.primitiveId;result.singular=0;result.uv=hitUv;result.normal=hitNormal/normalLength;
+                    }
+                    continue;
+                }
+            }
             float diameter=max(length(a-b),max(length(b-c),length(c-a)));
             // The legacy sample reconstruction loses accuracy as domains shrink.
             // Analytic product controls do not divide cancellation error by the
@@ -683,4 +708,84 @@ void Main(uint3 dispatchId : SV_DispatchThreadID)
     if(exhausted&&result.exhaustionReasons!=0&&
         (result.status!=Hit||result.unresolvedT<result.t-result.tError))result.status=Exhausted;
     results[rayIndex]=result;
+}
+
+// Separate pass to keep bounded integer algebra out of the main kernel's
+// register allocation. Only unresolved precision leaves are eligible. Explicit
+// work limits remain exhausted; a failed proof preserves the original result.
+[numthreads(64,1,1)]
+void RationalFallback(uint3 dispatchId : SV_DispatchThreadID)
+{
+    uint index=dispatchId.x+firstRay;
+    if(index>=rayCount||packedTriangleCount==0)return;
+    Result previous=results[index];
+    if(previous.status!=Exhausted||
+        (previous.exhaustionReasons&(ReasonNodeBudget|ReasonMaximumDepth|ReasonStackCapacity))!=0)return;
+    Ray ray=rays[index];Projection projection=MakeProjection(ray.direction);
+    Result candidate=(Result)0;
+    candidate.status=Miss;candidate.primitiveId=0xffffffffu;candidate.t=ray.tMax;
+    candidate.nodes=previous.nodes;candidate.maximumDepth=previous.maximumDepth;
+    candidate.unresolvedT=3.402823466e+38f;candidate.unresolvedUpper=-3.402823466e+38f;
+    [loop]for(uint fragmentIndex=0;fragmentIndex<fragmentCount;++fragmentIndex)
+    {
+        if(!FragmentMayIntersect(fragmentIndex,ray,candidate))continue;
+        if(candidate.nodes>=maxNodes)
+        {previous.nodes=candidate.nodes;previous.exhaustionReasons|=ReasonNodeBudget;results[index]=previous;return;}
+        ++candidate.nodes;
+        Fragment f=LoadFragment(fragmentIndex);float3 lo,hi;
+        PatchBounds(f,ray,projection,f.domain[0],f.domain[1],f.domain[2],lo,hi);
+        if(!CouldIntersect(lo,hi,ray,candidate))continue;
+        float3 bary;float2 depth;bool singular;
+        uint proof=ProofRational(f,ray,projection,bary,depth,singular);
+        if(proof==2)continue;
+        if(proof==0){RecordUnresolved(candidate,lo,hi,ReasonUncertifiedLeaf);continue;}
+        float t=(depth.x+depth.y)*.5f,error=ProofUp(max(t-depth.x,depth.y-t));
+        float2 uv;float3 du,dv;SurfaceFrame(f,bary,uv,du,dv);
+        float3 normal=cross(du,dv);float normalLength=length(normal);
+        if(!isfinite(normalLength)||normalLength<=1e-12f)
+        {candidate.status=Invalid;results[index]=candidate;return;}
+        if(t+error<candidate.t-candidate.tError||
+            (t-error<=candidate.t+candidate.tError&&f.primitiveId<candidate.primitiveId))
+        {
+            candidate.status=Hit;candidate.t=t;candidate.tError=error;candidate.primitiveId=f.primitiveId;
+            candidate.barycentric=bary;candidate.uv=uv;candidate.normal=normal/normalLength;candidate.singular=singular?1:0;
+        }
+    }
+    if(candidate.status==Hit&&candidate.exhaustionReasons!=0)
+    {
+        // A rational contact does not erase unrelated, potentially closer
+        // intervals. Re-audit unsupported cells against the now-proved depth;
+        // coarse whole-fragment bounds can overlap it without any nearer root.
+        candidate.exhaustionReasons=0;candidate.unresolvedT=3.402823466e+38f;candidate.unresolvedUpper=-3.402823466e+38f;
+        [loop]for(uint fi=0;fi<fragmentCount;++fi)
+        {
+            if(!FragmentMayIntersect(fi,ray,candidate))continue;
+            if(candidate.nodes>=maxNodes)
+            {previous.nodes=candidate.nodes;previous.exhaustionReasons|=ReasonNodeBudget;results[index]=previous;return;}
+            ++candidate.nodes;
+            Fragment f=LoadFragment(fi);float3 bary;float2 interval;bool singular;
+            if(ProofRational(f,ray,projection,bary,interval,singular)!=0)continue;
+            float3 sa[32],sb[32],sc[32];uint depths[32];uint size=1;
+            sa[0]=f.domain[0];sb[0]=f.domain[1];sc[0]=f.domain[2];depths[0]=0;
+            [loop]while(size!=0)
+            {
+                if(candidate.nodes>=maxNodes)
+                {previous.nodes=candidate.nodes;previous.exhaustionReasons|=ReasonNodeBudget;results[index]=previous;return;}
+                --size;++candidate.nodes;
+                float3 a=sa[size],b=sb[size],c=sc[size];uint depth=depths[size];
+                float3 lo,hi;PatchBounds(f,ray,projection,a,b,c,lo,hi);
+                if(!CouldIntersect(lo,hi,ray,candidate)||lo.z>=candidate.t-candidate.tError)continue;
+                if(depth>=min(maxDepth,8u)||size+4>32)
+                {RecordUnresolved(candidate,lo,hi,ReasonUncertifiedLeaf);continue;}
+                float3 ab=(a+b)*.5f,bc=(b+c)*.5f,ca=(c+a)*.5f;
+                sa[size]=a;sb[size]=ab;sc[size]=ca;depths[size++]=depth+1;
+                sa[size]=ab;sb[size]=b;sc[size]=bc;depths[size++]=depth+1;
+                sa[size]=ca;sb[size]=bc;sc[size]=c;depths[size++]=depth+1;
+                sa[size]=ab;sb[size]=bc;sc[size]=ca;depths[size++]=depth+1;
+            }
+        }
+    }
+    if(candidate.exhaustionReasons!=0&&(candidate.status!=Hit||candidate.unresolvedT<candidate.t-candidate.tError))
+    {previous.nodes=candidate.nodes;results[index]=previous;return;}
+    results[index]=candidate;
 }

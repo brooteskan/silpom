@@ -20,7 +20,7 @@ int main(int argc,char** argv)
 {
     try
     {
-        if(argc!=4) throw std::runtime_error("Usage: silpom_gpu_tests compute.dxil rays.dxil curved.dxil");
+        if(argc!=5) throw std::runtime_error("Usage: silpom_gpu_tests compute.dxil rays.dxil curved.dxil curved-rational.dxil");
         static_assert(sizeof(SilPomPatch)==48 && sizeof(SilPomRay)==32 && sizeof(SilPomHit)==44);
         ComPtr<IDXGIFactory6> factory;Check(CreateDXGIFactory2(0,IID_PPV_ARGS(&factory)));
         ComPtr<IDXGIAdapter1> adapter;
@@ -231,6 +231,13 @@ int main(int argc,char** argv)
         CurvedConstants curvedConstants{1,.5f,.5f,0,texture.width,texture.height,curvedFragmentCount,32768,12,curvedCount,0,5e-4f,compactMesh.ShaderHeader()};
         auto curvedCs=Read(argv[3]);pd.CS={curvedCs.data(),curvedCs.size()};
         ComPtr<ID3D12PipelineState> curvedPipeline;Check(device->CreateComputePipelineState(&pd,IID_PPV_ARGS(&curvedPipeline)));
+        auto rationalCs=Read(argv[4]);pd.CS={rationalCs.data(),rationalCs.size()};
+        ComPtr<ID3D12PipelineState> rationalPipeline;Check(device->CreateComputePipelineState(&pd,IID_PPV_ARGS(&rationalPipeline)));
+        auto dispatchRational=[&](uint dispatchCount)
+        {
+            D3D12_RESOURCE_BARRIER dependency{};dependency.Type=D3D12_RESOURCE_BARRIER_TYPE_UAV;dependency.UAV.pResource=output.Get();
+            list->ResourceBarrier(1,&dependency);list->SetPipelineState(rationalPipeline.Get());list->Dispatch((dispatchCount+63)/64,1,1);
+        };
         ComPtr<ID3D12Resource> curvedImage;Check(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&td,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&curvedImage)));
         std::vector<char> curvedPadded(256*texture.height);
         for(uint y=0;y<texture.height;++y)
@@ -255,6 +262,7 @@ int main(int argc,char** argv)
         list->SetPipelineState(curvedPipeline.Get());
         list->EndQuery(queryHeap.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0);
         list->Dispatch((curvedCount+63)/64,1,1);
+        dispatchRational(curvedCount);
         list->EndQuery(queryHeap.Get(),D3D12_QUERY_TYPE_TIMESTAMP,1);
         list->ResolveQueryData(queryHeap.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0,2,queryReadback.Get(),0);
         barrier(output.Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -271,23 +279,17 @@ int main(int argc,char** argv)
             const auto reference=Curved::Intersect(curvedTriangles,curvedSurface,curvedTexture,referenceRay);
             const auto& actual=curvedValues[index];curvedMaxNodes=std::max(curvedMaxNodes,actual.nodes);
             const bool tangent=index==tangentIndex;
-            const bool diagnosedNearMiss=index>=224&&index<240&&actual.status==uint(Curved::Status::Exhausted);
             const double referenceT=(reference.tLower+reference.tUpper)*.5;
-            const bool diagnosedHit=reference.status==Curved::Status::Hit&&actual.status==uint(Curved::Status::Exhausted)&&
-                actual.unresolvedT<=referenceT+1e-3&&actual.unresolvedUpper>=referenceT-1e-3&&actual.exhaustionReasons!=0;
-            if((tangent&&actual.status!=uint(Curved::Status::Exhausted)) ||
-                (!tangent&&!diagnosedNearMiss&&!diagnosedHit&&actual.status!=uint(reference.status)) ||
+            if(actual.status!=uint(reference.status) ||
                 (actual.status==uint(Curved::Status::Hit)&&
                     std::abs(actual.t-referenceT)>actual.tError))
                 throw std::runtime_error("Curved compute mismatch at ray "+std::to_string(index)+
                     " status="+std::to_string(actual.status)+" t="+std::to_string(actual.t)+
                     " reference="+std::to_string((reference.tLower+reference.tUpper)*.5)+
-                    " nodes="+std::to_string(actual.nodes)+" depth="+std::to_string(actual.maximumDepth)+
+                    " nodes="+std::to_string(actual.nodes)+" depth="+std::to_string(actual.maximumDepth)+" singular="+std::to_string(actual.singular)+
                     " unresolved=["+std::to_string(actual.unresolvedT)+","+std::to_string(actual.unresolvedUpper)+"] reasons="+
                     std::to_string(actual.exhaustionReasons));
-            if((tangent||diagnosedNearMiss||diagnosedHit) &&
-                (actual.exhaustionReasons&Curved::ExhaustionUncertifiedLeaf)==0)
-                throw std::runtime_error("Curved tangent ray lacks an uncertified-singular diagnostic");
+            if(tangent&&actual.singular==0)throw std::runtime_error("Curved tangent lacks an exact singular-root certificate");
             if(actual.status==uint(Curved::Status::Hit))
             {
                 const float numericalFloor=32*std::numeric_limits<float>::epsilon()*std::max(1.f,std::abs(actual.t)+actual.tError);
@@ -307,9 +309,15 @@ int main(int argc,char** argv)
             curvedMisses+=actual.status==uint(Curved::Status::Miss);
             curvedInvalid+=actual.status==uint(Curved::Status::Invalid);
             curvedExhausted+=actual.status==uint(Curved::Status::Exhausted);
+            if(actual.status==uint(Curved::Status::Exhausted))
+            {
+                std::cout<<"Curved unresolved ray="<<index<<" class="<<
+                    (tangent?"singular":reference.status==Curved::Status::Miss?"near-miss":"regular-hit")<<
+                    " reasons="<<actual.exhaustionReasons<<" nodes="<<actual.nodes<<" depth="<<actual.maximumDepth<<'\n';
+            }
         }
-        if(curvedHits<128||curvedMisses<24||curvedInvalid!=3||curvedExhausted==0)
-            throw std::runtime_error("Curved corpus lacks required hit/miss/invalid/exhausted coverage");
+        if(curvedHits!=237||curvedMisses!=48||curvedInvalid!=3||curvedExhausted!=0)
+            throw std::runtime_error("Required curved mixed corpus did not resolve completely");
         std::vector<CurvedResult> forwardResults(curvedValues,curvedValues+curvedCount);
         readback->Unmap(0,nullptr);
 
@@ -324,6 +332,7 @@ int main(int argc,char** argv)
             list->SetPipelineState(curvedPipeline.Get());
             if(timed)list->EndQuery(queryHeap.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0);
             list->Dispatch((dispatchCount+63)/64,1,1);
+            if(constants.packedTriangleCount!=0)dispatchRational(dispatchCount);
             if(timed)
             {
                 list->EndQuery(queryHeap.Get(),D3D12_QUERY_TYPE_TIMESTAMP,1);
@@ -401,6 +410,16 @@ int main(int argc,char** argv)
         }
         if(exhaustedAfterCandidate==0)throw std::runtime_error("Budget sweep did not exercise exhaustion after a candidate hit");
         std::cout<<"Curved budget sweep: "<<exhaustedAfterCandidate<<" candidate hits correctly retained as Exhausted.\n";
+        CurvedConstants fallbackLimited=curvedConstants;
+        fallbackLimited.firstRay=tangentIndex;fallbackLimited.rayCount=tangentIndex+1;
+        fallbackLimited.maxNodes=forwardResults[tangentIndex].nodes-1;
+        dispatchCurvedPass(curvedFragmentBuffer.Get(),fallbackLimited,1);
+        CurvedResult* fallbackBudget=nullptr;Check(readback->Map(0,nullptr,reinterpret_cast<void**>(&fallbackBudget)));
+        const auto limitedTangent=fallbackBudget[tangentIndex];readback->Unmap(0,nullptr);
+        if(limitedTangent.status!=uint(Curved::Status::Exhausted)||
+            (limitedTangent.exhaustionReasons&Curved::ExhaustionNodeBudget)==0||
+            !std::isfinite(limitedTangent.unresolvedT)||limitedTangent.unresolvedUpper<limitedTangent.unresolvedT)
+            throw std::runtime_error("Exact fallback did not preserve its exhausted global work budget");
 
         auto benchmark=[&](const char* label,ID3D12Resource* fragments,CurvedConstants constants,uint first,uint samples)
         {
@@ -417,6 +436,50 @@ int main(int argc,char** argv)
         benchmark("legacy/grazing",legacyFragmentBuffer.Get(),legacyConstants,224,25);
         CurvedConstants fineConstants=curvedConstants;fineConstants.packedTriangleCount|=0x40000000u;
         benchmark("compact/fine-grazing",curvedFragmentBuffer.Get(),fineConstants,224,25);
+
+        // Exactly representable contacts and offsets exercise the separate GPU
+        // rational pass, both sides of silhouettes, and finite closed endpoints.
+        std::vector<SilPomRay> contactRays;
+        for(double u: {.125,.25,.375,.5})for(double v: {.125,.25,.375})
+        {
+            const auto sample=Curved::Evaluate(curvedTriangles[0],curvedSurface,curvedTexture,{1-u-v,u,v});
+            const auto origin=sample.position-sample.du;
+            contactRays.push_back({{float(origin.x),float(origin.y),float(origin.z)},
+                {float(sample.du.x),float(sample.du.y),float(sample.du.z)},0,2});
+        }
+        const uint exactContacts=uint(contactRays.size());
+        for(int exponent: {8,10,12})for(int sign: {-1,1})
+        {
+            auto nearby=curvedRays[tangentIndex];nearby.origin.z+=sign*std::ldexp(1.f,-exponent);contactRays.push_back(nearby);
+        }
+        auto endpoint=curvedRays[tangentIndex];endpoint.tMin=endpoint.tMax=1;contactRays.push_back(endpoint);
+        endpoint.tMin=std::nextafter(1.f,2.f);endpoint.tMax=2;contactRays.push_back(endpoint);
+        endpoint.tMin=0;endpoint.tMax=std::nextafter(1.f,0.f);contactRays.push_back(endpoint);
+        curvedRayBuffer=upload(contactRays.data(),contactRays.size()*sizeof(SilPomRay));
+        CurvedConstants contactConstants=curvedConstants;contactConstants.rayCount=uint(contactRays.size());
+        dispatchCurvedPass(curvedFragmentBuffer.Get(),contactConstants,uint(contactRays.size()));
+        CurvedResult* contacts=nullptr;Check(readback->Map(0,nullptr,reinterpret_cast<void**>(&contacts)));
+        for(uint index=0;index<contactRays.size();++index)
+        {
+            const auto& input=contactRays[index];const auto& actual=contacts[index];
+            const Curved::Ray ray{{input.origin.x,input.origin.y,input.origin.z},{input.direction.x,input.direction.y,input.direction.z},input.tMin,input.tMax};
+            const auto expected=Curved::Intersect(curvedTriangles,curvedSurface,curvedTexture,ray);
+            if(expected.status==Curved::Status::Exhausted||actual.status!=uint(expected.status))
+                throw std::runtime_error("GPU silhouette/endpoint classification failed at ray "+std::to_string(index)+
+                    " status="+std::to_string(actual.status)+" reasons="+std::to_string(actual.exhaustionReasons));
+            if(actual.status==uint(Curved::Status::Hit))
+            {
+                const double t=(expected.tLower+expected.tUpper)*.5;
+                if(actual.primitiveId!=expected.primitiveId||std::abs(actual.t-t)>actual.tError||
+                    actual.tError>contactConstants.requiredDepthAccuracy||
+                    (index<exactContacts&&actual.singular==0)||
+                    std::abs(actual.uv[0]-expected.uv.x)>1e-3||std::abs(actual.uv[1]-expected.uv.y)>1e-3||
+                    Curved::Dot({actual.normal[0],actual.normal[1],actual.normal[2]},expected.normal)<.999f)
+                    throw std::runtime_error("GPU silhouette/endpoint attributes failed at ray "+std::to_string(index));
+            }
+        }
+        readback->Unmap(0,nullptr);
+        std::cout<<"Curved GPU silhouettes: "<<contactRays.size()<<" tangent, offset and finite-endpoint rays passed.\n";
 
         // Exercise nonzero bilinear cross terms, clamp addressing, signed height
         // and instance-resolved bounds. Compare actual shader outputs, not CPU
@@ -466,7 +529,7 @@ int main(int argc,char** argv)
                 }
             }
             readback->Unmap(0,nullptr);
-            if(hits<8)throw std::runtime_error("Too few certified hits in scaled cubic corpus");
+            if(hits!=inputs.size()||exhaustions!=0)throw std::runtime_error("Required scaled cubic corpus did not resolve completely");
             std::cout<<"Curved cubic/scale="<<baseScale<<" amplitude="<<amplitude<<": "<<hits<<" hits, "<<exhaustions<<" exhausted.\n";
         }
 

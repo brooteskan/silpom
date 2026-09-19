@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "date": "2026-09-19",
+  "hardware": "AMD Radeon RX 7900 XTX",
+  "build": "Release, MSVC, standalone D3D12",
+  "scope": "Experimental two-triangle fixtures; not production frame timings",
+  "validation": {
+    "ctest_passed": 4,
+    "ctest_failed": 0,
+    "curved_cpu_assertions": 16607,
+    "cpu_grazing_rays": 1024,
+    "cpu_grazing_exhausted": 0,
+    "cpu_boundary_sweep_rays": 348,
+    "gpu_mixed": { "rays": 288, "hit": 237, "miss": 48, "invalid": 3, "exhausted": 0 },
+    "gpu_silhouette_sweep_rays": 21,
+    "gpu_scaled_cubic": { "groups": 4, "rays_per_group": 48, "exhausted": 0 },
+    "gpu_budget_exhausted_after_candidate": 210,
+    "planar_compute_comparisons": 8192,
+    "planar_dxr_comparisons": 8192,
+    "optional_skips": []
+  },
+  "gpu_settings": {
+    "max_nodes": 32768,
+    "max_depth": 12,
+    "requested_t_accuracy": 0.0005,
+    "interval_parameter_width": 0.00005,
+    "triangles": 2,
+    "fragments": 22,
+    "compact_bytes": 2016,
+    "legacy_bytes": 3872,
+    "warm_runs": 5,
+    "warmup_runs": 1,
+    "compact_timing_includes_exact_fallback_dispatch": true
+  },
+  "gpu_warm_ms": {
+    "compact_front_192": { "median": 1.85624, "max": 1.99708 },
+    "compact_grazing_25": { "median": 15.7598, "max": 17.1573 },
+    "legacy_front_192": { "median": 23.8843, "max": 24.4551 },
+    "legacy_grazing_25": { "median": 91.1962, "max": 92.8272 },
+    "compact_fine_grazing_25": { "median": 26.3916, "max": 27.3539 }
+  },
+  "cpu_grazing": {
+    "milliseconds": 1104.583,
+    "mean_nodes": 10.680,
+    "p95_nodes": 29,
+    "p99_nodes": 45,
+    "excludes_reference_and_attribute_checks": true
+  }
+}

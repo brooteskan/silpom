@@ -9,6 +9,8 @@
 #include <queue>
 #include <utility>
 #include <vector>
+#include "CurvedInterval.h"
+#include "CurvedDyadic.h"
 
 namespace SilPOM::Curved
 {
@@ -122,6 +124,8 @@ struct Hit
     double highestUnresolvedT = -std::numeric_limits<double>::infinity();
     uint exhaustionReasons = ExhaustionNone;
     bool singularPath = false;
+    uint regularCertificates = 0;
+    uint rationalCertificates = 0;
 };
 
 struct Limits
@@ -795,6 +799,254 @@ inline double DomainDiameter(const std::array<Vec3, 3>& domain)
     return std::max({ Length(domain[0] - domain[1]), Length(domain[1] - domain[2]), Length(domain[2] - domain[0]) });
 }
 
+inline std::array<Interval::Jet, 3> CellIntervals(const Fragment& fragment, const Surface& surface,
+    const Texture& texture, Interval::Range u, Interval::Range v)
+{
+    using Interval::Jet;
+    const auto& triangle = *fragment.triangle;
+    const Jet bu{ u, 1.0, 0.0 }, bv{ v, 0.0, 1.0 };
+    auto affine = [&](double a, double b, double c)
+    {
+        // Subtract inside interval arithmetic, not in binary64 before enclosure.
+        return Jet(a) + (Jet(b) - Jet(a)) * bu + (Jet(c) - Jet(a)) * bv;
+    };
+    const Jet x = affine(triangle.uv[0].x, triangle.uv[1].x, triangle.uv[2].x) * Jet(double(texture.width)) -
+        Jet(double(fragment.cellX) + .5);
+    const Jet y = affine(triangle.uv[0].y, triangle.uv[1].y, triangle.uv[2].y) * Jet(double(texture.height)) -
+        Jet(double(fragment.cellY) + .5);
+    const Jet h00(texture.Fetch(fragment.cellX, fragment.cellY, surface.addressMode));
+    const Jet h10(texture.Fetch(fragment.cellX + 1, fragment.cellY, surface.addressMode));
+    const Jet h01(texture.Fetch(fragment.cellX, fragment.cellY + 1, surface.addressMode));
+    const Jet h11(texture.Fetch(fragment.cellX + 1, fragment.cellY + 1, surface.addressMode));
+    const Jet displacement = (h00 + (h10 - h00) * x + (h01 - h00) * y +
+        (h11 - h10 - h01 + h00) * x * y - Jet(surface.reference)) * Jet(surface.amplitude);
+    std::array<Jet, 3> result;
+    for (int axis = 0; axis != 3; ++axis)
+        result[axis] = affine(triangle.position[0][axis], triangle.position[1][axis], triangle.position[2][axis]) *
+            Jet(surface.baseScale) +
+            affine(triangle.direction[0][axis], triangle.direction[1][axis], triangle.direction[2][axis]) * displacement;
+    return result;
+}
+
+struct RegularCertificate
+{
+    bool included = false;
+    bool excluded = false;
+    Vec3 barycentric{};
+    Interval::Range depth{};
+};
+
+inline RegularCertificate CertifyRegular(const Fragment& fragment, const Surface& surface, const Texture& texture,
+    const Ray& ray, Projection projection, const NumericalTolerances& tolerances)
+{
+    using namespace Interval;
+    RegularCertificate result;
+    Range u{ 1.0, 0.0 }, v{ 1.0, 0.0 };
+    for (Vec3 corner : fragment.domain)
+    {
+        u.lo = std::min(u.lo, corner.y); u.hi = std::max(u.hi, corner.y);
+        v.lo = std::min(v.lo, corner.z); v.hi = std::max(v.hi, corner.z);
+    }
+    // A box covers the entire child; a small extension lets a regular root on
+    // an artificial subdivision edge be strictly interior to the proof domain.
+    const double padding = std::max(u.Width(), v.Width()) * .125;
+    u = { Down(u.lo - padding), Up(u.hi + padding) };
+    v = { Down(v.lo - padding), Up(v.hi + padding) };
+    bool included = false;
+    auto projected = [&](Range x, Range y)
+    {
+        const auto point = CellIntervals(fragment, surface, texture, x, y);
+        return std::array<Jet, 2>{
+            (point[projection.first] - Jet(ray.origin[projection.first])) * Jet(ray.direction[projection.major]) -
+                (point[projection.major] - Jet(ray.origin[projection.major])) * Jet(ray.direction[projection.first]),
+            (point[projection.second] - Jet(ray.origin[projection.second])) * Jet(ray.direction[projection.major]) -
+                (point[projection.major] - Jet(ray.origin[projection.major])) * Jet(ray.direction[projection.second]) };
+    };
+    for (int iteration = 0; iteration != 12; ++iteration)
+    {
+        const auto function = projected(u, v);
+        const Range j00 = function[0].du, j01 = function[0].dv, j10 = function[1].du, j11 = function[1].dv;
+        const double a = j00.Midpoint(), b = j01.Midpoint(), c = j10.Midpoint(), d = j11.Midpoint();
+        const double determinant = a * d - b * c;
+        if (!std::isfinite(determinant) || determinant == 0.0) return result;
+        const Range r00(d / determinant), r01(-b / determinant), r10(-c / determinant), r11(a / determinant);
+        const Range m00 = Range(1) - r00 * j00 - r01 * j10, m01 = -r00 * j01 - r01 * j11;
+        const Range m10 = -r10 * j00 - r11 * j10, m11 = Range(1) - r10 * j01 - r11 * j11;
+        const Range middleU(u.Midpoint()), middleV(v.Midpoint());
+        const auto center = projected(middleU, middleV);
+        const Range ku = middleU - r00 * center[0].value - r01 * center[1].value +
+            m00 * (u - middleU) + m01 * (v - middleV);
+        const Range kv = middleV - r10 * center[0].value - r11 * center[1].value +
+            m10 * (u - middleU) + m11 * (v - middleV);
+        if (!ku.Finite() || !kv.Finite()) return result;
+        if (Disjoint(ku, u) || Disjoint(kv, v))
+        {
+            result.excluded = !included;
+            return result;
+        }
+        // Strict inclusion proves existence. The contraction norm additionally
+        // proves uniqueness throughout the original box, including all of the
+        // child triangle, so skipping this child cannot lose a closer root.
+        const bool contraction = Up(m00.Magnitude() + m01.Magnitude()) < 1.0 &&
+            Up(m10.Magnitude() + m11.Magnitude()) < 1.0;
+        included = included || (contraction && StrictlyInside(ku, u) && StrictlyInside(kv, v));
+        if (!included) return result;
+        u = Intersection(ku, u); v = Intersection(kv, v);
+        const auto& tri = *fragment.triangle;
+        const Range w = Range(1) - u - v;
+        auto texel = [&](double a0, double a1, double a2, uint size)
+        {
+            return (Range(a0) + (Range(a1) - Range(a0)) * u + (Range(a2) - Range(a0)) * v) *
+                Range(double(size)) - Range(.5);
+        };
+        const Range qx = texel(tri.uv[0].x, tri.uv[1].x, tri.uv[2].x, texture.width);
+        const Range qy = texel(tri.uv[0].y, tri.uv[1].y, tri.uv[2].y, texture.height);
+        const bool inSurface = Inside(u, { 0, 1 }) && Inside(v, { 0, 1 }) && Inside(w, { 0, 1 }) &&
+            Inside(qx, { double(fragment.cellX), double(fragment.cellX + 1) }) &&
+            Inside(qy, { double(fragment.cellY), double(fragment.cellY + 1) });
+        result.depth = (CellIntervals(fragment, surface, texture, u, v)[projection.major].value -
+            Range(ray.origin[projection.major])) / ray.direction[projection.major];
+        if (inSurface && result.depth.Finite() && result.depth.lo >= ray.tMin && result.depth.hi <= ray.tMax &&
+            result.depth.Width() <= tolerances.depth * 2.0 && std::max(u.Width(), v.Width()) <= tolerances.parameter)
+        {
+            result.included = true;
+            result.barycentric = { 1.0 - u.Midpoint() - v.Midpoint(), u.Midpoint(), v.Midpoint() };
+            return result;
+        }
+    }
+    return result;
+}
+
+// Enclose a rational number by comparing the proposed floating-point endpoints
+// to its exact numerator/denominator. Conversion is only a locator here too.
+inline bool RationalEnclosure(Exact::Dyadic numerator, Exact::Dyadic denominator, Interval::Range& result)
+{
+    using Exact::Dyadic;
+    if (denominator.IsZero()) return false;
+    if (denominator.Sign() < 0) { numerator = -numerator; denominator = -denominator; }
+    const double estimate = numerator.ToDouble() / denominator.ToDouble();
+    if (!std::isfinite(estimate)) return false;
+    result = { estimate, estimate };
+    for (int attempt = 0; attempt != 16; ++attempt)
+    {
+        const bool low = (Dyadic(result.lo) * denominator - numerator).Sign() <= 0;
+        const bool high = (Dyadic(result.hi) * denominator - numerator).Sign() >= 0;
+        if (low && high) return true;
+        if (!low) result.lo = Interval::Down(result.lo);
+        if (!high) result.hi = Interval::Up(result.hi);
+    }
+    return false;
+}
+
+struct RationalCertificate : RegularCertificate
+{
+    bool singular = false;
+};
+
+inline RationalCertificate CertifyRational(const Fragment& fragment, const Surface& surface, const Texture& texture,
+    const Ray& ray, Projection projection)
+{
+    using Exact::Dyadic;
+    // Restricted exact path: affine height and one affine projected constraint.
+    // Elimination then leaves a quadratic. A negative discriminant proves a
+    // miss; a zero discriminant proves the isolated double root. General cubic
+    // systems and positive-dimensional contacts continue through subdivision.
+    RationalCertificate result;
+    const double heights[4]{ texture.Fetch(fragment.cellX, fragment.cellY, surface.addressMode),
+        texture.Fetch(fragment.cellX + 1, fragment.cellY, surface.addressMode),
+        texture.Fetch(fragment.cellX, fragment.cellY + 1, surface.addressMode),
+        texture.Fetch(fragment.cellX + 1, fragment.cellY + 1, surface.addressMode) };
+    if (heights[3] - heights[1] - heights[2] + heights[0] != 0.0) return result;
+    if (!(Dyadic(heights[3]) - Dyadic(heights[1]) - Dyadic(heights[2]) + Dyadic(heights[0])).IsZero()) return result;
+    using Polynomial = std::array<Dyadic, 6>; // 1, u, v, uu, uv, vv
+    using Linear = std::array<Dyadic, 3>;
+    auto affine = [](double a, double b, double c) { return Linear{ Dyadic(a), Dyadic(b) - Dyadic(a), Dyadic(c) - Dyadic(a) }; };
+    const auto& triangle = *fragment.triangle;
+    auto x = affine(triangle.uv[0].x, triangle.uv[1].x, triangle.uv[2].x);
+    auto y = affine(triangle.uv[0].y, triangle.uv[1].y, triangle.uv[2].y);
+    for (int i = 0; i != 3; ++i) { x[i] = x[i] * Dyadic(double(texture.width)); y[i] = y[i] * Dyadic(double(texture.height)); }
+    x[0] = x[0] - Dyadic(double(fragment.cellX) + .5);
+    y[0] = y[0] - Dyadic(double(fragment.cellY) + .5);
+    Linear height{};
+    for (int i = 0; i != 3; ++i)
+        height[i] = ((i == 0 ? Dyadic(heights[0]) - Dyadic(surface.reference) : Dyadic{}) +
+            x[i] * (Dyadic(heights[1]) - Dyadic(heights[0])) +
+            y[i] * (Dyadic(heights[2]) - Dyadic(heights[0]))) * Dyadic(surface.amplitude);
+    std::array<Polynomial, 3> position{};
+    for (int axis = 0; axis != 3; ++axis)
+    {
+        const auto p = affine(triangle.position[0][axis], triangle.position[1][axis], triangle.position[2][axis]);
+        const auto d = affine(triangle.direction[0][axis], triangle.direction[1][axis], triangle.direction[2][axis]);
+        auto& q = position[axis];
+        q[0] = p[0] * Dyadic(surface.baseScale) + height[0] * d[0];
+        q[1] = p[1] * Dyadic(surface.baseScale) + height[0] * d[1] + height[1] * d[0];
+        q[2] = p[2] * Dyadic(surface.baseScale) + height[0] * d[2] + height[2] * d[0];
+        q[3] = height[1] * d[1]; q[4] = height[1] * d[2] + height[2] * d[1]; q[5] = height[2] * d[2];
+    }
+    auto project = [&](int axis)
+    {
+        Polynomial q{};
+        for (int i = 0; i != 6; ++i)
+            q[i] = (position[axis][i] - (i == 0 ? Dyadic(ray.origin[axis]) : Dyadic{})) * Dyadic(ray.direction[projection.major]) -
+                (position[projection.major][i] - (i == 0 ? Dyadic(ray.origin[projection.major]) : Dyadic{})) * Dyadic(ray.direction[axis]);
+        return q;
+    };
+    Polynomial linear = project(projection.first), quadratic = project(projection.second);
+    auto isLinear = [](const Polynomial& p) { return p[3].IsZero() && p[4].IsZero() && p[5].IsZero(); };
+    if (!isLinear(linear)) std::swap(linear, quadratic);
+    if (!isLinear(linear)) return result;
+    bool swap = linear[2].IsZero();
+    if (swap)
+    {
+        std::swap(linear[1], linear[2]); std::swap(quadratic[1], quadratic[2]); std::swap(quadratic[3], quadratic[5]);
+    }
+    if (linear[2].IsZero()) return result;
+    const Dyadic d = linear[2], n0 = -linear[0], n1 = -linear[1], two(2.0);
+    const auto& q = quadratic;
+    const Dyadic a = q[3] * d * d + q[4] * d * n1 + q[5] * n1 * n1;
+    const Dyadic b = q[1] * d * d + q[2] * d * n1 + q[4] * d * n0 + two * q[5] * n0 * n1;
+    const Dyadic c = q[0] * d * d + q[2] * d * n0 + q[5] * n0 * n0;
+    Dyadic rootNumerator, rootDenominator;
+    if (a.IsZero())
+    {
+        if (b.IsZero()) { result.excluded = !c.IsZero(); return result; }
+        rootNumerator = -c; rootDenominator = b;
+    }
+    else
+    {
+        const Dyadic discriminant = b * b - Dyadic(4.0) * a * c;
+        if (discriminant.Sign() < 0) { result.excluded = true; return result; }
+        if (!discriminant.IsZero()) return result;
+        rootNumerator = -b; rootDenominator = two * a;
+        result.singular = true;
+    }
+    Dyadic denominator = rootDenominator * d;
+    Dyadic u = rootNumerator * d, v = n0 * rootDenominator + n1 * rootNumerator;
+    if (swap) std::swap(u, v);
+    if (denominator.Sign() < 0) { denominator = -denominator; u = -u; v = -v; }
+    const Dyadic w = denominator - u - v;
+    auto closedUnit = [&](const Dyadic& value) { return value.Sign() >= 0 && (denominator - value).Sign() >= 0; };
+    const Dyadic cellU = x[0] * denominator + x[1] * u + x[2] * v;
+    const Dyadic cellV = y[0] * denominator + y[1] * u + y[2] * v;
+    if (!closedUnit(u) || !closedUnit(v) || !closedUnit(w) || !closedUnit(cellU) || !closedUnit(cellV))
+    { result.excluded = true; return result; }
+    const auto& depth = position[projection.major];
+    const Dyadic squared = denominator * denominator;
+    Dyadic tNumerator = (depth[0] - Dyadic(ray.origin[projection.major])) * squared +
+        depth[1] * u * denominator + depth[2] * v * denominator + depth[3] * u * u + depth[4] * u * v + depth[5] * v * v;
+    Dyadic tDenominator = squared * Dyadic(ray.direction[projection.major]);
+    if (tDenominator.Sign() < 0) { tNumerator = -tNumerator; tDenominator = -tDenominator; }
+    if ((tNumerator - Dyadic(ray.tMin) * tDenominator).Sign() < 0 ||
+        (std::isfinite(ray.tMax) && (tNumerator - Dyadic(ray.tMax) * tDenominator).Sign() > 0))
+    { result.excluded = true; return result; }
+    Interval::Range rootU, rootV;
+    if (!RationalEnclosure(u, denominator, rootU) || !RationalEnclosure(v, denominator, rootV) ||
+        !RationalEnclosure(tNumerator, tDenominator, result.depth)) return result;
+    result.barycentric = { 1.0 - rootU.Midpoint() - rootV.Midpoint(), rootU.Midpoint(), rootV.Midpoint() };
+    result.included = true;
+    return result;
+}
+
 inline Hit Intersect(const std::vector<Triangle>& triangles, const Surface& surface, const Texture& texture,
     const Ray& ray, Limits limits = {})
 {
@@ -803,6 +1055,14 @@ inline Hit Intersect(const std::vector<Triangle>& triangles, const Surface& surf
     {
         return result;
     }
+    if (!std::isfinite(limits.parameterTolerance) || limits.parameterTolerance < 0 ||
+        !std::isfinite(limits.residualTolerance) || limits.residualTolerance < 0 ||
+        !std::isfinite(limits.singularResidualTolerance) || limits.singularResidualTolerance < 0 ||
+        !std::isfinite(limits.tTolerance) || limits.tTolerance < 0)
+    { result.status = Status::Invalid; return result; }
+    for (double height : texture.pixels)
+        if (!std::isfinite(height) || height < 0.0 || height > 1.0)
+        { result.status = Status::Invalid; return result; }
     for (const Triangle& triangle : triangles)
     {
         if (!Valid(triangle, surface, texture, ray))
@@ -862,6 +1122,51 @@ inline Hit Intersect(const std::vector<Triangle>& triangles, const Surface& surf
         {
             continue;
         }
+        if (work.depth == 0)
+        {
+            const auto certificate = CertifyRational(work.fragment, surface, texture, ray, projection);
+            if (certificate.excluded) continue;
+            if (certificate.included && certificate.depth.Width() <= tolerances.depth * 2)
+            {
+                const Sample sample = Evaluate(*work.fragment.triangle, surface, texture, certificate.barycentric);
+                if (!sample.validNormal) { result.status = Status::Invalid; return result; }
+                ++result.rationalCertificates;
+                if (certificate.depth.hi < result.tLower ||
+                    (certificate.depth.lo <= result.tUpper && work.fragment.triangle->primitiveId < result.primitiveId))
+                {
+                    result.status = Status::Hit; result.primitiveId = work.fragment.triangle->primitiveId;
+                    result.tLower = certificate.depth.lo; result.tUpper = certificate.depth.hi;
+                    result.barycentric = certificate.barycentric; result.position = sample.position;
+                    result.uv = sample.uv; result.normal = sample.normal; result.singularPath = certificate.singular;
+                }
+                continue;
+            }
+        }
+        if (work.depth >= 3)
+        {
+            const auto certificate = CertifyRegular(work.fragment, surface, texture, ray, projection, tolerances);
+            if (certificate.excluded) continue;
+            if (certificate.included)
+            {
+                const Sample sample = Evaluate(*work.fragment.triangle, surface, texture, certificate.barycentric);
+                if (!sample.validNormal) { result.status = Status::Invalid; return result; }
+                ++result.regularCertificates;
+                if (certificate.depth.hi < result.tLower ||
+                    (certificate.depth.lo <= result.tUpper && work.fragment.triangle->primitiveId < result.primitiveId))
+                {
+                    result.status = Status::Hit;
+                    result.primitiveId = work.fragment.triangle->primitiveId;
+                    result.tLower = certificate.depth.lo;
+                    result.tUpper = certificate.depth.hi;
+                    result.barycentric = certificate.barycentric;
+                    result.position = sample.position;
+                    result.uv = sample.uv;
+                    result.normal = sample.normal;
+                    result.singularPath = false;
+                }
+                continue;
+            }
+        }
         const bool leaf = work.depth >= limits.maxDepth || DomainDiameter(work.fragment.domain) <= tolerances.parameter ||
             (work.bounds.tMax - work.bounds.tMin) <= tolerances.depth;
         if (leaf)
@@ -869,22 +1174,11 @@ inline Hit Intersect(const std::vector<Triangle>& triangles, const Surface& surf
             Vec3 barycentric{};
             double t = 0.0;
             bool singular = false;
-            if (SolveCandidate(work.fragment, surface, texture, ray, projection, tolerances, barycentric, t, singular))
+            if (SolveCandidate(work.fragment, surface, texture, ray, projection, tolerances, barycentric, t, singular) && !singular)
             {
                 const Sample sample = Evaluate(*work.fragment.triangle, surface, texture, barycentric);
                 double error = std::max(tolerances.depth,
                     32.0 * std::numeric_limits<double>::epsilon() * std::max(1.0, std::abs(t)));
-                if (singular)
-                {
-                    // At a double contact, projected residual is second order in
-                    // parameter error. Propagate its square-root enclosure through
-                    // dt/du and dt/dv instead of applying a regular-root epsilon.
-                    const double inverseMajor = 1.0 / ray.direction[projection.major];
-                    const double tGradient = (std::abs(sample.du[projection.major]) +
-                        std::abs(sample.dv[projection.major])) * std::abs(inverseMajor);
-                    const double parameterError = 8.0 * std::sqrt(tolerances.singularResidual);
-                    error = std::max(error, parameterError * std::max(1.0, tGradient));
-                }
                 if (t + error < result.tUpper || (std::abs(t - result.tUpper) <= error &&
                     work.fragment.triangle->primitiveId < result.primitiveId))
                 {

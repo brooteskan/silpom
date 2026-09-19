@@ -77,6 +77,9 @@ change the runtime component or asset ABI. See
 [`Docs/CurvedIntersectionFeasibility.md`](Docs/CurvedIntersectionFeasibility.md)
 for the surface contract, measured costs, explicit failure semantics, and the
 remaining proof gates before curved asset/runtime work may begin.
+The [coverage follow-up](Docs/CurvedCoverageGate.md) records interval and exact
+quadratic certificates, resolved CPU/GPU regressions, boundary sweeps, and
+explicit limits that still prevent runtime promotion.
 
 The Blender-to-O3DE export/import fixture is documented in
 [`Docs/ExportImportRoundTrip.md`](Docs/ExportImportRoundTrip.md), including captured

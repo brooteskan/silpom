@@ -2,6 +2,7 @@
 #include "CurvedPrototype.h"
 #include "CurvedExactReference.h"
 #include "CurvedPacking.h"
+#include "CurvedBoundedDyadic.hlsli"
 
 #include <chrono>
 #include <cstdlib>
@@ -118,6 +119,91 @@ void ContractTests()
     Require(exhausted.status == Status::Exhausted, "budget exhaustion differs from miss");
     Require(std::isfinite(exhausted.lowestUnresolvedT), "exhaustion records nearest unresolved interval");
     Require((exhausted.exhaustionReasons & ExhaustionNodeBudget) != 0, "budget exhaustion has an explicit reason");
+    auto invalidTexture = flat;
+    for (double value : { -0.1, 1.1, std::numeric_limits<double>::quiet_NaN() })
+    {
+        invalidTexture.pixels[0] = value;
+        Require(Intersect(triangles, surface, invalidTexture, sharedRay).status == Status::Invalid,
+            "invalid height data is rejected before exact arithmetic");
+    }
+    Limits invalidLimits;
+    invalidLimits.tTolerance = std::numeric_limits<double>::quiet_NaN();
+    Require(Intersect(triangles, surface, flat, sharedRay, invalidLimits).status == Status::Invalid,
+        "non-finite error budget is invalid");
+}
+
+void BoundarySweepTests()
+{
+    const Texture texture = MakeTexture(false);
+    auto triangles = MakeTriangles();
+    for (auto& triangle : triangles) for (auto& direction : triangle.direction) direction = { 0, 0, 1 };
+    uint rays = 0;
+    for (double scale : { .125, 1.0, 8.0 }) for (double amplitude : { -.5, .5 })
+    {
+        const Surface surface{ scale, amplitude, .25, 0 };
+        for (size_t primitive = 0; primitive != triangles.size(); ++primitive)
+            for (int edge = 0; edge != 3; ++edge) for (int i = 0; i <= 8; ++i)
+        {
+            Vec3 bary{}; bary[edge] = 1.0 - double(i) / 8; bary[(edge + 1) % 3] = double(i) / 8;
+            const auto point = Evaluate(triangles[primitive], surface, texture, bary).position;
+            const Ray ray{ point + Vec3{ 0, 0, 2 }, { 0, 0, -1 }, 0, 4 };
+            const Hit hit = Intersect(triangles, surface, texture, ray);
+            Require(hit.status == Status::Hit && hit.rationalCertificates != 0, "closed edge/vertex has an exact rational certificate");
+            Require(hit.tLower <= 2 + 4e-15 && hit.tUpper >= 2 - 4e-15, "closed boundary depth");
+            const uint expected = primitive == 0 || point.x == 0.0 ? 7 : 11;
+            Require(hit.primitiveId == expected, "shared-edge ownership remains stable along the full edge");
+            auto reversed = triangles; std::reverse(reversed.begin(), reversed.end());
+            const Hit reverse = Intersect(reversed, surface, texture, ray);
+            Require(reverse.status == hit.status && reverse.primitiveId == hit.primitiveId &&
+                reverse.tLower == hit.tLower && reverse.tUpper == hit.tUpper, "boundary ownership is independent of candidate order");
+            ++rays;
+        }
+        // UV texel boundaries include both sides of a closed cell domain.
+        for (double u : { .125, .375 }) for (double v : { .125, .375, .625 })
+        {
+            const Vec3 bary{ 1 - 2 * u, 2 * u - v, v };
+            if (!Contains(bary, 0)) continue;
+            const auto point = Evaluate(triangles[0], surface, texture, bary).position;
+            const Hit hit = Intersect(triangles, surface, texture, { point + Vec3{ 0, 0, 2 }, { 0, 0, -1 }, 0, 4 });
+            Require(hit.status == Status::Hit && hit.rationalCertificates != 0, "closed texel-boundary certificate");
+            ++rays;
+        }
+    }
+    Interval::Range third;
+    Require(RationalEnclosure(Exact::Dyadic(1.0), Exact::Dyadic(3.0), third) && third.lo < third.hi,
+        "non-dyadic rational gets an outward depth enclosure");
+    const auto coefficients = Exact::AffineCorners(1e16, 1.0, -1.0);
+    Require((coefficients.coefficient[1][0] - (Exact::Dyadic(1.0) - Exact::Dyadic(1e16))).IsZero(),
+        "oracle does not round corner subtraction before exact conversion");
+    std::cout << "Curved boundary sweeps: " << rays << " edge, vertex and texel-boundary rays.\n";
+}
+
+void BoundedExactTests()
+{
+    using namespace BoundedExact;
+    auto asDyadic = [](ExactValue value) { return Exact::Dyadic(Exact::Integer(value.mantissa), value.exponent); };
+    auto check = [&](ExactValue actual, const Exact::Dyadic& expected)
+    {
+        // A bounded proof may decline an operation. Every accepted operation
+        // must agree exactly with the arbitrary-size independent arithmetic.
+        if (actual.valid) Require((asDyadic(actual) - expected).IsZero(), "bounded shader arithmetic is exact when accepted");
+    };
+    std::mt19937 random(0xD1AD1Cu);
+    for (int i = 0; i != 2048; ++i)
+    {
+        std::uint32_t bitsA = random() & 0xfeffffffu, bitsB = random() & 0xfeffffffu;
+        float a, b; std::memcpy(&a, &bitsA, sizeof(a)); std::memcpy(&b, &bitsB, sizeof(b));
+        const ExactValue ea = ExactFloat(a), eb = ExactFloat(b);
+        const Exact::Dyadic da{ double(a) }, db{ double(b) };
+        check(ea, da); check(eb, db);
+        check(ExactAdd(ea, eb), da + db); check(ExactSubtract(ea, eb), da - db);
+        check(ExactMultiply(ea, eb), da * db);
+        check(ExactSubtract(ea, ea), Exact::Dyadic{});
+    }
+    Require(!ExactMultiply(ExactFloat(16777215.f), ExactFloat(16777215.f)).valid, "integer multiplication overflow declines the proof");
+    Require(!ExactAdd(ExactFloat(1.f), ExactFloat(std::ldexp(1.f, -40))).valid, "excessive exponent alignment declines the proof");
+    Require(!ExactMultiply(ExactNormalize(0, 0, false), ExactFloat(0)).valid, "invalid exact arithmetic stays invalid through multiplication by zero");
+    Require(ExactGcd(177147, 177147) == 177147 && ExactGcd(0, 27) == 27, "rational proof removes common odd factors");
 }
 
 void TangentTest()
@@ -147,16 +233,16 @@ void TangentTest()
     Hit hit = Intersect(triangles, surface, texture, tangent, limits);
     const Exact::Result exact = Exact::IntersectAll(triangles, surface, texture, tangent);
     const auto tangentReference = ReferenceAll(triangles, surface, texture, tangent, 512);
-    if (hit.status != Status::Exhausted)
+    if (hit.status != Status::Hit)
     {
         std::cerr << std::setprecision(17) << "tangent diagnostic: status=" << uint(hit.status)
                   << " nodes=" << hit.subdivisionNodes << " depth=" << hit.maximumDepth
                   << " hit=[" << hit.tLower << ',' << hit.tUpper << "] primitive=" << hit.primitiveId
                   << " unresolved=[" << hit.lowestUnresolvedT << ',' << hit.highestUnresolvedT << "]\n";
     }
-    Require(hit.status == Status::Exhausted, "uncertified tangent work is not promoted to a hit");
-    Require((hit.exhaustionReasons & ExhaustionNodeBudget) != 0,
-        "tangent exhaustion records the global node budget");
+    Require(hit.status == Status::Hit && hit.rationalCertificates != 0, "exact quadratic certificate resolves the tangent");
+    Require(hit.tUpper - hit.tLower <= 2 * limits.tTolerance, "tangent respects the requested depth budget");
+    Require(hit.subdivisionNodes < 32, "exact tangent does not consume a subdivision budget");
     Require(hit.singularPath, "tangent candidate uses the singular-root path");
     if (!(hit.tLower <= 1.0 && hit.tUpper >= 1.0))
     {
@@ -189,6 +275,33 @@ void TangentTest()
     }
     Require(!exact.roots.empty() && std::abs(exact.roots.front().t - 1.0) < 1e-8,
         "exact resultant/Sturm oracle retains the repeated tangent root");
+    Ray clipped = tangent;
+    clipped.tMin = clipped.tMax = 1.0;
+    Require(Intersect(triangles, surface, texture, clipped).status == Status::Hit, "closed finite interval contains tangent endpoint");
+    clipped.tMin = std::nextafter(1.0, 2.0); clipped.tMax = 2.0;
+    Require(Intersect(triangles, surface, texture, clipped).status == Status::Miss, "tangent outside near endpoint is a miss");
+    clipped.tMin = 0.0; clipped.tMax = std::nextafter(1.0, 0.0);
+    Require(Intersect(triangles, surface, texture, clipped).status == Status::Miss, "tangent outside far endpoint is a miss");
+    for (int exponent : { 8, 12, 16, 20 }) for (int sign : { -1, 1 })
+    {
+        Ray nearby = tangent;
+        nearby.origin.z += sign * std::ldexp(1.0, -exponent);
+        const Hit actual = Intersect(triangles, surface, texture, nearby);
+        const auto reference = Exact::IntersectAll(triangles, surface, texture, nearby);
+        Require(reference.status == Exact::Status::Complete, "near-tangent exact reference completes");
+        Require(actual.status == (reference.roots.empty() ? Status::Miss : Status::Hit), "near-tangent hit/miss classification");
+        if (!reference.roots.empty())
+        {
+            Require(!actual.singularPath, "two distinct near-tangent roots are not merged into a tangent");
+            Require(reference.roots.front().t >= actual.tLower - 2e-10 && reference.roots.front().t <= actual.tUpper + 2e-10,
+                "near-tangent nearest root enclosure");
+        }
+    }
+    Limits insufficient = limits;
+    insufficient.maxNodes = 0;
+    const Hit unfinished = Intersect(triangles, surface, texture, tangent, insufficient);
+    Require(unfinished.status == Status::Exhausted && (unfinished.exhaustionReasons & ExhaustionNodeBudget) != 0,
+        "zero tangent work budget remains explicit exhaustion");
 }
 
 void ReferenceAndFuzzTests()
@@ -334,9 +447,11 @@ void CostSmoke()
     std::vector<size_t> exhaustedIndices;
     std::uint64_t nodes = 0;
     std::vector<uint> nodeCounts;
+    std::vector<Hit> actualHits;
     Limits grazingLimits;
     grazingLimits.maxNodes=131072;
     grazingLimits.maxDepth=32;
+    const std::vector<size_t> formerExhaustions{ 148, 150, 152, 154, 156, 158, 171, 173, 175, 177, 960 };
     for (size_t rayIndex = 0; rayIndex != rays.size(); ++rayIndex)
     {
         const Ray& ray = rays[rayIndex];
@@ -344,6 +459,9 @@ void CostSmoke()
         if (hit.status == Status::Exhausted)
         {
             exhaustedIndices.push_back(rayIndex);
+            std::cerr << std::setprecision(17) << "grazing case=" << rayIndex << " nodes=" << hit.subdivisionNodes
+                << " certificates=" << hit.regularCertificates << " hit=[" << hit.tLower << ',' << hit.tUpper
+                << "] unresolved=[" << hit.lowestUnresolvedT << ',' << hit.highestUnresolvedT << "]\n";
             Require((hit.exhaustionReasons & ExhaustionUncertifiedLeaf) != 0,
                 "grazing exhaustion identifies an uncertified leaf");
             Require((hit.exhaustionReasons & ExhaustionParameterResolution) != 0,
@@ -353,29 +471,75 @@ void CostSmoke()
         exhausted += hit.status == Status::Exhausted;
         nodes += hit.subdivisionNodes;
         nodeCounts.push_back(hit.subdivisionNodes);
+        actualHits.push_back(hit);
     }
     const auto end = std::chrono::steady_clock::now();
+    for (size_t rayIndex : formerExhaustions)
+    {
+        const Ray& ray = rays[rayIndex];
+        const Hit& hit = actualHits[rayIndex];
+        const auto exact = Exact::IntersectAll(triangles, surface, texture, ray);
+        Require(exact.status == Exact::Status::Complete && !exact.roots.empty(), "exact grazing reference completes");
+        Require(hit.status == Status::Hit && hit.regularCertificates != 0, "former grazing exhaustion has interval inclusion");
+        const auto& root = exact.roots.front();
+        Require(root.t >= hit.tLower - 2e-11 && root.t <= hit.tUpper + 2e-11, "grazing nearest depth enclosure");
+        Require(hit.tUpper - hit.tLower <= 2 * grazingLimits.tTolerance, "grazing depth budget");
+        Require(hit.primitiveId == root.primitiveId, "grazing primitive identity");
+        Require(Length(hit.barycentric - root.barycentric) < 2e-8, "grazing barycentric accuracy");
+        Require(std::abs(hit.uv.x - root.uv.x) < 2e-8 && std::abs(hit.uv.y - root.uv.y) < 2e-8,
+            "grazing UV accuracy");
+        Require(Dot(hit.normal, root.normal) > 1.0 - 2e-12, "grazing normal accuracy");
+        auto reversed = triangles;
+        std::reverse(reversed.begin(), reversed.end());
+        const Hit reverse = Intersect(reversed, surface, texture, ray, grazingLimits);
+        Require(reverse.status == hit.status && reverse.primitiveId == hit.primitiveId &&
+            reverse.tLower <= hit.tUpper && reverse.tUpper >= hit.tLower, "grazing candidate order independence");
+        for (uint budget : { 0u, 1u, 2u, 4u, 8u, 16u, 32u })
+        {
+            auto limited = grazingLimits; limited.maxNodes = budget;
+            const Hit bounded = Intersect(triangles, surface, texture, ray, limited);
+            Require(bounded.status == Status::Hit || bounded.status == Status::Exhausted, "limited valid grazing ray never becomes a miss");
+            if (bounded.status == Status::Hit)
+                Require(root.t >= bounded.tLower - 2e-11 && root.t <= bounded.tUpper + 2e-11, "budget-limited nearest hit remains enclosed");
+            else
+                Require(std::isfinite(bounded.lowestUnresolvedT) && bounded.highestUnresolvedT >= bounded.lowestUnresolvedT &&
+                    (bounded.exhaustionReasons & ExhaustionNodeBudget) != 0, "budget-limited pending intervals remain diagnosed");
+        }
+    }
     const double milliseconds = std::chrono::duration<double, std::milli>(end - begin).count();
     std::sort(nodeCounts.begin(), nodeCounts.end());
     const uint p95 = nodeCounts[size_t(nodeCounts.size() * .95)];
     const uint p99 = nodeCounts[size_t(nodeCounts.size() * .99)];
-    const std::vector<size_t> expectedUnsupported{ 148, 150, 152, 154, 156, 158, 171, 173, 175, 177, 960 };
+    const std::vector<size_t> expectedUnsupported{};
     if (exhaustedIndices != expectedUnsupported)
     {
         std::cerr << "grazing exhausted indices:";
         for (size_t index : exhaustedIndices) std::cerr << ' ' << index;
         std::cerr << '\n';
     }
-    Require(exhaustedIndices == expectedUnsupported, "the explicit unsupported grazing corpus is stable");
+    Require(exhaustedIndices == expectedUnsupported, "the entire required grazing corpus completes");
     std::cout << std::fixed << std::setprecision(3) << "Curved CPU grazing smoke: " << rays.size() << " rays in "
               << milliseconds << " ms, " << hits << " hits, " << exhausted << " exhausted, "
               << double(nodes) / rays.size() << " mean nodes/ray, p95=" << p95 << ", p99=" << p99 << ".\n";
 }
 }
 
-int main()
+int main(int argc, char** argv)
 {
+    if (argc == 2 && std::string(argv[1]) == "--grazing")
+    {
+        CostSmoke();
+        return 0;
+    }
+    if (argc == 2 && std::string(argv[1]) == "--tangent")
+    {
+        TangentTest();
+        std::cout << "Tangent checks: " << g_checks << '\n';
+        return 0;
+    }
+    BoundedExactTests();
     ContractTests();
+    BoundarySweepTests();
     TangentTest();
     ReferenceAndFuzzTests();
     PackingTests();

@@ -25,12 +25,13 @@ every node. Newton uses analytic surface derivatives, including `h * derivative(
 Tests compare the control nets to independent sampled reconstruction over signed
 amplitudes, positive scales, and clamp/repeat modes.
 
-Optional cached bounds reject fragments before polynomial traversal. Root
-inclusion checks require their whole enclosure to lie in the child triangle
-whose bounds are reported. A certified unique root can use a smaller enclosing
-domain for its depth bound. The shader reuses control nets during certification
-and skips expensive winding checks when the available depth bound cannot meet
-the request. Its 48-entry stack retains explicit capacity diagnostics.
+Optional cached bounds reject fragments before polynomial traversal. Direct
+interval evaluation now certifies regular roots on a box covering a whole child,
+requiring the root enclosure to remain inside the source triangle and texel cell.
+A separate bounded exact-arithmetic dispatch handles supported quadratic and
+singular leaves, with a full nearest-hit audit. The earlier control-net inclusion
+and winding paths remain available. The main 48-entry stack retains explicit
+capacity diagnostics. See [CurvedCoverageGate.md](CurvedCoverageGate.md).
 
 The returned UV and normal are evaluated on the GPU and verified against the CPU
 reference. They are no longer reconstructed on the CPU as a substitute for testing
@@ -49,31 +50,32 @@ Representative runs with the default subdivision floor:
 
 | Workload | Compact, bounded | Legacy representation with current common solver |
 | --- | ---: | ---: |
-| 192 front rays | about 15 ms | about 24 ms |
-| 25 grazing rays | about 47 ms | about 100 ms |
+| 192 front rays | about 1.9 ms | about 24 ms |
+| 25 grazing rays | about 16 ms | about 91 ms |
 
-The original 288-ray mixed corpus still returns 209 certified hits, 48 misses,
-3 invalid results, and 28 explicit exhaustions. Candidate reversal and forced
-node-budget exhaustion remain tested. A new three-budget sweep exercises 167
+The original 288-ray mixed corpus now returns 237 certified hits, 48 misses,
+3 invalid results, and zero exhaustions. All 28 previous failures are resolved.
+Candidate reversal and forced node-budget exhaustion remain tested. The
+three-budget sweep exercises 210
 cases where a found candidate must remain `Exhausted`; it also caught and fixed
 an exit that incorrectly reported exhaustion after every remaining candidate had
 been rejected. Budget limits alone no longer change a proven miss into a failure.
 CPU planar and procedural planar DXR
 conformance remain mandatory and passing; there is still no curved DXR adapter.
 
-Analytic controls permit a finer parameter floor. This is an explicit test mode,
-not a silent weakening of accuracy. In the 48-ray nonzero-bilinear-cross-term
-corpus at base scale 8, it increased certified hits from 26 to 38 for amplitude
-`-0.04`, and from 24 to 36 for `+0.04`. It increased the original grazing benchmark
-to about 131 ms without resolving additional original-corpus rays. At scale 0.125,
-47/48 and 46/48 rays completed respectively. Remaining outcomes are diagnosed
-exhaustions. Thus neither performance nor difficult-ray coverage is a closed gate.
+Analytic controls permit a finer parameter floor, retained as an explicit test
+mode. Direct interval evaluation now completes all 48 rays in each nonzero
+bilinear-cross-term group at base scales 0.125 and 8, for both amplitudes `-0.04`
+and `+0.04`. The fine-mode grazing benchmark is about 26 ms. General singular
+cubics and non-affine seam ownership are still outside the demonstrated coverage;
+these tiny workloads do not establish production traversal viability.
 
-The exact-dyadic tangent and the eleven named CPU grazing rays remain regression
-cases, not solved cases. No fallback converts them to ordinary misses or invents
-a certified hit. The oracle's exact elimination/root isolation is complemented by
-floating-point root pairing and attribute evaluation; this is not a claim of a
-formal unrestricted algebraic renderer.
+The follow-up CPU coverage work resolves the exact-dyadic tangent and all eleven
+named grazing failures using exact rational and interval-inclusion certificates.
+All 1,024 CPU grazing rays now complete. See
+[CurvedCoverageGate.md](CurvedCoverageGate.md) for proof domains, boundary sweeps,
+separate error budgets, and remaining limitations. The oracle's exact elimination
+and root isolation still use numerical coordinate pairing and attribute evaluation.
 
 ## Reproduce
 
@@ -89,7 +91,7 @@ GPU output includes both representations, fast/fine grazing timings, actual
 shader attribute checks, signed displacement, and base scales 0.125 and 8.
 CPU tests additionally validate packed sizes, reversible candidate order,
 conservative cached bounds, invalid heights, and explicit preprocessing budgets.
-The current CPU target passes 8,689 assertions, including the existing exact and
+The current CPU target passes 16,607 assertions, including the existing exact and
 convergent-reference cases. The metadata target passes six decoder unit tests.
 
 ## Remaining implementation gates

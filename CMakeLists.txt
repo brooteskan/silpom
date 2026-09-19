@@ -22,14 +22,16 @@ if(NOT COMMAND o3de_gem_setup)
         target_compile_features(silpom_gpu_tests PRIVATE cxx_std_17)
         target_compile_definitions(silpom_gpu_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
         target_link_libraries(silpom_gpu_tests PRIVATE d3d12 dxgi dxguid)
-        add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/compute.dxil ${CMAKE_CURRENT_BINARY_DIR}/rays.dxil ${CMAKE_CURRENT_BINARY_DIR}/curved.dxil
+        add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/compute.dxil ${CMAKE_CURRENT_BINARY_DIR}/rays.dxil ${CMAKE_CURRENT_BINARY_DIR}/curved.dxil ${CMAKE_CURRENT_BINARY_DIR}/curved-rational.dxil
             COMMAND "${SILPOM_DXC}" -T cs_6_3 -E Main -Fo ${CMAKE_CURRENT_BINARY_DIR}/compute.dxil ${CMAKE_CURRENT_SOURCE_DIR}/Tests/HeightfieldGpu.hlsl
             COMMAND "${SILPOM_DXC}" -T lib_6_3 -D SILPOM_RT=1 -Fo ${CMAKE_CURRENT_BINARY_DIR}/rays.dxil ${CMAKE_CURRENT_SOURCE_DIR}/Tests/HeightfieldGpu.hlsl
             COMMAND "${SILPOM_DXC}" -T cs_6_3 -E Main -Fo ${CMAKE_CURRENT_BINARY_DIR}/curved.dxil ${CMAKE_CURRENT_SOURCE_DIR}/Tests/Curved/CurvedGpu.hlsl
-            DEPENDS Tests/HeightfieldGpu.hlsl Assets/Shaders/SilPOM/Heightfield.azsli Tests/Curved/CurvedGpu.hlsl VERBATIM)
-        add_custom_target(silpom_gpu_shaders DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/compute.dxil ${CMAKE_CURRENT_BINARY_DIR}/rays.dxil ${CMAKE_CURRENT_BINARY_DIR}/curved.dxil)
+            COMMAND "${SILPOM_DXC}" -T cs_6_3 -E RationalFallback -Fo ${CMAKE_CURRENT_BINARY_DIR}/curved-rational.dxil ${CMAKE_CURRENT_SOURCE_DIR}/Tests/Curved/CurvedGpu.hlsl
+            DEPENDS Tests/HeightfieldGpu.hlsl Assets/Shaders/SilPOM/Heightfield.azsli Tests/Curved/CurvedGpu.hlsl
+                Tests/Curved/CurvedGpuInterval.hlsli Tests/Curved/CurvedGpuRational.hlsli Tests/Curved/CurvedBoundedDyadic.hlsli VERBATIM)
+        add_custom_target(silpom_gpu_shaders DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/compute.dxil ${CMAKE_CURRENT_BINARY_DIR}/rays.dxil ${CMAKE_CURRENT_BINARY_DIR}/curved.dxil ${CMAKE_CURRENT_BINARY_DIR}/curved-rational.dxil)
         add_dependencies(silpom_gpu_tests silpom_gpu_shaders)
-        add_test(NAME SilPOM.GPU COMMAND silpom_gpu_tests ${CMAKE_CURRENT_BINARY_DIR}/compute.dxil ${CMAKE_CURRENT_BINARY_DIR}/rays.dxil ${CMAKE_CURRENT_BINARY_DIR}/curved.dxil)
+        add_test(NAME SilPOM.GPU COMMAND silpom_gpu_tests ${CMAKE_CURRENT_BINARY_DIR}/compute.dxil ${CMAKE_CURRENT_BINARY_DIR}/rays.dxil ${CMAKE_CURRENT_BINARY_DIR}/curved.dxil ${CMAKE_CURRENT_BINARY_DIR}/curved-rational.dxil)
     endif()
     return()
 endif()
