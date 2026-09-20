@@ -1,0 +1,33 @@
+{
+  "shadowmap_identical": true,
+  "regions": {
+    "artifact": {
+      "xyxy": [
+        120,
+        355,
+        515,
+        515
+      ],
+      "before_dark_pixels": 19203,
+      "after_dark_pixels": 0,
+      "pixel_count": 63200
+    },
+    "legitimate_shadow": {
+      "xyxy": [
+        60,
+        690,
+        220,
+        720
+      ],
+      "before_dark_pixels": 4759,
+      "after_dark_pixels": 4759,
+      "pixel_count": 4800
+    }
+  },
+  "sources": {
+    "user\\SilPOMIssue6TerrainStudy\\shadowmap.dds": "7428436336efe4eb124af7ceeac7af098a8fa91db1dafa533f17a39f4371ea42",
+    "user\\SilPOMIssue6Final\\shadowmap.dds": "7428436336efe4eb124af7ceeac7af098a8fa91db1dafa533f17a39f4371ea42",
+    "user\\SilPOMIssue6TerrainStudy\\fullscreen_shadow.dds": "d8f13f4d9b86f0a6bbefb482d21b13ed7ce6aa2698cffe5b6fec933eb9d1de9f",
+    "user\\SilPOMIssue6Final\\fullscreen_shadow.dds": "f2a64d0dcfd2d9aee18ccb1ad267757be8796818640b11208816475b1c2b0bcd"
+  }
+}
