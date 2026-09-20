@@ -1,0 +1,227 @@
+{
+    "description": "Imported planar tagged faces. Fixed geometric face normals; open edges.",
+    "version": 1,
+    "propertyLayout": {
+        "propertyGroups": [
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/BaseColorPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/VertexColorPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/MetallicPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/RoughnessPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/SpecularPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/NormalPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/OcclusionPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/EmissivePropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/ClearCoatPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/ParallaxPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/OpacityPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/UvPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/IrradiancePropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/GeneralCommonPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/SilhouetteBlockerPropertyGroup.json"
+            },
+            {
+                "name": "surface",
+                "displayName": "SilPOM Surface",
+                "properties": [
+                    {
+                        "name": "heightMap",
+                        "type": "Image",
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomHeightMap"
+                        }
+                    },
+                    {
+                        "name": "reuseTexels",
+                        "displayName": "Reuse adjacent height texels",
+                        "description": "Compile the exact traversal with adjacent-cell texel reuse. Disable only for frozen performance comparisons.",
+                        "type": "Bool",
+                        "defaultValue": true,
+                        "connection": {
+                            "type": "ShaderOption",
+                            "name": "o_silpomReuseTexels"
+                        }
+                    },
+                    {
+                        "name": "heightBounds",
+                        "displayName": "Conservative height bounds",
+                        "description": "RG32F min/max atlas derived from the exact height source.",
+                        "type": "Image",
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomHeightBounds"
+                        }
+                    },
+                    {
+                        "name": "useHierarchy",
+                        "displayName": "Use conservative bounds",
+                        "description": "Use precomputed conservative cell bounds for long traversals; exact height samples and roots remain authoritative.",
+                        "type": "Bool",
+                        "defaultValue": true,
+                        "connection": {
+                            "type": "ShaderOption",
+                            "name": "o_silpomUseHierarchy"
+                        }
+                    },
+                    {
+                        "name": "width",
+                        "type": "Float",
+                        "defaultValue": 2,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomWidth"
+                        }
+                    },
+                    {
+                        "name": "height",
+                        "type": "Float",
+                        "defaultValue": 2,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomHeight"
+                        }
+                    },
+                    {
+                        "name": "scale",
+                        "type": "Float",
+                        "defaultValue": 0.1,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomScale"
+                        }
+                    },
+                    {
+                        "name": "reference",
+                        "type": "Float",
+                        "defaultValue": 0.5,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomReference"
+                        }
+                    },
+                    {
+                        "name": "tileU",
+                        "type": "Float",
+                        "defaultValue": 1,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomTileU"
+                        }
+                    },
+                    {
+                        "name": "tileV",
+                        "type": "Float",
+                        "defaultValue": 1,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomTileV"
+                        }
+                    },
+                    {
+                        "name": "offsetU",
+                        "type": "Float",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomOffsetU"
+                        }
+                    },
+                    {
+                        "name": "offsetV",
+                        "type": "Float",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomOffsetV"
+                        }
+                    },
+                    {
+                        "name": "addressMode",
+                        "type": "UInt",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomAddressMode"
+                        }
+                    },
+                    {
+                        "name": "maxCells",
+                        "type": "UInt",
+                        "defaultValue": 1024,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomMaxCells"
+                        }
+                    },
+                    {
+                        "name": "debug",
+                        "type": "UInt",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomDebug"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "mesh",
+                "properties": [
+                    {
+                        "name": "bufferIndex",
+                        "type": "UInt",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_meshBufferIndex"
+                        }
+                    }
+                ]
+            }
+        ]
+    },
+    "lightingModel": "Standard",
+    "materialShaderDefines": "SilPOMMesh_Defines.azsli",
+    "materialShaderCode": "SilPOMMesh.azsli",
+    "functors": [
+        {
+            "type": "Lua",
+            "args": {
+                "file": "Materials/Types/SilPOM/SilPOM_State.lua"
+            }
+        }
+    ],
+    "uvNameMap": {
+        "UV0": "Tiled",
+        "UV1": "Unwrapped"
+    }
+}

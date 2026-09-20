@@ -1,0 +1,30 @@
+// SPDX-License-Identifier: MIT
+// Clip the ray to a triangular prism BEFORE looking for a heightfield root.
+// UV coordinates are affine on the base triangle; z is displacement in metres.
+// This leaves the existing planar bilinear solver and its root ordering intact.
+#pragma once
+bool SilPomFaceInterval(SilPomRay ray, float2 a, float2 b, float2 c,
+    SP_REF(float) begin, SP_REF(float) end)
+{
+    begin = ray.tMin; end = ray.tMax;
+    float area = (b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
+    if (abs(area) < 1e-10f) return false;
+    float sign = area < 0.0f ? -1.0f : 1.0f;
+    for (uint edge=0; edge<3; ++edge)
+    {
+        float2 p = edge==0 ? a : (edge==1 ? b : c);
+        float2 q = edge==0 ? b : (edge==1 ? c : a);
+        float x=q.x-p.x, y=q.y-p.y;
+        float value=sign*(x*(ray.origin.y-p.y)-y*(ray.origin.x-p.x));
+        float rate=sign*(x*ray.direction.y-y*ray.direction.x);
+        // A tiny shared boundary tolerance covers transport roundoff, not gaps.
+        float padding=abs(area)*1e-6f;
+        if (rate==0.0f) { if (value < -padding) return false; }
+        else
+        {
+            float t=(-padding-value)/rate;
+            if (rate>0.0f) begin=max(begin,t); else end=min(end,t);
+        }
+    }
+    return begin<=end;
+}

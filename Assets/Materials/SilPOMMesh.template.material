@@ -1,0 +1,7 @@
+{
+  "materialType": "Types/SilPOMMesh/SilPOMMesh.materialtype",
+  "materialTypeVersion": 1,
+  "propertyValues": {
+    "surface.useHierarchy": false
+  }
+}

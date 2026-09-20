@@ -8,6 +8,9 @@ if(NOT COMMAND o3de_gem_setup)
         target_compile_options(silpom_core_tests PRIVATE /W4 /fp:precise)
     endif()
     add_test(NAME SilPOM.Core COMMAND silpom_core_tests)
+    add_executable(silpom_face_tests Tests/PlanarFaceTests.cpp)
+    target_compile_features(silpom_face_tests PRIVATE cxx_std_17)
+    add_test(NAME SilPOM.PlanarFaces COMMAND silpom_face_tests)
     set(SILPOM_DXC "" CACHE FILEPATH "DXC executable for optional Windows GPU conformance tests")
     option(SILPOM_DXR_TESTS "Build optional procedural ray tracing conformance test" OFF)
     if(WIN32 AND SILPOM_DXC)
@@ -42,11 +45,14 @@ ly_add_target(NAME ${gem_name}.Static STATIC NAMESPACE Gem
 ly_add_target(NAME ${gem_name} ${PAL_TRAIT_MONOLITHIC_DRIVEN_MODULE_TYPE} NAMESPACE Gem
     FILES_CMAKE silpom_shared_files.cmake BUILD_DEPENDENCIES PRIVATE Gem::${gem_name}.Static)
 if(PAL_TRAIT_BUILD_HOST_TOOLS)
+    ly_add_target(NAME ${gem_name}.Builder GEM_MODULE NAMESPACE Gem FILES_CMAKE silpom_builder_files.cmake
+        INCLUDE_DIRECTORIES PRIVATE Include Source
+        BUILD_DEPENDENCIES PRIVATE Gem::${gem_name}.Static AZ::AssetBuilderSDK AZ::AzToolsFramework AZ::SceneCore 3rdParty::OpenSSL)
     ly_add_target(NAME ${gem_name}.Editor GEM_MODULE NAMESPACE Gem FILES_CMAKE silpom_editor_files.cmake
         INCLUDE_DIRECTORIES PRIVATE Include Source
         BUILD_DEPENDENCIES PRIVATE Gem::${gem_name}.Static AZ::AzToolsFramework Gem::AtomLyIntegration_CommonFeatures.Public)
     ly_create_alias(NAME ${gem_name}.Tools NAMESPACE Gem TARGETS Gem::${gem_name}.Editor)
-    ly_create_alias(NAME ${gem_name}.Builders NAMESPACE Gem TARGETS Gem::${gem_name}.Editor)
+    ly_create_alias(NAME ${gem_name}.Builders NAMESPACE Gem TARGETS Gem::${gem_name}.Editor Gem::${gem_name}.Builder)
 endif()
 ly_create_alias(NAME ${gem_name}.Clients NAMESPACE Gem TARGETS Gem::${gem_name})
 ly_create_alias(NAME ${gem_name}.Servers NAMESPACE Gem TARGETS Gem::${gem_name})

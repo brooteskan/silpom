@@ -1,6 +1,9 @@
 # SilPOM
 
 An optional O3DE Atom Gem for finite, static, planar displacement patches.
+An [FBX planar-face experiment](Docs/PlanarMeshFaces.md) also applies the existing
+solver to tagged mesh faces through one SilPOM Mesh component, with open edges
+for visual inspection. It does not use the preserved curved-surface solver.
 Developed for [TG #40](https://github.com/brooteskan/TG/issues/40).
 See the [validation record](Docs/Validation.md) for tested behavior and remaining
 release-hardening work.
