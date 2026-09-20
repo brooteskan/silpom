@@ -14,5 +14,6 @@ struct VsOutput_SilPom
     float3 worldPosPrev : UV6;
     float4 color0 : UV7;
     sample float2 ndc : UV9;
+    float4 silpomDiagnostic : UV10;
     uint m_instanceId : SV_InstanceID;
 };

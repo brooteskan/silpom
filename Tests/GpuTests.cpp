@@ -18,11 +18,15 @@ int main(int argc,char** argv)
 {
     try
     {
-        if(argc!=3) throw std::runtime_error("Usage: silpom_gpu_tests compute.dxil rays.dxil");
+        if(argc!=2 && argc!=3) throw std::runtime_error("Usage: silpom_gpu_tests compute.dxil [rays.dxil]");
         static_assert(sizeof(SilPomPatch)==48 && sizeof(SilPomRay)==32 && sizeof(SilPomHit)==44);
         ComPtr<IDXGIFactory6> factory;Check(CreateDXGIFactory2(0,IID_PPV_ARGS(&factory)));
         ComPtr<IDXGIAdapter1> adapter;
+#ifdef SILPOM_DXR_TESTS
         ComPtr<ID3D12Device5> device;
+#else
+        ComPtr<ID3D12Device> device;
+#endif
         for(UINT i=0;factory->EnumAdapterByGpuPreference(i,DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,IID_PPV_ARGS(&adapter))!=DXGI_ERROR_NOT_FOUND;++i)
         {
             DXGI_ADAPTER_DESC1 description{};adapter->GetDesc1(&description);
@@ -33,7 +37,12 @@ int main(int argc,char** argv)
         if(!device) throw std::runtime_error("No hardware D3D12 device");
         ComPtr<ID3D12CommandQueue> queue;D3D12_COMMAND_QUEUE_DESC queueDesc{};Check(device->CreateCommandQueue(&queueDesc,IID_PPV_ARGS(&queue)));
         ComPtr<ID3D12CommandAllocator> allocator;Check(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&allocator)));
-        ComPtr<ID3D12GraphicsCommandList4> list;Check(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator.Get(),nullptr,IID_PPV_ARGS(&list)));
+#ifdef SILPOM_DXR_TESTS
+        ComPtr<ID3D12GraphicsCommandList4> list;
+#else
+        ComPtr<ID3D12GraphicsCommandList> list;
+#endif
+        Check(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator.Get(),nullptr,IID_PPV_ARGS(&list)));
         ComPtr<ID3D12Fence> fence;Check(device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&fence)));
         HANDLE event=CreateEvent(nullptr,FALSE,FALSE,nullptr);UINT64 fenceValue=0;
         auto submit=[&]()
@@ -123,6 +132,8 @@ int main(int argc,char** argv)
         ComPtr<ID3D12PipelineState> pipeline;Check(device->CreateComputePipelineState(&pd,IID_PPV_ARGS(&pipeline)));
         bind();list->SetPipelineState(pipeline.Get());list->Dispatch((count+63)/64,1,1);verify("Compute");
 
+        if(argc==2) {std::cout<<"Raster/compute conformance: no DXR used.\n";CloseHandle(event);return 0;}
+#ifdef SILPOM_DXR_TESTS
         D3D12_FEATURE_DATA_D3D12_OPTIONS5 options{};Check(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5,&options,sizeof(options)));
         if(options.RaytracingTier==D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
         {std::cout<<"Procedural RT: SKIPPED (device has no DXR).\n";CloseHandle(event);return 0;}
@@ -162,6 +173,9 @@ int main(int argc,char** argv)
         dispatch.RayGenerationShaderRecord={table->GetGPUVirtualAddress(),32};dispatch.MissShaderTable={table->GetGPUVirtualAddress()+64,32,32};
         dispatch.HitGroupTable={table->GetGPUVirtualAddress()+128,32,32};dispatch.Width=count;dispatch.Height=1;dispatch.Depth=1;
         bind();list->SetComputeRootShaderResourceView(4,tlas->GetGPUVirtualAddress());list->SetPipelineState1(state.Get());list->DispatchRays(&dispatch);verify("Procedural RT");
+#else
+        throw std::runtime_error("DXR tests were not enabled at configure time");
+#endif
         CloseHandle(event);return 0;
     }
     catch(const std::exception& e) {std::cerr<<e.what()<<'\n';return 1;}

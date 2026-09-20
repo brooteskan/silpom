@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_MaterialInputs.azsli>
+#if !SHADOWMAP
 #include "../../../Shaders/SilPOM/Heightfield.azsli"
 
 SilPomPatch SilPomGetPatch(const MaterialParameters params)
@@ -14,6 +15,7 @@ SilPomPatch SilPomGetPatch(const MaterialParameters params)
     GetMaterialTexture(params.m_silpomHeightMap).GetDimensions(p.textureWidth,p.textureHeight);
     return p;
 }
+#endif
 
 VsOutput EvaluateVertexGeometry(VsInput IN, VsSystemValues SV, const MaterialParameters params)
 {
@@ -26,6 +28,15 @@ VsOutput EvaluateVertexGeometry(VsInput IN, VsSystemValues SV, const MaterialPar
 #endif
     float4x4 objectToWorld=GetObjectToWorldMatrix(SV);
     float4x4 vp=GetViewProjectionMatrix(SV);
+#if SHADOWMAP
+    // Shadow geometry is the original finite rectangle, never the expanded
+    // camera coverage. This variant does not even include the height kernel.
+    float3 flat=float3(IN.position.xy*float2(params.m_silpomWidth,params.m_silpomHeight)*.5,0);
+    float4 world=mul(objectToWorld,float4(flat,1));
+    output.position=mul(vp,world);
+    output.worldPosition=world.xyz;
+    return output;
+#else
     float2 low=float2(1.0,1.0), high=float2(-1.0,-1.0);
     float h0=-params.m_silpomScale*params.m_silpomReference;
     float h1=params.m_silpomScale*(1.0-params.m_silpomReference);
@@ -49,6 +60,7 @@ VsOutput EvaluateVertexGeometry(VsInput IN, VsSystemValues SV, const MaterialPar
     output.normal=float3(0,0,1); output.tangent=float4(1,0,0,1);
     output.color0=float4(1,1,1,1);
     return output;
+#endif
 }
 
 #if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE || MATERIALPIPELINE_SHADER_HAS_GEOMETRIC_PIXEL_STAGE
@@ -58,11 +70,15 @@ bool NeedsTangentFrame() { return true; }
 
 PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN, VsSystemValues SV, bool isFrontFace, const MaterialParameters params)
 {
+#if SHADOWMAP
+    // Atom selects shadow_customZ together with camera custom depth. Preserve
+    // hardware-interpolated shadow depth; no ray, height fetch or clipping.
+    PixelGeometryData geo=(PixelGeometryData)0;
+    geo.positionWS=IN.worldPosition;
+    return geo;
+#else
     SilPomPatch p=SilPomGetPatch(params);
     float nearZ=1.0;
-#if SHADOWMAP
-    nearZ=0.0;
-#endif
     float4 nearH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,nearZ,1));
     float4 midH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,.5,1));
     float3 origin=nearH.xyz/nearH.w;
@@ -76,6 +92,7 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN, VsSystemValues SV, bo
     ray.direction=mul(inverseRotation,direction);
     ray.tMin=0; ray.tMax=1e7;
     SilPomHit hit=SilPomIntersect(GetMaterialTexture(params.m_silpomHeightMap),p,ray);
+    IN.silpomDiagnostic=float4(float(hit.status),float(hit.cells),hit.t,0);
     // Exhaustion is conspicuous, never silently treated as a physical miss.
     if(hit.status==SP_MISS) discard;
     if(hit.status!=SP_HIT)
@@ -102,6 +119,7 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN, VsSystemValues SV, bo
         geo.bitangents[i]=normalize(mul((float3x3)model,float3(0,1,0)));
     }
     return geo;
+#endif
 }
 #endif
 
@@ -121,11 +139,29 @@ COMMON_OPTIONS_EMISSIVE()
 Surface EvaluateSurface(VsOutput IN, VsSystemValues SV, PixelGeometryData geo, const MaterialParameters params)
 {
     bool failed=geo.isDisplacementClipped;
+    float3 geometricNormal=geo.vertexNormal;
     // The supplied normal map already describes the full relief slope in the planar frame.
     if(o_normal_useTexture) geo.vertexNormal=normalize(cross(geo.tangents[0],geo.bitangents[0]));
     Surface surface=EvaluateSurface_StandardPBR(IN,SV,geo,params);
-    if(failed) { surface.emissiveLighting=float3(8,0,8); surface.albedo=float3(1,0,1); }
-    if(params.m_silpomDebug==1) surface.emissiveLighting=geo.vertexNormal*.5+.5;
+    if(failed)
+    {
+        // Failures have priority over every optional debug view.
+        float3 color=IN.silpomDiagnostic.x==float(SP_INVALID)?float3(1,1,0):float3(1,0,1);
+        surface.emissiveLighting=color*8; surface.albedo=color;
+    }
+    else if(params.m_silpomDebug!=0)
+    {
+        float3 color=float3(0,1,0); // 5: hit mask, failures retain their colors
+        if(params.m_silpomDebug==1) color=geometricNormal*.5+.5;
+        if(params.m_silpomDebug==2)
+        {
+            float work=saturate(IN.silpomDiagnostic.y/max(float(params.m_silpomMaxCells),1.0));
+            color=float3(work,1-work,0);
+        }
+        if(params.m_silpomDebug==3) color=float3(frac(geo.uvs[0]),0);
+        if(params.m_silpomDebug==4) color=float3(IN.position.z,IN.position.z,IN.position.z);
+        surface.albedo=float3(0,0,0); surface.emissiveLighting=color;
+    }
     return surface;
 }
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_LightingEval.azsli>

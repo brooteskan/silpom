@@ -50,11 +50,13 @@ quad covers the conservative projection of the 3D bounds. Ambiguous near/eye-pla
 projection falls back to viewport coverage. No scene-depth reconstruction or
 off-screen framebuffer data is required. Bounds are set explicitly for culling.
 
-Custom-Z material variants write actual hits in camera depth, forward color and
-shadow maps. Shadow rays start at conventional near Z; camera rays start at
-reversed near Z. The NDC interpolant is sample-qualified for MSAA. Misses discard
-in all visibility passes. Static camera motion reconstructs position from hit
-depth; the stock mesh motion draw is disabled because its vertices are proxies.
+Custom-Z material variants write actual hits in camera depth and forward color.
+Camera rays start at reversed near Z. The NDC interpolant is sample-qualified for
+MSAA, and misses discard in camera passes. The `SHADOWMAP` specialization instead
+transforms the original finite flat rectangle and preserves raster shadow depth;
+it does not include or call the intersection kernel. There is no relief-specific
+self-shadow tracing. Static camera motion reconstructs position from hit depth;
+the stock mesh motion draw is disabled because its vertices are proxies.
 Reflection-probe capture and triangle-based RT registration are disabled.
 
 ## Future procedural ray tracing

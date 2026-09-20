@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #include "Module.h"
+#include "PlanarBenchmark.h"
 #include <Atom/Feature/Utils/EditorRenderComponentAdapter.h>
 #include <AzCore/Serialization/EditContext.h>
 namespace SilPOM
@@ -37,7 +38,7 @@ public:
                     ->DataElement(AZ::Edit::UIHandlers::Default,&PatchConfig::m_offsetV,"Offset V","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&PatchConfig::m_maxCells,"Maximum cells","Exhaustion is displayed in magenta")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&PatchConfig::m_addressMode,"Address mode","0 repeat; 1 clamp")
-                    ->DataElement(AZ::Edit::UIHandlers::Default,&PatchConfig::m_debug,"Debug","0 shaded; 1 normal");
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&PatchConfig::m_debug,"Debug","0 shaded; 1 normal; 2 cell budget; 3 UV; 4 depth; 5 hit mask. Magenta exhausted; yellow invalid.");
             }
         }
     }
@@ -47,7 +48,13 @@ class EditorModule final : public Module
 public:
     AZ_RTTI(EditorModule,"{4C784C12-E407-421E-A060-D9C669FCDB54}",Module);
     AZ_CLASS_ALLOCATOR(EditorModule,AZ::SystemAllocator);
-    EditorModule() {m_descriptors.push_back(EditorPatchComponent::CreateDescriptor());}
+    EditorModule()
+    {
+        m_descriptors.push_back(EditorPatchComponent::CreateDescriptor());
+        m_descriptors.push_back(PlanarBenchmark::CreateDescriptor());
+    }
+    AZ::ComponentTypeList GetRequiredSystemComponents() const override
+    {return {azrtti_typeid<PlanarBenchmark>()};}
 };
 }
 AZ_DECLARE_MODULE_CLASS(Gem_SilPOM_Editor,SilPOM::EditorModule)

@@ -7,8 +7,11 @@ release-hardening work.
 
 The raster adapter draws conservative coverage and intersects a bounded bilinear
 heightfield per sample. It shades and writes depth at the actual intersection;
-misses reveal the background. Camera depth, color and shadow passes use the same
-intersection implementation. Coverage does not depend on off-screen image data.
+misses reveal the background. Camera depth and color use the same intersection
+implementation. Shadows use the original flat quad, with **no heightfield
+intersection**. Expanded camera coverage is never a shadow caster. Coverage does
+not depend on off-screen image data. See [planar A/B testing](Docs/PlanarAB.md) for
+the issue #3 comparison harness and its acceptance limitations.
 
 ## Add to an O3DE project
 
@@ -46,8 +49,10 @@ or to `SILPOM_CAPTURE_DIR` if set. The script does not save DefaultLevel.
 `Assets/Shaders/SilPOM/Heightfield.azsli` contains the shared intersection kernel.
 It traverses texel cells in ray order and solves each bilinear cell analytically.
 The result distinguishes hit, miss, budget exhaustion and invalid input.
-Magenta indicates raster traversal failure; increase the cell budget or reduce
-the footprint complexity before accepting a scene.
+Magenta indicates exhausted traversal; yellow indicates invalid input. These
+override optional debug views (1 normal, 2 cell-budget heatmap, 3 UV, 4 depth,
+5 hit mask). Increase the budget or correct invalid inputs before accepting a
+scene. View 0 is ordinary material shading with failure colors still enabled.
 
 The portable descriptor and optional Atom procedural intersection shader allow
 future BLAS/TLAS integration without changing the authored surface. Native DXR
@@ -66,8 +71,10 @@ ctest --test-dir build/core -C Release --output-on-failure
 ```
 
 On Windows, configure with `-DSILPOM_DXC=<absolute-path-to-dxc.exe>` to additionally
-build native D3D12 compute and procedural DXR tests. The GPU test explicitly
-reports when ray tracing is unsupported. CPU tests compare the shared shader
+build native D3D12 compute tests without requiring DXR. Add
+`-DSILPOM_DXR_TESTS=ON` only for the separate optional procedural DXR test.
+The planar raster path does not build or invoke ray-tracing acceleration
+structures. CPU tests compare the shared shader
 kernel against an independent double-precision oracle, including finite ray
 intervals, tangent hits, camera entry, UV seams and signed displacement.
 

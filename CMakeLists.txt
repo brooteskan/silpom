@@ -9,18 +9,27 @@ if(NOT COMMAND o3de_gem_setup)
     endif()
     add_test(NAME SilPOM.Core COMMAND silpom_core_tests)
     set(SILPOM_DXC "" CACHE FILEPATH "DXC executable for optional Windows GPU conformance tests")
+    option(SILPOM_DXR_TESTS "Build optional procedural ray tracing conformance test" OFF)
     if(WIN32 AND SILPOM_DXC)
         add_executable(silpom_gpu_tests Tests/GpuTests.cpp)
         target_compile_features(silpom_gpu_tests PRIVATE cxx_std_17)
         target_compile_definitions(silpom_gpu_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
         target_link_libraries(silpom_gpu_tests PRIVATE d3d12 dxgi dxguid)
-        add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/compute.dxil ${CMAKE_CURRENT_BINARY_DIR}/rays.dxil
+        add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/compute.dxil
             COMMAND "${SILPOM_DXC}" -T cs_6_3 -E Main -Fo ${CMAKE_CURRENT_BINARY_DIR}/compute.dxil ${CMAKE_CURRENT_SOURCE_DIR}/Tests/HeightfieldGpu.hlsl
-            COMMAND "${SILPOM_DXC}" -T lib_6_3 -D SILPOM_RT=1 -Fo ${CMAKE_CURRENT_BINARY_DIR}/rays.dxil ${CMAKE_CURRENT_SOURCE_DIR}/Tests/HeightfieldGpu.hlsl
             DEPENDS Tests/HeightfieldGpu.hlsl Assets/Shaders/SilPOM/Heightfield.azsli VERBATIM)
-        add_custom_target(silpom_gpu_shaders DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/compute.dxil ${CMAKE_CURRENT_BINARY_DIR}/rays.dxil)
+        add_custom_target(silpom_gpu_shaders DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/compute.dxil)
         add_dependencies(silpom_gpu_tests silpom_gpu_shaders)
-        add_test(NAME SilPOM.GPU COMMAND silpom_gpu_tests ${CMAKE_CURRENT_BINARY_DIR}/compute.dxil ${CMAKE_CURRENT_BINARY_DIR}/rays.dxil)
+        add_test(NAME SilPOM.GPU COMMAND silpom_gpu_tests ${CMAKE_CURRENT_BINARY_DIR}/compute.dxil)
+        if(SILPOM_DXR_TESTS)
+            target_compile_definitions(silpom_gpu_tests PRIVATE SILPOM_DXR_TESTS=1)
+            add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/rays.dxil
+                COMMAND "${SILPOM_DXC}" -T lib_6_3 -D SILPOM_RT=1 -Fo ${CMAKE_CURRENT_BINARY_DIR}/rays.dxil ${CMAKE_CURRENT_SOURCE_DIR}/Tests/HeightfieldGpu.hlsl
+                DEPENDS Tests/HeightfieldGpu.hlsl Assets/Shaders/SilPOM/Heightfield.azsli VERBATIM)
+            add_custom_target(silpom_rt_shader DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/rays.dxil)
+            add_dependencies(silpom_gpu_tests silpom_rt_shader)
+            add_test(NAME SilPOM.DXR COMMAND silpom_gpu_tests ${CMAKE_CURRENT_BINARY_DIR}/compute.dxil ${CMAKE_CURRENT_BINARY_DIR}/rays.dxil)
+        endif()
     endif()
     return()
 endif()

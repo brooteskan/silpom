@@ -84,7 +84,8 @@ void PatchController::Reflect(AZ::ReflectContext* context)
         bc->EBus<PatchRequestBus>("SilPomPatchRequestBus")
             ->Attribute(AZ::Script::Attributes::Module,"silpom")
             ->Attribute(AZ::Script::Attributes::Scope,AZ::Script::Attributes::ScopeFlags::Common)
-            ->Event("GetStatus",&PatchRequests::GetStatus)->Event("IsReady",&PatchRequests::IsReady);
+            ->Event("GetStatus",&PatchRequests::GetStatus)->Event("IsReady",&PatchRequests::IsReady)
+            ->Event("SetCameraVisible",&PatchRequests::SetCameraVisible)->Event("SetDebug",&PatchRequests::SetDebug);
 }
 void PatchComponent::Reflect(AZ::ReflectContext* context)
 {
@@ -180,8 +181,17 @@ bool PatchController::Prepare()
     m_meshProcessor->SetLocalAabb(m_mesh,AZ::Aabb::CreateFromMinMax(
         AZ::Vector3(-c.m_width*scale*.5f,-c.m_height*scale*.5f,AZStd::min(a,b)-1e-5f),
         AZ::Vector3(c.m_width*scale*.5f,c.m_height*scale*.5f,AZStd::max(a,b)+1e-5f)));
-    m_status="Ready: raster + hit depth + shadow; static patches; RT proxy disabled";
+    m_status="Ready: full-resolution relief + hit depth; flat quad shadows; RT disabled";
     return true;
+}
+void PatchController::SetDebug(AZ::u32 mode)
+{
+    m_configuration.m_debug=AZStd::min(mode,5u);
+    if(m_material)
+    {
+        m_material->SetPropertyValue(m_material->FindPropertyIndex(AZ::Name("surface.debug")),m_configuration.m_debug);
+        m_material->Compile();
+    }
 }
 void PatchController::OnTick(float,AZ::ScriptTimePoint)
 {
@@ -198,6 +208,11 @@ void PatchController::OnTick(float,AZ::ScriptTimePoint)
         auto* rhi=AZ::RHI::RHISystemInterface::Get();
         const auto tag=rhi->GetDrawListTagRegistry()->FindTag(AZ::Name("motion"));
         if(tag.IsValid()) m_meshProcessor->SetDrawItemEnabled(m_mesh,tag,false);
+        for(const char* name:{"depth","forward"})
+        {
+            const auto cameraTag=rhi->GetDrawListTagRegistry()->FindTag(AZ::Name(name));
+            if(cameraTag.IsValid()) m_meshProcessor->SetDrawItemEnabled(m_mesh,cameraTag,m_cameraVisible);
+        }
         m_material->Compile();
     }
 }

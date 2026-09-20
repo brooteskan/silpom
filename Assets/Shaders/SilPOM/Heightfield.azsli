@@ -135,23 +135,37 @@ SilPomHit SilPomIntersect(SP_TEX texture, SilPomPatch p, SilPomRay ray)
         float h10 = SilPomTexel(texture, p, ix + 1, iy);
         float h01 = SilPomTexel(texture, p, ix, iy + 1);
         float h11 = SilPomTexel(texture, p, ix + 1, iy + 1);
-        float b = h10 - h00, c = h01 - h00, d = h11 - h10 - h01 + h00;
-        float fx = qx - float(ix), fy = qy - float(iy);
-        float sx = qdx * dt, sy = qdy * dt;
-        float qa = -p.scale * d * sx * sy;
-        float qb = ray.direction.z * dt - p.scale * (b*sx + c*sy + d*(fx*sy + fy*sx));
-        float qc = (ray.origin.z + ray.direction.z*t) - p.scale * (h00 + b*fx + c*fy + d*fx*fy - p.reference);
-        float root = 0.0f;
-        if (SilPomRoot(qa, qb, qc, root))
+        // A bilinear cell stays inside the range of its four corners. Most
+        // traversed cells cannot meet the ray's z interval: avoid normalization,
+        // divisions and the quadratic solve for those cells. The padding covers
+        // cell-edge rounding and is deliberately larger than root tolerance.
+        float lowHeight = min(min(h00,h10),min(h01,h11));
+        float highHeight = max(max(h00,h10),max(h01,h11));
+        float z0 = ray.origin.z + ray.direction.z*t;
+        float z1 = z0 + ray.direction.z*dt;
+        float bound0 = p.scale*(lowHeight-p.reference);
+        float bound1 = p.scale*(highHeight-p.reference);
+        float padding = 1e-5f*max(1.0f,max(abs(p.scale),max(abs(z0),abs(z1))));
+        if (max(z0,z1)+padding >= min(bound0,bound1) && min(z0,z1)-padding <= max(bound0,bound1))
         {
-            hit.status = SP_HIT;
-            hit.t = t + root * dt;
-            hit.position = ray.origin + ray.direction * hit.t;
-            hit.uv = float2((hit.position.x / p.width + .5f) * p.tileU + p.offsetU,
-                (hit.position.y / p.height + .5f) * p.tileV + p.offsetV);
-            hit.normal = normalize(float3(-p.scale * (b + d*(fy + sy*root)) * du,
-                -p.scale * (c + d*(fx + sx*root)) * dv, 1.0f));
-            return hit;
+            float b = h10 - h00, c = h01 - h00, d = h11 - h10 - h01 + h00;
+            float fx = qx - float(ix), fy = qy - float(iy);
+            float sx = qdx * dt, sy = qdy * dt;
+            float qa = -p.scale * d * sx * sy;
+            float qb = ray.direction.z * dt - p.scale * (b*sx + c*sy + d*(fx*sy + fy*sx));
+            float qc = z0 - p.scale * (h00 + b*fx + c*fy + d*fx*fy - p.reference);
+            float root = 0.0f;
+            if (SilPomRoot(qa, qb, qc, root))
+            {
+                hit.status = SP_HIT;
+                hit.t = t + root * dt;
+                hit.position = ray.origin + ray.direction * hit.t;
+                hit.uv = float2((hit.position.x / p.width + .5f) * p.tileU + p.offsetU,
+                    (hit.position.y / p.height + .5f) * p.tileV + p.offsetV);
+                hit.normal = normalize(float3(-p.scale * (b + d*(fy + sy*root)) * du,
+                    -p.scale * (c + d*(fx + sx*root)) * dv, 1.0f));
+                return hit;
+            }
         }
         if (dt >= end - t) { return hit; }
         qx += qdx * dt; qy += qdy * dt; t += dt;

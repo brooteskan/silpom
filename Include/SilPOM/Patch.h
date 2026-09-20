@@ -29,6 +29,9 @@ public:
     using BusIdType=AZ::EntityId;
     virtual AZStd::string GetStatus() const=0;
     virtual bool IsReady() const=0;
+    // The A/B reference uses this same patch as its coarse shadow caster.
+    virtual void SetCameraVisible(bool visible)=0;
+    virtual void SetDebug(AZ::u32 mode)=0;
 };
 using PatchRequestBus=AZ::EBus<PatchRequests>;
 
@@ -52,6 +55,8 @@ public:
     {return m_mesh.IsValid() && !IsReady()?AZStd::string("Waiting for mesh GPU resources"):m_status;}
     bool IsReady() const override
     {return m_meshProcessor && m_mesh.IsValid() && bool(m_meshProcessor->GetModel(m_mesh));}
+    void SetCameraVisible(bool visible) override {m_cameraVisible=visible;}
+    void SetDebug(AZ::u32 mode) override;
     PatchConfig m_configuration;
 private:
     void OnTick(float,AZ::ScriptTimePoint) override;
@@ -69,6 +74,7 @@ private:
     AZ::Data::Instance<AZ::RPI::Material> m_material;
     AZStd::string m_status="Inactive";
     bool m_dirty=true;
+    bool m_cameraVisible=true;
 };
 class PatchComponent final : public AzFramework::Components::ComponentAdapter<PatchController,PatchConfig>
 {
