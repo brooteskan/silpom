@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+// Lightweight descriptor shared by the flat shadow caster and camera solver.
+struct SilPomMeshFace
+{
+    float3 origin, du, dv, normal;
+    float2 uv0, uv1, uv2;
+    float3 d0, d1, d2;
+};

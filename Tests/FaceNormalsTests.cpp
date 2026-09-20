@@ -1,18 +1,8 @@
 // SPDX-License-Identifier: MIT
 #include "../Include/SilPOM/FaceNormals.h"
-#include "CpuShader.h"
+#include "BlendedFaceCpu.h"
 #include <iostream>
 #include <cstdlib>
-namespace SilPOM::Cpu {
-#define SP_REF(T) T&
-#define SP_TEX const Texture&
-#define SP_ZERO(T) T{}
-#include "../Assets/Shaders/SilPOM/PlanarFace.azsli"
-#include "../Assets/Shaders/SilPOM/BlendedFace.azsli"
-#undef SP_REF
-#undef SP_TEX
-#undef SP_ZERO
-}
 using namespace SilPOM::FaceNormals;
 void Require(bool b,const char* m) { if(!b) {std::cerr<<m<<'\n';std::exit(1);} }
 int main()

@@ -1,5 +1,5 @@
 {
-    "description": "Imported planar tagged faces. Fixed geometric face normals; open edges.",
+    "description": "Planar tagged faces with blended edge directions, flat external shadows and local directional relief shadows.",
     "version": 1,
     "propertyLayout": {
         "propertyGroups": [
@@ -180,6 +180,19 @@
                         "connection": {
                             "type": "ShaderInput",
                             "name": "m_silpomMaxCells"
+                        }
+                    },
+                    {
+                        "name": "reliefShadowSteps",
+                        "displayName": "Relief shadow steps",
+                        "description": "Local directional-light shadows, 0 disables. External shadows always use base triangles.",
+                        "type": "UInt",
+                        "defaultValue": 16,
+                        "min": 0,
+                        "max": 64,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomReliefShadowSteps"
                         }
                     },
                     {

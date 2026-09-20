@@ -2,9 +2,23 @@
 #pragma once
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_MaterialInputs.azsli>
 #include <Atom/Features/Bindless.azsli>
+#include "../../../Shaders/SilPOM/MeshFace.azsli"
+#if !SHADOWMAP
 #include "../../../Shaders/SilPOM/Heightfield.azsli"
 #include "../../../Shaders/SilPOM/PlanarFace.azsli"
 #include "../../../Shaders/SilPOM/BlendedFace.azsli"
+#include "../../../Shaders/SilPOM/ReliefShadow.azsli"
+#endif
+#if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
+// Per-fragment state passed from geometry evaluation to direct lighting.
+// HLSL static variables are private to a shader invocation, not shared storage.
+static SilPomMeshFace silpomLitFace;
+static SilPomPatch silpomLitPatch;
+static float2 silpomLitUv;
+static float3x3 silpomLitRotation;
+static float3 silpomLitOriginWS;
+static bool silpomLitValid=false;
+#endif
 SilPomMeshFace SilPomLoadFace(uint buffer, uint index)
 {
     SilPomMeshFace f;
@@ -30,6 +44,15 @@ VsOutput EvaluateVertexGeometry(VsInput IN, VsSystemValues SV, const MaterialPar
     output.faceIndex=(uint)round(IN.position.z);
     SilPomMeshFace f=SilPomLoadFace(params.m_meshBufferIndex,output.faceIndex);
     float4x4 model=GetObjectToWorldMatrix(SV),vp=GetViewProjectionMatrix(SV);
+#if SHADOWMAP
+    // The coverage quad becomes one original triangle plus a degenerate one.
+    // No height samples, screen rectangle, or intersection in the shadow pass.
+    float2 uv=IN.position.y>0?f.uv2:(IN.position.x>0?f.uv1:f.uv0);
+    float3 basePosition=f.origin+f.du*(uv.x-f.uv0.x)+f.dv*(uv.y-f.uv0.y);
+    output.worldPosition=mul(model,float4(basePosition,1)).xyz;
+    output.position=mul(vp,float4(output.worldPosition,1));
+    return output;
+#else
     float2 low=float2(1,1),high=float2(-1,-1); bool ambiguous=false;
     for(uint i=0;i<6;++i)
     {
@@ -47,6 +70,7 @@ VsOutput EvaluateVertexGeometry(VsInput IN, VsSystemValues SV, const MaterialPar
     output.position=float4(output.ndc,.5,1); output.normal=float3(0,0,1);
     output.tangent=float4(1,0,0,1); output.color0=1;
     return output;
+#endif
 }
 
 #if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE || MATERIALPIPELINE_SHADER_HAS_GEOMETRIC_PIXEL_STAGE
@@ -55,12 +79,14 @@ bool ShouldHandleParallax(){return false;}
 bool NeedsTangentFrame(){return true;}
 PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool isFrontFace,const MaterialParameters params)
 {
+#if SHADOWMAP
+    PixelGeometryData geo=(PixelGeometryData)0;
+    geo.positionWS=IN.worldPosition;
+    return geo;
+#else
     SilPomMeshFace f=SilPomLoadFace(params.m_meshBufferIndex,IN.faceIndex);
     float4x4 model=GetObjectToWorldMatrix(SV);
     float nearZ=1;
-#if SHADOWMAP
-    nearZ=0;
-#endif
     float4 nearH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,nearZ,1));
     float4 midH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,.5,1));
     float4 farH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,1-nearZ,1));
@@ -98,6 +124,12 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     geo.vertexNormal=normalize(mul((float3x3)model,normal));
     geo.isFrontFace=dot(normal,direction)<0; geo.isDisplacementClipped=failed;
     float2 uv=float2((hit.uv.x-params.m_silpomOffsetU)/params.m_silpomTileU,(hit.uv.y-params.m_silpomOffsetV)/params.m_silpomTileV);
+#if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
+    silpomLitFace=f; silpomLitPatch=p; silpomLitUv=uv;
+    silpomLitRotation=(float3x3)model;
+    silpomLitOriginWS=mul(model,float4(f.origin,1)).xyz;
+    silpomLitValid=!failed;
+#endif
     float3 tangent=normalize(f.du-normal*dot(normal,f.du));
     float handedness=dot(cross(normal,tangent),f.dv)<0?-1:1;
     for(uint i=0;i<UvSetCount;++i)
@@ -106,6 +138,7 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
         geo.bitangents[i]=handedness*normalize(cross(geo.vertexNormal,geo.tangents[i]));
     }
     return geo;
+#endif
 }
 #endif
 #if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
@@ -132,6 +165,7 @@ Surface EvaluateSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,cons
     return surface;
 }
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_LightingEval.azsli>
+#include "SilPOMMesh_DirectionalLighting.azsli"
 #elif MATERIALPIPELINE_SHADER_HAS_GEOMETRIC_PIXEL_STAGE
 void EvaluateSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,const MaterialParameters params){}
 #endif

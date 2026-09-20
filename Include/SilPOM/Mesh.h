@@ -35,6 +35,7 @@ public:
     AZStd::vector<MeshMaterialBinding> m_materials;
     AZStd::vector<MeshProfileBinding> m_profiles;
     AZ::u32 m_maxCells = 4096;
+    AZ::u32 m_reliefShadowSteps = 16;
 };
 class MeshRequests : public AZ::EBusTraits
 {

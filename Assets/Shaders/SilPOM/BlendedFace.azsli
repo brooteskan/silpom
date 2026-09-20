@@ -3,12 +3,11 @@
 // Restricted extension for planar base triangles with generated corner normals.
 // D(u,v) is AFFINE, not normalized after interpolation: this keeps the six
 // displaced corner extrema conservative, and makes shared edges identical.
-struct SilPomMeshFace
-{
-    float3 origin, du, dv, normal;
-    float2 uv0, uv1, uv2;
-    float3 d0, d1, d2;
-};
+#include "MeshFace.azsli"
+// A planar seed need not intersect the deformed surface. Newton rejection is
+// not traversal-budget exhaustion and must not be published as diagnostic
+// geometry at the bounding-box entry point.
+static const uint SP_REFINE_REJECTED=4;
 float SilPomUvArea(SilPomMeshFace f)
 {
     return (f.uv1.x-f.uv0.x)*(f.uv2.y-f.uv0.y)-(f.uv1.y-f.uv0.y)*(f.uv2.x-f.uv0.x);
@@ -67,7 +66,7 @@ uint SilPomRefineFace(SP_TEX texture, SilPomPatch p, SilPomMeshFace f,
         }
         float3 U=f.du+dU*h.x+D*h.y,V=f.dv+dV*h.x+D*h.z;
         float determinant=dot(U,cross(V,ray.direction));
-        if(abs(determinant)<1e-9f) return SP_EXHAUSTED;
+        if(abs(determinant)<1e-9f) return SP_REFINE_REJECTED;
         float deltaU=-dot(residual,cross(V,ray.direction))/determinant;
         float deltaV=-dot(U,cross(residual,ray.direction))/determinant;
         float deltaT=dot(U,cross(V,residual))/determinant;
@@ -76,9 +75,9 @@ uint SilPomRefineFace(SP_TEX texture, SilPomPatch p, SilPomMeshFace f,
         float damping=step>.25f?.25f/step:1.0f;
         uv.x+=deltaU*damping;uv.y+=deltaV*damping;t+=deltaT*damping;
         if(uv.x<low.x-p.width || uv.x>low.x+2*p.width || uv.y<low.y-p.height || uv.y>low.y+2*p.height)
-            return SP_EXHAUSTED;
+            return SP_REFINE_REJECTED;
     }
-    return SP_EXHAUSTED;
+    return SP_REFINE_REJECTED;
 }
 SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilPomRay worldRay,float2 low)
 {
@@ -150,7 +149,8 @@ SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilP
                 }
                 break;
             }
-            if(status==SP_EXHAUSTED) unresolved=true;
+            // Rejected/outside seeds contribute no geometry. Continue looking
+            // for candidates; only actual work-budget limits set unresolved.
             ray.tMin=hit.t+max(1e-5f,abs(hit.t)*1e-6f);
             if(candidate==7) unresolved=true;
         }

@@ -76,7 +76,9 @@ public:
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_surface,"Mesh surface","Export .fbx and .silpom.json together; select the compiled .silpommesh")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_materials,"Materials","One assignment per authored material identity")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_profiles,"Displacement profiles","Profile IDs come from Blender face tags")
-                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_maxCells,"Maximum cells","Planar traversal budget per ray; exhaustion is magenta");
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_maxCells,"Maximum cells","Planar traversal budget per ray; exhaustion is magenta")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_reliefShadowSteps,"Relief shadow steps","Local directional-light relief shadows: 0 disables, 1-64 samples. External shadows always use the base mesh.")
+                    ->Attribute(AZ::Edit::Attributes::Min,0)->Attribute(AZ::Edit::Attributes::Max,64);
                 edit->Class<MeshMaterialBinding>("Material slot","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshMaterialBinding::m_id,"Authored material ID","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshMaterialBinding::m_material,"Material","StandardPBR material; planar face variant is managed automatically");

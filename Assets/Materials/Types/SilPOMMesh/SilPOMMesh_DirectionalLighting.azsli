@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+// Keep the engine's light/BRDF implementation, replacing only directional
+// visibility. Other lighting, IBL and emissive are evaluated normally.
+#define ApplyDirectionalLights ApplyDirectionalLights_StandardSilPom
+#include <Atom/Features/Pipeline/Forward/ForwardPassDirectionalLights.azsli>
+#undef ApplyDirectionalLights
+
+void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,float4 screenUv)
+{
+    if(!silpomLitValid)
+    {
+        ApplyDirectionalLights_StandardSilPom(surface,lightingData,screenUv);
+        return;
+    }
+    MaterialParameters params=GetMaterialParameters();
+    float3 baseNormal=normalize(mul(silpomLitRotation,silpomLitFace.normal));
+    float signedHeight=dot(surface.position-silpomLitOriginWS,baseNormal);
+    for(uint index=0;index<SceneSrg::m_directionalLightCount;++index)
+    {
+        DirectionalLight srgLight=SceneSrg::m_directionalLights[index];
+        if(!IsSameLightChannel(srgLight.m_lightingChannelMask,surface.lightingChannels)) continue;
+        float3 toLight=normalize(-srgLight.m_direction);
+        real visibility=1;
+#if ENABLE_SHADOWS
+        if(o_enableShadows && index==ViewSrg::m_shadowIndexDirectionalLight)
+        {
+            float advance=SilPomFlatReceiverAdvance(signedHeight,dot(toLight,baseNormal),1e-4f);
+            // Bypass the fullscreen shadow result: its receiver is the displaced
+            // camera depth, which can lie below our flat caster.
+            DirectionalShadowCalculator calc=DirectionalLightShadow::MakeShadowCalculator(
+                index,surface.position+toLight*advance,baseNormal);
+            visibility=calc.GetVisibility();
+        }
+        if(o_enableShadows && params.m_silpomReliefShadowSteps>0 && visibility>0)
+        {
+            float2 low=min(silpomLitFace.uv0,min(silpomLitFace.uv1,silpomLitFace.uv2));
+            visibility*=SilPomReliefVisibility(GetMaterialTexture(params.m_silpomHeightMap),
+                silpomLitPatch,silpomLitFace,silpomLitUv,low,
+                mul(transpose(silpomLitRotation),toLight),params.m_silpomReliefShadowSteps);
+        }
+#endif
+        DirectionalLightUtil light=DirectionalLightUtil::Init(srgLight,surface);
+        light.Apply(srgLight,surface,visibility,lightingData);
+    }
+}

@@ -1,0 +1,41 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+// Local low-relief approximation: freeze the interpolated displacement
+// direction at the visible point, then march the light ray through its height
+// texture. Continue the texture over triangle edges to avoid triangulation
+// seams. This is not a trace against other faces or arbitrary curved surfaces.
+float SilPomReliefVisibility(SP_TEX texture, SilPomPatch p, SilPomMeshFace f,
+    float2 uv, float2 low, float3 toLight, uint steps)
+{
+    if(steps==0 || abs(p.scale)<1e-8f) return 1;
+    float3 D=SilPomFaceDirection(f,uv);
+    float determinant=dot(f.du,cross(f.dv,D));
+    if(abs(determinant)<1e-10f) return 1;
+    float uRate=dot(toLight,cross(f.dv,D))/determinant;
+    float vRate=dot(f.du,cross(toLight,D))/determinant;
+    float hRate=dot(f.du,cross(f.dv,toLight))/determinant;
+    float texelRate=max(abs(uRate*p.tileU/p.width)*p.textureWidth,
+                        abs(vRate*p.tileV/p.height)*p.textureHeight);
+    if(texelRate<1e-8f) return hRate>=0?1:0;
+    float start=SilPomFaceHeight(texture,p,uv,low).x;
+    float top=max(-p.scale*p.reference,p.scale*(1-p.reference));
+    float bias=max(1e-5f,abs(p.scale)*.002f);
+    // At most one texel per step; early exit once above the relief envelope.
+    // A finite local radius keeps grazing lights from tracing entire meshes.
+    for(uint i=1;i<=min(steps,64u);++i)
+    {
+        float t=float(i)/texelRate;
+        float rayHeight=start+hRate*t+bias;
+        if(hRate>0 && rayHeight>=top) return 1;
+        float2 sampleUv=float2(uv.x+uRate*t,uv.y+vRate*t);
+        if(SilPomFaceHeight(texture,p,sampleUv,low).x>rayHeight) return 0;
+    }
+    return 1;
+}
+
+// Sample the external shadow above the flat proxy, along the light ray.
+// Otherwise the proxy would incorrectly shadow every recessed visible point.
+float SilPomFlatReceiverAdvance(float signedHeight,float lightNormalDot,float bias)
+{
+    return lightNormalDot>1e-4f?max(0.0f,(bias-signedHeight)/lightNormalDot):0;
+}

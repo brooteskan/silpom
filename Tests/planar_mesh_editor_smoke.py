@@ -50,6 +50,12 @@ try:
     flush();general.idle_enable(True)
     assert general.open_level('DefaultLevel')
     general.idle_wait_frames(30)
+    # The artist may have saved an earlier test fixture in the level. Replace
+    # only that named fixture in this UNSAVED session, so tests never overlap it.
+    fixture_filter=entity.SearchFilter();fixture_filter.names=['SilPOM_Planar_FBX_Edge_Study']
+    for previous in entity.SearchBus(bus.Broadcast,'SearchEntities',fixture_filter):
+        editor.ToolsApplicationRequestBus(bus.Broadcast,'DeleteEntityById',previous)
+    general.idle_wait_frames(5)
     general.run_console('ed_backgroundUpdatePeriod -1')
     general.run_console('r_meshInstancingEnabled false')
     general.run_console('r_multiSampleCount 1')
@@ -100,6 +106,14 @@ try:
         ('near_plane',(15.5,15.8,40.5),(0,0,0)),
     ]:
         general.set_current_view_position(*map(float,position));general.set_current_view_rotation(*map(float,rotation));capture(name)
+    # Same camera and lighting for external-shadow and relief-only comparisons.
+    general.set_current_view_position(18.5,13.5,40.2);general.set_current_view_rotation(0.0,0.0,45.0)
+    capture('shadow_relief_on')
+    shadow_path='Controller|Configuration|Relief shadow steps'
+    set_property(shadow_path,0);wait_ready();capture('shadow_relief_off')
+    set_property(scale_path,0.0);wait_ready();capture('shadow_base_mesh')
+    set_property(scale_path,.3);set_property(shadow_path,16);wait_ready()
+    result['relief_shadow_steps']=16
     for _ in range(3):
         assert editor.EditorComponentAPIBus(bus.Broadcast,'DisableComponents',[component]);general.idle_wait_frames(3)
         assert editor.EditorComponentAPIBus(bus.Broadcast,'EnableComponents',[component]);wait_ready()

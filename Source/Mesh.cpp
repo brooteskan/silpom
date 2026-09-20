@@ -130,9 +130,9 @@ void MeshConfig::Reflect(AZ::ReflectContext* context)
         sc->Class<MeshProfileBinding>()->Version(1)->Field("ProfileId", &MeshProfileBinding::m_id)->Field("Height", &MeshProfileBinding::m_height)
             ->Field("ScaleMetres", &MeshProfileBinding::m_scale)->Field("Reference", &MeshProfileBinding::m_reference)
             ->Field("Tiling", &MeshProfileBinding::m_tiling)->Field("Offset", &MeshProfileBinding::m_offset)->Field("AddressMode", &MeshProfileBinding::m_addressMode);
-        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(1)->Field("Surface", &MeshConfig::m_surface)
+        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(2)->Field("Surface", &MeshConfig::m_surface)
             ->Field("Materials", &MeshConfig::m_materials)->Field("Profiles", &MeshConfig::m_profiles)
-            ->Field("MaxCells", &MeshConfig::m_maxCells);
+            ->Field("MaxCells", &MeshConfig::m_maxCells)->Field("ReliefShadowSteps", &MeshConfig::m_reliefShadowSteps);
     }
 }
 void MeshController::Reflect(AZ::ReflectContext* context)
@@ -261,8 +261,8 @@ bool MeshController::Prepare()
         if (!p.m_height.IsReady()) { m_status = "Loading height textures"; return true; }
     }
     const float scale = m_world.GetUniformScale();
-    if (!std::isfinite(scale) || scale <= 0 || c.m_maxCells < 1 || c.m_maxCells > 65536)
-    { m_status = "Invalid positive uniform scale or cell budget"; return false; }
+    if (!std::isfinite(scale) || scale <= 0 || c.m_maxCells < 1 || c.m_maxCells > 65536 || c.m_reliefShadowSteps > 64)
+    { m_status = "Invalid positive uniform scale, cell budget or relief shadow steps (0-64)"; return false; }
     auto* scene = AZ::RPI::Scene::GetSceneForEntityId(m_entity);
     if (!scene) { m_status = "Waiting for render scene"; return true; }
     m_processor = scene->GetFeatureProcessor<AZ::Render::MeshFeatureProcessorInterface>();
@@ -380,6 +380,7 @@ bool MeshController::Prepare()
                     && Set(material,"surface.tileV",p.m_tiling.GetY()) && Set(material,"surface.offsetU",p.m_offset.GetX())
                     && Set(material,"surface.offsetV",p.m_offset.GetY()) && Set(material,"surface.addressMode",p.m_addressMode)
                     && Set(material,"surface.maxCells",c.m_maxCells) && Set(material,"surface.useHierarchy",false)
+                    && Set(material,"surface.reliefShadowSteps",c.m_reliefShadowSteps)
                     && Set(material,"general.doubleSided",true);
                 if(!valid) return fail("Planar face material contract mismatch");
                 candidate->buffers.push_back(buffer); candidate->heights.push_back(height);
