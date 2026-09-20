@@ -326,8 +326,8 @@ bool MeshController::Prepare()
                     float value; memcpy(&value,pixels.data()+i,4);
                     if (!std::isfinite(value) || value<0 || value>1) return fail("Height pixels must be finite and normalized");
                 }
-                // Six float4 records per triangle. UV derivatives define an affine
-                // plane; displacement is ALWAYS along its fixed geometric normal.
+                // Nine float4 records per triangle. The base remains planar;
+                // directions are generated from connected tagged face fans.
                 AZStd::vector<float> packed;
                 for (auto index : faces)
                 {
@@ -344,16 +344,18 @@ bool MeshController::Prepare()
                     auto append=[&](const AZ::Vector3& v) { packed.insert(packed.end(),{v.GetX(),v.GetY(),v.GetZ(),0}); };
                     append(a); append(du); append(dv); append(normal);
                     packed.insert(packed.end(),{uv0.GetX(),uv0.GetY(),uv1.GetX(),uv1.GetY(),uv2.GetX(),uv2.GetY(),0,0});
+                    for (const auto& corner : corners) append(corner.m_direction);
                     ++candidate->faces;
-                    const float localFace=float(packed.size()/24-1);
+                    const float localFace=float(packed.size()/36-1);
                     const AZ::u32 base=AZ::u32(vertices.size());
                     for (const auto& xy : {AZ::Vector2(-1,-1),AZ::Vector2(1,-1),AZ::Vector2(-1,1),AZ::Vector2(1,1)})
                         vertices.push_back({AZ::Vector3(xy.GetX(),xy.GetY(),localFace),AZ::Vector3::CreateAxisZ(),(xy+AZ::Vector2(1))*.5f});
                     indices.insert(indices.end(),{base,base+1,base+2,base+2,base+1,base+3});
-                    for (const auto& point : {a,b,d})
+                    for (const auto& corner : corners)
                     {
-                        bounds.AddPoint(point+normal*(-p.m_scale*p.m_reference));
-                        bounds.AddPoint(point+normal*(p.m_scale*(1-p.m_reference)));
+                        const auto point=corner.m_position*scale;
+                        bounds.AddPoint(point+corner.m_direction*(-p.m_scale*p.m_reference));
+                        bounds.AddPoint(point+corner.m_direction*(p.m_scale*(1-p.m_reference)));
                     }
                 }
                 candidate->bytes+=packed.size()*sizeof(float);

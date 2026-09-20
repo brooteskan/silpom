@@ -17,8 +17,13 @@ struct float3
     float operator[](int i) const { return i == 0 ? x : i == 1 ? y : z; }
 };
 inline float3 operator+(float3 a,float3 b) { return {a.x+b.x,a.y+b.y,a.z+b.z}; }
+inline float3 operator-(float3 a,float3 b) { return {a.x-b.x,a.y-b.y,a.z-b.z}; }
 inline float3 operator*(float3 a,float b) { return {a.x*b,a.y*b,a.z*b}; }
 inline float dot(float3 a,float3 b) { return a.x*b.x+a.y*b.y+a.z*b.z; }
+inline float3 cross(float3 a,float3 b) { return {a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x}; }
+inline float length(float3 a) { return std::sqrt(dot(a,a)); }
+inline float3 min(float3 a,float3 b) { return {std::min(a.x,b.x),std::min(a.y,b.y),std::min(a.z,b.z)}; }
+inline float3 max(float3 a,float3 b) { return {std::max(a.x,b.x),std::max(a.y,b.y),std::max(a.z,b.z)}; }
 inline float3 normalize(float3 a) { return a*(1.f/std::sqrt(dot(a,a))); }
 struct Texture
 {

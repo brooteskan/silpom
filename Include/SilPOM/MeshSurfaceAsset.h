@@ -41,7 +41,7 @@ public:
     AZ_RTTI(MeshSurfaceAsset, "{58B07B13-4924-4BC5-94F1-AB4911658F23}", AZ::Data::AssetData);
     AZ_CLASS_ALLOCATOR(MeshSurfaceAsset, AZ::SystemAllocator);
     static void Reflect(AZ::ReflectContext* context);
-    static constexpr AZ::u32 Version = 1;
+    static constexpr AZ::u32 Version = 2; // generated tagged-fan displacement directions
     AZ::u32 m_surfaceVersion = Version;
     AZStd::string m_generation;
     AZStd::vector<MeshFace> m_faces;

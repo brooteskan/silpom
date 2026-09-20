@@ -3,11 +3,11 @@
 bl_info = {
     'name': 'SilPOM Face Exporter',
     'author': 'SilPOM contributors',
-    'version': (0, 1, 0),
+    'version': (0, 2, 0),
     'blender': (5, 0, 0),
     'location': 'File > Export; 3D View > Sidebar > SilPOM',
     'description': 'Tag planar mesh faces and export FBX with SilPOM metadata',
-    'warning': 'Planar face experiment: displacement edges remain open',
+    'warning': 'Experimental: tagged/ordinary displacement boundaries remain open',
     'category': 'Import-Export',
 }
 
@@ -111,7 +111,7 @@ class SILPOM_OT_export(bpy.types.Operator, ExportHelper):
         layout.prop(self, 'overwrite')
         layout.separator()
         layout.label(text='Writes FBX + .silpom.json + .authoring.blend')
-        layout.label(text='Planar face displacement; open edges', icon='INFO')
+        layout.label(text='Tagged faces blend normals on import', icon='INFO')
 
     def execute(self, context):
         edit_mode = context.mode == 'EDIT_MESH'
@@ -149,7 +149,7 @@ class SILPOM_PT_authoring(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         layout.label(text='Experimental authoring transport', icon='INFO')
-        layout.label(text='Displacement uses each face plane')
+        layout.label(text='Normals blend between tagged faces')
         column = layout.column()
         column.enabled = context.mode == 'EDIT_MESH'
         column.prop(context.scene.silpom_export, 'region')

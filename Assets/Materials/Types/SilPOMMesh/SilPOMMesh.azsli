@@ -4,16 +4,11 @@
 #include <Atom/Features/Bindless.azsli>
 #include "../../../Shaders/SilPOM/Heightfield.azsli"
 #include "../../../Shaders/SilPOM/PlanarFace.azsli"
-
-struct SilPomMeshFace
-{
-    float3 origin, du, dv, normal;
-    float2 uv0, uv1, uv2;
-};
+#include "../../../Shaders/SilPOM/BlendedFace.azsli"
 SilPomMeshFace SilPomLoadFace(uint buffer, uint index)
 {
     SilPomMeshFace f;
-    uint offset=index*96;
+    uint offset=index*144;
     f.origin=asfloat(Bindless::GetByteAddressBuffer(buffer).Load4(offset)).xyz;
     f.du=asfloat(Bindless::GetByteAddressBuffer(buffer).Load4(offset+16)).xyz;
     f.dv=asfloat(Bindless::GetByteAddressBuffer(buffer).Load4(offset+32)).xyz;
@@ -21,6 +16,9 @@ SilPomMeshFace SilPomLoadFace(uint buffer, uint index)
     float4 uv=asfloat(Bindless::GetByteAddressBuffer(buffer).Load4(offset+64));
     f.uv0=uv.xy; f.uv1=uv.zw;
     f.uv2=asfloat(Bindless::GetByteAddressBuffer(buffer).Load4(offset+80)).xy;
+    f.d0=asfloat(Bindless::GetByteAddressBuffer(buffer).Load4(offset+96)).xyz;
+    f.d1=asfloat(Bindless::GetByteAddressBuffer(buffer).Load4(offset+112)).xyz;
+    f.d2=asfloat(Bindless::GetByteAddressBuffer(buffer).Load4(offset+128)).xyz;
     return f;
 }
 VsOutput EvaluateVertexGeometry(VsInput IN, VsSystemValues SV, const MaterialParameters params)
@@ -37,7 +35,8 @@ VsOutput EvaluateVertexGeometry(VsInput IN, VsSystemValues SV, const MaterialPar
     {
         float2 uv=i/2==0?f.uv0:(i/2==1?f.uv1:f.uv2);
         float h=params.m_silpomScale*((i&1)-params.m_silpomReference);
-        float3 p=f.origin+f.du*(uv.x-f.uv0.x)+f.dv*(uv.y-f.uv0.y)+f.normal*h;
+        float3 D=i/2==0?f.d0:(i/2==1?f.d1:f.d2);
+        float3 p=f.origin+f.du*(uv.x-f.uv0.x)+f.dv*(uv.y-f.uv0.y)+D*h;
         float4 clip=mul(vp,mul(model,float4(p,1)));
         if(clip.w<=1e-6 || clip.z<0 || clip.z>clip.w) ambiguous=true;
         float2 xy=clip.xy/max(clip.w,1e-6); low=min(low,xy); high=max(high,xy);
@@ -70,18 +69,11 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     float3x3 inverseRotation=transpose((float3x3)model);
     float3 origin=mul(inverseRotation,originWS-mul(model,float4(0,0,0,1)).xyz);
     float3 direction=mul(inverseRotation,directionWS);
-    float determinant=dot(f.du,cross(f.dv,f.normal));
-    float3 dualU=cross(f.dv,f.normal)/determinant,dualV=cross(f.normal,f.du)/determinant;
     SilPomRay ray;
-    ray.origin=float3(f.uv0.x+dot(dualU,origin-f.origin),f.uv0.y+dot(dualV,origin-f.origin),dot(f.normal,origin-f.origin));
-    ray.direction=float3(dot(dualU,direction),dot(dualV,direction),dot(f.normal,direction));
+    ray.origin=origin;ray.direction=direction;
     ray.tMin=0; ray.tMax=abs(farH.w)>1e-8?length(farH.xyz/farH.w-originWS):1e7;
-    float begin,end;
-    if(!SilPomFaceInterval(ray,f.uv0,f.uv1,f.uv2,begin,end)) discard;
-    ray.tMin=begin; ray.tMax=end;
     float2 low=min(f.uv0,min(f.uv1,f.uv2)),high=max(f.uv0,max(f.uv1,f.uv2));
-    float2 span=high-low,center=(low+high)*.5;
-    ray.origin.x-=center.x; ray.origin.y-=center.y;
+    float2 span=high-low;
     SilPomPatch p;
     p.width=span.x; p.height=span.y;
     p.scale=params.m_silpomScale; p.reference=params.m_silpomReference;
@@ -90,12 +82,12 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     p.offsetV=low.y*params.m_silpomTileV+params.m_silpomOffsetV;
     p.addressMode=params.m_silpomAddressMode; p.maxCells=params.m_silpomMaxCells;
     GetMaterialTexture(params.m_silpomHeightMap).GetDimensions(p.textureWidth,p.textureHeight);
-    SilPomHit hit=SilPomIntersect(GetMaterialTexture(params.m_silpomHeightMap),p,ray);
+    SilPomHit hit=SilPomIntersectFace(GetMaterialTexture(params.m_silpomHeightMap),p,f,ray,low);
     if(hit.status==SP_MISS) discard;
     bool failed=hit.status!=SP_HIT;
-    if(failed) { hit.t=begin; hit.normal=float3(0,0,1); }
+    if(failed) { hit.t=max(hit.t,1e-4f); hit.normal=f.normal; }
     float3 position=origin+direction*hit.t;
-    float3 normal=normalize(f.normal*hit.normal.z+dualU*hit.normal.x+dualV*hit.normal.y);
+    float3 normal=hit.normal;
     PixelGeometryData geo=(PixelGeometryData)0;
     geo.positionWS=mul(model,float4(position,1)).xyz;
     precise float4 clip=mul(GetViewProjectionMatrix(SV),float4(geo.positionWS,1));

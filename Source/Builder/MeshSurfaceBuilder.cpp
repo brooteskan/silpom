@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "MeshSurfaceBuilder.h"
 #include <SilPOM/MeshSurfaceAsset.h>
+#include <SilPOM/FaceNormals.h>
 #include <AzCore/IO/Path/Path.h>
 #include <AzCore/Serialization/EditContextConstants.inl>
 #include <AzCore/Serialization/Json/JsonUtils.h>
@@ -218,6 +219,28 @@ bool Compile(const Json& root, const AZ::SceneAPI::Containers::Scene& scene, Mes
             output.m_faces[edge[1].face].m_neighbors[edge[1].corner] = edge[0].face;
         }
     }
+    std::map<std::string, unsigned> logicalIndices;
+    std::vector<FaceNormals::Face> normalFaces;
+    for (const auto& face : output.m_faces)
+    {
+        FaceNormals::Face input; input.tagged = face.m_region != 0;
+        for (unsigned c = 0; c != 3; ++c)
+        {
+            const auto& corner = face.m_corners[c];
+            auto entry = logicalIndices.emplace(corner.m_vertexId.c_str(), unsigned(logicalIndices.size()));
+            input.vertex[c] = entry.first->second;
+            input.position[c] = {corner.m_position.GetX(), corner.m_position.GetY(), corner.m_position.GetZ()};
+        }
+        normalFaces.push_back(input);
+    }
+    const auto blended = FaceNormals::Build(normalFaces);
+    if (!blended.error.empty()) return fail(blended.error.c_str());
+    for (size_t f = 0; f != output.m_faces.size(); ++f)
+        if (output.m_faces[f].m_region) for (unsigned c = 0; c != 3; ++c)
+        {
+            const auto n = blended.directions[f][c];
+            output.m_faces[f].m_corners[c].m_direction = AZ::Vector3(float(n.x), float(n.y), float(n.z));
+        }
     return true;
 }
 }
@@ -231,8 +254,8 @@ void MeshSurfaceBuilder::Activate()
 {
     m_stopping = false;
     AssetBuilderSDK::AssetBuilderDesc desc;
-    desc.m_name = "SilPOM Mesh Surface"; desc.m_version = 1;
-    desc.m_analysisFingerprint = "mesh-surface-v1-transport-v2";
+    desc.m_name = "SilPOM Mesh Surface"; desc.m_version = 2;
+    desc.m_analysisFingerprint = "mesh-surface-v2-angle-weighted-tagged-fans";
     desc.m_patterns.emplace_back("*.silpom.json", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
     desc.m_busId = azrtti_typeid<MeshSurfaceBuilder>();
     desc.m_createJobFunction = AZStd::bind(&MeshSurfaceBuilder::CreateJobs, this, AZStd::placeholders::_1, AZStd::placeholders::_2);
@@ -284,7 +307,7 @@ void MeshSurfaceBuilder::ProcessJob(const AssetBuilderSDK::ProcessJobRequest& re
     if (!Compile(root, *scene, asset, error)) { AZ_Error("SilPOM", false, "%s: %s", fbx.c_str(), error.c_str()); return; }
     auto source = AZ::Utils::ReadFile(request.m_fullPath);
     if (!source.IsSuccess()) return;
-    asset.m_generation = Hash(source.GetValue() + fbxHash);
+    asset.m_generation = Hash(source.GetValue() + fbxHash + "angle-weighted-tagged-fans-v2");
     auto output = (AZ::IO::Path(request.m_tempDirPath) / (AZ::IO::Path(fbx).Filename().String() + ".silpommesh")).String();
     if (m_stopping || cancel.IsCancelled()) { response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Cancelled; return; }
     if (!AZ::Utils::SaveObjectToFile(output, AZ::DataStream::ST_BINARY, &asset))

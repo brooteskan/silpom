@@ -16,9 +16,10 @@ import azlmbr.paths as paths
 import azlmbr.render as render
 import azlmbr.silpom as silpom
 
-output=Path(paths.projectroot)/'user/SilPOMPlanarFaces'
+output=Path(paths.projectroot)/'user'/os.environ.get('SILPOM_FACE_OUTPUT','SilPOMPlanarFaces')
 output.mkdir(parents=True,exist_ok=True)
-result={'passed':False,'captures':[]}
+result={'passed':False,'captures':[],
+        'scope':'Component lifecycle and screenshot capture; images require separate visual review'}
 def flush(): (output/'result.json').write_text(json.dumps(result,indent=2))
 def asset_id(name):
     value=asset.AssetCatalogRequestBus(bus.Broadcast,'GetAssetIdByPath',name,azmath.Uuid(),False)

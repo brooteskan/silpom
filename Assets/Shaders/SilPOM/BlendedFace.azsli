@@ -1,0 +1,161 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+// Restricted extension for planar base triangles with generated corner normals.
+// D(u,v) is AFFINE, not normalized after interpolation: this keeps the six
+// displaced corner extrema conservative, and makes shared edges identical.
+struct SilPomMeshFace
+{
+    float3 origin, du, dv, normal;
+    float2 uv0, uv1, uv2;
+    float3 d0, d1, d2;
+};
+float SilPomUvArea(SilPomMeshFace f)
+{
+    return (f.uv1.x-f.uv0.x)*(f.uv2.y-f.uv0.y)-(f.uv1.y-f.uv0.y)*(f.uv2.x-f.uv0.x);
+}
+float3 SilPomFaceWeights(SilPomMeshFace f, float2 uv)
+{
+    float area=SilPomUvArea(f);
+    float b=((uv.x-f.uv0.x)*(f.uv2.y-f.uv0.y)-(uv.y-f.uv0.y)*(f.uv2.x-f.uv0.x))/area;
+    float c=((f.uv1.x-f.uv0.x)*(uv.y-f.uv0.y)-(f.uv1.y-f.uv0.y)*(uv.x-f.uv0.x))/area;
+    return float3(1-b-c,b,c);
+}
+float3 SilPomFaceDirection(SilPomMeshFace f, float2 uv)
+{
+    float3 w=SilPomFaceWeights(f,uv);
+    return f.d0*w.x+f.d1*w.y+f.d2*w.z;
+}
+// Returns height and derivatives in SOURCE UV coordinates.
+float3 SilPomFaceHeight(SP_TEX texture, SilPomPatch p, float2 uv, float2 low)
+{
+    float u=(uv.x-low.x)*p.tileU/p.width+p.offsetU;
+    float v=(uv.y-low.y)*p.tileV/p.height+p.offsetV;
+    float x=u*p.textureWidth-.5f,y=v*p.textureHeight-.5f;
+    int ix=int(floor(x)),iy=int(floor(y)); float fx=x-floor(x),fy=y-floor(y);
+    float a=SilPomTexel(texture,p,ix,iy),b=SilPomTexel(texture,p,ix+1,iy)-a;
+    float c=SilPomTexel(texture,p,ix,iy+1)-a;
+    float d=SilPomTexel(texture,p,ix+1,iy+1)-a-b-c;
+    return float3(p.scale*(a+b*fx+c*fy+d*fx*fy-p.reference),
+        p.scale*(b+d*fy)*p.textureWidth*p.tileU/p.width,
+        p.scale*(c+d*fx)*p.textureHeight*p.tileV/p.height);
+}
+float3 SilPomRotateNormal(float3 value,float3 from,float3 to)
+{
+    float3 axis=cross(from,to);
+    return value+cross(axis,value)+cross(axis,cross(axis,value))*(1/(1+dot(from,to)));
+}
+// Bounded Newton refinement of a planar-kernel seed. Never accept an
+// unconverged iterate as geometry. This is a local heuristic, not a complete
+// intersection algorithm for arbitrary curved surfaces or folded volumes.
+uint SilPomRefineFace(SP_TEX texture, SilPomPatch p, SilPomMeshFace f,
+    SilPomRay ray,float2 low,SP_REF(float2) uv,SP_REF(float) t)
+{
+    float area=SilPomUvArea(f);
+    float3 dU=((f.d1-f.d0)*(f.uv2.y-f.uv0.y)-(f.d2-f.d0)*(f.uv1.y-f.uv0.y))*(1/area);
+    float3 dV=((f.d2-f.d0)*(f.uv1.x-f.uv0.x)-(f.d1-f.d0)*(f.uv2.x-f.uv0.x))*(1/area);
+    float tolerance=2e-6f*max(1.0f,max(length(f.du),length(f.dv)));
+    for(uint iteration=0;iteration<16;++iteration)
+    {
+        float3 h=SilPomFaceHeight(texture,p,uv,low);
+        float3 D=SilPomFaceDirection(f,uv);
+        float3 position=f.origin+f.du*(uv.x-f.uv0.x)+f.dv*(uv.y-f.uv0.y)+D*h.x;
+        float3 residual=position-(ray.origin+ray.direction*t);
+        if(dot(residual,residual)<=tolerance*tolerance)
+        {
+            float3 w=SilPomFaceWeights(f,uv);
+            return min(w.x,min(w.y,w.z))>=-2e-6f && t>=ray.tMin && t<=ray.tMax ? SP_HIT : SP_MISS;
+        }
+        float3 U=f.du+dU*h.x+D*h.y,V=f.dv+dV*h.x+D*h.z;
+        float determinant=dot(U,cross(V,ray.direction));
+        if(abs(determinant)<1e-9f) return SP_EXHAUSTED;
+        float deltaU=-dot(residual,cross(V,ray.direction))/determinant;
+        float deltaV=-dot(U,cross(residual,ray.direction))/determinant;
+        float deltaT=dot(U,cross(V,residual))/determinant;
+        // Keep Newton from jumping across many unrelated heightfield features.
+        float step=max(abs(deltaU)/p.width,abs(deltaV)/p.height);
+        float damping=step>.25f?.25f/step:1.0f;
+        uv.x+=deltaU*damping;uv.y+=deltaV*damping;t+=deltaT*damping;
+        if(uv.x<low.x-p.width || uv.x>low.x+2*p.width || uv.y<low.y-p.height || uv.y>low.y+2*p.height)
+            return SP_EXHAUSTED;
+    }
+    return SP_EXHAUSTED;
+}
+SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilPomRay worldRay,float2 low)
+{
+    SilPomHit best=SP_ZERO(SilPomHit);best.t=worldRay.tMax;
+    float3 boundsLow=float3(1e30f,1e30f,1e30f),boundsHigh=float3(-1e30f,-1e30f,-1e30f);
+    for(uint i=0;i<6;++i)
+    {
+        float2 uv=i/2==0?f.uv0:(i/2==1?f.uv1:f.uv2);
+        float3 D=i/2==0?f.d0:(i/2==1?f.d1:f.d2);
+        float h=p.scale*(float(i%2)-p.reference);
+        float3 cornerPosition=f.origin+f.du*(uv.x-f.uv0.x)+f.dv*(uv.y-f.uv0.y)+D*h;
+        boundsLow=min(boundsLow,cornerPosition);boundsHigh=max(boundsHigh,cornerPosition);
+    }
+    for(uint axis=0;axis<3;++axis)
+    {
+        float lo=boundsLow[axis]-1e-5f,hi=boundsHigh[axis]+1e-5f;
+        float origin=worldRay.origin[axis],direction=worldRay.direction[axis];
+        if(direction==0) {if(origin<lo || origin>hi) return best;}
+        else
+        {
+            float a=(lo-origin)/direction,b=(hi-origin)/direction;
+            worldRay.tMin=max(worldRay.tMin,min(a,b));worldRay.tMax=min(worldRay.tMax,max(a,b));
+        }
+    }
+    if(worldRay.tMin>worldRay.tMax) return best;
+    float2 center=float2(low.x+p.width*.5f,low.y+p.height*.5f);
+    bool constant=p.scale==0 || dot(f.d1-f.d0,f.d1-f.d0)+dot(f.d2-f.d0,f.d2-f.d0)<1e-12f;
+    uint spent=0;bool unresolved=false;
+    for(uint seed=0;seed<(constant?1u:4u);++seed)
+    {
+        float3 D=seed==0?(f.d0+f.d1+f.d2)*(1.0f/3.0f):(seed==1?f.d0:(seed==2?f.d1:f.d2));
+        float determinant=dot(f.du,cross(f.dv,D));
+        if(abs(determinant)<1e-10f) {best.status=SP_INVALID;return best;}
+        float3 U=cross(f.dv,D)*(1/determinant),V=cross(D,f.du)*(1/determinant),Z=cross(f.du,f.dv)*(1/determinant);
+        SilPomRay ray;
+        ray.origin=float3(f.uv0.x+dot(U,worldRay.origin-f.origin),f.uv0.y+dot(V,worldRay.origin-f.origin),dot(Z,worldRay.origin-f.origin));
+        ray.direction=float3(dot(U,worldRay.direction),dot(V,worldRay.direction),dot(Z,worldRay.direction));
+        ray.tMin=worldRay.tMin;ray.tMax=worldRay.tMax;
+        if(constant)
+        {
+            float begin,end;
+            if(!SilPomFaceInterval(ray,f.uv0,f.uv1,f.uv2,begin,end)) continue;
+            ray.tMin=begin;ray.tMax=end;
+        }
+        ray.origin.x-=center.x;ray.origin.y-=center.y;
+        // Outside-triangle roots of the seed rectangle must not hide later
+        // roots inside the triangle. Bound both candidates and total cell work.
+        for(uint candidate=0;candidate<8;++candidate)
+        {
+            if(spent>=p.maxCells) {unresolved=true;break;}
+            SilPomPatch bounded=p;bounded.maxCells=p.maxCells-spent;
+            SilPomHit hit=SilPomIntersect(texture,bounded,ray);spent+=hit.cells;
+            if(hit.status==SP_MISS) break;
+            if(hit.status!=SP_HIT) {unresolved=true;break;}
+            float2 uv=float2(hit.position.x+center.x,hit.position.y+center.y);float t=hit.t;
+            uint status=constant?SP_HIT:SilPomRefineFace(texture,p,f,worldRay,low,uv,t);
+            if(status==SP_HIT)
+            {
+                if(best.status!=SP_HIT || t<best.t)
+                {
+                    best=hit;best.status=SP_HIT;best.t=t;
+                    best.position=worldRay.origin+worldRay.direction*t;
+                    best.uv=float2((uv.x-low.x)*p.tileU/p.width+p.offsetU,(uv.y-low.y)*p.tileV/p.height+p.offsetV);
+                    float3 h=SilPomFaceHeight(texture,p,uv,low);
+                    float det=dot(f.du,cross(f.dv,f.normal));
+                    float3 dualU=cross(f.dv,f.normal)*(1/det),dualV=cross(f.normal,f.du)*(1/det);
+                    float3 baseNormal=normalize(f.normal-dualU*h.y-dualV*h.z);
+                    best.normal=normalize(SilPomRotateNormal(baseNormal,f.normal,normalize(SilPomFaceDirection(f,uv))));
+                }
+                break;
+            }
+            if(status==SP_EXHAUSTED) unresolved=true;
+            ray.tMin=hit.t+max(1e-5f,abs(hit.t)*1e-6f);
+            if(candidate==7) unresolved=true;
+        }
+    }
+    best.cells=spent;
+    if(best.status!=SP_HIT && unresolved) {best.status=SP_EXHAUSTED;best.t=worldRay.tMin;}
+    return best;
+}

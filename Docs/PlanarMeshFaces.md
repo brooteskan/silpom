@@ -1,22 +1,22 @@
 # FBX planar face experiment
 
 This experiment applies the existing planar heightfield renderer to tagged FBX
-triangles. A mesh can contain faces at different angles. Each triangle displaces
-along its fixed geometric face normal; there is no interpolated displacement
-direction, curved-surface solver, compute hit buffer or hardware ray tracing.
-The transported corner shading normals/directions do not bend the heightfield.
+triangles, with a restricted heuristic for blending displacement directions
+across tagged edges. Base triangles stay planar. There is no arbitrary authored
+curved-surface support, compute hit buffer or hardware ray tracing.
 
 One SilPOM Mesh component owns ordinary geometry and tagged face batches.
 Face tags are independent of material assignments. Tagged base triangles are
 absent from the component's ordinary geometry. Do not also attach the stock FBX
 model: Asset Processor still emits that separate, unfiltered model product.
 
-The renderer batches by material/profile, with one 96-byte descriptor and four
+The renderer batches by material/profile, with one 144-byte descriptor and four
 coverage vertices per tagged triangle. It does not create per-triangle components
 or materials. Imported UVs define the affine mapping on each triangle. Rays are
-clipped to the triangle's extruded UV domain before invoking Heightfield.azsli,
-so the surrounding coverage rectangle cannot become visible geometry.
-The same planar kernel is used for color, depth and shadow variants. The existing
+clipped to the triangle's extruded UV domain on the constant-direction fast path.
+Varying directions use planar-kernel seeds and bounded local refinement; only
+converged roots inside the triangle are accepted. The same code is used for
+color, depth and shadow variants. The existing
 SilPOM Patch component and its flat-shadow policy are unchanged.
 
 ## Artist workflow
@@ -41,14 +41,49 @@ nonuniform/negative scale and deforming meshes.
 
 ## Expected edge behavior
 
-- Coplanar triangles with matching UVs/profile describe the same surface along
-  their shared edge, including the triangulation diagonal of a planar quad.
-- At a fold, adjacent faces displace in different directions: gaps and overlaps
-  are possible. This is the behavior the experiment is intended to inspect.
+- The builder joins corner fans through tagged/tagged edges using logical vertex
+  IDs. UV seams, material splits, region IDs and profile IDs do not split normals.
+  Faces touching only at a vertex remain separate fans. Ordinary faces do not
+  contribute to a tagged fan. Corner angles weight geometric face normals, so
+  triangulating a flat quad does not bias the normal toward its diagonal.
+- Shared corners receive identical unit directions. Displacement interpolates
+  these vectors linearly **without renormalizing**. Matching heights therefore
+  produce identical shared-edge positions. Interior displacement magnitude can
+  be slightly smaller than the profile amplitude as the interpolated vector's
+  length decreases. The six displaced corner extrema conservatively bound it.
+- Lighting normalizes the interpolated base normal and rotates the heightfield's
+  relief normal into that frame. This smooths the base fold; heightmap gradient
+  discontinuities, differing UV mappings or materials can still create a shading
+  seam. Smooth lighting is not the exact geometric normal of the displaced fold.
+- Normal blending cannot reconcile mismatched height samples/profiles. These
+  still need compatible UV/height values for a watertight displaced edge.
 - A tagged/ordinary boundary can reveal an open step or gap.
 - No caps, bevels, tapering or invented connecting geometry are generated.
 - Magenta means exhausted traversal; yellow means invalid input. These are
   diagnostics, not acceptable edge artifacts or valid surface hits.
+
+## Normal-blending implementation and limits
+
+`Include/SilPOM/FaceNormals.h` implements the import heuristic. Nonmanifold or
+inconsistently wound edges are rejected. Cancelling normals and tagged fans
+whose generated direction has a dot product below 0.25 with an incident face
+normal are rejected rather than silently introducing another hard boundary.
+The builder fingerprint and surface contract are version 2; existing FBX pairs
+need asset reprocessing, not a new export.
+
+`Assets/Shaders/SilPOM/BlendedFace.azsli` defines the narrow surface model
+`P(u,v) + h(u,v) D(u,v)`, with affine base position and affine generated direction.
+Faces with constant directions retain the planar solver. Other faces try the
+mean and three corner directions as planar seeds, at most eight candidates per
+seed and sixteen Newton steps per candidate. Planar traversal shares the profile
+cell budget across seeds. Unconverged iterates are never returned as valid hits.
+
+This local refinement is experimental: it does **not** prove nearest-root
+completeness for grazing rays, large displacement or self-overlapping surfaces.
+It can miss a root without finding a seed; failed refinement produces the
+magenta diagnostic when no seed succeeds. Four seeds reduce these problems but
+do not remove the limitation. This is not the previous general curved solver.
+Original standalone planar behavior and its conformance tests remain unchanged.
 
 ## Reproduction
 
@@ -65,14 +100,15 @@ The script builds an unsaved fixture in DefaultLevel, captures flat/displaced,
 fold, grazing, off-centre and near-plane views at 1280x720, checks activation
 and invalid-profile retention, and leaves the fixture open. It never saves the
 level. `SILPOM_FACE_EXIT=1` exits after testing. Captures and result.json go to
-`<project>/user/SilPOMPlanarFaces`.
+`<project>/user/SilPOMPlanarFaces`. Set `SILPOM_FACE_OUTPUT=SilPOMBlendedFaces`
+to retain a separate capture set when comparing against the baseline.
 
 This is a visual feasibility experiment, not completion of every requirement in
 issue #5. Independent shadow/depth reference comparisons, production reimport
 dependencies, game-launcher acceptance and realistic scene benchmarks remain
 separate follow-up work.
 
-## Local result — 2026-09-20
+## Fixed-normal baseline result — 2026-09-20, commit 6952051
 
 O3DE 2.7.0, DX12, Radeon RX 7900 XTX, 1280x720, one sample. Builder, Editor
 and runtime Gem targets built. The fixture's FBX/sidecar and all material shader
@@ -101,3 +137,30 @@ under the sandbox account and reading the result under the artist account.
 The fixture is left open in an unsaved Editor session. These captures are visual
 evidence of the requested planar-face workflow, not independent numerical proof
 of every rendered depth/shadow sample or a game-runtime acceptance test.
+
+## Blended-normal result — 2026-09-20
+
+The builder, Editor and runtime rebuilt successfully. Asset Processor rebuilt
+the fixture and all 15 shader variants; the same unrelated legacy transport-v1
+source remains its single failed asset. The Editor reports three batches, six
+tagged triangles and 864 descriptor bytes. Three activation cycles and invalid
+profile retention passed. The capture harness's `passed` flag covers component
+lifecycle and screenshot capture, not pixel correctness.
+
+All four CTest suites pass: Core, PlanarFaces, FaceNormals and the existing planar
+GPU conformance test. New CPU tests execute the shared refinement shader code,
+checking angle weights, disconnected fans, tagged/ordinary boundaries, duplicated
+UV corners, nonmanifold rejection, shared displaced edge positions, identical
+shared-edge ray depths and flat-height lighting normals, analytic constant-height
+planes, and known varying-height hits at frontal and grazing ray angles. A DXC
+compute compilation also checked the new kernel; it is not a GPU numerical
+conformance test for the blended extension.
+
+Seven captures in `<project>/user/SilPOMBlendedFaces` were inspected. The fold
+uses shared displacement directions and smooth base shading; the ordinary lower
+left remains flat. **Visual acceptance is incomplete:** sparse magenta refinement
+failures appear along some relief silhouettes in the close, oblique and grazing
+views, and a larger magenta band appears in the near-plane view. These are known
+intersection-heuristic failures, not successful hits or normal-blending seams.
+The tagged/ordinary boundary remains unsealed by design. The updated fixture is
+left open for inspection, and the original fixed-normal captures are preserved.
