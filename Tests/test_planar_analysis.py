@@ -1,5 +1,5 @@
 import unittest
-from analyze_planar_ab import percentile, summarize_capture
+from analyze_planar_ab import compare_distributions, percentile, summarize_capture
 
 try:
     import numpy as np
@@ -34,6 +34,12 @@ class TimingTests(unittest.TestCase):
         raw["complete"] = False
         with self.assertRaises(AssertionError):
             summarize_capture(raw)
+
+    def test_distribution_improvement_sign(self):
+        result = compare_distributions({"median_ms": 8, "p95_ms": 11},
+                                       {"median_ms": 10, "p95_ms": 10})
+        self.assertAlmostEqual(result["median_improvement"], .2)
+        self.assertAlmostEqual(result["p95_improvement"], -.1)
 
 
 @unittest.skipIf(np is None, "NumPy is optional for timing-only analysis")

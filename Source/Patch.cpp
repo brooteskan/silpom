@@ -68,12 +68,13 @@ AZ::Data::Asset<AZ::RPI::ModelAsset> CreateQuad()
 void PatchConfig::Reflect(AZ::ReflectContext* context)
 {
     if(auto* sc=azrtti_cast<AZ::SerializeContext*>(context))
-        sc->Class<PatchConfig,AZ::ComponentConfig>()->Version(1)
+        sc->Class<PatchConfig,AZ::ComponentConfig>()->Version(2)
             ->Field("Material",&PatchConfig::m_material)->Field("Width",&PatchConfig::m_width)
             ->Field("Height",&PatchConfig::m_height)->Field("HeightScaleMetres",&PatchConfig::m_heightScale)
             ->Field("ReferenceHeight",&PatchConfig::m_reference)->Field("TileU",&PatchConfig::m_tileU)
             ->Field("TileV",&PatchConfig::m_tileV)->Field("OffsetU",&PatchConfig::m_offsetU)->Field("OffsetV",&PatchConfig::m_offsetV)
-            ->Field("MaxCells",&PatchConfig::m_maxCells)->Field("AddressMode",&PatchConfig::m_addressMode)->Field("Debug",&PatchConfig::m_debug);
+            ->Field("MaxCells",&PatchConfig::m_maxCells)->Field("AddressMode",&PatchConfig::m_addressMode)->Field("Debug",&PatchConfig::m_debug)
+            ->Field("ReuseTexels",&PatchConfig::m_reuseTexels);
 }
 void PatchController::Reflect(AZ::ReflectContext* context)
 {
@@ -152,6 +153,12 @@ bool PatchController::Prepare()
     if(desc.m_mipLevels!=1 || (desc.m_format!=AZ::RHI::Format::R32_FLOAT && desc.m_format!=AZ::RHI::Format::R16_UNORM
         && desc.m_format!=AZ::RHI::Format::R8_UNORM))
     {m_status="Height image must be single-mip R32_FLOAT, R16_UNORM, or R8_UNORM (LUT preset)";return false;}
+    const auto boundsIndex=m_material->FindPropertyIndex(AZ::Name("surface.heightBounds"));
+    const auto& bounds=boundsIndex.IsValid()
+        ? m_material->GetPropertyValue<AZ::Data::Instance<AZ::RPI::Image>>(boundsIndex)
+        : AZ::Data::Instance<AZ::RPI::Image>();
+    if(c.m_reuseTexels && !bounds)
+    {m_status="Assign the conservative RG32F height-bounds atlas for accelerated traversal";return false;}
     bool propertiesValid=true;
     auto set=[&](const char* name,auto value)
     {
@@ -166,6 +173,8 @@ bool PatchController::Prepare()
     set("surface.tileU",c.m_tileU);set("surface.tileV",c.m_tileV);
     set("surface.offsetU",c.m_offsetU);set("surface.offsetV",c.m_offsetV);
     set("surface.maxCells",c.m_maxCells);set("surface.addressMode",c.m_addressMode);set("surface.debug",c.m_debug);
+    set("surface.reuseTexels",c.m_reuseTexels);
+    set("surface.useHierarchy",c.m_reuseTexels);
     set("general.doubleSided",true);
     if(!propertiesValid) {m_status="SilPOM material contract mismatch";return false;}
     m_material->Compile();
@@ -181,7 +190,9 @@ bool PatchController::Prepare()
     m_meshProcessor->SetLocalAabb(m_mesh,AZ::Aabb::CreateFromMinMax(
         AZ::Vector3(-c.m_width*scale*.5f,-c.m_height*scale*.5f,AZStd::min(a,b)-1e-5f),
         AZ::Vector3(c.m_width*scale*.5f,c.m_height*scale*.5f,AZStd::max(a,b)+1e-5f)));
-    m_status="Ready: full-resolution relief + hit depth; flat quad shadows; RT disabled";
+    m_status=c.m_reuseTexels
+        ? "Ready: conservative bounds + exact leaf traversal; full-resolution hit depth; flat quad shadows; RT disabled"
+        : "Ready: frozen exact traversal baseline; full-resolution hit depth; flat quad shadows; RT disabled";
     return true;
 }
 void PatchController::SetDebug(AZ::u32 mode)

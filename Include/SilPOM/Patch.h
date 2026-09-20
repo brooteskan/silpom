@@ -20,6 +20,7 @@ public:
     float m_width=2, m_height=2, m_heightScale=.1f, m_reference=.5f;
     float m_tileU=1, m_tileV=1, m_offsetU=0, m_offsetV=0;
     AZ::u32 m_maxCells=4096, m_addressMode=0, m_debug=0;
+    bool m_reuseTexels=false;
 };
 class PatchRequests : public AZ::EBusTraits
 {

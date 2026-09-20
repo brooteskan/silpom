@@ -56,6 +56,34 @@ static double Reference(const Texture& tex, const SilPomPatch& p, SilPomRay ray)
     }
     return result;
 }
+
+static BoundsTexture BuildBounds(const Texture& texture)
+{
+    Require(texture.width==texture.height && (texture.width&(texture.width-1))==0,"power-of-two hierarchy fixture");
+    BoundsTexture result{texture.width,texture.height*2-1,std::vector<float2>(texture.width*(texture.height*2-1))};
+    uint offset=0,size=texture.width;
+    for(uint y=0;y<size;++y) for(uint x=0;x<size;++x)
+    {
+        const float values[]={texture.pixels[y*size+x],texture.pixels[y*size+(x+1)%size],
+            texture.pixels[((y+1)%size)*size+x],texture.pixels[((y+1)%size)*size+(x+1)%size]};
+        result.pixels[y*result.width+x]={*std::min_element(values,values+4),*std::max_element(values,values+4)};
+    }
+    while(size>1)
+    {
+        const uint previousOffset=offset;
+        offset+=size; size/=2;
+        for(uint y=0;y<size;++y) for(uint x=0;x<size;++x)
+        {
+            const float2 children[]={result.pixels[(previousOffset+2*y)*result.width+2*x],
+                result.pixels[(previousOffset+2*y)*result.width+2*x+1],
+                result.pixels[(previousOffset+2*y+1)*result.width+2*x],
+                result.pixels[(previousOffset+2*y+1)*result.width+2*x+1]};
+            result.pixels[(offset+y)*result.width+x]={std::min({children[0].x,children[1].x,children[2].x,children[3].x}),
+                std::max({children[0].y,children[1].y,children[2].y,children[3].y})};
+        }
+    }
+    return result;
+}
 int main()
 {
     Texture texture{8,8,std::vector<float>(64,.5f)};
@@ -74,21 +102,48 @@ int main()
     patch.scale=0; Require(trace({0,0,1},{0,0,-1}).status==SP_HIT,"zero scale"); patch.scale=.2f;
     patch.maxCells=1; Require(trace({-.99f,0,.08f},{1,0,-.001f}).status==SP_EXHAUSTED,"exhaustion differs from miss"); patch.maxCells=4096;
     patch.width=0; Require(trace({0,0,1},{0,0,-1}).status==SP_INVALID,"invalid extent"); patch.width=2;
+    // A long grazing miss exercises adjacent-cell reuse without changing the
+    // exact DDA result or its public visited-cell count.
+    texture.loads=0;
+    SilPomRay grazing{{-.99f,0,.09f},{1,0,0},0,10};
+    auto baseline=SilPomIntersectBaseline(texture,patch,grazing);
+    const auto baselineLoads=texture.loads;
+    texture.loads=0;
+    auto accelerated=SilPomIntersect(texture,patch,grazing);
+    const auto acceleratedLoads=texture.loads;
+    Require(baseline.status==accelerated.status && baseline.cells==accelerated.cells,"reuse preserves grazing traversal result");
+    Require(acceleratedLoads<baselineLoads,"reuse lowers grazing height loads");
     std::mt19937 random(40);
     std::uniform_real_distribution<float> unit(0,1), coord(-1,1);
     for(auto& value:texture.pixels) value=unit(random);
+    const auto bounds=BuildBounds(texture);
     for(int i=0;i<20000;++i)
     {
         patch.addressMode=uint(i%2); patch.tileU=i%3==0 ? -2.f : 1.5f; patch.tileV=.75f;
         patch.offsetU=.13f; patch.offsetV=-.31f; patch.scale=i%4==0?-.2f:.2f;
         SilPomRay ray{{coord(random)*1.4f,coord(random)*1.4f,coord(random)*.25f},normalize({coord(random),coord(random),coord(random)}),0,10};
+        auto baselineHit=SilPomIntersectBaseline(texture,patch,ray);
         hit=SilPomIntersect(texture,patch,ray);
+        auto hierarchyHit=SilPomIntersectHierarchy(texture,bounds,patch,ray);
+        auto boundsHit=SilPomIntersectBounds(texture,bounds,patch,ray);
         const double expected=Reference(texture,patch,ray);
         if ((hit.status==SP_HIT)!=std::isfinite(expected) || (hit.status==SP_HIT && std::abs(hit.t-expected)>2e-4))
         {
             std::cerr<<"case "<<i<<" status "<<hit.status<<" t "<<hit.t<<" expected "<<expected<<'\n';
             Require(false,"exhaustive double oracle agreement");
         }
+        if (baselineHit.status!=hit.status || baselineHit.cells!=hit.cells || (hit.status==SP_HIT &&
+            (std::abs(baselineHit.t-hit.t)>1e-7f || std::abs(baselineHit.uv.x-hit.uv.x)>1e-7f
+                || std::abs(baselineHit.uv.y-hit.uv.y)>1e-7f || dot(baselineHit.normal,hit.normal)<.999999f)))
+            Require(false,"accelerated traversal is bitwise-order equivalent to baseline");
+        if (hierarchyHit.status!=hit.status || (hit.status==SP_HIT &&
+            (std::abs(hierarchyHit.t-hit.t)>2e-4f || std::abs(hierarchyHit.uv.x-hit.uv.x)>2e-4f
+                || std::abs(hierarchyHit.uv.y-hit.uv.y)>2e-4f || dot(hierarchyHit.normal,hit.normal)<.9999f)))
+            Require(false,"hierarchy preserves exact nearest hit");
+        if (boundsHit.status!=hit.status || boundsHit.cells!=hit.cells || (hit.status==SP_HIT &&
+            (std::abs(boundsHit.t-hit.t)>2e-4f || std::abs(boundsHit.uv.x-hit.uv.x)>2e-4f
+                || std::abs(boundsHit.uv.y-hit.uv.y)>2e-4f || dot(boundsHit.normal,hit.normal)<.9999f)))
+            Require(false,"precomputed leaf bounds preserve exact traversal");
         Require(hit.status!=SP_EXHAUSTED,"bounded reference scenes complete");
         if(hit.status==SP_HIT) Require(std::abs(dot(hit.normal,hit.normal)-1)<1e-5,"finite unit normal");
     }

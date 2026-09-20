@@ -61,6 +61,38 @@
                         }
                     },
                     {
+                        "name": "reuseTexels",
+                        "displayName": "Reuse adjacent height texels",
+                        "description": "Compile the exact traversal with adjacent-cell texel reuse. Disable only for frozen performance comparisons.",
+                        "type": "Bool",
+                        "defaultValue": true,
+                        "connection": {
+                            "type": "ShaderOption",
+                            "name": "o_silpomReuseTexels"
+                        }
+                    },
+                    {
+                        "name": "heightBounds",
+                        "displayName": "Conservative height bounds",
+                        "description": "RG32F min/max atlas derived from the exact height source.",
+                        "type": "Image",
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomHeightBounds"
+                        }
+                    },
+                    {
+                        "name": "useHierarchy",
+                        "displayName": "Use conservative bounds",
+                        "description": "Use precomputed conservative cell bounds for long traversals; exact height samples and roots remain authoritative.",
+                        "type": "Bool",
+                        "defaultValue": true,
+                        "connection": {
+                            "type": "ShaderOption",
+                            "name": "o_silpomUseHierarchy"
+                        }
+                    },
+                    {
                         "name": "width",
                         "type": "Float",
                         "defaultValue": 2,

@@ -28,6 +28,16 @@ def distribution(values):
             "p95_ms": percentile(values, .95), "min_ms": min(values), "max_ms": max(values)}
 
 
+def compare_distributions(candidate, baseline):
+    """Positive improvement means the candidate is faster."""
+    result = {}
+    for statistic in ("median_ms", "p95_ms"):
+        before = baseline[statistic]
+        after = candidate[statistic]
+        result[statistic.replace("_ms", "_improvement")] = ((before - after) / before) if before else None
+    return result
+
+
 def summarize_capture(document):
     assert document["complete"] and document["frames"] == document["requested"], "Incomplete capture"
     per_pass = defaultdict(list)
@@ -201,15 +211,15 @@ def analyze(folder, images=False):
     result = json.loads((folder / "result.json").read_text())
     report = {"harness_passed": result["passed"], "accepted": False,
               "acceptance_note": "Requires agreed workload, sufficient reference density, quality review and elapsed GPU timing.",
-              "captures": {}, "image_comparisons": {}, "aggregates": {},
+              "captures": {}, "image_comparisons": {}, "aggregates": {}, "performance_comparisons": {},
               "diagnostics": result.get("diagnostics", {}), "shadow_comparisons": {}}
     for cells in result["grids"]:
         files = [folder / f"grid{cells}_front_{variant}_run0_shadow.dds"
-                 for variant in ("quad", "reference")]
+                 for variant in ("quad_optimized", "reference")]
         if all(path.exists() for path in files):
             hashes = [hashlib.sha256(path.read_bytes()).hexdigest() for path in files]
             report["shadow_comparisons"][f"grid{cells}_front"] = {
-                "identical": hashes[0] == hashes[1], "sha256": dict(zip(("quad", "reference"), hashes)),
+                "identical": hashes[0] == hashes[1], "sha256": dict(zip(("quad_optimized", "reference"), hashes)),
                 "scope": "Captured shadow attachment slice only; not an all-cascade visibility oracle"}
     groups = defaultdict(lambda: defaultdict(list))
     for name in result["timings"]:
@@ -224,20 +234,39 @@ def analyze(folder, images=False):
                 group[info["path"]].append(ns / 1e6)
     report["aggregates"] = {key: {name: distribution(values) for name, values in metrics.items() if values}
                             for key, metrics in groups.items()}
+    metrics = ("graphics_pass_span", "Root.MainPipeline_0.DepthPrePass.DepthPass",
+               "Root.MainPipeline_0.OpaquePass.Forward")
+    for cells in result["grids"]:
+        for view in result["views"]:
+            prefix = f"grid{cells}_{view}"
+            optimized = report["aggregates"].get(prefix + "_quad_optimized", {})
+            comparisons = {}
+            for baseline_name in ("quad_baseline", "reference"):
+                baseline = report["aggregates"].get(prefix + "_" + baseline_name, {})
+                common = {name: compare_distributions(optimized[name], baseline[name])
+                          for name in metrics if name in optimized and name in baseline}
+                if common:
+                    comparisons["optimized_vs_" + baseline_name] = common
+            report["performance_comparisons"][prefix] = comparisons
     if images:
         for cells in result["grids"]:
             for view in result["views"]:
                 prefix = f"grid{cells}_{view}"
-                report["image_comparisons"][prefix] = image_metrics(
-                    read_png(folder / (prefix + "_quad_run0.png")),
+                report["image_comparisons"][prefix + "_optimized_vs_reference"] = image_metrics(
+                    read_png(folder / (prefix + "_quad_optimized_run0.png")),
                     read_png(folder / (prefix + "_reference_run0.png")),
-                    read_depth(folder / (prefix + "_quad_run0_depth.dds")),
+                    read_depth(folder / (prefix + "_quad_optimized_run0_depth.dds")),
                     read_depth(folder / (prefix + "_reference_run0_depth.dds")))
+                report["image_comparisons"][prefix + "_optimized_vs_baseline"] = image_metrics(
+                    read_png(folder / (prefix + "_quad_optimized_run0.png")),
+                    read_png(folder / (prefix + "_quad_baseline_run0.png")),
+                    read_depth(folder / (prefix + "_quad_optimized_run0_depth.dds")),
+                    read_depth(folder / (prefix + "_quad_baseline_run0_depth.dds")))
                 import numpy as np
                 mask = read_png(folder / (prefix + "_hit_mask.png"))
-                depth = read_depth(folder / (prefix + "_quad_run0_depth.dds"))
+                depth = read_depth(folder / (prefix + "_quad_optimized_run0_depth.dds"))
                 roi = np.isfinite(depth) & (depth > 0) & (depth < 5)
-                report["image_comparisons"][prefix].update(diagnostic_pixels(mask, roi))
+                report["image_comparisons"][prefix + "_optimized_vs_reference"].update(diagnostic_pixels(mask, roi))
         forced = folder / "forced_exhaustion.png"
         if forced.exists():
             # This whole-frame check only confirms the visible magenta signal.

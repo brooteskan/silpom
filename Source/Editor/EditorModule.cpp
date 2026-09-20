@@ -38,6 +38,7 @@ public:
                     ->DataElement(AZ::Edit::UIHandlers::Default,&PatchConfig::m_offsetV,"Offset V","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&PatchConfig::m_maxCells,"Maximum cells","Exhaustion is displayed in magenta")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&PatchConfig::m_addressMode,"Address mode","0 repeat; 1 clamp")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&PatchConfig::m_reuseTexels,"Reuse adjacent height texels","Exact optimized traversal; disable only for frozen A/B baseline")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&PatchConfig::m_debug,"Debug","0 shaded; 1 normal; 2 cell budget; 3 UV; 4 depth; 5 hit mask. Magenta exhausted; yellow invalid.");
             }
         }

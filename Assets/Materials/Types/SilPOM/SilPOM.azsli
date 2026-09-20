@@ -91,7 +91,12 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN, VsSystemValues SV, bo
     ray.origin=mul(inverseRotation,origin-translation);
     ray.direction=mul(inverseRotation,direction);
     ray.tMin=0; ray.tMax=1e7;
-    SilPomHit hit=SilPomIntersect(GetMaterialTexture(params.m_silpomHeightMap),p,ray);
+    SilPomHit hit;
+    if(o_silpomUseHierarchy)
+        hit=SilPomIntersectBounds(GetMaterialTexture(params.m_silpomHeightMap),
+            GetMaterialTexture(params.m_silpomHeightBounds),p,ray);
+    else
+        hit=SilPomIntersectMode(GetMaterialTexture(params.m_silpomHeightMap),p,ray,o_silpomReuseTexels);
     IN.silpomDiagnostic=float4(float(hit.status),float(hit.cells),hit.t,0);
     // Exhaustion is conspicuous, never silently treated as a physical miss.
     if(hit.status==SP_MISS) discard;

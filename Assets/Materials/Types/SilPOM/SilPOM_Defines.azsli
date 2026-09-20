@@ -2,6 +2,11 @@
 #pragma once
 #include <Atom/Feature/Common/Assets/Materials/Types/StandardPBR_Defines.azsli>
 
+// Compiled as separate material variants so the frozen traversal comparison
+// does not pay for a dynamic branch in the measured inner loop.
+option bool o_silpomReuseTexels = true;
+option bool o_silpomUseHierarchy = true;
+
 // Sample interpolation makes the intersection ray agree with MSAA depth samples.
 #define VsOutput VsOutput_SilPom
 struct VsOutput_SilPom

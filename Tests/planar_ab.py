@@ -36,6 +36,7 @@ result = {"passed": False, "manifest": manifest, "platform": platform.platform()
           "samples": samples, "runs": runs, "grids": grids, "views": views,
           "captures": [], "timings": [], "errors": [], "camera_radius_metres": 3,
           "quad_vertices": 4, "quad_triangles": 2, "overlay_enabled": True,
+          "variants": ["quad_baseline", "quad_optimized", "reference"],
           "thresholds_agreed": manifest["thresholds"]["agreed"]}
 original_cvars = {}
 original_viewport = original_policy = None
@@ -123,7 +124,7 @@ def depth_interaction():
     editor.ToolsApplicationRequestBus(bus.Broadcast, "SetSelectedEntities", [])
     for view in ("front", "oblique", "grazing"):
         camera(view)
-        for variant in ("quad", "reference"):
+        for variant in ("quad_optimized", "reference"):
             benchmark("SetReferenceVisible", variant == "reference")
             benchmark("SetOverlay", f"Planar A/B: ordinary-geometry occlusion | {variant} | {view}")
             general.idle_wait_frames(120)
@@ -133,7 +134,7 @@ def depth_interaction():
 
 def motion_keyframes(cells):
     # Separate from timed runs: readback stalls must not bias GPU measurements.
-    for variant in ("quad", "reference"):
+    for variant in ("quad_optimized", "reference"):
         benchmark("SetReferenceVisible", variant == "reference")
         benchmark("SetOverlay", f"Planar A/B: moving camera | {variant} | grid {cells}")
         camera("moving", 0)
@@ -172,12 +173,13 @@ try:
     assert added.IsSuccess(), added.GetError()
     component = added.GetValue()[0]
     material = asset.AssetCatalogRequestBus(bus.Broadcast, "GetAssetIdByPath",
-                                           manifest["quad_material"], azmath.Uuid(), False)
+                                           manifest["quad_optimized_material"], azmath.Uuid(), False)
     assert material.is_valid(), "Process the planar A/B assets first"
     for name, value in {
         "Width": manifest["width_metres"], "Height": manifest["height_metres"],
         "Height scale (world metres)": manifest["scale_metres"],
         "Reference height": manifest["midpoint"], "Maximum cells": manifest["max_cells"],
+        "Reuse adjacent height texels": True,
         "Material": material,
     }.items():
         property_value(component, name, value)
@@ -200,9 +202,14 @@ try:
         for view in views:
             for run in range(runs):
                 # Alternate run order to expose thermal/order bias.
-                variants = ("quad", "reference") if run % 2 == 0 else ("reference", "quad")
+                # Rotate all three implementations so no one variant always
+                # receives the same thermal/order position.
+                variants = ("quad_baseline", "quad_optimized", "reference")
+                variants = variants[run % 3:] + variants[:run % 3]
                 for variant in variants:
                     name = f"grid{cells}_{view}_{variant}_run{run}"
+                    property_value(component, "Reuse adjacent height texels", variant != "quad_baseline")
+                    wait_until(lambda: silpom.SilPomPatchRequestBus(bus.Event, "IsReady", patch))
                     benchmark("SetReferenceVisible", variant == "reference")
                     benchmark("SetOverlay", f"SilPOM planar A/B | {variant} | {view} | grid {cells}\n"
                               f"Native {manifest['resolution']} MSAA {manifest['msaa']} | flat shadows | POM off\n"
@@ -221,7 +228,9 @@ try:
                     position = components.TransformBus(bus.Event, "GetWorldTranslation", patch)
                     assert abs(position.x-16) < 1e-5 and abs(position.y-16) < 1e-5 and abs(position.z-40) < 1e-5, "Test patch moved during capture"
                     timing.update(variant=variant, view=view, run=run, cells=cells,
-                                  triangles=2 if variant == "quad" else 2 * cells * cells)
+                                  optimization="baseline" if variant == "quad_baseline" else
+                                               "adjacent_texel_reuse" if variant == "quad_optimized" else "grid",
+                                  triangles=2 if variant != "reference" else 2 * cells * cells)
                     (output / (name + "_gpu.json")).write_text(json.dumps(timing))
                     result["timings"].append(name + "_gpu.json")
                     checkpoint()
@@ -241,6 +250,8 @@ try:
                 motion_keyframes(cells)
             # Capture diagnostic appearance separately from normal shaded timings.
             benchmark("SetReferenceVisible", False)
+            property_value(component, "Reuse adjacent height texels", True)
+            wait_until(lambda: silpom.SilPomPatchRequestBus(bus.Event, "IsReady", patch))
             silpom.SilPomPatchRequestBus(bus.Event, "SetDebug", patch, 5)
             camera(view)
             general.idle_wait_frames(30)
