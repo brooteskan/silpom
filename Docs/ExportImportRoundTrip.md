@@ -138,3 +138,70 @@ Nine Blender authoring checks cover identity initialization, reordering, materia
 rename, duplicate identity rejection/repair, varying fields/profiles, nonuniform
 scale rejection, modifier rejection, and polygon triangulation. Six decoder unit
 tests also cover namespaces, stable-ID duplication, winding, and non-finite data.
+
+## Blender add-on
+
+The [README installation and workflow](../README.md#install-and-run-the-blender-exporter)
+describe **Curved SilPOM Exporter**, a self-contained legacy-format Blender add-on
+ZIP. `Tools/package_blender_addon.py` packages the UI in
+`Tools/blender_addon/__init__.py` with the authoritative `Tools/export_mesh.py` and
+license. There is no second copy of the transport implementation to maintain.
+The add-on requires Blender 5.0 or newer; validation is on 5.0.1 only.
+
+The SilPOM sidebar creates Integer/Face `silpom_region_id` and
+`silpom_profile_id` attributes from selected faces in single- or multi-object
+Edit Mode. New unassigned faces default to ordinary geometry, and previously
+tagged faces retain implicit profile 1 when the profile attribute is first
+created. Both assignment and clearing support Blender's Undo. An attribute with
+the wrong type/domain is rejected rather than replaced.
+
+The File > Export operator defaults to selected meshes and initializes/repairs
+identities. Disable initialization for strict identity validation. For a chosen
+`wall.fbx`, it writes `wall.silpom.json` and `wall.authoring.blend` alongside it;
+the CLI retains its original `roundtrip.*` and `authoring.blend` names. Both paths
+use transport version 2. The authoring copy contains the whole original scene,
+not just the exported selection. Export does not bake textures or assign height
+maps; profile IDs remain references for future curved assets.
+
+The exporter restores selection, active object and scene units, removes its
+temporary collection/objects/meshes/materials, and rolls back identity allocation
+on failure. The UI additionally restores Edit Mode when exporting from it.
+Successful allocation is retained in the open scene and the authoring copy;
+save the working scene normally or continue from the copy to retain those IDs.
+Existing bundle files require explicit overwrite opt-in in the add-on, and the
+currently open authoring file cannot be an output. FBX generation is staged so a
+failed FBX operation does not replace an existing bundle.
+
+Run the installation/operator regression suite without changing the user's
+installed add-ons or saving preferences:
+
+```powershell
+$env:BLENDER_USER_RESOURCES = "$PWD/build/addon-tests/blender-user"
+& '<blender.exe>' --background --factory-startup --python-exit-code 1 --python Tests/blender_addon_tests.py -- --output build/addon-tests
+```
+
+Use a dedicated shell for that environment override. The suite builds the ZIP,
+installs it with Blender's real add-on installer into a disposable script path,
+enables it, and exercises tagging and export through `bpy.ops`. Tests cover
+named bundles, paired FBX hashes, repeat export/identity stability, selection
+scope, multi-object tagging, scene restoration, input/overwrite guards, invalid
+attributes, empty selections, injected FBX failure, and disable/re-enable.
+Reports go to `build/addon-tests/result.json`. The generated
+`build/addon-tests/integration/roundtrip.authoring.blend` can be passed to
+`Tools/run_roundtrip.py --blend` with the Blender, Asset Processor and project
+arguments above for a real two-pass TG import.
+
+Alternatively configure CMake with `-DSILPOM_BLENDER=<blender.exe>` to register
+`SilPOM.BlenderAuthoring` and `SilPOM.BlenderAddon`; the latter sets an isolated
+Blender user-resource directory automatically. None of these tests promote the
+experimental transport to a production curved asset builder or runtime renderer.
+
+Validated locally on 2026-09-19 with Blender 5.0.1: all 13 add-on checks and all
+five configured CTest suites (core, curved CPU, metadata, Blender authoring and
+Blender add-on) pass. The exact add-on-generated FBX/sidecar pair was also imported
+through TG's Asset Processor: four faces, three displaced faces, two materials,
+three shared edges and one selected/ordinary boundary pass the independent
+decoder and its five corruption checks, with a stock `.azmodel` produced.
+Asset Processor reports zero failed assets, zero errors and the same four
+UV-channel merge warnings described above. Testing used an isolated add-on
+installation, not the user's interactive Blender preferences.

@@ -1,0 +1,215 @@
+{
+    "description": "Internal curved mesh variant. Managed by the SilPOM Mesh component.",
+    "version": 1,
+    "propertyLayout": {
+        "propertyGroups": [
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/BaseColorPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/VertexColorPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/MetallicPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/RoughnessPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/SpecularPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/NormalPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/OcclusionPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/EmissivePropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/ClearCoatPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/ParallaxPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/OpacityPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/UvPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/IrradiancePropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/GeneralCommonPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/SilhouetteBlockerPropertyGroup.json"
+            },
+            {
+                "name": "mesh",
+                "displayName": "Managed mesh resources",
+                "properties": [
+                    {
+                        "name": "hitBufferIndex", "type": "UInt", "defaultValue": 0,
+                        "connection": { "type": "ShaderInput", "name": "m_meshHitBufferIndex" }
+                    },
+                    {
+                        "name": "hitOffset", "type": "UInt", "defaultValue": 0,
+                        "connection": { "type": "ShaderInput", "name": "m_meshHitOffset" }
+                    },
+                    {
+                        "name": "heightMap",
+                        "type": "Image",
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_meshHeightMap"
+                        }
+                    },
+                    {
+                        "name": "bufferIndex",
+                        "type": "UInt",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_meshBufferIndex"
+                        }
+                    },
+                    {
+                        "name": "triangleCount",
+                        "type": "UInt",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_meshTriangleCount"
+                        }
+                    },
+                    {
+                        "name": "fragmentCount",
+                        "type": "UInt",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_meshFragmentCount"
+                        }
+                    },
+                    {
+                        "name": "baseScale",
+                        "type": "Float",
+                        "defaultValue": 1,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_meshBaseScale"
+                        }
+                    },
+                    {
+                        "name": "scale",
+                        "type": "Float",
+                        "defaultValue": 0.1,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_meshScale"
+                        }
+                    },
+                    {
+                        "name": "reference",
+                        "type": "Float",
+                        "defaultValue": 0.5,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_meshReference"
+                        }
+                    },
+                    {
+                        "name": "textureWidth",
+                        "type": "UInt",
+                        "defaultValue": 1,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_meshTextureWidth"
+                        }
+                    },
+                    {
+                        "name": "textureHeight",
+                        "type": "UInt",
+                        "defaultValue": 1,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_meshTextureHeight"
+                        }
+                    },
+                    {
+                        "name": "addressMode",
+                        "type": "UInt",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_meshAddressMode"
+                        }
+                    },
+                    {
+                        "name": "maxNodes",
+                        "type": "UInt",
+                        "defaultValue": 2048,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_meshMaxNodes"
+                        }
+                    },
+                    {
+                        "name": "depthAccuracy",
+                        "type": "Float",
+                        "defaultValue": 0.0005,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_meshDepthAccuracy"
+                        }
+                    },
+                    {
+                        "name": "boundsMin",
+                        "type": "Vector3",
+                        "defaultValue": [
+                            -1,
+                            -1,
+                            -1
+                        ],
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_meshBoundsMin"
+                        }
+                    },
+                    {
+                        "name": "boundsMax",
+                        "type": "Vector3",
+                        "defaultValue": [
+                            1,
+                            1,
+                            1
+                        ],
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_meshBoundsMax"
+                        }
+                    }
+                ]
+            }
+        ]
+    },
+    "lightingModel": "Standard",
+    "materialShaderDefines": "../SilPOM/SilPOM_Defines.azsli",
+    "materialShaderCode": "SilPOMMesh.azsli",
+    "functors": [
+        {
+            "type": "Lua",
+            "args": {
+                "file": "Materials/Types/SilPOMMesh/SilPOMMesh_State.lua"
+            }
+        }
+    ],
+    "uvNameMap": {
+        "UV0": "Tiled",
+        "UV1": "Unwrapped"
+    }
+}

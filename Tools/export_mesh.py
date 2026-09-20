@@ -8,11 +8,13 @@ which contains any newly allocated persistent identities. Output metadata is an
 authoring transport contract, NOT the future cooked runtime representation.
 """
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 import math
 from pathlib import Path
 import sys
+import tempfile
 import uuid
 
 import bpy
@@ -65,12 +67,81 @@ def unit_direction(value, label):
     return list(value.normalized())
 
 
-def export(output, objects, initialize=False, reorder=False):
+def output_paths(output, basename=None):
+    """Keep the CLI contract; the add-on may choose a named FBX bundle."""
+    output = Path(output).resolve()
+    require(basename is None or (basename not in ('', '.', '..') and
+            Path(basename).name == basename and '/' not in basename and '\\' not in basename),
+            'Invalid export filename')
+    return {'fbx': output / ((basename or 'roundtrip') + '.fbx'),
+            'sidecar': output / ((basename or 'roundtrip') + '.silpom.json'),
+            'authoring': output / (basename + '.authoring.blend' if basename else 'authoring.blend')}
+
+
+@contextmanager
+def identity_transaction(objects):
+    """Keep allocated identities on success; roll them back on validation/I/O failure."""
+    properties, attributes, meshes, materials = [], [], set(), set()
+    for obj in objects:
+        properties.append((obj, 'silpom_object_id', obj.get('silpom_object_id')))
+        if obj.data not in meshes:
+            meshes.add(obj.data)
+            for name in ('silpom_vertex_id', 'silpom_face_id'):
+                attribute = obj.data.attributes.get(name)
+                values = [entry.value for entry in attribute.data] if attribute and attribute.data_type == 'INT' else None
+                attributes.append((obj.data, name, attribute is not None, values))
+        for material in obj.data.materials:
+            if material and material not in materials:
+                materials.add(material)
+                properties.append((material, 'silpom_material_id', material.get('silpom_material_id')))
+    try:
+        yield
+    except Exception:
+        for owner, key, value in properties:
+            if owner.get(key) == value:
+                continue
+            if value is None:
+                if key in owner:
+                    del owner[key]
+            else:
+                owner[key] = value
+        for mesh, name, existed, values in attributes:
+            attribute = mesh.attributes.get(name)
+            if attribute and not existed:
+                mesh.attributes.remove(attribute)
+            elif attribute and values is not None:
+                for entry, value in zip(attribute.data, values):
+                    if entry.value != value:
+                        entry.value = value
+        raise
+
+
+@contextmanager
+def staged_fbx(directory):
+    # Use the final directory for Blender's relative texture references. A .tmp
+    # suffix prevents asset watchers from importing an unfinished FBX.
+    with tempfile.NamedTemporaryFile(prefix='.silpom-', suffix='.tmp', dir=directory, delete=False) as temporary:
+        path = Path(temporary.name)
+    try:
+        yield path
+    finally:
+        path.unlink(missing_ok=True)
+
+
+def export(output, objects, initialize=False, reorder=False, *, basename=None):
+    objects = list(objects)
     require(objects, 'No mesh objects selected for export')
-    output.mkdir(parents=True, exist_ok=True)
+    require(bpy.context.mode == 'OBJECT', 'Switch to Object Mode before export')
+    require(all(obj.type == 'MESH' for obj in objects), 'Only mesh objects can be exported')
+    paths = output_paths(output, basename)
     source = Path(bpy.data.filepath).resolve() if bpy.data.filepath else None
-    authoring = output / 'authoring.blend'
-    require(source != authoring.resolve(), 'Choose a new output directory; the input authoring file is never overwritten')
+    require(source != paths['authoring'], 'Choose a new output directory or filename; the input authoring file is never overwritten')
+    require(all(not path.exists() or path.is_file() for path in paths.values()), 'An export destination is a directory, not a file')
+    with identity_transaction(objects):
+        return _export(paths, objects, initialize, reorder)
+
+
+def _export(paths, objects, initialize, reorder):
     object_ids, material_ids = set(), set()
     material_map = {}
     vertices, logical_ids, records, object_records = {}, {}, [], []
@@ -153,61 +224,96 @@ def export(output, objects, initialize=False, reorder=False):
     records.sort(key=lambda r: r['stable_id'])
     for index, record in enumerate(records, 1):
         record['id'] = index
-    # Save persistent IDs before creating temporary export meshes/materials.
-    bpy.ops.wm.save_as_mainfile(filepath=str(authoring), copy=True)
     material_records = sorted(material_map.values(), key=lambda m: m['id'])
-    export_materials = []
-    for record in material_records:
-        material = bpy.data.materials[record['name']].copy()
-        material.name = record['export_name']
-        require(material.name == record['export_name'], 'Reserved export material name already exists')
-        export_materials.append(material)
-    material_slots = {m['id']: i for i, m in enumerate(material_records)}
-    nodes = []
-    for selected in (True, False):
-        subset = [r for r in records if bool(r['region']) == selected]
-        if not subset:
-            continue
-        if reorder:
-            subset.reverse()
-        name = 'SilPOM_Selected' if selected else 'SilPOM_Ordinary'
-        require(name not in bpy.data.objects, 'Reserved export node name already exists: ' + name)
-        mesh = bpy.data.meshes.new(name)
-        positions = [vertices[str(v)] for record in subset for v in record['vertices']]
-        mesh.from_pydata(positions, [], [(i, i + 1, i + 2) for i in range(0, len(positions), 3)])
-        for material in export_materials:
-            mesh.materials.append(material)
-        node = bpy.data.objects.new(name, mesh)
-        bpy.context.collection.objects.link(node)
-        layers = [mesh.uv_layers.new(name=n) for n in ('UVMap', 'SP_Identity', 'SP_DirectionXY', 'SP_DirectionZ')]
-        shading = []
-        for polygon, record in zip(mesh.polygons, subset):
-            polygon.material_index = material_slots[record['material_id']]
-            polygon.use_smooth = True
-            for corner, loop in enumerate(polygon.loop_indices):
-                layers[0].data[loop].uv = record['uv'][corner]
-                layers[1].data[loop].uv = (record['id'], record['vertices'][corner])
-                layers[2].data[loop].uv = record['directions'][corner][:2]
-                layers[3].data[loop].uv = (record['directions'][corner][2], 17)
-                shading.append(record['normals'][corner])
-        mesh.normals_split_custom_set(shading)
-        nodes.append(node)
-    bpy.ops.object.select_all(action='DESELECT')
-    for node in nodes:
-        node.select_set(True)
-    bpy.context.view_layer.objects.active = nodes[0]
-    bpy.context.scene.unit_settings.scale_length = 1.0  # positions were already resolved to metres
-    fbx = output / 'roundtrip.fbx'
-    bpy.ops.export_scene.fbx(filepath=str(fbx), use_selection=True, object_types={'MESH'}, axis_forward='-Y', axis_up='Z',
-                            apply_unit_scale=True, apply_scale_options='FBX_SCALE_ALL', use_mesh_modifiers=False,
-                            bake_anim=False, add_leaf_bones=False, mesh_smooth_type='OFF', use_custom_props=True)
     semantics = {'vertices': vertices, 'logical_vertex_ids': logical_ids, 'faces': records,
                  'objects': object_records, 'materials': material_records}
-    document = {'version': 2, 'blender': bpy.app.version_string,
-                'fbx_sha256': hashlib.sha256(fbx.read_bytes()).hexdigest(), **semantics,
-                'semantic_sha256': hashlib.sha256(json.dumps(semantics, sort_keys=True).encode()).hexdigest()}
-    (output / 'roundtrip.silpom.json').write_text(json.dumps(document, indent=2) + '\n', encoding='utf-8')
-    print('SILPOM_EXPORT ' + json.dumps({'faces': len(records), 'objects': len(objects), 'output': str(output)}))
+    paths['fbx'].parent.mkdir(parents=True, exist_ok=True)
+    # Build the FBX/sidecar off to the side so failed FBX generation cannot replace
+    # an existing bundle. Save the authoring copy at its final path for correct
+    # Blender-relative asset paths, after all temporary scene data is cleaned up.
+    with tempfile.TemporaryDirectory(prefix='.silpom-', dir=paths['fbx'].parent) as staging, staged_fbx(paths['fbx'].parent) as fbx:
+        _write_fbx(fbx, vertices, records, material_records, reorder)
+        document = {'version': 2, 'blender': bpy.app.version_string,
+                    'fbx_sha256': hashlib.sha256(fbx.read_bytes()).hexdigest(), **semantics,
+                    'semantic_sha256': hashlib.sha256(json.dumps(semantics, sort_keys=True).encode()).hexdigest()}
+        sidecar = Path(staging) / paths['sidecar'].name
+        sidecar.write_text(json.dumps(document, indent=2) + '\n', encoding='utf-8')
+        result = bpy.ops.wm.save_as_mainfile(filepath=str(paths['authoring']), copy=True, check_existing=False)
+        require(result == {'FINISHED'}, 'Could not save the authoring copy')
+        fbx.replace(paths['fbx'])
+        sidecar.replace(paths['sidecar'])
+    print('SILPOM_EXPORT ' + json.dumps({'faces': len(records), 'objects': len(objects), 'output': str(paths['fbx'].parent)}))
+    return document
+
+
+def _write_fbx(fbx, vertices, records, material_records, reorder):
+    scene = bpy.context.scene
+    view_layer = bpy.context.view_layer
+    unit_scale = scene.unit_settings.scale_length
+    selection = [(obj, obj.select_get()) for obj in view_layer.objects]
+    active = view_layer.objects.active
+    nodes, meshes = [], []
+    export_materials = []
+    collection = bpy.data.collections.new('SilPOM_Export_Temporary')
+    scene.collection.children.link(collection)
+    try:
+        for record in material_records:
+            material = bpy.data.materials[record['name']].copy()
+            export_materials.append(material)
+            material.name = record['export_name']
+            require(material.name == record['export_name'], 'Reserved export material name already exists')
+        material_slots = {m['id']: i for i, m in enumerate(material_records)}
+        for selected in (True, False):
+            subset = [r for r in records if bool(r['region']) == selected]
+            if not subset:
+                continue
+            if reorder:
+                subset.reverse()
+            name = 'SilPOM_Selected' if selected else 'SilPOM_Ordinary'
+            require(name not in bpy.data.objects, 'Reserved export node name already exists: ' + name)
+            mesh = bpy.data.meshes.new(name)
+            meshes.append(mesh)
+            positions = [vertices[str(v)] for record in subset for v in record['vertices']]
+            mesh.from_pydata(positions, [], [(i, i + 1, i + 2) for i in range(0, len(positions), 3)])
+            for material in export_materials:
+                mesh.materials.append(material)
+            node = bpy.data.objects.new(name, mesh)
+            nodes.append(node)
+            collection.objects.link(node)
+            layers = [mesh.uv_layers.new(name=n) for n in ('UVMap', 'SP_Identity', 'SP_DirectionXY', 'SP_DirectionZ')]
+            shading = []
+            for polygon, record in zip(mesh.polygons, subset):
+                polygon.material_index = material_slots[record['material_id']]
+                polygon.use_smooth = True
+                for corner, loop in enumerate(polygon.loop_indices):
+                    layers[0].data[loop].uv = record['uv'][corner]
+                    layers[1].data[loop].uv = (record['id'], record['vertices'][corner])
+                    layers[2].data[loop].uv = record['directions'][corner][:2]
+                    layers[3].data[loop].uv = (record['directions'][corner][2], 17)
+                    shading.append(record['normals'][corner])
+            mesh.normals_split_custom_set(shading)
+        for obj, _selected in selection:
+            obj.select_set(False)
+        for node in nodes:
+            node.select_set(True)
+        view_layer.objects.active = nodes[0]
+        scene.unit_settings.scale_length = 1.0  # positions were already resolved to metres
+        result = bpy.ops.export_scene.fbx(filepath=str(fbx), use_selection=True, object_types={'MESH'}, axis_forward='-Y', axis_up='Z',
+                                        apply_unit_scale=True, apply_scale_options='FBX_SCALE_ALL', use_mesh_modifiers=False,
+                                        bake_anim=False, add_leaf_bones=False, mesh_smooth_type='OFF', use_custom_props=True)
+        require(result == {'FINISHED'}, 'Blender FBX export did not finish')
+    finally:
+        for node in nodes:
+            bpy.data.objects.remove(node, do_unlink=True)
+        for mesh in meshes:
+            bpy.data.meshes.remove(mesh)
+        for material in export_materials:
+            bpy.data.materials.remove(material)
+        bpy.data.collections.remove(collection)
+        scene.unit_settings.scale_length = unit_scale
+        for obj, selected in selection:
+            obj.select_set(selected)
+        view_layer.objects.active = active
 
 
 if __name__ == '__main__':

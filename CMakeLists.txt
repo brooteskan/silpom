@@ -11,10 +11,22 @@ if(NOT COMMAND o3de_gem_setup)
         target_compile_options(silpom_curved_tests PRIVATE /W4 /fp:precise)
     endif()
     add_test(NAME SilPOM.Core COMMAND silpom_core_tests)
+    add_executable(silpom_preview_sampling_tests Tests/PreviewSamplingTests.cpp)
+    target_compile_features(silpom_preview_sampling_tests PRIVATE cxx_std_17)
+    add_test(NAME SilPOM.PreviewSampling COMMAND silpom_preview_sampling_tests)
     add_test(NAME SilPOM.CurvedCPU COMMAND silpom_curved_tests)
     set(SILPOM_PYTHON "" CACHE FILEPATH "Python interpreter for optional metadata decoder tests")
     if(SILPOM_PYTHON)
         add_test(NAME SilPOM.Metadata COMMAND "${SILPOM_PYTHON}" "${CMAKE_CURRENT_SOURCE_DIR}/Tests/test_roundtrip_metadata.py")
+    endif()
+    set(SILPOM_BLENDER "" CACHE FILEPATH "Blender executable for optional authoring and add-on tests (validated with 5.0.1)")
+    if(SILPOM_BLENDER)
+        add_test(NAME SilPOM.BlenderAuthoring COMMAND "${SILPOM_BLENDER}" --background --factory-startup --python-exit-code 1
+            --python "${CMAKE_CURRENT_SOURCE_DIR}/Tests/blender_authoring_tests.py" -- --output "${CMAKE_CURRENT_BINARY_DIR}/blender-authoring-tests")
+        add_test(NAME SilPOM.BlenderAddon COMMAND "${SILPOM_BLENDER}" --background --factory-startup --python-exit-code 1
+            --python "${CMAKE_CURRENT_SOURCE_DIR}/Tests/blender_addon_tests.py" -- --output "${CMAKE_CURRENT_BINARY_DIR}/blender-addon-tests")
+        set_tests_properties(SilPOM.BlenderAddon PROPERTIES
+            ENVIRONMENT "BLENDER_USER_RESOURCES=${CMAKE_CURRENT_BINARY_DIR}/blender-addon-tests/blender-user")
     endif()
     set(SILPOM_DXC "" CACHE FILEPATH "DXC executable for optional Windows GPU conformance tests")
     if(WIN32 AND SILPOM_DXC)
@@ -28,6 +40,8 @@ if(NOT COMMAND o3de_gem_setup)
             COMMAND "${SILPOM_DXC}" -T cs_6_3 -E Main -Fo ${CMAKE_CURRENT_BINARY_DIR}/curved.dxil ${CMAKE_CURRENT_SOURCE_DIR}/Tests/Curved/CurvedGpu.hlsl
             COMMAND "${SILPOM_DXC}" -T cs_6_3 -E RationalFallback -Fo ${CMAKE_CURRENT_BINARY_DIR}/curved-rational.dxil ${CMAKE_CURRENT_SOURCE_DIR}/Tests/Curved/CurvedGpu.hlsl
             DEPENDS Tests/HeightfieldGpu.hlsl Assets/Shaders/SilPOM/Heightfield.azsli Tests/Curved/CurvedGpu.hlsl
+                Assets/Shaders/SilPOM/Curved/Intersection.azsli Assets/Shaders/SilPOM/Curved/CurvedGpuInterval.hlsli
+                Assets/Shaders/SilPOM/Curved/CurvedGpuRational.hlsli Assets/Shaders/SilPOM/Curved/CurvedBoundedDyadic.hlsli
                 Tests/Curved/CurvedGpuInterval.hlsli Tests/Curved/CurvedGpuRational.hlsli Tests/Curved/CurvedBoundedDyadic.hlsli VERBATIM)
         add_custom_target(silpom_gpu_shaders DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/compute.dxil ${CMAKE_CURRENT_BINARY_DIR}/rays.dxil ${CMAKE_CURRENT_BINARY_DIR}/curved.dxil ${CMAKE_CURRENT_BINARY_DIR}/curved-rational.dxil)
         add_dependencies(silpom_gpu_tests silpom_gpu_shaders)
@@ -41,14 +55,22 @@ ly_add_target(NAME ${gem_name}.Static STATIC NAMESPACE Gem
     FILES_CMAKE silpom_files.cmake
     INCLUDE_DIRECTORIES PUBLIC Include PRIVATE Source
     BUILD_DEPENDENCIES PUBLIC AZ::AzCore AZ::AzFramework Gem::Atom_RPI.Public Gem::Atom_Feature_Common.Public)
+if(MSVC)
+    target_compile_options(${gem_name}.Static PRIVATE /EHsc)
+else()
+    target_compile_options(${gem_name}.Static PRIVATE -fexceptions)
+endif()
 ly_add_target(NAME ${gem_name} ${PAL_TRAIT_MONOLITHIC_DRIVEN_MODULE_TYPE} NAMESPACE Gem
     FILES_CMAKE silpom_shared_files.cmake BUILD_DEPENDENCIES PRIVATE Gem::${gem_name}.Static)
 if(PAL_TRAIT_BUILD_HOST_TOOLS)
+    ly_add_target(NAME ${gem_name}.Builder GEM_MODULE NAMESPACE Gem FILES_CMAKE silpom_builder_files.cmake
+        INCLUDE_DIRECTORIES PRIVATE Include Source
+        BUILD_DEPENDENCIES PRIVATE Gem::${gem_name}.Static AZ::AssetBuilderSDK AZ::AzToolsFramework AZ::SceneCore 3rdParty::OpenSSL)
     ly_add_target(NAME ${gem_name}.Editor GEM_MODULE NAMESPACE Gem FILES_CMAKE silpom_editor_files.cmake
         INCLUDE_DIRECTORIES PRIVATE Include Source
         BUILD_DEPENDENCIES PRIVATE Gem::${gem_name}.Static AZ::AzToolsFramework Gem::AtomLyIntegration_CommonFeatures.Public)
     ly_create_alias(NAME ${gem_name}.Tools NAMESPACE Gem TARGETS Gem::${gem_name}.Editor)
-    ly_create_alias(NAME ${gem_name}.Builders NAMESPACE Gem TARGETS Gem::${gem_name}.Editor)
+    ly_create_alias(NAME ${gem_name}.Builders NAMESPACE Gem TARGETS Gem::${gem_name}.Editor Gem::${gem_name}.Builder)
 endif()
 ly_create_alias(NAME ${gem_name}.Clients NAMESPACE Gem TARGETS Gem::${gem_name})
 ly_create_alias(NAME ${gem_name}.Servers NAMESPACE Gem TARGETS Gem::${gem_name})

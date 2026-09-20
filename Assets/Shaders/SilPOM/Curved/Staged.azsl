@@ -1,0 +1,166 @@
+// SPDX-License-Identifier: MIT
+// Two separate compute pipelines. Never include this file in a material shader.
+#include <Atom/Features/SrgSemantics.azsli>
+ShaderResourceGroup PassSrg : SRG_PerPass
+{
+    ByteAddressBuffer m_geometry;
+    Texture2D<float> m_height;
+    RWByteAddressBuffer m_hits;
+    float4x4 m_viewProjection;
+    float4x4 m_clipToWorld;
+    float4x4 m_worldToModel;
+    float4x4 m_modelToWorld;
+    float4 m_surface; // base scale, amplitude, reference, depth accuracy
+    uint4 m_counts; // width, height, fragments, packed triangle header
+    uint4 m_limits; // max nodes, address mode, header byte offset, records byte offset
+    uint4 m_rect; // left, top, width, height (relative to the viewport)
+    uint4 m_sampling; // block stride, columns, rows, preview budget (0 = strict)
+    float4 m_viewport; // width, height, nearZ, error status (0 or Exhausted/Invalid)
+    float4 m_boundsMin;
+    float4 m_boundsMax;
+    float4 m_uvTransform; // height tiling.xy, offset.xy
+    uint m_batchOffset;
+    uint m_viewCount;
+};
+#define SILPOM_AZSL 1
+#define SP_CURVED_DATA(index) asfloat(PassSrg::m_geometry.Load4((index)*16))
+#define SP_CURVED_HEIGHT(coord) PassSrg::m_height.Load(coord)
+#define baseScale PassSrg::m_surface.x
+#define amplitude PassSrg::m_surface.y
+#define reference PassSrg::m_surface.z
+#define requiredDepthAccuracy PassSrg::m_surface.w
+#define textureWidth PassSrg::m_counts.x
+#define textureHeight PassSrg::m_counts.y
+#define fragmentCount PassSrg::m_counts.z
+#define packedTriangleCount PassSrg::m_counts.w
+#define maxNodes PassSrg::m_limits.x
+#define addressMode PassSrg::m_limits.y
+#define maxDepth 12u
+#include "Intersection.azsli"
+#undef baseScale
+#undef amplitude
+#undef reference
+#undef requiredDepthAccuracy
+#undef textureWidth
+#undef textureHeight
+#undef fragmentCount
+#undef packedTriangleCount
+#undef maxNodes
+#undef addressMode
+#undef maxDepth
+
+// Header = 128 bytes, scratch/result stride = 96 bytes. Shared with MeshRender.h.
+// The initial stage writes the exact continuation state; the second stage
+// replaces it with a compact, final shading record only after Resolve returns.
+bool MakeRay(uint index, out SilPomCurved_Ray ray)
+{
+    uint2 block=uint2(index%PassSrg::m_sampling.y,index/PassSrg::m_sampling.y);
+    // Last partial blocks stay inside the original rectangle. Stride 1 is
+    // exactly the native pixel-center path. Larger blocks are preview only.
+    float2 pixel=float2(PassSrg::m_rect.xy)+min(float2(block*PassSrg::m_sampling.x)+.5*PassSrg::m_sampling.x,
+        float2(PassSrg::m_rect.zw)-.5);
+    float2 ndc=pixel/PassSrg::m_viewport.xy*float2(2,-2)+float2(-1,1);
+    float4 n=mul(PassSrg::m_clipToWorld,float4(ndc,PassSrg::m_viewport.z,1));
+    float4 m=mul(PassSrg::m_clipToWorld,float4(ndc,.5,1));
+    float4 f=mul(PassSrg::m_clipToWorld,float4(ndc,1-PassSrg::m_viewport.z,1));
+    float3 origin=n.xyz/n.w,direction=normalize(m.xyz/m.w-origin);
+    ray.origin=mul(PassSrg::m_worldToModel,float4(origin,1)).xyz;
+    ray.direction=mul((float3x3)PassSrg::m_worldToModel,direction);
+    ray.tMin=0;
+    float farBound=length(PassSrg::m_boundsMax.xyz-PassSrg::m_boundsMin.xyz)
+        +length(ray.origin-PassSrg::m_boundsMin.xyz)+1;
+    ray.tMax=abs(f.w)>1e-8?min(farBound,length(f.xyz/f.w-origin)):farBound;
+    [unroll]for(uint axis=0;axis<3;++axis)
+    {
+        float low=PassSrg::m_boundsMin[axis]-1e-5,high=PassSrg::m_boundsMax[axis]+1e-5;
+        if(ray.direction[axis]==0){if(ray.origin[axis]<low||ray.origin[axis]>high)return false;}
+        else
+        {
+            float a=(low-ray.origin[axis])/ray.direction[axis],b=(high-ray.origin[axis])/ray.direction[axis];
+            ray.tMin=max(ray.tMin,min(a,b));ray.tMax=min(ray.tMax,max(a,b));
+        }
+    }
+    return ray.tMin<=ray.tMax;
+}
+void StoreScratch(uint offset,SilPomCurved_Result h)
+{
+    PassSrg::m_hits.Store4(offset,uint4(h.status,h.primitiveId,h.nodes,h.maximumDepth));
+    PassSrg::m_hits.Store4(offset+16,asuint(float4(h.t,h.tError,h.barycentric.xy)));
+    PassSrg::m_hits.Store4(offset+32,uint4(asuint(h.barycentric.z),asuint(h.unresolvedT),asuint(h.unresolvedUpper),h.singular));
+    PassSrg::m_hits.Store4(offset+48,uint4(h.exhaustionReasons,asuint(h.uv.x),asuint(h.uv.y),asuint(h.normal.x)));
+    PassSrg::m_hits.Store4(offset+64,asuint(float4(h.normal.yz,0,0)));
+}
+SilPomCurved_Result LoadScratch(uint offset)
+{
+    uint4 a=PassSrg::m_hits.Load4(offset),c=PassSrg::m_hits.Load4(offset+32),d=PassSrg::m_hits.Load4(offset+48);
+    float4 b=asfloat(PassSrg::m_hits.Load4(offset+16)),e=asfloat(PassSrg::m_hits.Load4(offset+64));
+    SilPomCurved_Result h=(SilPomCurved_Result)0;
+    h.status=a.x;h.primitiveId=a.y;h.nodes=a.z;h.maximumDepth=a.w;
+    h.t=b.x;h.tError=b.y;h.barycentric=float3(b.zw,asfloat(c.x));
+    h.unresolvedT=asfloat(c.y);h.unresolvedUpper=asfloat(c.z);h.singular=c.w;
+    h.exhaustionReasons=d.x;h.uv=asfloat(d.yz);h.normal=float3(asfloat(d.w),e.xy);
+    return h;
+}
+[numthreads(64,1,1)]
+void IntersectMain(uint3 id:SV_DispatchThreadID)
+{
+    if(id.x==0)
+    {
+        uint header=PassSrg::m_limits.z;
+        [unroll]for(uint row=0;row<4;++row)PassSrg::m_hits.Store4(header+row*16,asuint(PassSrg::m_viewProjection[row]));
+        PassSrg::m_hits.Store4(header+64,asuint(PassSrg::m_viewport));
+        PassSrg::m_hits.Store4(header+80,PassSrg::m_rect);
+        PassSrg::m_hits.Store4(header+96,uint4(PassSrg::m_limits.w,0,0,0));
+        PassSrg::m_hits.Store4(header+112,PassSrg::m_sampling);
+        // Every job stores the same value; only the first header owns this word.
+        if(header==PassSrg::m_batchOffset+16)PassSrg::m_hits.Store(PassSrg::m_batchOffset,PassSrg::m_viewCount);
+    }
+    if(PassSrg::m_viewport.w!=0||id.x>=PassSrg::m_sampling.y*PassSrg::m_sampling.z)return;
+    SilPomCurved_Ray ray;SilPomCurved_Result hit=(SilPomCurved_Result)0;
+    if(MakeRay(id.x,ray))hit=SilPomCurved_Intersect(ray);
+    StoreScratch(PassSrg::m_limits.w+id.x*96,hit);
+}
+[numthreads(64,1,1)]
+void ResolveMain(uint3 id:SV_DispatchThreadID)
+{
+    if(PassSrg::m_viewport.w!=0||id.x>=PassSrg::m_sampling.y*PassSrg::m_sampling.z)return;
+    uint offset=PassSrg::m_limits.w+id.x*96;
+    SilPomCurved_Result hit=LoadScratch(offset);
+    if(hit.status==SilPomCurved_Miss){PassSrg::m_hits.Store4(offset,uint4(0,0,0,0));return;}
+    SilPomCurved_Ray ray;bool intersects=MakeRay(id.x,ray);
+    if(intersects)hit=SilPomCurved_Resolve(ray,hit);
+    bool failed=hit.status>SilPomCurved_Hit;
+    float3 p=ray.origin+ray.direction*(failed?ray.tMin:hit.t);
+    float3 normal=failed?float3(0,0,1):hit.normal;
+    float3 axis=abs(normal.z)<.9?float3(0,0,1):float3(0,1,0);
+    float3 tangent=normalize(cross(axis,normal));float handedness=1;
+    if(hit.status==SilPomCurved_Hit)
+    {
+        float2 cell=floor(hit.uv*float2(PassSrg::m_counts.xy)-.5);
+        [loop]for(uint fi=0;fi<PassSrg::m_counts.z;++fi)
+        {
+            SilPomCurved_Fragment f=SilPomCurved_LoadFragment(fi);
+            if(f.primitiveId!=hit.primitiveId||any(f.cell!=cell))continue;
+            float2 uv;float3 du,dv;SilPomCurved_SurfaceFrame(f,hit.barycentric,uv,du,dv);
+            // Convert height-UV derivatives back to the authored material UVs.
+            float2 a=(f.uv[1]-f.uv[0])/PassSrg::m_uvTransform.xy,b=(f.uv[2]-f.uv[0])/PassSrg::m_uvTransform.xy;
+            float det=a.x*b.y-a.y*b.x;
+            if(abs(det)>1e-10)
+            {
+                float3 raw=(du*b.y-dv*a.y)/det;tangent=normalize(raw-normal*dot(raw,normal));
+                handedness=dot(cross(normal,tangent),(dv*a.x-du*b.x)/det)<0?-1:1;
+            }
+            break;
+        }
+    }
+    float2 sourceUv=(hit.uv-PassSrg::m_uvTransform.zw)/PassSrg::m_uvTransform.xy;
+    PassSrg::m_hits.Store4(offset,uint4(asuint(p),hit.status));
+    PassSrg::m_hits.Store4(offset+16,uint4(asuint(normal),hit.primitiveId));
+    PassSrg::m_hits.Store4(offset+32,asuint(float4(sourceUv,hit.tError,dot(normal,ray.direction)<0?1:0)));
+    PassSrg::m_hits.Store4(offset+48,asuint(float4(tangent,handedness)));
+    // Forward depth-equal testing must see exactly the same bits as the depth
+    // prepass. Reprojecting independently in different material variants can
+    // round differently (including FMA contraction), silently losing color.
+    float4 clip=mul(PassSrg::m_viewProjection,mul(PassSrg::m_modelToWorld,float4(p,1)));
+    PassSrg::m_hits.Store4(offset+64,asuint(float4(clip.z/clip.w,0,0,0)));
+}

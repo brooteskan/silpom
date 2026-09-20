@@ -5,6 +5,12 @@ Developed for [TG #40](https://github.com/brooteskan/TG/issues/40).
 See the [validation record](Docs/Validation.md) for tested behavior and remaining
 release-hardening work.
 
+The new imported-mesh path is experimental and is not yet issue #2 delivery.
+It now uses staged compute intersection/resolution with shared hit/depth records
+and thin material shaders, rather than compiling the solver into pixel shaders.
+See [imported mesh integration](Docs/ImportedMeshIntegration.md) for its current
+resource path, small-fixture reproduction and explicit remaining limits.
+
 The raster adapter draws conservative coverage and intersects a bounded bilinear
 heightfield per sample. It shades and writes depth at the actual intersection;
 misses reveal the background. Camera depth, color and shadow passes use the same
@@ -40,6 +46,91 @@ Then process assets and launch a separate Editor session with
 `--project-path=D:/TG/TGProject --runpython <absolute-path-to-Tests/editor_smoke.py>`.
 Captures and the JSON result go to the project's `user/SilPOMValidation` directory,
 or to `SILPOM_CAPTURE_DIR` if set. The script does not save DefaultLevel.
+
+## Install and run the Blender exporter
+
+The **Curved SilPOM Exporter** add-on has been validated with **Blender 5.0.1**.
+It bundles the same exporter used by the command-line tools; Blender does not
+need a repository path or additional Python packages after installation.
+
+1. Build the installable ZIP from the gem directory
+   (`D:/TG/TGProject/Gems/silpom` for TG), using Python 3:
+
+   ```powershell
+   python Tools/package_blender_addon.py
+   ```
+
+   If Python is not on PATH, use Blender's bundled interpreter:
+
+   ```powershell
+   & 'C:/Program Files/Blender Foundation/Blender 5.0/5.0/python/bin/python.exe' Tools/package_blender_addon.py
+   ```
+
+2. In Blender, open **Edit > Preferences > Add-ons**, open the menu at the top
+   right, and choose **Install from Disk**. Select
+   `build/addon/silpom_exporter.zip` without unzipping it, then enable
+   **Curved SilPOM Exporter**. This uses Blender's supported
+   [legacy add-on ZIP installation](https://docs.blender.org/manual/en/5.0/editors/preferences/addons.html#installing-legacy-add-ons).
+   Rebuild and reinstall the ZIP after updating the exporter.
+3. Prepare a local static mesh with an active UV map and a material on every
+   face. Apply active modifiers, remove shape keys, and use positive uniform
+   object scale. Linked-library meshes and sheared transforms are unsupported.
+4. In the 3D View, press **N**, open **SilPOM**, and enter **Edit Mode**. Select
+   the faces to displace, choose a **Region** and **Profile**, and click
+   **Assign to Selected Faces**. Untagged faces on that mesh remain ordinary.
+   Use **Mark Selected Faces Ordinary** to clear displacement from faces, or on
+   all faces of an entirely ordinary mesh that you want to include in the export.
+   Region/profile attributes are created automatically; tagging supports
+   multi-object Edit Mode and Undo. Profiles are numeric references, not height
+   map assignments. Directions default to shading normals; see the
+   [authoring contract](Docs/ExportImportRoundTrip.md#general-authoring-exporter-transport-version-2)
+   for explicit direction fields.
+5. Choose **File > Export > Curved SilPOM (.fbx + .json)**, or click the panel's
+   export button. Choose a filename such as `wall.fbx`. **Selected Objects Only**
+   is enabled by default; disable it to export every scene mesh. Every included
+   mesh needs region tags, UVs and materials. Leave **Initialize / Repair IDs**
+   enabled to allocate missing identities while preserving existing valid IDs.
+
+Export writes `wall.fbx`, `wall.silpom.json`, and `wall.authoring.blend` together.
+Keep the FBX and sidecar paired. The current scene retains its selection, mode,
+units and authored geometry; temporary export data is removed even on failure.
+Successful exports retain persistent IDs in the open scene. Save your working
+file normally to keep them, or continue from the generated authoring copy.
+Export never overwrites the currently open `.blend` file.
+
+Existing bundle files are protected unless **Overwrite Export Files** is enabled.
+If working from the generated authoring copy, choose a different export filename
+or directory so the new copy does not overwrite the open file.
+
+The original command-line workflow is also available from the gem directory:
+
+```powershell
+& 'C:/Program Files/Blender Foundation/Blender 5.0/blender.exe' `
+  --background '<source.blend>' --python-exit-code 1 `
+  --python Tools/export_mesh.py -- `
+  --output build/my-export --initialize-identities
+```
+
+Unlike the add-on's default, this command exports **all scene mesh objects**. Add
+`--object 'MyMesh'` after `--` to restrict export; repeat it for multiple objects.
+The output contains `roundtrip.fbx`, its matching `roundtrip.silpom.json` sidecar,
+and an `authoring.blend` copy with persistent identities. Keep the FBX and sidecar
+together. Ordinary Blender FBX export does not create the required metadata.
+
+For command-line use, continue editing the generated `authoring.blend`. On
+subsequent exports, use that copy as the input, omit
+`--initialize-identities`, and choose a new output directory (for example,
+`build/my-export-next`) so the input authoring file is not overwritten.
+
+For the current TG/O3DE import-and-validation workflow, follow the
+[round-trip instructions](Docs/ExportImportRoundTrip.md#general-authoring-exporter-transport-version-2)
+using `Tools/run_roundtrip.py --blend <authoring.blend>` with the documented
+Blender, Asset Processor and project arguments. The runner overwrites its reserved
+test assets in `Assets/SilPOMAuthoredRoundTrip` and checks the imported metadata
+and stock mesh product. This is an experimental data round trip, **not curved
+displacement rendering**; the runtime Gem still supports planar patches only.
+The [add-on validation instructions](Docs/ExportImportRoundTrip.md#blender-add-on)
+cover installation, operator regressions and optional automated Blender tests.
 
 ## Surface contract and ray tracing
 

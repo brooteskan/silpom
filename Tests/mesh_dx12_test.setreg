@@ -1,0 +1,9 @@
+{
+    "Amazon": {
+        "AssetProcessor": {
+            "Settings": {
+                "Platform pc": { "tags": "tools,renderer,dx12,null" }
+            }
+        }
+    }
+}

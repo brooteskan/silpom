@@ -1,0 +1,119 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_MaterialInputs.azsli>
+#include <Atom/Features/Bindless.azsli>
+// No intersection kernel here. Color, custom depth and shadow consume the same
+// certified per-view compute record, with no rational solver in any material PSO.
+VsOutput EvaluateVertexGeometry(VsInput IN,VsSystemValues SV,const MaterialParameters params)
+{
+    VsOutput output=(VsOutput)0;
+#if MATERIALPIPELINE_USES_PREV_VERTEX_POSITION
+    output.position=float4(2,2,0,1);return output;
+#endif
+    float4x4 model=GetObjectToWorldMatrix(SV),vp=GetViewProjectionMatrix(SV);
+    float2 low=float2(1,1),high=float2(-1,-1);bool ambiguous=false;
+    [unroll]for(uint i=0;i<8;++i)
+    {
+        float3 p=float3((i&1)?params.m_meshBoundsMax.x:params.m_meshBoundsMin.x,
+            (i&2)?params.m_meshBoundsMax.y:params.m_meshBoundsMin.y,(i&4)?params.m_meshBoundsMax.z:params.m_meshBoundsMin.z);
+        float4 clip=mul(vp,mul(model,float4(p,1)));
+        if(clip.w<=1e-6||clip.z<0||clip.z>clip.w)ambiguous=true;
+        float2 xy=clip.xy/max(clip.w,1e-6);low=min(low,xy);high=max(high,xy);
+    }
+    if(ambiguous){low=float2(-1,-1);high=float2(1,1);}
+    low=max(low-1e-5,float2(-1,-1));high=min(high+1e-5,float2(1,1));
+    output.ndc=lerp(low,high,IN.position.xy*.5+.5);
+    output.position=float4(output.ndc,.5,1);output.normal=float3(0,0,1);
+    output.tangent=float4(1,0,0,1);output.color0=1;return output;
+}
+#if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE || MATERIALPIPELINE_SHADER_HAS_GEOMETRIC_PIXEL_STAGE
+COMMON_OPTIONS_PARALLAX()
+bool ShouldHandleParallax(){return false;}
+bool NeedsTangentFrame(){return true;}
+uint4 MeshLoad(uint index,uint offset){return Bindless::GetByteAddressBuffer(index).Load4(offset);}
+PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool isFrontFace,const MaterialParameters params)
+{
+    uint buffer=params.m_meshHitBufferIndex,base=params.m_meshHitOffset;
+    uint views=min(MeshLoad(buffer,base).x,32u),status=3u;
+    float3 localPosition=0,normal=float3(0,0,1),tangent=float3(1,0,0);
+    float2 uv=0;float handedness=1,depth=.5;bool surfaceFrontFace=true;
+    float4x4 vp=GetViewProjectionMatrix(SV),model=GetObjectToWorldMatrix(SV);
+    float2 viewport=round(2/float2(abs(ddx(IN.ndc.x)),abs(ddy(IN.ndc.y))));
+    float nearZ=1;
+#if SHADOWMAP
+    nearZ=0;
+#endif
+    [loop]for(uint view=0;view<views;++view)
+    {
+        uint header=base+16+view*128;
+        float4 dimensions=asfloat(MeshLoad(buffer,header+64));
+        if(any(abs(dimensions.xy-viewport)>.5)||dimensions.z!=nearZ)continue;
+        bool matches=true;
+        [unroll]for(uint row=0;row<4;++row)
+            matches=matches&&all(abs(asfloat(MeshLoad(buffer,header+row*16))-vp[row])<1e-5);
+        if(!matches)continue;
+        status=(uint)dimensions.w;
+        if(status!=0)break;
+        uint4 rect=MeshLoad(buffer,header+80);
+        int2 pixel=int2(floor((IN.ndc*float2(.5,-.5)+.5)*dimensions.xy))-int2(rect.xy);
+        if(any(pixel<0)||any(pixel>=int2(rect.zw)))discard;
+        uint4 sampling=MeshLoad(buffer,header+112);
+        if(sampling.x==0||sampling.y==0||sampling.z==0)break;
+        // Explicit approximate-preview mode reuses one ray's attributes and
+        // depth over a block. These are NOT certified hits for every pixel.
+        uint2 sampleIndex=uint2(pixel)/sampling.x;
+        uint offset=MeshLoad(buffer,header+96).x+(sampleIndex.y*sampling.y+sampleIndex.x)*96;
+        uint4 p=MeshLoad(buffer,offset);status=p.w;
+        if(status==0)discard;
+        localPosition=asfloat(p.xyz);normal=asfloat(MeshLoad(buffer,offset+16).xyz);
+        float4 uvData=asfloat(MeshLoad(buffer,offset+32));uv=uvData.xy;surfaceFrontFace=uvData.w!=0;
+        float4 frame=asfloat(MeshLoad(buffer,offset+48));tangent=frame.xyz;handedness=frame.w;
+        depth=asfloat(MeshLoad(buffer,offset+64).x);
+        break;
+    }
+    bool failed=status!=1;
+    PixelGeometryData geo=(PixelGeometryData)0;
+    if(failed)
+    {
+        // Diagnostic only: an unsupported/missing view is never a surface hit.
+        float4 diagnostic=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,.5,1));
+        geo.positionWS=diagnostic.xyz/diagnostic.w;
+    }
+    else geo.positionWS=mul(model,float4(localPosition,1)).xyz;
+    if(!failed&&(depth<0||depth>1))discard;
+    // Consume the compute projection verbatim across color/depth/shadow PSOs.
+    IN.position.z=failed?.5:depth;IN.worldPosition=geo.positionWS;
+    IN.color0=failed?float4(1,0,1,1):float4(1,1,1,1);
+    geo.vertexNormal=normalize(mul((float3x3)model,normal));
+    geo.isFrontFace=surfaceFrontFace;geo.isDisplacementClipped=failed;
+    [unroll]for(uint i=0;i<UvSetCount;++i)
+    {
+        geo.uvs[i]=uv;geo.tangents[i]=normalize(mul((float3x3)model,tangent));
+        geo.bitangents[i]=handedness*normalize(cross(geo.vertexNormal,geo.tangents[i]));
+    }
+    return geo;
+}
+#endif
+#if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
+COMMON_OPTIONS_BASE_COLOR()
+COMMON_OPTIONS_VERTEX_COLOR()
+COMMON_OPTIONS_ROUGHNESS()
+COMMON_OPTIONS_METALLIC()
+COMMON_OPTIONS_SPECULAR_F0()
+COMMON_OPTIONS_NORMAL()
+COMMON_OPTIONS_CLEAR_COAT()
+COMMON_OPTIONS_OCCLUSION()
+COMMON_OPTIONS_EMISSIVE()
+#define EvaluateSurface EvaluateSurface_SilPomMeshBase
+#include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_SurfaceEval.azsli>
+#undef EvaluateSurface
+Surface EvaluateSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,const MaterialParameters params)
+{
+    Surface surface=EvaluateSurface_StandardPBR(IN,SV,geo,params);
+    if(geo.isDisplacementClipped){surface.emissiveLighting=float3(8,0,8);surface.albedo=float3(1,0,1);}
+    return surface;
+}
+#include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_LightingEval.azsli>
+#elif MATERIALPIPELINE_SHADER_HAS_GEOMETRIC_PIXEL_STAGE
+void EvaluateSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,const MaterialParameters params){}
+#endif
