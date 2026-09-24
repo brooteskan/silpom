@@ -2,6 +2,8 @@
 #include <SilPOM/Patch.h>
 #include <Atom/RPI.Public/Scene.h>
 #include <Atom/RPI.Public/Image/StreamingImage.h>
+#include <Atom/RPI.Reflect/Material/MaterialAssetCreator.h>
+#include <Atom/RPI.Reflect/Material/MaterialPropertiesLayout.h>
 #include <Atom/RPI.Reflect/Model/ModelAssetCreator.h>
 #include <Atom/RPI.Reflect/Model/ModelLodAssetCreator.h>
 #include <Atom/RPI.Reflect/Buffer/BufferAssetCreator.h>
@@ -143,7 +145,24 @@ bool PatchController::Prepare()
     if(!scene) {m_status="Waiting for render scene";return false;}
     m_meshProcessor=scene->GetFeatureProcessor<AZ::Render::MeshFeatureProcessorInterface>();
     if(!m_meshProcessor) {m_status="Mesh feature processor unavailable";return false;}
-    m_material=AZ::RPI::Material::Create(c.m_material);
+    const auto& type=c.m_material->GetMaterialTypeAsset();
+    const auto layout=type->GetMaterialPropertiesLayout();
+    const auto& properties=c.m_material->GetPropertyValues();
+    const AZ::Name doubleSided("general.doubleSided");
+    const auto doubleSidedIndex=layout->FindPropertyIndex(doubleSided);
+    if(!doubleSidedIndex.IsValid() || !properties[doubleSidedIndex.GetIndex()].Is<bool>())
+    {m_status="SilPOM material contract mismatch";return false;}
+    // Initialize the final rasterizer state with the asset. Changing it on the
+    // live instance would make the double-sided functor request a runtime PSO change.
+    AZ::RPI::MaterialAssetCreator creator;
+    creator.Begin(AZ::Uuid::CreateRandom(),type);
+    creator.SetMaterialTypeVersion(type->GetVersion());
+    for(size_t i=0;i<properties.size();++i)
+        creator.SetPropertyValue(layout->GetPropertyDescriptor(AZ::RPI::MaterialPropertyIndex(i))->GetName(),properties[i]);
+    creator.SetPropertyValue(doubleSided,true);
+    AZ::Data::Asset<AZ::RPI::MaterialAsset> materialAsset;
+    if(!creator.End(materialAsset)) {m_status="Material asset creation failed";return false;}
+    m_material=AZ::RPI::Material::Create(materialAsset);
     if(!m_material) {m_status="Material instance unavailable";return false;}
     auto heightIndex=m_material->FindPropertyIndex(AZ::Name("surface.heightMap"));
     if(!heightIndex.IsValid()) {m_status="Material is not a SilPOM surface";return false;}
@@ -175,7 +194,6 @@ bool PatchController::Prepare()
     set("surface.maxCells",c.m_maxCells);set("surface.addressMode",c.m_addressMode);set("surface.debug",c.m_debug);
     set("surface.reuseTexels",c.m_reuseTexels);
     set("surface.useHierarchy",c.m_reuseTexels);
-    set("general.doubleSided",true);
     if(!propertiesValid) {m_status="SilPOM material contract mismatch";return false;}
     m_material->Compile();
     m_model=CreateQuad();

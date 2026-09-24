@@ -7,6 +7,8 @@ for visual inspection. It does not use the preserved curved-surface solver.
 Developed for [TG #40](https://github.com/brooteskan/TG/issues/40).
 See the [validation record](Docs/Validation.md) for tested behavior and remaining
 release-hardening work.
+See the [material initialization regression](Docs/MaterialInitialization.md) for
+the mesh/patch PSO warning fix and its editor reproduction.
 
 The raster adapter draws conservative coverage and intersects a bounded bilinear
 heightfield per sample. It shades and writes depth at the actual intersection;

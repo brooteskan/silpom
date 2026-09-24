@@ -92,7 +92,8 @@ template<class T> bool Set(const Material& material, const char* name, const T& 
     if (!index.IsValid() || !material->GetPropertyValue(index).Is<T>()) return false;
     material->SetPropertyValue(index, value); return true;
 }
-Material Snapshot(const AZ::Data::Asset<AZ::RPI::MaterialAsset>& source)
+Material Snapshot(const AZ::Data::Asset<AZ::RPI::MaterialAsset>& source,
+    const AZ::RPI::MaterialAsset* authored = nullptr)
 {
     AZ::RPI::MaterialAssetCreator creator;
     const auto& type = source->GetMaterialTypeAsset();
@@ -102,6 +103,23 @@ Material Snapshot(const AZ::Data::Asset<AZ::RPI::MaterialAsset>& source)
     const auto& values = source->GetPropertyValues();
     for (size_t i = 0; i < values.size(); ++i)
         creator.SetPropertyValue(layout->GetPropertyDescriptor(AZ::RPI::MaterialPropertyIndex(i))->GetName(), values[i]);
+    if (authored)
+    {
+        // Copy asset values (including image assets), before any material functors run.
+        // Authored properties can affect PSOs as well as shader constants/options.
+        const auto authoredLayout = authored->GetMaterialPropertiesLayout();
+        const auto& authoredValues = authored->GetPropertyValues();
+        for (size_t i = 0; i < authoredValues.size(); ++i)
+        {
+            const auto name = authoredLayout->GetPropertyDescriptor(AZ::RPI::MaterialPropertyIndex(i))->GetName();
+            if (layout->FindPropertyIndex(name).IsValid()) creator.SetPropertyValue(name, authoredValues[i]);
+        }
+        const AZ::Name doubleSided("general.doubleSided");
+        const auto index = layout->FindPropertyIndex(doubleSided);
+        if (!index.IsValid() || !values[index.GetIndex()].Is<bool>()) return {};
+        // Planar coverage must be double-sided, regardless of the authored value.
+        creator.SetPropertyValue(doubleSided, true);
+    }
     AZ::Data::Asset<AZ::RPI::MaterialAsset> asset;
     return creator.End(asset) ? AZ::RPI::Material::Create(asset) : Material{};
 }
@@ -365,14 +383,8 @@ bool MeshController::Prepare()
                 buffer->WaitForUpload();
                 const auto bindless=buffer->GetBufferView()->GetBindlessReadIndex();
                 if(bindless.size()!=1 || bindless.begin()->second==AZ::u32(-1)) return fail("One bindless-capable GPU is required");
-                material=Snapshot(m_template); if(!material) return fail("Cannot create planar face material");
-                const auto layout=source->GetMaterialPropertiesLayout();
-                for(size_t i=0;i<layout->GetPropertyCount();++i)
-                {
-                    const auto name=layout->GetPropertyDescriptor(AZ::RPI::MaterialPropertyIndex(i))->GetName();
-                    auto to=material->FindPropertyIndex(name);
-                    if(to.IsValid()) material->SetPropertyValue(to,source->GetPropertyValue(source->FindPropertyIndex(name)));
-                }
+                material=Snapshot(m_template,materialAssets[key.first].Get());
+                if(!material) return fail("Cannot create planar face material");
                 AZ::Data::Instance<AZ::RPI::Image> height=AZ::RPI::StreamingImage::FindOrCreate(p.m_height);
                 const bool valid=Set(material,"mesh.bufferIndex",bindless.begin()->second)
                     && Set(material,"surface.heightMap",height) && Set(material,"surface.scale",p.m_scale)
@@ -380,8 +392,7 @@ bool MeshController::Prepare()
                     && Set(material,"surface.tileV",p.m_tiling.GetY()) && Set(material,"surface.offsetU",p.m_offset.GetX())
                     && Set(material,"surface.offsetV",p.m_offset.GetY()) && Set(material,"surface.addressMode",p.m_addressMode)
                     && Set(material,"surface.maxCells",c.m_maxCells) && Set(material,"surface.useHierarchy",false)
-                    && Set(material,"surface.reliefShadowSteps",c.m_reliefShadowSteps)
-                    && Set(material,"general.doubleSided",true);
+                    && Set(material,"surface.reliefShadowSteps",c.m_reliefShadowSteps);
                 if(!valid) return fail("Planar face material contract mismatch");
                 candidate->buffers.push_back(buffer); candidate->heights.push_back(height);
                 bounds.Expand(AZ::Vector3(1e-5f));
