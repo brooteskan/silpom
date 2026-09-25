@@ -45,7 +45,11 @@ struct SilPomHit
 
 int SilPomAddress(int i, int size, uint mode)
 {
-    return mode == 0 ? ((i % size) + size) % size : min(max(i, 0), size - 1);
+    if (mode != 0) { return min(max(i, 0), size - 1); }
+    // Power-of-two repeat is exact for negative coordinates too. Avoid two
+    // runtime integer remainders for every axis of every height texel load.
+    if ((size & (size - 1)) == 0) { return int(uint(i) & uint(size - 1)); }
+    return ((i % size) + size) % size;
 }
 float SilPomTexel(SP_TEX texture, SilPomPatch p, int x, int y)
 {

@@ -86,6 +86,20 @@ static BoundsTexture BuildBounds(const Texture& texture)
 }
 int main()
 {
+    // Periodic sampling must preserve negative UVs, exact seams and the full
+    // signed index range. Include non-power-of-two textures and clamp mode.
+    for (int size : {1, 2, 3, 7, 8, 1023, 1024, 2048, 4096})
+    {
+        auto checkAddress = [&](int index)
+        {
+            const auto wrapped = ((int64_t(index) % size) + size) % size;
+            Require(SilPomAddress(index, size, 0) == wrapped, "periodic texel address");
+            Require(SilPomAddress(index, size, 1) == std::clamp(index, 0, size - 1), "clamped texel address");
+        };
+        for (int index = -32768; index <= 32768; ++index) checkAddress(index);
+        checkAddress(std::numeric_limits<int>::min());
+        checkAddress(std::numeric_limits<int>::max());
+    }
     Texture texture{8,8,std::vector<float>(64,.5f)};
     SilPomPatch patch{2,2,.2f,.5f,1,1,0,0,8,8,0,4096};
     auto trace=[&](float3 o,float3 d,float start=0.f,float end=100.f) {return SilPomIntersect(texture,patch,{o,d,start,end});};
