@@ -9,6 +9,8 @@ See the [validation record](Docs/Validation.md) for tested behavior and remainin
 release-hardening work.
 See the [material initialization regression](Docs/MaterialInitialization.md) for
 the mesh/patch PSO warning fix and its editor reproduction.
+See the [StoneWall pixel shader performance follow-up](Docs/MeshPixelPerformance.md)
+for the exact texel-addressing optimization, GPU measurements and image validation.
 
 The raster adapter draws conservative coverage and intersects a bounded bilinear
 heightfield per sample. It shades and writes depth at the actual intersection;
