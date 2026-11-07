@@ -6,6 +6,7 @@
 #include "../../../Shaders/SilPOM/Heightfield.azsli"
 static const uint StoneFlatHitTag = 0xffffffffu;
 static const float StoneTrainingScale = .1;
+static const int StoneHeightMapSize = 1024;
 
 float StoneCacheTile(Texture2D cache, float2 uv, float2 tile, uint atlasWidth)
 {
@@ -30,16 +31,29 @@ float StoneCacheHeight(Texture2D cache, float2 uv, float2 angleUv, uint columns,
 
 float3 StoneHeightGradient(const MaterialParameters params, SilPomPatch p, float2 position)
 {
-    float2 q=(position/float2(p.width,p.height)+.5)*float2(p.textureWidth,p.textureHeight)-.5;
+#if defined(SILPOM_PACKED_REFINEMENT)
+    float2 textureSize=float2(StoneHeightMapSize,StoneHeightMapSize);
+#else
+    float2 textureSize=float2(p.textureWidth,p.textureHeight);
+#endif
+    float2 q=(position/float2(p.width,p.height)+.5)*textureSize-.5;
     int2 cell=int2(floor(q));
     float2 f=frac(q);
+#if defined(SILPOM_PACKED_REFINEMENT)
+    // The dual-cache material uses this slot for repeating bilinear cell corners
+    // in RGBA order (00, 10, 01, 11). It does not use the exact bounds traversal.
+    int2 wrappedCell=cell & (StoneHeightMapSize-1);
+    float4 heights=GetMaterialTexture(params.m_silpomHeightBounds).Load(int3(wrappedCell,0));
+    float h00=heights.x, h10=heights.y, h01=heights.z, h11=heights.w;
+#else
     float h00=SilPomTexel(GetMaterialTexture(params.m_silpomHeightMap),p,cell.x,cell.y);
     float h10=SilPomTexel(GetMaterialTexture(params.m_silpomHeightMap),p,cell.x+1,cell.y);
     float h01=SilPomTexel(GetMaterialTexture(params.m_silpomHeightMap),p,cell.x,cell.y+1);
     float h11=SilPomTexel(GetMaterialTexture(params.m_silpomHeightMap),p,cell.x+1,cell.y+1);
+#endif
     float h=lerp(lerp(h00,h10,f.x),lerp(h01,h11,f.x),f.y);
-    float gx=lerp(h10-h00,h11-h01,f.y)*p.textureWidth/p.width*p.scale;
-    float gy=lerp(h01-h00,h11-h10,f.x)*p.textureHeight/p.height*p.scale;
+    float gx=lerp(h10-h00,h11-h01,f.y)*textureSize.x/p.width*p.scale;
+    float gy=lerp(h01-h00,h11-h10,f.x)*textureSize.y/p.height*p.scale;
     return float3(h,gx,gy);
 }
 
@@ -52,9 +66,15 @@ bool StoneTryLearnedIntersection(const MaterialParameters params, SilPomPatch p,
     if(abs(p.width-2)>.00001 || abs(p.height-2)>.00001 || p.scale<=0 ||
        (!dualCache && abs(p.scale-StoneTrainingScale)>.000001) ||
        abs(p.reference-.05000000074505806)>.000001 || p.tileU!=1 || p.tileV!=1 ||
-       p.offsetU!=0 || p.offsetV!=0 || p.addressMode!=0 || p.textureWidth!=1024 ||
-       p.textureHeight!=1024 || ray.direction.z>=-.0001)
+       p.offsetU!=0 || p.offsetV!=0 || p.addressMode!=0 || p.textureWidth!=StoneHeightMapSize ||
+       p.textureHeight!=StoneHeightMapSize || ray.direction.z>=-.0001)
         return false;
+#if defined(SILPOM_PACKED_REFINEMENT)
+    uint packedWidth,packedHeight;
+    GetMaterialTexture(params.m_silpomHeightBounds).GetDimensions(packedWidth,packedHeight);
+    if(packedWidth!=StoneHeightMapSize || packedHeight!=StoneHeightMapSize)
+        return false;
+#endif
     p.scale*=reliefWeight;
     // Convert physical relief to the equivalent slopes in the trained space.
     float2 slopes=(ray.direction.xy/ray.direction.z)*(p.scale/StoneTrainingScale);
@@ -165,7 +185,11 @@ SilPomHit StoneFlatIntersection(SilPomPatch p, SilPomRay ray)
 SilPomHit StoneLearnedIntersection(const MaterialParameters params, SilPomPatch p, SilPomRay ray,
     float3 cameraLocal)
 {
+#if defined(SILPOM_PACKED_REFINEMENT)
+    const bool dualCache=true;
+#else
     bool dualCache=params.m_silpomUseGrazingCache!=0;
+#endif
     float reliefWeight=1;
     if(dualCache && params.m_silpomFadeEnd>params.m_silpomFadeStart)
     {

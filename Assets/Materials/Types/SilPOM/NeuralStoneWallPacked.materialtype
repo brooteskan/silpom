@@ -1,0 +1,9 @@
+{
+    "$import": {
+        "filename": "NeuralStoneWall.materialtype",
+        "patch": {
+            "description": "Dual-cache stone wall with packed refinement. The height-bounds slot requires a single-mip linear RGBA32F image of repeating height cells (00, 10, 01, 11).",
+            "materialShaderCode": "NeuralStoneWallPacked.azsli"
+        }
+    }
+}
