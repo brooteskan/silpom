@@ -1,0 +1,218 @@
+// Experimental stone-wall intersection prediction. The standard material has
+// no override and continues to use the exact traversal.
+#pragma once
+#include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_MaterialInputs.azsli>
+#if !SHADOWMAP
+#include "../../../Shaders/SilPOM/Heightfield.azsli"
+static const uint StoneFlatHitTag = 0xffffffffu;
+static const float StoneTrainingScale = .1;
+
+float StoneCacheTile(Texture2D cache, float2 uv, float2 tile, uint atlasWidth)
+{
+    float2 atlasUv=(tile*128+saturate(uv)*127+.5)/float2(atlasWidth,1024);
+    return cache.SampleLevel(GetMaterialTextureSampler(),atlasUv,0).r;
+}
+
+float StoneCacheHeight(Texture2D cache, float2 uv, float2 angleUv, uint columns,
+    uint firstColumn, uint atlasWidth)
+{
+    float2 lastCell=float2(columns-1,7);
+    float2 cell=saturate(angleUv)*lastCell;
+    float2 low=min(floor(cell),lastCell-1);
+    float2 blend=cell-low;
+    float2 tile=low+float2(firstColumn,0);
+    float a=StoneCacheTile(cache,uv,tile,atlasWidth);
+    float b=StoneCacheTile(cache,uv,tile+float2(1,0),atlasWidth);
+    float c=StoneCacheTile(cache,uv,tile+float2(0,1),atlasWidth);
+    float d=StoneCacheTile(cache,uv,tile+float2(1,1),atlasWidth);
+    return lerp(lerp(a,b,blend.x),lerp(c,d,blend.x),blend.y);
+}
+
+float3 StoneHeightGradient(const MaterialParameters params, SilPomPatch p, float2 position)
+{
+    float2 q=(position/float2(p.width,p.height)+.5)*float2(p.textureWidth,p.textureHeight)-.5;
+    int2 cell=int2(floor(q));
+    float2 f=frac(q);
+    float h00=SilPomTexel(GetMaterialTexture(params.m_silpomHeightMap),p,cell.x,cell.y);
+    float h10=SilPomTexel(GetMaterialTexture(params.m_silpomHeightMap),p,cell.x+1,cell.y);
+    float h01=SilPomTexel(GetMaterialTexture(params.m_silpomHeightMap),p,cell.x,cell.y+1);
+    float h11=SilPomTexel(GetMaterialTexture(params.m_silpomHeightMap),p,cell.x+1,cell.y+1);
+    float h=lerp(lerp(h00,h10,f.x),lerp(h01,h11,f.x),f.y);
+    float gx=lerp(h10-h00,h11-h01,f.y)*p.textureWidth/p.width*p.scale;
+    float gy=lerp(h01-h00,h11-h10,f.x)*p.textureHeight/p.height*p.scale;
+    return float3(h,gx,gy);
+}
+
+bool StoneTryLearnedIntersection(const MaterialParameters params, SilPomPatch p, SilPomRay ray,
+    float begin, float end, float reliefWeight, bool grazing, bool dualCache, out bool cacheInDomain,
+    inout SilPomHit hit)
+{
+    cacheInDomain=false;
+    // The caches are scoped to the authored footprint and normalized height map.
+    if(abs(p.width-2)>.00001 || abs(p.height-2)>.00001 || p.scale<=0 ||
+       (!dualCache && abs(p.scale-StoneTrainingScale)>.000001) ||
+       abs(p.reference-.05000000074505806)>.000001 || p.tileU!=1 || p.tileV!=1 ||
+       p.offsetU!=0 || p.offsetV!=0 || p.addressMode!=0 || p.textureWidth!=1024 ||
+       p.textureHeight!=1024 || ray.direction.z>=-.0001)
+        return false;
+    p.scale*=reliefWeight;
+    // Convert physical relief to the equivalent slopes in the trained space.
+    float2 slopes=(ray.direction.xy/ray.direction.z)*(p.scale/StoneTrainingScale);
+    float topT=(p.scale*(1-p.reference)-ray.origin.z)/ray.direction.z;
+    // The near plane can start a ray inside the relief. Its extended line still
+    // has a cache coordinate at the top plane, while refinement stays visible.
+    bool startsInsideRelief=topT<ray.tMin;
+    if(startsInsideRelief && !dualCache) return false;
+    float2 uv=(ray.origin.xy+ray.direction.xy*topT)*.5+.5;
+    float2 offset=slopes*.05;
+    float2 extendedEntryUv=(uv-min(offset,0))/(1+abs(offset));
+    float height=0;
+    uint atlasWidth, atlasHeight;
+    if(grazing)
+    {
+        Texture2D cache=GetMaterialTexture(params.m_silpomGrazingCache);
+        cache.GetDimensions(atlasWidth,atlasHeight);
+        bool reverseExpert=atlasWidth==4096 && slopes.x<0;
+        float minSlopeX=reverseExpert ? -12 : 2.8;
+        float2 angleUv=(slopes-float2(minSlopeX,-2.8))/float2(9.2,5.6);
+        cacheInDomain=(atlasWidth==2048 || atlasWidth==4096) && atlasHeight==1024 &&
+            p.maxCells>=4096 && all(angleUv>=0) && all(angleUv<=1) &&
+            all(extendedEntryUv>=0) && all(extendedEntryUv<=1);
+        if(cacheInDomain)
+            height=StoneCacheHeight(cache,extendedEntryUv,angleUv,16,reverseExpert ? 16 : 0,atlasWidth);
+    }
+    else
+    {
+        Texture2D cache=GetMaterialTexture(params.m_silpomNeuralCache);
+        cache.GetDimensions(atlasWidth,atlasHeight);
+        if(atlasWidth==4096 && atlasHeight==1024)
+        {
+            float2 angleUv=(slopes+3.2)/6.4;
+            cacheInDomain=all(angleUv>=0) && all(angleUv<=1) &&
+                all(extendedEntryUv>=0) && all(extendedEntryUv<=1);
+            if(cacheInDomain)
+                height=StoneCacheHeight(cache,extendedEntryUv,angleUv,32,0,atlasWidth);
+        }
+        else if(atlasWidth==2048 && atlasHeight==1024)
+        {
+            float2 angleUv=(slopes-float2(.35,-1.6))/float2(8.65,3.2);
+            float2 bottomUv=uv-offset;
+            cacheInDomain=all(angleUv>=0) && all(angleUv<=1) && all(uv>=.00001) &&
+                all(uv<=.99999) && all(bottomUv>=.00001) && all(bottomUv<=.99999);
+            if(cacheInDomain)
+                height=StoneCacheHeight(cache,uv,angleUv,16,0,atlasWidth);
+        }
+    }
+    if(!cacheInDomain)
+    {
+        bool nearlyFlatRay=reliefWeight<1 && all(abs(slopes)<=.35);
+        if(!dualCache || (!startsInsideRelief && !nearlyFlatRay)) return false;
+        // Seed the same local refinement from one height sample around the base plane.
+        float planeT=clamp(-ray.origin.z/ray.direction.z,begin,end);
+        height=StoneHeightGradient(params,p,ray.origin.xy+ray.direction.xy*planeT).x;
+    }
+    float t=clamp((p.scale*(height-p.reference)-ray.origin.z)/ray.direction.z,begin,end);
+    float3 heightData=0;
+    [unroll] for(uint iteration=0;iteration<3;++iteration)
+    {
+        float3 hitPosition=ray.origin+ray.direction*t;
+        heightData=StoneHeightGradient(params,p,hitPosition.xy);
+        float residual=hitPosition.z-p.scale*(heightData.x-p.reference);
+        float derivative=ray.direction.z-dot(heightData.yz,ray.direction.xy);
+        if(abs(derivative)<.00001) return false;
+        t=clamp(t-residual/derivative,begin,end);
+    }
+    float3 hitPosition=ray.origin+ray.direction*t;
+    heightData=StoneHeightGradient(params,p,hitPosition.xy);
+    float residual=hitPosition.z-p.scale*(heightData.x-p.reference);
+    if(abs(residual)>.0001 || any(abs(hitPosition.xy)>float2(p.width,p.height)*.5))
+        return false;
+    if(grazing)
+    {
+        float derivative=ray.direction.z-dot(heightData.yz,ray.direction.xy);
+        if(derivative>=-.00001) return false;
+        float localRoot=t-residual/derivative;
+        if(localRoot<begin || localRoot>end) return false;
+    }
+    // A small residual establishes a local surface hit. Nearest-hit accuracy
+    // remains an approximation and is measured against the original traversal.
+    hit.status=SP_HIT;
+    hit.cells=cacheInDomain ? 0 : 1;
+    hit.t=t;
+    hit.position=hitPosition;
+    hit.uv=hitPosition.xy/float2(p.width,p.height)+.5;
+    hit.normal=normalize(float3(-heightData.y,-heightData.z,1));
+    return true;
+}
+
+SilPomHit StoneFlatIntersection(SilPomPatch p, SilPomRay ray)
+{
+    SilPomHit hit=(SilPomHit)0;
+    if(ray.direction.z==0) return hit;
+    float t=-ray.origin.z/ray.direction.z;
+    float3 position=ray.origin+ray.direction*t;
+    float2 extent=float2(p.width,p.height);
+    if(t<ray.tMin || t>ray.tMax || any(abs(position.xy)>extent*.5)) return hit;
+    hit.status=SP_HIT;
+    hit.cells=StoneFlatHitTag;
+    hit.t=t;
+    hit.position=float3(position.xy,0);
+    hit.uv=(position.xy/extent+.5)*float2(p.tileU,p.tileV)+float2(p.offsetU,p.offsetV);
+    hit.normal=float3(0,0,1);
+    return hit;
+}
+
+SilPomHit StoneLearnedIntersection(const MaterialParameters params, SilPomPatch p, SilPomRay ray,
+    float3 cameraLocal)
+{
+    bool dualCache=params.m_silpomUseGrazingCache!=0;
+    float reliefWeight=1;
+    if(dualCache && params.m_silpomFadeEnd>params.m_silpomFadeStart)
+    {
+        // Keep one relief value for the entire panel, using its closest point.
+        float2 extent=float2(p.width,p.height)*.5;
+        float3 nearest=float3(clamp(cameraLocal.xy,-extent,extent),0);
+        reliefWeight=1-smoothstep(params.m_silpomFadeStart,params.m_silpomFadeEnd,
+            distance(cameraLocal,nearest));
+    }
+#if defined(SILPOM_ANGLE_FADE)
+    if(dualCache && reliefWeight>0 && params.m_silpomAngleFadeEnd>params.m_silpomAngleFadeStart)
+    {
+        // Measure the angle from the normal at the panel centre so its relief stays coherent.
+        float facing=abs(cameraLocal.z)*rsqrt(max(dot(cameraLocal,cameraLocal),1e-12));
+        float start=cos(radians(params.m_silpomAngleFadeStart));
+        float end=cos(radians(params.m_silpomAngleFadeEnd));
+        reliefWeight*=smoothstep(end,start,facing);
+    }
+#endif
+    if(reliefWeight==0) return StoneFlatIntersection(p,ray);
+
+    SilPomHit hit=(SilPomHit)0;
+    SilPomPatch displaced=p;
+    displaced.scale*=reliefWeight;
+    float begin=0,end=0;
+    if(!SilPomInterval(ray,displaced,begin,end)) return hit;
+    float cacheSlopeScale=dualCache ? displaced.scale/StoneTrainingScale : 1;
+    float3 trainedDirection=float3(ray.direction.xy*cacheSlopeScale,ray.direction.z);
+    bool grazing=abs(trainedDirection.z)<.32*length(trainedDirection);
+    bool cacheInDomain=false;
+    if((!grazing || dualCache) &&
+       StoneTryLearnedIntersection(params,p,ray,begin,end,reliefWeight,grazing,dualCache,cacheInDomain,hit))
+        return hit;
+    if(dualCache)
+    {
+        // Preserve finite wall coverage outside the trained angles and at the near plane.
+        // The opt-in gap fill uses the same planar hit for rejected predictions.
+        float reliefTop=displaced.scale*(1-displaced.reference);
+        bool nearPlaneInRelief=ray.direction.z<0 && ray.origin.z>=0 && ray.origin.z<reliefTop;
+        if(!cacheInDomain || nearPlaneInRelief || params.m_silpomFillCacheGaps)
+            return StoneFlatIntersection(p,ray);
+        return hit;
+    }
+    return SilPomIntersectBounds(GetMaterialTexture(params.m_silpomHeightMap),
+        GetMaterialTexture(params.m_silpomHeightBounds),p,ray,grazing);
+}
+#define SILPOM_INTERSECTION_OVERRIDE StoneLearnedIntersection
+#define SILPOM_FLAT_HIT_TAG StoneFlatHitTag
+#endif
+#include "SilPOM.azsli"

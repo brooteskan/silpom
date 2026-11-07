@@ -161,5 +161,28 @@ int main()
         Require(hit.status!=SP_EXHAUSTED,"bounded reference scenes complete");
         if(hit.status==SP_HIT) Require(std::abs(dot(hit.normal,hit.normal)-1)<1e-5,"finite unit normal");
     }
+    Texture relief{256, 256, std::vector<float>(256 * 256)};
+    for (uint y = 0; y < relief.height; ++y)
+    {
+        for (uint x = 0; x < relief.width; ++x)
+        {
+            relief.pixels[y * relief.width + x] = .35f + .24f * std::sin(x * .11f) * std::cos(y * .13f);
+        }
+    }
+    const auto reliefBounds = BuildBounds(relief);
+    patch = {2, 2, .1f, .05f, 1, 1, 0, 0, relief.width, relief.height, 0, 4096};
+    for (int i = 0; i < 20000; ++i)
+    {
+        patch.maxCells = i % 5 == 0 ? 96 : 4096;
+        const SilPomRay ray{{coord(random) * 1.4f, coord(random) * 1.4f, coord(random) * .15f},
+            normalize({coord(random), coord(random), coord(random) * .2f}), 0, 10};
+        const auto leaf = SilPomIntersectBounds(relief, reliefBounds, patch, ray);
+        const auto coarse = SilPomIntersectBounds(relief, reliefBounds, patch, ray, true);
+        Require(coarse.status == leaf.status, "coarse bounds preserve hit, miss and exhaustion status");
+        if (leaf.status == SP_HIT)
+        {
+            Require(std::abs(coarse.t - leaf.t) <= 2e-4f, "coarse bounds preserve the nearest hit");
+        }
+    }
     std::cout<<"SilPOM: "<<checks<<" checks passed, including 20000 independent oracle rays.\n";
 }

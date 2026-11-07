@@ -70,13 +70,16 @@ AZ::Data::Asset<AZ::RPI::ModelAsset> CreateQuad()
 void PatchConfig::Reflect(AZ::ReflectContext* context)
 {
     if(auto* sc=azrtti_cast<AZ::SerializeContext*>(context))
-        sc->Class<PatchConfig,AZ::ComponentConfig>()->Version(2)
+        sc->Class<PatchConfig,AZ::ComponentConfig>()->Version(3)
             ->Field("Material",&PatchConfig::m_material)->Field("Width",&PatchConfig::m_width)
             ->Field("Height",&PatchConfig::m_height)->Field("HeightScaleMetres",&PatchConfig::m_heightScale)
             ->Field("ReferenceHeight",&PatchConfig::m_reference)->Field("TileU",&PatchConfig::m_tileU)
             ->Field("TileV",&PatchConfig::m_tileV)->Field("OffsetU",&PatchConfig::m_offsetU)->Field("OffsetV",&PatchConfig::m_offsetV)
             ->Field("MaxCells",&PatchConfig::m_maxCells)->Field("AddressMode",&PatchConfig::m_addressMode)->Field("Debug",&PatchConfig::m_debug)
-            ->Field("ReuseTexels",&PatchConfig::m_reuseTexels);
+            ->Field("ReuseTexels",&PatchConfig::m_reuseTexels)
+            ->Field("OverrideReliefFade",&PatchConfig::m_overrideReliefFade)
+            ->Field("ReliefFadeStartMetres",&PatchConfig::m_reliefFadeStart)
+            ->Field("ReliefFadeEndMetres",&PatchConfig::m_reliefFadeEnd);
 }
 void PatchController::Reflect(AZ::ReflectContext* context)
 {
@@ -160,6 +163,19 @@ bool PatchController::Prepare()
     for(size_t i=0;i<properties.size();++i)
         creator.SetPropertyValue(layout->GetPropertyDescriptor(AZ::RPI::MaterialPropertyIndex(i))->GetName(),properties[i]);
     creator.SetPropertyValue(doubleSided,true);
+    if(c.m_overrideReliefFade && std::isfinite(c.m_reliefFadeStart) && std::isfinite(c.m_reliefFadeEnd))
+    {
+        const AZ::Name fadeStart("surface.reliefFadeStart");
+        const AZ::Name fadeEnd("surface.reliefFadeEnd");
+        const auto startIndex=layout->FindPropertyIndex(fadeStart);
+        const auto endIndex=layout->FindPropertyIndex(fadeEnd);
+        if(startIndex.IsValid() && endIndex.IsValid() &&
+            properties[startIndex.GetIndex()].Is<float>() && properties[endIndex.GetIndex()].Is<float>())
+        {
+            creator.SetPropertyValue(fadeStart,AZStd::max(0.0f,c.m_reliefFadeStart));
+            creator.SetPropertyValue(fadeEnd,AZStd::max(0.0f,c.m_reliefFadeEnd));
+        }
+    }
     AZ::Data::Asset<AZ::RPI::MaterialAsset> materialAsset;
     if(!creator.End(materialAsset)) {m_status="Material asset creation failed";return false;}
     m_material=AZ::RPI::Material::Create(materialAsset);

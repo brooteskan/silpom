@@ -1,0 +1,103 @@
+{
+    "description": "Experimental learned stone-wall intersection caches with a tunable viewing-angle relief fade.",
+    "version": 1,
+    "propertyLayout": {
+        "propertyGroups": [
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/BaseColorPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/VertexColorPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/MetallicPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/RoughnessPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/SpecularPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/NormalPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/OcclusionPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/EmissivePropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/ClearCoatPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/ParallaxPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/OpacityPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/UvPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/IrradiancePropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/GeneralCommonPropertyGroup.json"
+            },
+            {
+                "$import": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/MaterialInputs/SilhouetteBlockerPropertyGroup.json"
+            },
+            {
+                "$import": "NeuralStoneWallSurface.json"
+            },
+            {
+                "name": "angleFade",
+                "displayName": "Relief Angle Fade",
+                "properties": [
+                    {
+                        "name": "start",
+                        "displayName": "Start Angle (degrees)",
+                        "description": "Keep full angle-dependent relief through this angle from the panel normal.",
+                        "type": "Float",
+                        "defaultValue": 0.0,
+                        "min": 0.0,
+                        "max": 90.0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomAngleFadeStart"
+                        }
+                    },
+                    {
+                        "name": "end",
+                        "displayName": "Flat Angle (degrees)",
+                        "description": "Render flat at or above this angle from the panel normal. Set above the start angle to enable the fade.",
+                        "type": "Float",
+                        "defaultValue": 0.0,
+                        "min": 0.0,
+                        "max": 90.0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomAngleFadeEnd"
+                        }
+                    }
+                ]
+            }
+        ]
+    },
+    "lightingModel": "Standard",
+    "materialShaderDefines": "NeuralStoneWallAngleFade_Defines.azsli",
+    "materialShaderCode": "NeuralStoneWall.azsli",
+    "functors": [
+        {
+            "type": "Lua",
+            "args": {
+                "file": "Materials/Types/SilPOM/SilPOM_State.lua"
+            }
+        }
+    ],
+    "uvNameMap": {
+        "UV0": "Tiled",
+        "UV1": "Unwrapped"
+    }
+}

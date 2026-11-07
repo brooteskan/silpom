@@ -32,6 +32,14 @@ public:
                     ->DataElement(AZ::Edit::UIHandlers::Default,&PatchConfig::m_width,"Width","Local metres, follows entity scale")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&PatchConfig::m_height,"Height","Local metres, follows entity scale")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&PatchConfig::m_heightScale,"Height scale (world metres)","Unaffected by entity scale")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&PatchConfig::m_overrideReliefFade,"Override relief fade",
+                        "Use this patch's fade distances on materials that support relief fading")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&PatchConfig::m_reliefFadeStart,"Relief fade start (m)",
+                        "Distance from the panel up to which full relief is used")
+                    ->Attribute(AZ::Edit::Attributes::Min,0.0f)
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&PatchConfig::m_reliefFadeEnd,"Relief fade end (m)",
+                        "Distance at which relief is flat. Set at or below the start to disable fading.")
+                    ->Attribute(AZ::Edit::Attributes::Min,0.0f)
                     ->DataElement(AZ::Edit::UIHandlers::Default,&PatchConfig::m_reference,"Reference height","Normalized source value at the base plane")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&PatchConfig::m_tileU,"Tile U","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&PatchConfig::m_tileV,"Tile V","")
