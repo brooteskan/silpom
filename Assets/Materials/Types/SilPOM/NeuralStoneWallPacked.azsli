@@ -1,4 +1,4 @@
 // SPDX-License-Identifier: MIT
 #pragma once
-#define SILPOM_PACKED_REFINEMENT 1
+#define SILPOM_FIXED_REFINEMENT 1
 #include "NeuralStoneWall.azsli"

@@ -31,7 +31,7 @@ float StoneCacheHeight(Texture2D cache, float2 uv, float2 angleUv, uint columns,
 
 float3 StoneHeightGradient(const MaterialParameters params, SilPomPatch p, float2 position)
 {
-#if defined(SILPOM_PACKED_REFINEMENT)
+#if defined(SILPOM_FIXED_REFINEMENT)
     float2 textureSize=float2(StoneHeightMapSize,StoneHeightMapSize);
 #else
     float2 textureSize=float2(p.textureWidth,p.textureHeight);
@@ -39,11 +39,19 @@ float3 StoneHeightGradient(const MaterialParameters params, SilPomPatch p, float
     float2 q=(position/float2(p.width,p.height)+.5)*textureSize-.5;
     int2 cell=int2(floor(q));
     float2 f=frac(q);
-#if defined(SILPOM_PACKED_REFINEMENT)
-    // The dual-cache material uses this slot for repeating bilinear cell corners
-    // in RGBA order (00, 10, 01, 11). It does not use the exact bounds traversal.
+#if defined(SILPOM_FIXED_REFINEMENT)
     int2 wrappedCell=cell & (StoneHeightMapSize-1);
+#if defined(SILPOM_R16F_REFINEMENT)
+    Texture2D scalarHeight=GetMaterialTexture(params.m_silpomHeightBounds);
+    float4 heights=float4(
+        scalarHeight.Load(int3(wrappedCell,0)).r,
+        scalarHeight.Load(int3((wrappedCell+int2(1,0)) & (StoneHeightMapSize-1),0)).r,
+        scalarHeight.Load(int3((wrappedCell+int2(0,1)) & (StoneHeightMapSize-1),0)).r,
+        scalarHeight.Load(int3((wrappedCell+int2(1,1)) & (StoneHeightMapSize-1),0)).r);
+#else
+    // Packed heights store the four corners in RGBA order (00, 10, 01, 11).
     float4 heights=GetMaterialTexture(params.m_silpomHeightBounds).Load(int3(wrappedCell,0));
+#endif
     float h00=heights.x, h10=heights.y, h01=heights.z, h11=heights.w;
 #else
     float h00=SilPomTexel(GetMaterialTexture(params.m_silpomHeightMap),p,cell.x,cell.y);
@@ -69,10 +77,10 @@ bool StoneTryLearnedIntersection(const MaterialParameters params, SilPomPatch p,
        p.offsetU!=0 || p.offsetV!=0 || p.addressMode!=0 || p.textureWidth!=StoneHeightMapSize ||
        p.textureHeight!=StoneHeightMapSize || ray.direction.z>=-.0001)
         return false;
-#if defined(SILPOM_PACKED_REFINEMENT)
-    uint packedWidth,packedHeight;
-    GetMaterialTexture(params.m_silpomHeightBounds).GetDimensions(packedWidth,packedHeight);
-    if(packedWidth!=StoneHeightMapSize || packedHeight!=StoneHeightMapSize)
+#if defined(SILPOM_FIXED_REFINEMENT)
+    uint refinementWidth,refinementHeight;
+    GetMaterialTexture(params.m_silpomHeightBounds).GetDimensions(refinementWidth,refinementHeight);
+    if(refinementWidth!=StoneHeightMapSize || refinementHeight!=StoneHeightMapSize)
         return false;
 #endif
     p.scale*=reliefWeight;
@@ -185,7 +193,7 @@ SilPomHit StoneFlatIntersection(SilPomPatch p, SilPomRay ray)
 SilPomHit StoneLearnedIntersection(const MaterialParameters params, SilPomPatch p, SilPomRay ray,
     float3 cameraLocal)
 {
-#if defined(SILPOM_PACKED_REFINEMENT)
+#if defined(SILPOM_FIXED_REFINEMENT)
     const bool dualCache=true;
 #else
     bool dualCache=params.m_silpomUseGrazingCache!=0;
