@@ -2,6 +2,11 @@
 #include <SilPOM/Mesh.h>
 #include <cmath>
 #include <Atom/RPI.Public/Scene.h>
+#include <Atom/RPI.Public/RenderPipeline.h>
+#include <Atom/RPI.Public/Pass/Pass.h>
+#include <Atom/RPI.Public/Pass/PassSystemInterface.h>
+#include <Atom/RPI.Reflect/Pass/RasterPassData.h>
+#include <Atom/RPI.Reflect/Pass/PassTemplate.h>
 #include <Atom/RPI.Public/Material/Material.h>
 #include <Atom/RPI.Public/Image/StreamingImage.h>
 #include <Atom/RPI.Public/Buffer/Buffer.h>
@@ -11,6 +16,8 @@
 #include <Atom/RPI.Reflect/Material/MaterialPropertiesLayout.h>
 #include <Atom/RPI.Reflect/Material/MaterialAssetCreator.h>
 #include <Atom/RHI/RHISystemInterface.h>
+#include <Atom/RHI/Factory.h>
+#include <AzCore/Console/IConsole.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Script/ScriptContextAttributes.h>
@@ -23,6 +30,72 @@ namespace SilPOM
 {
 namespace
 {
+AZ_CVAR(bool, r_silpomReuseDepthHits, false, nullptr, AZ::ConsoleFunctorFlags::Null,
+    "Use the experimental DX12 SilPOM hit buffer for meshes prepared in a single-sample MainPipeline.");
+
+AZ::RPI::Ptr<AZ::RPI::Pass> MakeHitPass(const AZ::Name& name, const AZ::Name& templateName, const AZ::RPI::Pass& reference)
+{
+    auto* system = AZ::RPI::PassSystemInterface::Get();
+    const auto passTemplate = system->GetPassTemplate(templateName);
+    if (!passTemplate) return {};
+    auto data = AZStd::make_shared<AZ::RPI::RasterPassData>(
+        *azrtti_cast<const AZ::RPI::RasterPassData*>(passTemplate->m_passData.get()));
+    data->m_pipelineViewTag = reference.GetPipelineViewTag();
+    AZ::RPI::PassRequest request;
+    request.m_passName = name;
+    request.m_templateName = templateName;
+    request.m_passData = AZStd::move(data);
+    return system->CreatePassFromRequest(&request);
+}
+
+bool InstallHitPasses(AZ::RPI::Scene& scene)
+{
+    if (!r_silpomReuseDepthHits || AZ::RHI::Factory::Get().GetName() != AZ::Name("dx12")) return false;
+    auto* system = AZ::RPI::PassSystemInterface::Get();
+    const AZ::Name hitDepthName("SilPOMHitDepth"), hitForwardName("SilPOMHitForward");
+    const AZ::Name depthTemplate("SilPOMHitDepthTemplate"), forwardTemplate("SilPOMHitForwardTemplate");
+    const AZ::Name depthName("DepthPass"), forwardName("Forward");
+    bool foundMainPipeline = false;
+    for (const auto& pipeline : scene.GetRenderPipelines())
+    {
+        if (pipeline->GetDescriptor().m_materialPipelineTag != "MainPipeline") continue;
+        if (pipeline->GetRenderSettings().m_multisampleState.m_samples != 1
+            || !pipeline->FindFirstPass(depthName) || !pipeline->FindFirstPass(forwardName)) return false;
+        foundMainPipeline = true;
+    }
+    if (!foundMainPipeline) return false;
+    if (!system->GetPassTemplate(depthTemplate) && !system->LoadPassTemplateMappings("passes/silpomhittemplates.azasset"))
+        return false;
+
+    for (const auto& pipeline : scene.GetRenderPipelines())
+    {
+        if (pipeline->GetDescriptor().m_materialPipelineTag != "MainPipeline") continue;
+        if (pipeline->FindFirstPass(hitDepthName) && pipeline->FindFirstPass(hitForwardName)) continue;
+        auto depth = MakeHitPass(hitDepthName, depthTemplate, *pipeline->FindFirstPass(depthName));
+        auto forward = MakeHitPass(hitForwardName, forwardTemplate, *pipeline->FindFirstPass(forwardName));
+        if (!depth || !forward || !pipeline->AddPassAfter(depth, depthName)) return false;
+        if (!pipeline->AddPassAfter(forward, forwardName))
+        {
+            depth->QueueForRemoval();
+            return false;
+        }
+    }
+    return true;
+}
+
+AZ::u32 AllocateHitFaceBase(size_t faceCount)
+{
+    // Zero is the cleared/unowned record. Two low bits hold the solver status.
+    static AZStd::atomic<AZ::u64> next{1};
+    constexpr AZ::u64 limit = AZ::u64(1) << 30;
+    AZ::u64 base = next.load(AZStd::memory_order_relaxed);
+    do
+    {
+        if (faceCount > limit - base) return 0;
+    } while (!next.compare_exchange_weak(base, base + faceCount, AZStd::memory_order_relaxed));
+    return AZ::u32(base);
+}
+
 using Material = AZ::Data::Instance<AZ::RPI::Material>;
 using Handle = AZ::Render::MeshFeatureProcessorInterface::MeshHandle;
 struct Vertex { AZ::Vector3 position, normal; AZ::Vector2 uv; };
@@ -285,6 +358,7 @@ bool MeshController::Prepare()
     if (!scene) { m_status = "Waiting for render scene"; return true; }
     m_processor = scene->GetFeatureProcessor<AZ::Render::MeshFeatureProcessorInterface>();
     if (!m_processor) { m_status = "Waiting for MeshFeatureProcessor"; return true; }
+    const bool reuseDepthHits = InstallHitPasses(*scene);
     if (AZ::Render::r_meshInstancingEnabled)
     { m_status = "Planar face renderer currently requires r_meshInstancingEnabled=false"; return false; }
     auto candidate = AZStd::make_unique<Generation>(); candidate->id = asset.m_generation;
@@ -394,6 +468,8 @@ bool MeshController::Prepare()
                     && Set(material,"surface.maxCells",c.m_maxCells) && Set(material,"surface.useHierarchy",false)
                     && Set(material,"surface.reliefShadowSteps",c.m_reliefShadowSteps);
                 if(!valid) return fail("Planar face material contract mismatch");
+                if (reuseDepthHits && !Set(material, "mesh.hitFaceBase", AllocateHitFaceBase(packed.size() / 36)))
+                    return fail("SilPOM hit material contract mismatch");
                 candidate->buffers.push_back(buffer); candidate->heights.push_back(height);
                 bounds.Expand(AZ::Vector3(1e-5f));
             }

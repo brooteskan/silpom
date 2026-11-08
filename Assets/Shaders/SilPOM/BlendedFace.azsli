@@ -43,6 +43,14 @@ float3 SilPomRotateNormal(float3 value,float3 from,float3 to)
     float3 axis=cross(from,to);
     return value+cross(axis,value)+cross(axis,cross(axis,value))*(1/(1+dot(from,to)));
 }
+float3 SilPomFaceNormal(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,float2 uv,float2 low)
+{
+    float3 h=SilPomFaceHeight(texture,p,uv,low);
+    float det=dot(f.du,cross(f.dv,f.normal));
+    float3 dualU=cross(f.dv,f.normal)*(1/det),dualV=cross(f.normal,f.du)*(1/det);
+    float3 baseNormal=normalize(f.normal-dualU*h.y-dualV*h.z);
+    return normalize(SilPomRotateNormal(baseNormal,f.normal,normalize(SilPomFaceDirection(f,uv))));
+}
 // Bounded Newton refinement of a planar-kernel seed. Never accept an
 // unconverged iterate as geometry. This is a local heuristic, not a complete
 // intersection algorithm for arbitrary curved surfaces or folded volumes.
@@ -167,11 +175,11 @@ SilPomHit SilPomSearchFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,
                     best=hit;best.status=SP_HIT;best.t=t;
                     best.position=worldRay.origin+worldRay.direction*t;
                     best.uv=float2((uv.x-low.x)*p.tileU/p.width+p.offsetU,(uv.y-low.y)*p.tileV/p.height+p.offsetV);
-                    float3 h=SilPomFaceHeight(texture,p,uv,low);
-                    float det=dot(f.du,cross(f.dv,f.normal));
-                    float3 dualU=cross(f.dv,f.normal)*(1/det),dualV=cross(f.normal,f.du)*(1/det);
-                    float3 baseNormal=normalize(f.normal-dualU*h.y-dualV*h.z);
-                    best.normal=normalize(SilPomRotateNormal(baseNormal,f.normal,normalize(SilPomFaceDirection(f,uv))));
+#if SILPOM_HIT_DEPTH
+                    best.faceUv=uv;
+#else
+                    best.normal=SilPomFaceNormal(texture,p,f,uv,low);
+#endif
                 }
                 break;
             }

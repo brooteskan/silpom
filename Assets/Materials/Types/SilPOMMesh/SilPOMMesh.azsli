@@ -19,6 +19,9 @@ static float3x3 silpomLitRotation;
 static float3 silpomLitOriginWS;
 static bool silpomLitValid=false;
 #endif
+#if SILPOM_HIT_DEPTH
+static float2 silpomDepthHitUv;
+#endif
 SilPomMeshFace SilPomLoadFace(uint buffer, uint index)
 {
     SilPomMeshFace f;
@@ -84,20 +87,12 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     geo.positionWS=IN.worldPosition;
     return geo;
 #else
+#if SILPOM_HIT_FORWARD
+    uint4 record=PassSrg::m_silpomHitBuffer.Load(int3(int2(IN.position.xy),0));
+    if((record.w>>2)!=params.m_silpomHitFaceBase+IN.faceIndex) discard;
+#endif
     SilPomMeshFace f=SilPomLoadFace(params.m_meshBufferIndex,IN.faceIndex);
     float4x4 model=GetObjectToWorldMatrix(SV);
-    float nearZ=1;
-    float4 nearH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,nearZ,1));
-    float4 midH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,.5,1));
-    float4 farH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,1-nearZ,1));
-    float3 originWS=nearH.xyz/nearH.w;
-    float3 directionWS=normalize(midH.xyz/midH.w-originWS);
-    float3x3 inverseRotation=transpose((float3x3)model);
-    float3 origin=mul(inverseRotation,originWS-mul(model,float4(0,0,0,1)).xyz);
-    float3 direction=mul(inverseRotation,directionWS);
-    SilPomRay ray;
-    ray.origin=origin;ray.direction=direction;
-    ray.tMin=0; ray.tMax=abs(farH.w)>1e-8?length(farH.xyz/farH.w-originWS):1e7;
     float2 low=min(f.uv0,min(f.uv1,f.uv2)),high=max(f.uv0,max(f.uv1,f.uv2));
     float2 span=high-low;
     SilPomPatch p;
@@ -108,22 +103,51 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     p.offsetV=low.y*params.m_silpomTileV+params.m_silpomOffsetV;
     p.addressMode=params.m_silpomAddressMode; p.maxCells=params.m_silpomMaxCells;
     GetMaterialTexture(params.m_silpomHeightMap).GetDimensions(p.textureWidth,p.textureHeight);
+
+    PixelGeometryData geo=(PixelGeometryData)0;
+    float4 nearH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,1,1));
+    float4 midH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,.5,1));
+    float3 originWS=nearH.xyz/nearH.w;
+    float3 directionWS=normalize(midH.xyz/midH.w-originWS);
+    float3x3 inverseRotation=transpose((float3x3)model);
+    float3 direction=mul(inverseRotation,directionWS);
+#if SILPOM_HIT_FORWARD
+    uint status=record.w&3;
+    bool failed=status!=SP_HIT;
+    float2 faceUv=asfloat(record.xy);
+    float3 normal=failed?f.normal:SilPomFaceNormal(GetMaterialTexture(params.m_silpomHeightMap),p,f,faceUv,low);
+    float2 tiledUv=failed?faceUv:float2((faceUv.x-low.x)*p.tileU/p.width+p.offsetU,(faceUv.y-low.y)*p.tileV/p.height+p.offsetV);
+    IN.position.z=asfloat(record.z);
+    float4 hitH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,IN.position.z,1));
+    geo.positionWS=hitH.xyz/hitH.w;
+    IN.silpomDiagnostic=float4(float(status),0,0,0);
+#else
+    float4 farH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,0,1));
+    float3 origin=mul(inverseRotation,originWS-mul(model,float4(0,0,0,1)).xyz);
+    SilPomRay ray;
+    ray.origin=origin;ray.direction=direction;
+    ray.tMin=0; ray.tMax=abs(farH.w)>1e-8?length(farH.xyz/farH.w-originWS):1e7;
     SilPomHit hit=SilPomIntersectFace(GetMaterialTexture(params.m_silpomHeightMap),p,f,ray,low);
     if(hit.status==SP_MISS) discard;
     bool failed=hit.status!=SP_HIT;
     if(failed) { hit.t=max(hit.t,1e-4f); hit.normal=f.normal; }
     float3 position=origin+direction*hit.t;
     float3 normal=hit.normal;
-    PixelGeometryData geo=(PixelGeometryData)0;
     geo.positionWS=mul(model,float4(position,1)).xyz;
     precise float4 clip=mul(GetViewProjectionMatrix(SV),float4(geo.positionWS,1));
     if(clip.w<=0 || clip.z<0 || clip.z>clip.w) discard;
-    IN.position.z=clip.z/clip.w; IN.worldPosition=geo.positionWS;
-    IN.color0=failed?float4(1,0,1,1):float4(1,1,1,1);
+    IN.position.z=clip.z/clip.w;
+    float2 tiledUv=hit.uv;
     IN.silpomDiagnostic=float4(float(hit.status),float(hit.cells),hit.t,0);
+#if SILPOM_HIT_DEPTH
+    silpomDepthHitUv=failed?hit.uv:hit.faceUv;
+#endif
+#endif
+    IN.worldPosition=geo.positionWS;
+    IN.color0=failed?float4(1,0,1,1):float4(1,1,1,1);
     geo.vertexNormal=normalize(mul((float3x3)model,normal));
     geo.isFrontFace=dot(normal,direction)<0; geo.isDisplacementClipped=failed;
-    float2 uv=float2((hit.uv.x-params.m_silpomOffsetU)/params.m_silpomTileU,(hit.uv.y-params.m_silpomOffsetV)/params.m_silpomTileV);
+    float2 uv=float2((tiledUv.x-params.m_silpomOffsetU)/params.m_silpomTileU,(tiledUv.y-params.m_silpomOffsetV)/params.m_silpomTileV);
 #if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
     silpomLitFace=f; silpomLitPatch=p; silpomLitUv=uv;
     silpomLitRotation=(float3x3)model;

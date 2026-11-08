@@ -1,0 +1,261 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "SilPOMHitForwardTemplate",
+            "PassClass": "RasterPass",
+            "Slots": [
+                {
+                    "Name": "BRDFTextureInput",
+                    "ShaderInputName": "m_brdfMap",
+                    "ScopeAttachmentStage": "FragmentShader",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader"
+                },
+                {
+                    "Name": "FullscreenShadow",
+                    "ShaderInputName": "m_fullscreenShadow",
+                    "ScopeAttachmentStage": "FragmentShader",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader"
+                },
+                {
+                    "Name": "DirectionalLightShadowmap",
+                    "ShaderInputName": "m_directionalLightShadowmap",
+                    "ScopeAttachmentStage": "FragmentShader",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ImageViewDesc": {
+                        "IsArray": 1
+                    }
+                },
+                {
+                    "Name": "ExponentialShadowmapDirectional",
+                    "ShaderInputName": "m_directionalLightExponentialShadowmap",
+                    "ScopeAttachmentStage": "FragmentShader",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ImageViewDesc": {
+                        "IsArray": 1
+                    }
+                },
+                {
+                    "Name": "ProjectedShadowmap",
+                    "ShaderInputName": "m_projectedShadowmaps",
+                    "ScopeAttachmentStage": "FragmentShader",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ImageViewDesc": {
+                        "IsArray": 1
+                    }
+                },
+                {
+                    "Name": "ExponentialShadowmapProjected",
+                    "ShaderInputName": "m_projectedExponentialShadowmap",
+                    "ScopeAttachmentStage": "FragmentShader",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ImageViewDesc": {
+                        "IsArray": 1
+                    }
+                },
+                {
+                    "Name": "TileLightData",
+                    "SlotType": "Input",
+                    "ShaderInputName": "m_tileLightData",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ScopeAttachmentStage": "FragmentShader"
+                },
+                {
+                    "Name": "LightListRemapped",
+                    "SlotType": "Input",
+                    "ShaderInputName": "m_lightListRemapped",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ScopeAttachmentStage": "FragmentShader"
+                },
+                {
+                    "Name": "DepthStencilInputOutput",
+                    "SlotType": "InputOutput",
+                    "ScopeAttachmentUsage": "DepthStencil",
+                    "LoadStoreAction": {
+                        "LoadAction": "Load",
+                        "LoadActionStencil": "Load"
+                    }
+                },
+                {
+                    "Name": "DiffuseOutput",
+                    "SlotType": "InputOutput",
+                    "ScopeAttachmentUsage": "RenderTarget",
+                    "LoadStoreAction": {
+                        "LoadAction": "Load"
+                    }
+                },
+                {
+                    "Name": "SpecularOutput",
+                    "SlotType": "InputOutput",
+                    "ScopeAttachmentUsage": "RenderTarget",
+                    "LoadStoreAction": {
+                        "LoadAction": "Load"
+                    }
+                },
+                {
+                    "Name": "AlbedoOutput",
+                    "SlotType": "InputOutput",
+                    "ScopeAttachmentUsage": "RenderTarget",
+                    "LoadStoreAction": {
+                        "LoadAction": "Load"
+                    }
+                },
+                {
+                    "Name": "SpecularF0Output",
+                    "SlotType": "InputOutput",
+                    "ScopeAttachmentUsage": "RenderTarget",
+                    "LoadStoreAction": {
+                        "LoadAction": "Load"
+                    }
+                },
+                {
+                    "Name": "NormalOutput",
+                    "SlotType": "InputOutput",
+                    "ScopeAttachmentUsage": "RenderTarget",
+                    "LoadStoreAction": {
+                        "LoadAction": "Load"
+                    }
+                },
+                {
+                    "Name": "Hit",
+                    "ShaderInputName": "m_silpomHitBuffer",
+                    "SlotType": "Input",
+                    "ScopeAttachmentStage": "FragmentShader",
+                    "ScopeAttachmentUsage": "Shader"
+                }
+            ],
+            "Connections": [
+                {
+                    "LocalSlot": "BRDFTextureInput",
+                    "AttachmentRef": {
+                        "Pass": "This",
+                        "Attachment": "BRDFTexture"
+                    }
+                },
+                {
+                    "LocalSlot": "FullscreenShadow",
+                    "AttachmentRef": {
+                        "Pass": "PipelineGlobal",
+                        "Attachment": "FullscreenShadowBuffer"
+                    }
+                },
+                {
+                    "LocalSlot": "DirectionalLightShadowmap",
+                    "AttachmentRef": {
+                        "Pass": "Parent",
+                        "Attachment": "DirectionalShadowmap"
+                    }
+                },
+                {
+                    "LocalSlot": "ExponentialShadowmapDirectional",
+                    "AttachmentRef": {
+                        "Pass": "Parent",
+                        "Attachment": "DirectionalESM"
+                    }
+                },
+                {
+                    "LocalSlot": "ProjectedShadowmap",
+                    "AttachmentRef": {
+                        "Pass": "Parent",
+                        "Attachment": "ProjectedShadowmap"
+                    }
+                },
+                {
+                    "LocalSlot": "ExponentialShadowmapProjected",
+                    "AttachmentRef": {
+                        "Pass": "Parent",
+                        "Attachment": "ProjectedESM"
+                    }
+                },
+                {
+                    "LocalSlot": "TileLightData",
+                    "AttachmentRef": {
+                        "Pass": "Parent",
+                        "Attachment": "TileLightData"
+                    }
+                },
+                {
+                    "LocalSlot": "LightListRemapped",
+                    "AttachmentRef": {
+                        "Pass": "Parent",
+                        "Attachment": "LightListRemapped"
+                    }
+                },
+                {
+                    "LocalSlot": "DepthStencilInputOutput",
+                    "AttachmentRef": {
+                        "Pass": "Forward",
+                        "Attachment": "DepthStencilInputOutput"
+                    }
+                },
+                {
+                    "LocalSlot": "DiffuseOutput",
+                    "AttachmentRef": {
+                        "Pass": "Forward",
+                        "Attachment": "DiffuseOutput"
+                    }
+                },
+                {
+                    "LocalSlot": "SpecularOutput",
+                    "AttachmentRef": {
+                        "Pass": "Forward",
+                        "Attachment": "SpecularOutput"
+                    }
+                },
+                {
+                    "LocalSlot": "AlbedoOutput",
+                    "AttachmentRef": {
+                        "Pass": "Forward",
+                        "Attachment": "AlbedoOutput"
+                    }
+                },
+                {
+                    "LocalSlot": "SpecularF0Output",
+                    "AttachmentRef": {
+                        "Pass": "Forward",
+                        "Attachment": "SpecularF0Output"
+                    }
+                },
+                {
+                    "LocalSlot": "NormalOutput",
+                    "AttachmentRef": {
+                        "Pass": "Forward",
+                        "Attachment": "NormalOutput"
+                    }
+                },
+                {
+                    "LocalSlot": "Hit",
+                    "AttachmentRef": {
+                        "Pass": "PipelineGlobal",
+                        "Attachment": "SilPOMHitBuffer"
+                    }
+                }
+            ],
+            "PassData": {
+                "$type": "RasterPassData",
+                "DrawListTag": "silpomHitForward",
+                "BindViewSrg": true,
+                "PassSrgShaderAsset": {
+                    "FilePath": "Shaders/SilPOM/HitReuse/SilPOMHitForwardSrg.shader"
+                }
+            },
+            "ImageAttachments": [
+                {
+                    "Name": "BRDFTexture",
+                    "Lifetime": "Imported",
+                    "AssetRef": {
+                        "FilePath": "Textures/BRDFTexture.attimage"
+                    }
+                }
+            ]
+        }
+    }
+}

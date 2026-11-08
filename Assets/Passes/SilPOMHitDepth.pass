@@ -1,0 +1,80 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "SilPOMHitDepthTemplate",
+            "PassClass": "RasterPass",
+            "Slots": [
+                {
+                    "Name": "Hit",
+                    "SlotType": "Output",
+                    "ScopeAttachmentUsage": "RenderTarget",
+                    "LoadStoreAction": {
+                        "LoadAction": "Clear",
+                        "ClearValue": {
+                            "Value": [
+                                0.0,
+                                0.0,
+                                0.0,
+                                0.0
+                            ]
+                        }
+                    }
+                },
+                {
+                    "Name": "Depth",
+                    "SlotType": "InputOutput",
+                    "ScopeAttachmentUsage": "DepthStencil",
+                    "LoadStoreAction": {
+                        "LoadAction": "Load",
+                        "LoadActionStencil": "Load"
+                    }
+                }
+            ],
+            "Connections": [
+                {
+                    "LocalSlot": "Hit",
+                    "AttachmentRef": {
+                        "Pass": "This",
+                        "Attachment": "HitImage"
+                    }
+                },
+                {
+                    "LocalSlot": "Depth",
+                    "AttachmentRef": {
+                        "Pass": "DepthPass",
+                        "Attachment": "Output"
+                    }
+                }
+            ],
+            "ImageAttachments": [
+                {
+                    "Name": "HitImage",
+                    "SizeSource": {
+                        "Source": {
+                            "Pass": "DepthPass",
+                            "Attachment": "Output"
+                        }
+                    },
+                    "ImageDescriptor": {
+                        "Format": "R32G32B32A32_UINT",
+                        "SharedQueueMask": "Graphics"
+                    }
+                }
+            ],
+            "PassData": {
+                "$type": "RasterPassData",
+                "DrawListTag": "silpomHitDepth",
+                "BindViewSrg": true,
+                "PipelineGlobalConnections": [
+                    {
+                        "GlobalName": "SilPOMHitBuffer",
+                        "Slot": "Hit"
+                    }
+                ]
+            }
+        }
+    }
+}

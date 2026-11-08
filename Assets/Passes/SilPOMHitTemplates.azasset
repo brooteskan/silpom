@@ -1,0 +1,11 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "AssetAliasesSourceData",
+    "ClassData": {
+        "AssetPaths": [
+            {"Name": "SilPOMHitDepthTemplate", "Path": "Passes/SilPOMHitDepth.pass"},
+            {"Name": "SilPOMHitForwardTemplate", "Path": "Passes/SilPOMHitForward.pass"}
+        ]
+    }
+}

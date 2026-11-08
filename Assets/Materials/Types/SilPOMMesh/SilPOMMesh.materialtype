@@ -217,19 +217,28 @@
                             "type": "ShaderInput",
                             "name": "m_meshBufferIndex"
                         }
+                    },
+                    {
+                        "name": "hitFaceBase",
+                        "type": "UInt",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomHitFaceBase"
+                        }
                     }
                 ]
             }
         ]
     },
-    "lightingModel": "Standard",
+    "lightingModel": "SilPOMMesh",
     "materialShaderDefines": "SilPOMMesh_Defines.azsli",
     "materialShaderCode": "SilPOMMesh.azsli",
     "functors": [
         {
             "type": "Lua",
             "args": {
-                "file": "Materials/Types/SilPOM/SilPOM_State.lua"
+                "file": "Materials/Types/SilPOMMesh/SilPOMMesh_State.lua"
             }
         }
     ],

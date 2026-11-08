@@ -41,6 +41,9 @@ struct SilPomHit
     float3 position;
     float2 uv;
     float3 normal;
+#if SILPOM_HIT_DEPTH
+    float2 faceUv;
+#endif
 };
 
 int SilPomAddress(int i, int size, uint mode)
