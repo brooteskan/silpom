@@ -45,9 +45,9 @@ int main()
     // Pixel rays reproduced from the oblique and near-plane fixture views.
     // Each formerly produced SP_EXHAUSTED with fewer than 60 cells visited.
     // An independent dense triangle reference confirms these rays miss.
-    struct Case {int view,x,y,surface;};
-    const Case cases[]={{0,115,47,2},{0,110,54,2},{0,115,63,3},
-                        {1,240,64,3},{1,239,65,3},{1,240,65,3}};
+    struct Case {int view,x,y,surface; bool sweptMiss;};
+    const Case cases[]={{0,115,47,2,true},{0,110,54,2,true},{0,115,63,3,false},
+                        {1,240,64,3,true},{1,239,65,3,true},{1,240,65,3,true}};
     for(auto sample:cases)
     {
         int view=sample.view,x=sample.x,y=sample.y;
@@ -59,8 +59,12 @@ int main()
         auto hit=SilPomIntersectFace(texture,s.p,s.f,ray,s.low);
         Require(hit.status==SP_MISS,"Rejected planar seed became diagnostic geometry");
         auto limited=s.p;limited.maxCells=1;
+        const auto before=texture.loads;
         auto exhausted=SilPomIntersectFace(texture,limited,s.f,ray,s.low);
-        Require(exhausted.status==SP_EXHAUSTED,"Actual traversal exhaustion must remain distinguishable from seed rejection");
+        if(sample.sweptMiss)
+            Require(exhausted.status==SP_MISS && texture.loads==before,"Swept face miss performed heightfield work");
+        else
+            Require(exhausted.status==SP_EXHAUSTED,"A ray entering the bound still reports actual traversal exhaustion");
     }
     std::cout<<"Six silhouette/near-plane miss regressions agree with dense reference; real budget exhaustion retained\n";
 }

@@ -79,32 +79,58 @@ uint SilPomRefineFace(SP_TEX texture, SilPomPatch p, SilPomMeshFace f,
     }
     return SP_REFINE_REJECTED;
 }
-SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilPomRay worldRay,float2 low)
+// The displaced point is a convex combination of the six corner extrema.
+// Bound their projections along three side normals of an oblique triangular
+// prism. Clip only the planar seed search. The refinement ray retains its
+// original interval because a planar seed can converge to a different t.
+bool SilPomSweptFaceInterval(SilPomPatch p, SilPomMeshFace f, SP_REF(SilPomRay) ray)
 {
-    SilPomHit best=SP_ZERO(SilPomHit);best.t=worldRay.tMax;
-    float3 boundsLow=float3(1e30f,1e30f,1e30f),boundsHigh=float3(-1e30f,-1e30f,-1e30f);
-    for(uint i=0;i<6;++i)
+    const float3 b = f.du*(f.uv1.x-f.uv0.x) + f.dv*(f.uv1.y-f.uv0.y);
+    const float3 c = f.du*(f.uv2.x-f.uv0.x) + f.dv*(f.uv2.y-f.uv0.y);
+    const float3 extrusion = f.d0+f.d1+f.d2;
+    const float h0 = -p.scale*p.reference;
+    const float h1 = p.scale*(1-p.reference);
+    const float3 origin = ray.origin-f.origin;
+    const float3 start = origin+ray.direction*ray.tMin;
+    const float3 end = origin+ray.direction*ray.tMax;
+    // Include the Newton residual and shared-edge tolerances, and allow for
+    // cancellation when evaluating a distant ray at the face.
+    const float size = max(1.0f,max(length(f.du),max(length(f.dv),abs(p.scale))));
+    const float padding = 1e-5f*(size+length(origin));
+    float enter = 0.0f, exit = 1.0f;
+    for(uint side=0;side<3;++side)
     {
-        float2 uv=i/2==0?f.uv0:(i/2==1?f.uv1:f.uv2);
-        float3 D=i/2==0?f.d0:(i/2==1?f.d1:f.d2);
-        float h=p.scale*(float(i%2)-p.reference);
-        float3 cornerPosition=f.origin+f.du*(uv.x-f.uv0.x)+f.dv*(uv.y-f.uv0.y)+D*h;
-        boundsLow=min(boundsLow,cornerPosition);boundsHigh=max(boundsHigh,cornerPosition);
-    }
-    for(uint axis=0;axis<3;++axis)
-    {
-        float lo=boundsLow[axis]-1e-5f,hi=boundsHigh[axis]+1e-5f;
-        float origin=worldRay.origin[axis],direction=worldRay.direction[axis];
-        if(direction==0) {if(origin<lo || origin>hi) return best;}
-        else
+        const float3 edge = side==0 ? b : (side==1 ? c-b : c*(-1.0f));
+        const float3 normal = cross(extrusion,edge);
+        const float d0 = dot(normal,f.d0), d1 = dot(normal,f.d1), d2 = dot(normal,f.d2);
+        const float lower0 = min(d0*h0,d0*h1);
+        const float lower1 = dot(normal,b)+min(d1*h0,d1*h1);
+        const float lower2 = dot(normal,c)+min(d2*h0,d2*h1);
+        const float lower = min(lower0,min(lower1,lower2))
+            -padding*(abs(normal.x)+abs(normal.y)+abs(normal.z));
+        const float first = dot(normal,start)-lower;
+        const float last = dot(normal,end)-lower;
+        if(max(first,last)<0.0f) return false;
+        if(min(first,last)<0.0f)
         {
-            float a=(lo-origin)/direction,b=(hi-origin)/direction;
-            worldRay.tMin=max(worldRay.tMin,min(a,b));worldRay.tMax=min(worldRay.tMax,max(a,b));
+            const float crossing = first/(first-last);
+            if(first<0.0f) enter=max(enter,crossing);
+            else exit=min(exit,crossing);
         }
     }
-    if(worldRay.tMin>worldRay.tMax) return best;
+    if(enter>exit+1e-6f) return false;
+
+    const float span = ray.tMax-ray.tMin;
+    ray.tMin += span*max(0.0f,enter-1e-6f);
+    ray.tMax -= span*max(0.0f,1.0f-exit-1e-6f);
+    return true;
+}
+
+SilPomHit SilPomSearchFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,
+    SilPomRay worldRay,float2 low,float searchBegin,float searchEnd,bool constant)
+{
+    SilPomHit best=SP_ZERO(SilPomHit);best.t=worldRay.tMax;
     float2 center=float2(low.x+p.width*.5f,low.y+p.height*.5f);
-    bool constant=p.scale==0 || dot(f.d1-f.d0,f.d1-f.d0)+dot(f.d2-f.d0,f.d2-f.d0)<1e-12f;
     uint spent=0;bool unresolved=false;
     for(uint seed=0;seed<(constant?1u:4u);++seed)
     {
@@ -115,7 +141,7 @@ SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilP
         SilPomRay ray;
         ray.origin=float3(f.uv0.x+dot(U,worldRay.origin-f.origin),f.uv0.y+dot(V,worldRay.origin-f.origin),dot(Z,worldRay.origin-f.origin));
         ray.direction=float3(dot(U,worldRay.direction),dot(V,worldRay.direction),dot(Z,worldRay.direction));
-        ray.tMin=worldRay.tMin;ray.tMax=worldRay.tMax;
+        ray.tMin=searchBegin;ray.tMax=searchEnd;
         if(constant)
         {
             float begin,end;
@@ -158,4 +184,51 @@ SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilP
     best.cells=spent;
     if(best.status!=SP_HIT && unresolved) {best.status=SP_EXHAUSTED;best.t=worldRay.tMin;}
     return best;
+}
+
+SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilPomRay worldRay,float2 low)
+{
+    SilPomHit best=SP_ZERO(SilPomHit);best.t=worldRay.tMax;
+    float3 boundsLow=float3(1e30f,1e30f,1e30f),boundsHigh=float3(-1e30f,-1e30f,-1e30f);
+    for(uint i=0;i<6;++i)
+    {
+        float2 uv=i/2==0?f.uv0:(i/2==1?f.uv1:f.uv2);
+        float3 D=i/2==0?f.d0:(i/2==1?f.d1:f.d2);
+        float h=p.scale*(float(i%2)-p.reference);
+        float3 cornerPosition=f.origin+f.du*(uv.x-f.uv0.x)+f.dv*(uv.y-f.uv0.y)+D*h;
+        boundsLow=min(boundsLow,cornerPosition);boundsHigh=max(boundsHigh,cornerPosition);
+    }
+    for(uint axis=0;axis<3;++axis)
+    {
+        float lo=boundsLow[axis]-1e-5f,hi=boundsHigh[axis]+1e-5f;
+        float origin=worldRay.origin[axis],direction=worldRay.direction[axis];
+        if(direction==0) {if(origin<lo || origin>hi) return best;}
+        else
+        {
+            float a=(lo-origin)/direction,b=(hi-origin)/direction;
+            worldRay.tMin=max(worldRay.tMin,min(a,b));worldRay.tMax=min(worldRay.tMax,max(a,b));
+        }
+    }
+    if(worldRay.tMin>worldRay.tMax) return best;
+    bool constant=p.scale==0 || dot(f.d1-f.d0,f.d1-f.d0)+dot(f.d2-f.d0,f.d2-f.d0)<1e-12f;
+    SilPomRay searchRay=worldRay;
+    if(!constant && !SilPomSweptFaceInterval(p,f,searchRay)) return best;
+
+    bool shortened=searchRay.tMin>worldRay.tMin || searchRay.tMax<worldRay.tMax;
+    uint priorCells=0;
+    for(;;)
+    {
+        SilPomHit hit=SilPomSearchFace(texture,p,f,worldRay,low,searchRay.tMin,searchRay.tMax,constant);
+        if(!shortened || hit.status!=SP_EXHAUSTED || hit.cells>=p.maxCells)
+        {
+            hit.cells+=priorCells;
+            return hit;
+        }
+        // A seed outside the clipped interval can refine to a valid hit inside.
+        // Give exhausted searches one retry with the remaining cell budget.
+        priorCells=hit.cells;
+        p.maxCells-=priorCells;
+        searchRay=worldRay;
+        shortened=false;
+    }
 }
