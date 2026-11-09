@@ -4,6 +4,7 @@
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzFramework/Components/ComponentAdapter.h>
+#include <Atom/RPI.Public/SceneBus.h>
 #include <Atom/RPI.Reflect/Material/MaterialAsset.h>
 #include <Atom/RPI.Reflect/Image/StreamingImageAsset.h>
 #include <Atom/Feature/Mesh/MeshFeatureProcessorInterface.h>
@@ -19,11 +20,14 @@ struct MeshMaterialBinding
 struct MeshProfileBinding
 {
     AZ_TYPE_INFO(MeshProfileBinding, "{9B32A1E0-E4E5-43BC-B321-45B407B75F58}");
+    bool IsTrained() const { return m_neuralModel != 0; }
     AZ::u32 m_id = 1;
     AZ::Data::Asset<AZ::RPI::StreamingImageAsset> m_height{AZ::Data::AssetLoadBehavior::NoLoad};
+    AZ::Data::Asset<AZ::RPI::StreamingImageAsset> m_neuralCache{AZ::Data::AssetLoadBehavior::NoLoad};
     float m_scale = .1f, m_reference = .5f;
     AZ::Vector2 m_tiling = AZ::Vector2(1), m_offset = AZ::Vector2(0);
     AZ::u32 m_addressMode = 0;
+    AZ::u32 m_neuralModel = 0;
 };
 class MeshConfig final : public AZ::ComponentConfig
 {
@@ -31,11 +35,17 @@ public:
     AZ_RTTI(MeshConfig, "{FBA6857B-58C5-48F3-8E48-C7A71C10D850}", AZ::ComponentConfig);
     AZ_CLASS_ALLOCATOR(MeshConfig, AZ::SystemAllocator);
     static void Reflect(AZ::ReflectContext* context);
+    static constexpr float MaxReliefDepthMultiplier = 2.0f;
+    bool UsesTrainedProfiles() const;
+    AZ::Crc32 GetReliefDepthVisibility() const;
     AZ::Data::Asset<MeshSurfaceAsset> m_surface{AZ::Data::AssetLoadBehavior::NoLoad};
     AZStd::vector<MeshMaterialBinding> m_materials;
     AZStd::vector<MeshProfileBinding> m_profiles;
+    float m_reliefDepthMultiplier = 1.0f;
     AZ::u32 m_maxCells = 4096;
     AZ::u32 m_reliefShadowSteps = 16;
+    bool m_useDepthHeightBounds = false;
+    bool m_useNeuralSeed = false;
 };
 class MeshRequests : public AZ::EBusTraits
 {
@@ -49,7 +59,7 @@ public:
 using MeshRequestBus = AZ::EBus<MeshRequests>;
 
 class MeshController final : private AZ::TickBus::Handler, private AZ::TransformNotificationBus::Handler,
-    private AZ::Data::AssetBus::MultiHandler, private MeshRequestBus::Handler
+    private AZ::Data::AssetBus::MultiHandler, private MeshRequestBus::Handler, private AZ::RPI::SceneNotificationBus::Handler
 {
 public:
     AZ_TYPE_INFO(MeshController, "{5B217221-61FB-4F6D-9817-E08DA2CEB6F8}");
@@ -74,6 +84,7 @@ private:
     void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData>) override;
     void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData>) override;
     void OnAssetError(AZ::Data::Asset<AZ::Data::AssetData>) override;
+    void OnRenderPipelineChanged(AZ::RPI::RenderPipeline*, AZ::RPI::SceneNotification::RenderPipelineChangeType) override;
     bool Prepare();
     void ConnectAssets();
     void Release(AZStd::unique_ptr<Generation>&);
@@ -84,6 +95,7 @@ private:
     AZStd::unique_ptr<Generation> m_active, m_pending;
     AZStd::string m_status = "Inactive";
     bool m_dirty = true;
+    bool m_checkHitPasses = false;
 };
 class MeshComponent final : public AzFramework::Components::ComponentAdapter<MeshController, MeshConfig>
 {

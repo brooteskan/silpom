@@ -3,6 +3,7 @@
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_MaterialInputs.azsli>
 #include <Atom/Features/Bindless.azsli>
 #include "../../../Shaders/SilPOM/MeshFace.azsli"
+#include "../../../Shaders/SilPOM/HitReuse/SilPOMHitRecord.azsli"
 #if !SHADOWMAP
 #include "../../../Shaders/SilPOM/Heightfield.azsli"
 #include "../../../Shaders/SilPOM/PlanarFace.azsli"
@@ -22,10 +23,27 @@ static bool silpomLitValid=false;
 #if SILPOM_HIT_DEPTH
 static float2 silpomDepthHitUv;
 #endif
+#if SILPOM_TOWER_LOD_NEAR || SILPOM_TOWER_LOD_SHELL
+float SilPomTowerLodDepth(MaterialParameters params)
+{
+    if(params.m_silpomMaxCells==SP_TOWER_LOD_SHELL) return 0;
+    const uint mode=SilPomTowerUsesSmoothLod(params.m_silpomMaxCells)?SP_TOWER_LOD_4PX:params.m_silpomMaxCells;
+    const float budget=2.0f*float(1u<<(SP_TOWER_LOD_2PX-mode));
+    const float relief=abs(params.m_silpomScale)*max(abs(params.m_silpomReference),abs(1-params.m_silpomReference));
+    // Project the relief along the vertical image axis at the 656-line
+    // benchmark reference. Return a view-depth cutoff for the two draws.
+    return relief*abs(ViewSrg::m_projectionMatrix[1][1])*328.0f/budget;
+}
+float SilPomTowerLodOverlap(MaterialParameters params)
+{
+    return 2.0f*abs(params.m_silpomScale);
+}
+#endif
+static const uint SP_MESH_FACE_BYTES=144u;
 SilPomMeshFace SilPomLoadFace(uint buffer, uint index)
 {
     SilPomMeshFace f;
-    uint offset=index*144;
+    uint offset=index*SP_MESH_FACE_BYTES;
     f.origin=asfloat(Bindless::GetByteAddressBuffer(buffer).Load4(offset)).xyz;
     f.du=asfloat(Bindless::GetByteAddressBuffer(buffer).Load4(offset+16)).xyz;
     f.dv=asfloat(Bindless::GetByteAddressBuffer(buffer).Load4(offset+32)).xyz;
@@ -38,6 +56,123 @@ SilPomMeshFace SilPomLoadFace(uint buffer, uint index)
     f.d2=asfloat(Bindless::GetByteAddressBuffer(buffer).Load4(offset+128)).xyz;
     return f;
 }
+#if SILPOM_NEURAL_NO_MARCH || SILPOM_HIT_FORWARD
+// With all six extrema in front of the near plane, their projected convex
+// hull bounds the displaced surface. Move the three barycentric half-planes
+// out to enclose that hull with one triangle.
+bool SilPomTowerCoverage(float4 corners[6], float2 quadCorner, inout float proxyArea, out float2 ndc)
+{
+    ndc=0;
+    const float2 origin=corners[0].xy/corners[0].w;
+    const float2 edgeB=corners[2].xy/corners[2].w-origin;
+    const float2 edgeC=corners[4].xy/corners[4].w-origin;
+    const float area=edgeB.x*edgeC.y-edgeB.y*edgeC.x;
+    if(abs(area)<1e-6f) return false;
+
+    const float2 gradB=float2(edgeC.y,-edgeC.x)/area;
+    const float2 gradC=float2(-edgeB.y,edgeB.x)/area;
+    float3 lower=0;
+    [unroll] for(uint i=1;i<6;i+=2)
+    {
+        const float2 delta=corners[i].xy/corners[i].w-origin;
+        const float b=dot(delta,gradB),c=dot(delta,gradC);
+        lower=min(lower,float3(1.0f-b-c,b,c));
+    }
+    const float2 gradA=gradB+gradC;
+    lower-=2e-5f*float3(abs(gradA.x)+abs(gradA.y),abs(gradB.x)+abs(gradB.y),abs(gradC.x)+abs(gradC.y));
+    const float scale=1.0f-lower.x-lower.y-lower.z;
+    const float triangleArea=.5f*abs(area)*scale*scale;
+    if(triangleArea>=proxyArea) return false;
+    proxyArea=triangleArea;
+
+    // Keep the rectangle's winding and collapse its second triangle.
+    const bool useB=area>0.0f ? quadCorner.x>0 && quadCorner.y<=0 : quadCorner.y>0;
+    const bool useC=area>0.0f ? quadCorner.y>0 : quadCorner.x>0 && quadCorner.y<=0;
+    ndc=origin+edgeB*(lower.y+(useB?scale:0.0f))+edgeC*(lower.z+(useC?scale:0.0f));
+    return true;
+}
+#endif
+#if SILPOM_TOWER_LOD_NEAR
+struct SilPomWallProxyBounds
+{
+    float3 axisX, axisY;
+    float3 minU, minV, maxU, maxV;
+};
+
+float2 SilPomProjectedEdge(float4 a, float4 b)
+{
+    // Use the homogeneous line so the axis remains defined across the near cut.
+    const float2 edge=b.xy*a.w-a.xy*b.w;
+    const float lengthSq=dot(edge,edge);
+    return lengthSq>1e-12f ? edge*rsqrt(lengthSq) : float2(1,0);
+}
+
+void SilPomGrowWallProxy(inout SilPomWallProxyBounds bounds, float2 xy)
+{
+    const float3 u=bounds.axisX*xy.x+bounds.axisY*xy.y;
+    const float3 v=bounds.axisX*xy.y-bounds.axisY*xy.x;
+    bounds.minU=min(bounds.minU,u); bounds.maxU=max(bounds.maxU,u);
+    bounds.minV=min(bounds.minV,v); bounds.maxV=max(bounds.maxV,v);
+}
+
+float SilPomVisibleQuadArea(float2 origin, float2 u, float2 v)
+{
+    float2 polygon[8];
+    polygon[0]=origin; polygon[1]=origin+u;
+    polygon[2]=origin+u+v; polygon[3]=origin+v;
+    uint count=4;
+    // A convex quadrilateral clipped to the viewport has at most eight vertices.
+    [loop] for(uint plane=0;plane<4;++plane)
+    {
+        float2 clipped[8];
+        uint nextCount=0;
+        const uint axis=plane>>1;
+        const float sign=(plane&1)==0 ? 1.0f : -1.0f;
+        float2 a=polygon[count-1];
+        float da=1.0f-sign*a[axis];
+        [loop] for(uint i=0;i<count;++i)
+        {
+            const float2 b=polygon[i];
+            const float db=1.0f-sign*b[axis];
+            if((da<0)!=(db<0)) clipped[nextCount++]=lerp(a,b,da/(da-db));
+            if(db>=0) clipped[nextCount++]=b;
+            a=b; da=db;
+        }
+        if(nextCount<3) return 0;
+        count=nextCount;
+        [loop] for(uint i=0;i<count;++i) polygon[i]=clipped[i];
+    }
+    float twiceArea=0;
+    float2 a=polygon[count-1];
+    [loop] for(uint i=0;i<count;++i)
+    {
+        const float2 b=polygon[i];
+        twiceArea+=a.x*b.y-a.y*b.x;
+        a=b;
+    }
+    return .5f*abs(twiceArea);
+}
+
+float2 SilPomChooseWallProxy(SilPomWallProxyBounds bounds, float2 corner, float area, float2 ndc)
+{
+    [loop] for(uint i=0;i<3;++i)
+    {
+        const float2 axisU=float2(bounds.axisX[i],bounds.axisY[i]);
+        const float2 axisV=float2(-axisU.y,axisU.x);
+        const float2 lo=float2(bounds.minU[i],bounds.minV[i])-2e-5f;
+        const float2 hi=float2(bounds.maxU[i],bounds.maxV[i])+2e-5f;
+        const float2 origin=lo.x*axisU+lo.y*axisV;
+        const float2 u=(hi.x-lo.x)*axisU, v=(hi.y-lo.y)*axisV;
+        const float visibleArea=SilPomVisibleQuadArea(origin,u,v);
+        if(visibleArea<area)
+        {
+            area=visibleArea;
+            ndc=origin+corner.x*u+corner.y*v;
+        }
+    }
+    return ndc;
+}
+#endif
 VsOutput EvaluateVertexGeometry(VsInput IN, VsSystemValues SV, const MaterialParameters params)
 {
     VsOutput output=(VsOutput)0;
@@ -45,6 +180,20 @@ VsOutput EvaluateVertexGeometry(VsInput IN, VsSystemValues SV, const MaterialPar
     output.position=float4(2,2,0,1); return output;
 #endif
     output.faceIndex=(uint)round(IN.position.z);
+#if SILPOM_HIT_FORWARD
+    if(params.m_silpomMaxCells==SP_TOWER_LOD_4PX_RESOLVE)
+    {
+        // Reuse the first proxy quad's indices for one full-screen triangle
+        // per material batch. The hit buffer supplies the actual face.
+        output.position=float4(2,2,0,1);
+        if(output.faceIndex==0)
+        {
+            output.ndc=IN.position.y>0?float2(-1,3):float2(IN.position.x>0?3:-1,-1);
+            output.position=float4(output.ndc,.5,1);
+        }
+        return output;
+    }
+#endif
     SilPomMeshFace f=SilPomLoadFace(params.m_meshBufferIndex,output.faceIndex);
     float4x4 model=GetObjectToWorldMatrix(SV),vp=GetViewProjectionMatrix(SV);
 #if SHADOWMAP
@@ -56,20 +205,128 @@ VsOutput EvaluateVertexGeometry(VsInput IN, VsSystemValues SV, const MaterialPar
     output.position=mul(vp,float4(output.worldPosition,1));
     return output;
 #else
-    float2 low=float2(1,1),high=float2(-1,-1); bool ambiguous=false;
+    float2 low=float2(1,1),high=float2(-1,-1);
+    float4 corners[6];
+    bool clipped=false;
+#if SILPOM_TOWER_LOD_NEAR
+    const float cutoff=SilPomTowerLodDepth(params);
+    if(cutoff<=0)
+    {
+        output.position=float4(2,2,0,1);
+        return output;
+    }
+    const float nearLimit=cutoff+SilPomTowerLodOverlap(params);
+#endif
     for(uint i=0;i<6;++i)
     {
         float2 uv=i/2==0?f.uv0:(i/2==1?f.uv1:f.uv2);
         float h=params.m_silpomScale*((i&1)-params.m_silpomReference);
         float3 D=i/2==0?f.d0:(i/2==1?f.d1:f.d2);
         float3 p=f.origin+f.du*(uv.x-f.uv0.x)+f.dv*(uv.y-f.uv0.y)+D*h;
-        float4 clip=mul(vp,mul(model,float4(p,1)));
-        if(clip.w<=1e-6 || clip.z<0 || clip.z>clip.w) ambiguous=true;
-        float2 xy=clip.xy/max(clip.w,1e-6); low=min(low,xy); high=max(high,xy);
+        corners[i]=mul(vp,mul(model,float4(p,1)));
     }
-    if(ambiguous) { low=float2(-1,-1); high=float2(1,1); }
+#if SILPOM_TOWER_LOD_NEAR
+    const bool tightWall=SilPomIsTowerWallModel(params.m_silpomNeuralModel) && params.m_silpomMaxCells==SP_TOWER_LOD_4PX_RESOLVE;
+    SilPomWallProxyBounds wallBounds=(SilPomWallProxyBounds)0;
+    if(tightWall)
+    {
+        const float2 a=SilPomProjectedEdge(corners[0],corners[2]);
+        const float2 b=SilPomProjectedEdge(corners[2],corners[4]);
+        const float2 c=SilPomProjectedEdge(corners[4],corners[0]);
+        wallBounds.axisX=float3(a.x,b.x,c.x); wallBounds.axisY=float3(a.y,b.y,c.y);
+        wallBounds.minU=wallBounds.minV=1e30f;
+        wallBounds.maxU=wallBounds.maxV=-1e30f;
+    }
+#endif
+    for(uint i=0;i<6;++i)
+    {
+        const float4 clipPosition=corners[i];
+        if(clipPosition.w>1e-6 && clipPosition.z>=0 && clipPosition.z<=clipPosition.w
+#if SILPOM_TOWER_LOD_NEAR
+            && clipPosition.w<=nearLimit
+#endif
+        )
+        {
+            float2 xy=clipPosition.xy/clipPosition.w;
+            low=min(low,xy); high=max(high,xy);
+#if SILPOM_TOWER_LOD_NEAR
+            if(tightWall) SilPomGrowWallProxy(wallBounds,xy);
+#endif
+        }
+        else
+            clipped=true;
+    }
+    if(clipped)
+    {
+        // The relief is enclosed by the convex hull of these six positions.
+        // Intersect every corner pair to include all hull edges, even when the
+        // varying displacement directions make the hull non-prismatic.
+        // Atom uses reverse depth. The near plane is w-z=0 and the far plane is z=0.
+        for(uint i=0;i<6;++i)
+        {
+            float4 a=corners[i];
+            for(uint j=i+1;j<6;++j)
+            {
+                float4 b=corners[j];
+#if SILPOM_TOWER_LOD_NEAR
+                const uint planeCount=3;
+#else
+                const uint planeCount=2;
+#endif
+                for(uint plane=0;plane<planeCount;++plane)
+                {
+                    float da=plane==0?a.w-a.z:a.z;
+                    float db=plane==0?b.w-b.z:b.z;
+#if SILPOM_TOWER_LOD_NEAR
+                    if(plane==2)
+                    {
+                        da=nearLimit-a.w;
+                        db=nearLimit-b.w;
+                    }
+#endif
+                    if((da<0)!=(db<0))
+                    {
+                        float4 edge=lerp(a,b,da/(da-db));
+                        // At either cut, w>0 also places the point inside the opposite plane.
+                        if(edge.w>1e-6
+#if SILPOM_TOWER_LOD_NEAR
+                            && (plane==2 || edge.w<=nearLimit)
+#endif
+                        )
+                        {
+                            float2 xy=edge.xy/edge.w;
+                            low=min(low,xy); high=max(high,xy);
+#if SILPOM_TOWER_LOD_NEAR
+                            if(tightWall) SilPomGrowWallProxy(wallBounds,xy);
+#endif
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if(any(low>high))
+    {
+        output.position=float4(2,2,0,1);
+        return output;
+    }
     low=max(low-1e-5,float2(-1,-1)); high=min(high+1e-5,float2(1,1));
-    output.ndc=lerp(low,high,IN.position.xy*.5+.5);
+    const float2 corner=IN.position.xy*.5+.5;
+    output.ndc=lerp(low,high,corner);
+#if SILPOM_NEURAL_NO_MARCH || SILPOM_HIT_FORWARD
+    const float2 extent=max(high-low,0.0f);
+    float proxyArea=extent.x*extent.y;
+    float2 triangleNdc;
+    if(!clipped && SilPomTowerNoMarch(params.m_silpomMaxCells) && params.m_silpomMaxCells!=SP_TOWER_RECTANGLE_CONTROL
+        && SilPomTowerCoverage(corners,IN.position.xy,proxyArea,triangleNdc))
+    {
+        output.ndc=triangleNdc;
+    }
+#endif
+#if SILPOM_TOWER_LOD_NEAR
+    if(tightWall && proxyArea>0)
+        output.ndc=SilPomChooseWallProxy(wallBounds,corner,proxyArea,output.ndc);
+#endif
     output.position=float4(output.ndc,.5,1); output.normal=float3(0,0,1);
     output.tangent=float4(1,0,0,1); output.color0=1;
     return output;
@@ -89,7 +346,19 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
 #else
 #if SILPOM_HIT_FORWARD
     uint4 record=PassSrg::m_silpomHitBuffer.Load(int3(int2(IN.position.xy),0));
-    if((record.w>>2)!=params.m_silpomHitFaceBase+IN.faceIndex) discard;
+    const uint localFace=(record.w>>2)-params.m_silpomHitFaceBase;
+    if(params.m_silpomMaxCells==SP_TOWER_LOD_4PX_RESOLVE)
+    {
+        uint bytes;
+        Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).GetDimensions(bytes);
+        if(localFace>=bytes/SP_MESH_FACE_BYTES) discard;
+        IN.faceIndex=localFace;
+    }
+    else if(localFace!=IN.faceIndex) discard;
+#elif !SILPOM_NEURAL_NO_MARCH
+    // If hit reuse is unavailable, the tower preview must never take the
+    // generic heightfield traversal path.
+    if(SilPomTowerNoMarch(params.m_silpomMaxCells)) discard;
 #endif
     SilPomMeshFace f=SilPomLoadFace(params.m_meshBufferIndex,IN.faceIndex);
     float4x4 model=GetObjectToWorldMatrix(SV);
@@ -117,7 +386,7 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     float2 faceUv=asfloat(record.xy);
     float3 normal=failed?f.normal:SilPomFaceNormal(GetMaterialTexture(params.m_silpomHeightMap),p,f,faceUv,low);
     float2 tiledUv=failed?faceUv:float2((faceUv.x-low.x)*p.tileU/p.width+p.offsetU,(faceUv.y-low.y)*p.tileV/p.height+p.offsetV);
-    IN.position.z=asfloat(record.z);
+    IN.position.z=asfloat(record.z&SP_HIT_RECORD_DEPTH);
     float4 hitH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,IN.position.z,1));
     geo.positionWS=hitH.xyz/hitH.w;
     IN.silpomDiagnostic=float4(float(status),0,0,0);
@@ -127,8 +396,47 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     SilPomRay ray;
     ray.origin=origin;ray.direction=direction;
     ray.tMin=0; ray.tMax=abs(farH.w)>1e-8?length(farH.xyz/farH.w-originWS):1e7;
-    SilPomHit hit=SilPomIntersectFace(GetMaterialTexture(params.m_silpomHeightMap),p,f,ray,low);
+#if SILPOM_TOWER_LOD_NEAR
+    const float viewRate=dot(ViewSrg::m_viewProjectionMatrix[3].xyz,directionWS);
+    const float cutoff=SilPomTowerLodDepth(params);
+    const float overlap=SilPomTowerLodOverlap(params);
+    const float nearViewDepth=rcp(nearH.w);
+    const float farDistance=ray.tMax;
+    if(viewRate>1e-6f)
+        ray.tMax=min(ray.tMax,max(0.0f,(cutoff+overlap-nearViewDepth)/viewRate));
+#endif
+    SilPomHit hit=SilPomIntersectFace(GetMaterialTexture(params.m_silpomHeightMap),p,f,ray,low
+#if SILPOM_NEURAL_NO_MARCH
+        ,params.m_silpomNeuralModel
+#endif
+#if SILPOM_HIT_NEURAL_CACHE
+        ,GetMaterialTexture(params.m_silpomNeuralCache)
+#endif
+#if SILPOM_MESH_DEPTH_BOUNDS
+        ,GetMaterialTexture(params.m_silpomHeightBounds),true
+#endif
+    );
     if(hit.status==SP_MISS) discard;
+#if SILPOM_TOWER_LOD_NEAR
+    if(SilPomTowerUsesSmoothLod(params.m_silpomMaxCells) && hit.status==SP_HIT && viewRate>1e-6f)
+    {
+        // Complete the morph where the rasterized shell first covers this ray.
+        // The base hit's view depth keeps the fade aligned with the shell cut.
+        const float fadeEnd=(cutoff-overlap-nearViewDepth)/viewRate;
+        const float fadeStart=fadeEnd-12.0f*abs(p.scale)/viewRate;
+        SilPomRay shellRay=ray;
+        shellRay.tMin=max(ray.tMin,fadeStart);
+        shellRay.tMax=farDistance;
+        const SilPomHit shell=SilPomTowerBaseHit(p,f,shellRay,low,false);
+        if(shell.status==SP_HIT)
+        {
+            const float weight=smoothstep(fadeStart,fadeEnd,shell.t);
+            hit.t=lerp(hit.t,shell.t,weight);
+            hit.faceUv=lerp(hit.faceUv,shell.faceUv,weight);
+            hit.uv=lerp(hit.uv,shell.uv,weight);
+        }
+    }
+#endif
     bool failed=hit.status!=SP_HIT;
     if(failed) { hit.t=max(hit.t,1e-4f); hit.normal=f.normal; }
     float3 position=origin+direction*hit.t;
@@ -145,8 +453,23 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
 #endif
     IN.worldPosition=geo.positionWS;
     IN.color0=failed?float4(1,0,1,1):float4(1,1,1,1);
+    const float reliefFacing=dot(normal,direction);
+    bool frontFace=reliefFacing<0;
+#if SILPOM_HIT_FORWARD
+    if(SilPomTowerNoMarch(p.maxCells))
+    {
+        // Let the authored face determine sidedness. A steep height gradient
+        // can turn away from the view and otherwise flip the lighting normal.
+        const float faceFacing=dot(f.normal,direction);
+        frontFace=faceFacing<0;
+        const float facing=reliefFacing*(frontFace?-1.0f:1.0f);
+        const float transition=max(.25f*abs(faceFacing),1e-5f);
+        if(facing<transition)
+            normal=normalize(lerp(f.normal,normal,smoothstep(0.0f,transition,facing)));
+    }
+#endif
     geo.vertexNormal=normalize(mul((float3x3)model,normal));
-    geo.isFrontFace=dot(normal,direction)<0; geo.isDisplacementClipped=failed;
+    geo.isFrontFace=frontFace; geo.isDisplacementClipped=failed;
     float2 uv=float2((tiledUv.x-params.m_silpomOffsetU)/params.m_silpomTileU,(tiledUv.y-params.m_silpomOffsetV)/params.m_silpomTileV);
 #if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
     silpomLitFace=f; silpomLitPatch=p; silpomLitUv=uv;

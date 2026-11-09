@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: MIT
+// Row zero is the north edge of the authored tower height atlas.
+#pragma once
+static const uint2 TowerNeuralTileRows[12] = {
+    uint2(0x34f67bbdu, 0x0000012fu),
+    uint2(0x1160a0d1u, 0x0000000bu),
+    uint2(0x3dd2e9f4u, 0x00000166u),
+    uint2(0x18443298u, 0x00000042u),
+    uint2(0x34f67bbdu, 0x0000012fu),
+    uint2(0x1160a0d1u, 0x0000000bu),
+    uint2(0x18443298u, 0x00000042u),
+    uint2(0x34d67bbdu, 0x00000127u),
+    uint2(0x3df2e9f4u, 0x0000016eu),
+    uint2(0x1160b098u, 0x0000000bu),
+    uint2(0x34d67bbdu, 0x00000127u),
+    uint2(0x184422d1u, 0x00000042u),
+};

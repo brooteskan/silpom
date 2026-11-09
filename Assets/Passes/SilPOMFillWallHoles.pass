@@ -1,0 +1,27 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "SilPOMFillWallHolesTemplate",
+            "PassClass": "FullScreenTriangle",
+            "Slots": [
+                { "Name": "Fill", "ShaderInputName": "m_fill", "SlotType": "Input", "ScopeAttachmentUsage": "Shader" },
+                { "Name": "Hit", "SlotType": "InputOutput", "ScopeAttachmentUsage": "RenderTarget",
+                  "LoadStoreAction": { "LoadAction": "Load" } },
+                { "Name": "Depth", "SlotType": "InputOutput", "ScopeAttachmentUsage": "DepthStencil",
+                  "LoadStoreAction": { "LoadAction": "Load", "LoadActionStencil": "Load" } }
+            ],
+            "Connections": [
+                { "LocalSlot": "Fill", "AttachmentRef": { "Pass": "SilPOMClassifyWallHoles", "Attachment": "Fill" } },
+                { "LocalSlot": "Hit", "AttachmentRef": { "Pass": "SilPOMHitDepth", "Attachment": "Hit" } },
+                { "LocalSlot": "Depth", "AttachmentRef": { "Pass": "SilPOMHitDepth", "Attachment": "Depth" } }
+            ],
+            "PassData": {
+                "$type": "FullscreenTrianglePassData",
+                "ShaderAsset": { "FilePath": "Shaders/SilPOM/HitReuse/SilPOMFillWallHoles.shader" }
+            }
+        }
+    }
+}

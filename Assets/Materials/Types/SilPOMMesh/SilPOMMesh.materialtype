@@ -86,11 +86,39 @@
                         "displayName": "Use conservative bounds",
                         "description": "Use precomputed conservative cell bounds for long traversals; exact height samples and roots remain authoritative.",
                         "type": "Bool",
-                        "defaultValue": true,
+                        "defaultValue": false
+                    },
+                    {
+                        "name": "useNeuralSeed",
+                        "displayName": "Use neural depth seed",
+                        "description": "Predict an interior hit seed with the trained tower model and refine against the source height image.",
+                        "type": "Bool",
+                        "defaultValue": false
+                    },
+                    {
+                        "name": "neuralModel",
+                        "displayName": "Trained displacement model",
+                        "type": "UInt",
+                        "defaultValue": 0,
                         "connection": {
-                            "type": "ShaderOption",
-                            "name": "o_silpomUseHierarchy"
+                            "type": "ShaderInput",
+                            "name": "m_silpomNeuralModel"
                         }
+                    },
+                    {
+                        "name": "neuralCache",
+                        "displayName": "Baked neural hit cache",
+                        "type": "Image",
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomNeuralCache"
+                        }
+                    },
+                    {
+                        "name": "useNeuralCache",
+                        "displayName": "Use baked neural hit cache",
+                        "type": "Bool",
+                        "defaultValue": false
                     },
                     {
                         "name": "width",

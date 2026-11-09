@@ -31,6 +31,12 @@ function MaterialTypeSetup(context)
     if(lightingModel == "SilPOMMesh" or lightingModel == "Standard") then
         if lightingModel == "SilPOMMesh" then
             context:IncludeShader("SilPOMHitDepth")
+            context:IncludeShader("SilPOMHitDepthBounds")
+            context:IncludeShader("SilPOMHitDepthNeural")
+            context:IncludeShader("SilPOMHitDepthNeuralCache")
+            context:IncludeShader("SilPOMHitDepthLodNear")
+            context:IncludeShader("SilPOMHitDepthLodShell")
+            context:IncludeShader("SilPOMHitDepthWallBackup")
             context:IncludeShader("SilPOMHitForward")
         end
         context:IncludeShader("ForwardPass_StandardLighting")

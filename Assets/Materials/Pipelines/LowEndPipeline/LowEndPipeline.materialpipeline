@@ -92,6 +92,26 @@
         "name": "silpomReuseDepthHit",
         "type": "Bool",
         "defaultValue": false
+      },
+      {
+        "name": "silpomUseDepthHeightBounds",
+        "type": "Bool",
+        "defaultValue": false
+      },
+      {
+        "name": "silpomUseNeuralSeed",
+        "type": "Bool",
+        "defaultValue": false
+      },
+      {
+        "name": "silpomUseNeuralCache",
+        "type": "Bool",
+        "defaultValue": false
+      },
+      {
+        "name": "silpomTowerLod",
+        "type": "Bool",
+        "defaultValue": false
       }
     ],
     "functors": [

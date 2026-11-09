@@ -1,0 +1,143 @@
+// SPDX-License-Identifier: MIT
+#include <Atom/Features/SrgSemantics.azsli>
+#include <Atom/Features/PostProcessing/FullscreenVertex.azsli>
+#include "SilPOMHitRecord.azsli"
+
+ShaderResourceGroup PassSrg : SRG_PerPass
+{
+    Texture2D<float2> m_sceneDepth;
+    Texture2D<uint4> m_hits;
+}
+
+bool IsWallHit(uint4 record)
+{
+    return (record.z & SP_HIT_RECORD_WALL) != 0 && (record.w & 3u) == 1u;
+}
+
+static const float MinimumPairAgreement = .90f;
+static const float MaximumGapDepthRatio = .80f;
+
+float RecordDepth(uint4 record)
+{
+    return asfloat(record.z & SP_HIT_RECORD_DEPTH);
+}
+
+float PairAgreement(uint4 a, uint4 b)
+{
+    const float za = RecordDepth(a);
+    const float zb = RecordDepth(b);
+    const float nearer = max(za, zb);
+    return nearer > 0.0f ? min(za, zb) / nearer : 0.0f;
+}
+
+uint4 FillIsolatedSky(uint4 left, uint4 right, uint4 top, uint4 bottom)
+{
+    if (!IsWallHit(left) || !IsWallHit(right) || !IsWallHit(top) || !IsWallHit(bottom))
+        return 0;
+
+    const float horizontal = PairAgreement(left, right);
+    const float vertical = PairAgreement(top, bottom);
+    if (max(horizontal, vertical) < MinimumPairAgreement)
+        return 0;
+
+    // Prefer interpolating across the same face. At a seam, borrow the farther
+    // record from the more consistent pair so its UV remains on the donor face.
+    const bool horizontalSame = left.w == right.w && horizontal >= MinimumPairAgreement;
+    const bool verticalSame = top.w == bottom.w && vertical >= MinimumPairAgreement;
+    const bool useHorizontal = horizontalSame == verticalSame ? horizontal >= vertical : horizontalSame;
+    const uint4 a = useHorizontal ? left : top;
+    const uint4 b = useHorizontal ? right : bottom;
+    const uint za = a.z & SP_HIT_RECORD_DEPTH;
+    const uint zb = b.z & SP_HIT_RECORD_DEPTH;
+    uint4 fill = za <= zb ? a : b;
+    if (a.w == b.w)
+    {
+        fill.xy = asuint((asfloat(a.xy) + asfloat(b.xy)) * .5f);
+        fill.z = (fill.z & ~SP_HIT_RECORD_DEPTH) | asuint((asfloat(za) + asfloat(zb)) * .5f);
+    }
+    return fill;
+}
+
+uint4 BridgeGap(int2 pixel, int2 axis, float centerDepth, uint centerOwner, uint4 a, uint4 b)
+{
+    float za = RecordDepth(a);
+    float zb = RecordDepth(b);
+    const bool nearA = IsWallHit(a) && centerDepth < MaximumGapDepthRatio * za;
+    const bool nearB = IsWallHit(b) && centerDepth < MaximumGapDepthRatio * zb;
+    if (!nearA && !nearB)
+        return 0;
+
+    // A two-pixel gap has an adjacent anchor on only one side. Check the scene
+    // depth of the other gap pixel too, so foreground geometry stops the bridge.
+    float gapDepth = centerDepth;
+    float weight = .5f;
+    if (!nearA)
+    {
+        gapDepth = max(gapDepth, PassSrg::m_sceneDepth.Load(int3(pixel - axis, 0)).r);
+        a = PassSrg::m_hits.Load(int3(pixel - 2 * axis, 0));
+        if (!IsWallHit(a))
+            return 0;
+        za = RecordDepth(a);
+        weight = 2.0f / 3.0f;
+    }
+    else if (!nearB)
+    {
+        gapDepth = max(gapDepth, PassSrg::m_sceneDepth.Load(int3(pixel + axis, 0)).r);
+        b = PassSrg::m_hits.Load(int3(pixel + 2 * axis, 0));
+        if (!IsWallHit(b))
+            return 0;
+        zb = RecordDepth(b);
+        weight = 1.0f / 3.0f;
+    }
+
+    const float farAnchor = min(za, zb);
+    if (a.w != b.w || a.w == centerOwner || gapDepth >= MaximumGapDepthRatio * farAnchor ||
+        farAnchor < MinimumPairAgreement * max(za, zb))
+        return 0;
+
+    const float depth = lerp(za, zb, weight);
+    uint4 fill = za <= zb ? a : b;
+    fill.xy = asuint(lerp(asfloat(a.xy) * za, asfloat(b.xy) * zb, weight) / depth);
+    fill.z = (fill.z & ~SP_HIT_RECORD_DEPTH) | asuint(depth);
+    return fill;
+}
+
+uint4 MainPS(VSOutput input) : SV_Target0
+{
+    const int2 pixel = int2(input.m_position.xy);
+    const float centerDepth = PassSrg::m_sceneDepth.Load(int3(pixel, 0)).r;
+    const int2 horizontal = int2(1, 0);
+    const int2 vertical = int2(0, 1);
+    // Out-of-bounds loads are zero, so the viewport edge cannot supply support.
+    const uint4 left = PassSrg::m_hits.Load(int3(pixel - horizontal, 0));
+    const uint4 right = PassSrg::m_hits.Load(int3(pixel + horizontal, 0));
+    const uint4 top = PassSrg::m_hits.Load(int3(pixel - vertical, 0));
+    const uint4 bottom = PassSrg::m_hits.Load(int3(pixel + vertical, 0));
+    if (centerDepth == 0.0f)
+    {
+        const uint4 skyFill = FillIsolatedSky(left, right, top, bottom);
+        if (skyFill.w != 0)
+            return skyFill;
+    }
+
+    const uint centerOwner = PassSrg::m_hits.Load(int3(pixel, 0)).w;
+    uint4 fill = BridgeGap(pixel, horizontal, centerDepth, centerOwner, left, right);
+    if (fill.w == 0)
+        fill = BridgeGap(pixel, vertical, centerDepth, centerOwner, top, bottom);
+
+    const int2 diagonals[2] = {int2(1, 1), int2(1, -1)};
+    [unroll]
+    for (int i = 0; i < 2; ++i)
+    {
+        if (fill.w == 0)
+        {
+            const int2 axis = diagonals[i];
+            const uint4 a = PassSrg::m_hits.Load(int3(pixel - axis, 0));
+            const uint4 b = PassSrg::m_hits.Load(int3(pixel + axis, 0));
+            fill = BridgeGap(pixel, axis, centerDepth, centerOwner, a, b);
+        }
+    }
+    if (fill.w == 0)
+        discard;
+    return fill;
+}

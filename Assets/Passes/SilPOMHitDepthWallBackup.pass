@@ -1,0 +1,26 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "SilPOMHitDepthWallBackupTemplate",
+            "PassClass": "RasterPass",
+            "Slots": [
+                { "Name": "Hit", "SlotType": "InputOutput", "ScopeAttachmentUsage": "RenderTarget",
+                  "LoadStoreAction": { "LoadAction": "Load" } },
+                { "Name": "Depth", "SlotType": "InputOutput", "ScopeAttachmentUsage": "DepthStencil",
+                  "LoadStoreAction": { "LoadAction": "Load", "LoadActionStencil": "Load" } }
+            ],
+            "Connections": [
+                { "LocalSlot": "Hit", "AttachmentRef": { "Pass": "SilPOMFillWallHoles", "Attachment": "Hit" } },
+                { "LocalSlot": "Depth", "AttachmentRef": { "Pass": "SilPOMFillWallHoles", "Attachment": "Depth" } }
+            ],
+            "PassData": {
+                "$type": "RasterPassData",
+                "DrawListTag": "silpomHitDepthWallBackup",
+                "BindViewSrg": true
+            }
+        }
+    }
+}

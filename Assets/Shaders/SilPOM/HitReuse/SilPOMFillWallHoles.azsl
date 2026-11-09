@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: MIT
+#include <Atom/Features/SrgSemantics.azsli>
+#include <Atom/Features/PostProcessing/FullscreenVertex.azsli>
+#include "SilPOMHitRecord.azsli"
+
+ShaderResourceGroup PassSrg : SRG_PerPass
+{
+    Texture2D<uint4> m_fill;
+}
+
+struct PSOutput
+{
+    uint4 hit : SV_Target0;
+    float depth : SV_Depth;
+};
+
+PSOutput MainPS(VSOutput input)
+{
+    const uint4 record = PassSrg::m_fill.Load(int3(int2(input.m_position.xy), 0));
+    if (record.w == 0)
+        discard;
+    PSOutput output;
+    output.hit = record;
+    output.depth = asfloat(record.z & SP_HIT_RECORD_DEPTH);
+    return output;
+}

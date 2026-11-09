@@ -1,0 +1,4 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#define SILPOM_TOWER_LOD_SHELL 1
+#include "SilPOMHitDepth.azsli"

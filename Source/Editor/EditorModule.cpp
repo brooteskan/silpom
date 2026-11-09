@@ -83,8 +83,18 @@ public:
                 edit->Class<MeshConfig>("Mesh settings","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_surface,"Mesh surface","Export .fbx and .silpom.json together; select the compiled .silpommesh")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_materials,"Materials","One assignment per authored material identity")
+                    ->DataElement(AZ::Edit::UIHandlers::Slider,&MeshConfig::m_reliefDepthMultiplier,"Relief depth multiplier",
+                        "Scales the displacement of all trained profiles together. 0 is flat and 1 uses the authored depths.")
+                    ->Attribute(AZ::Edit::Attributes::Visibility,&MeshConfig::GetReliefDepthVisibility)
+                    ->Attribute(AZ::Edit::Attributes::Min,0.0f)
+                    ->Attribute(AZ::Edit::Attributes::Max,MeshConfig::MaxReliefDepthMultiplier)
+                    ->Attribute(AZ::Edit::Attributes::Step,0.01f)
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_profiles,"Displacement profiles","Profile IDs come from Blender face tags")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_maxCells,"Maximum cells","Planar traversal budget per ray; exhaustion is magenta")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useDepthHeightBounds,"Depth height bounds",
+                        "Experimental block skipping with depth-hit reuse, clamped R32F or square power-of-two repeating R32F heights, and a budget of at least 4096 cells")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useNeuralSeed,"Neural depth seed",
+                        "Use the Irish Fieldstone neural seed on the DX12 depth-hit path for clamped profiles at 0.02 m and reference 0.05")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_reliefShadowSteps,"Relief shadow steps","Local directional-light relief shadows: 0 disables, 1-64 samples. External shadows always use the base mesh.")
                     ->Attribute(AZ::Edit::Attributes::Min,0)->Attribute(AZ::Edit::Attributes::Max,64);
                 edit->Class<MeshMaterialBinding>("Material slot","")
@@ -93,11 +103,17 @@ public:
                 edit->Class<MeshProfileBinding>("Displacement profile","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_id,"Profile ID","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_height,"Height image","Normalized linear single-mip scalar image")
-                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_scale,"Displacement (world metres)","Independent of entity scale")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_neuralCache,"Neural hit cache",
+                        "Optional baked Irish Fieldstone tower predictions for this height atlas")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_scale,"Displacement (world metres)",
+                        "Independent of entity scale. For a trained profile, adjust the relief depth multiplier instead.")
+                    ->Attribute(AZ::Edit::Attributes::ReadOnly,&MeshProfileBinding::IsTrained)
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_reference,"Reference height","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_tiling,"UV tiling","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_offset,"UV offset","")
-                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_addressMode,"Address mode","0 repeat; 1 clamp");
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_addressMode,"Address mode","0 repeat; 1 clamp")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_neuralModel,"Neural model",
+                        "0 legacy or disabled. 1–3 welded tower. 4–7 open-shaft walls, stairs, trim and reveal.");
             }
         }
     }

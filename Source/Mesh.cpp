@@ -8,7 +8,9 @@
 #include <Atom/RPI.Reflect/Pass/RasterPassData.h>
 #include <Atom/RPI.Reflect/Pass/PassTemplate.h>
 #include <Atom/RPI.Public/Material/Material.h>
+#include <Atom/RPI.Public/Image/ImageSystemInterface.h>
 #include <Atom/RPI.Public/Image/StreamingImage.h>
+#include <Atom/RPI.Public/Image/StreamingImagePool.h>
 #include <Atom/RPI.Public/Buffer/Buffer.h>
 #include <Atom/RPI.Reflect/Buffer/BufferAssetCreator.h>
 #include <Atom/RPI.Reflect/Model/ModelAssetCreator.h>
@@ -18,6 +20,7 @@
 #include <Atom/RHI/RHISystemInterface.h>
 #include <Atom/RHI/Factory.h>
 #include <AzCore/Console/IConsole.h>
+#include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Script/ScriptContextAttributes.h>
@@ -48,12 +51,15 @@ AZ::RPI::Ptr<AZ::RPI::Pass> MakeHitPass(const AZ::Name& name, const AZ::Name& te
     return system->CreatePassFromRequest(&request);
 }
 
-bool InstallHitPasses(AZ::RPI::Scene& scene)
+bool InstallHitPasses(AZ::RPI::Scene& scene, bool required)
 {
-    if (!r_silpomReuseDepthHits || AZ::RHI::Factory::Get().GetName() != AZ::Name("dx12")) return false;
+    if ((!required && !r_silpomReuseDepthHits) || AZ::RHI::Factory::Get().GetName() != AZ::Name("dx12")) return false;
     auto* system = AZ::RPI::PassSystemInterface::Get();
     const AZ::Name hitDepthName("SilPOMHitDepth"), hitForwardName("SilPOMHitForward");
+    const AZ::Name classifyName("SilPOMClassifyWallHoles"), fillName("SilPOMFillWallHoles");
+    const AZ::Name backupName("SilPOMHitDepthWallBackup"), backupTemplate("SilPOMHitDepthWallBackupTemplate");
     const AZ::Name depthTemplate("SilPOMHitDepthTemplate"), forwardTemplate("SilPOMHitForwardTemplate");
+    const AZ::Name classifyTemplate("SilPOMClassifyWallHolesTemplate"), fillTemplate("SilPOMFillWallHolesTemplate");
     const AZ::Name depthName("DepthPass"), forwardName("Forward");
     bool foundMainPipeline = false;
     for (const auto& pipeline : scene.GetRenderPipelines())
@@ -64,20 +70,45 @@ bool InstallHitPasses(AZ::RPI::Scene& scene)
         foundMainPipeline = true;
     }
     if (!foundMainPipeline) return false;
-    if (!system->GetPassTemplate(depthTemplate) && !system->LoadPassTemplateMappings("passes/silpomhittemplates.azasset"))
+    if ((!system->GetPassTemplate(depthTemplate) || (required && !system->GetPassTemplate(backupTemplate)))
+        && !system->LoadPassTemplateMappings("passes/silpomhittemplates.azasset"))
         return false;
 
     for (const auto& pipeline : scene.GetRenderPipelines())
     {
         if (pipeline->GetDescriptor().m_materialPipelineTag != "MainPipeline") continue;
-        if (pipeline->FindFirstPass(hitDepthName) && pipeline->FindFirstPass(hitForwardName)) continue;
-        auto depth = MakeHitPass(hitDepthName, depthTemplate, *pipeline->FindFirstPass(depthName));
-        auto forward = MakeHitPass(hitForwardName, forwardTemplate, *pipeline->FindFirstPass(forwardName));
-        if (!depth || !forward || !pipeline->AddPassAfter(depth, depthName)) return false;
-        if (!pipeline->AddPassAfter(forward, forwardName))
+        if (!pipeline->FindFirstPass(hitDepthName) || !pipeline->FindFirstPass(hitForwardName))
         {
-            depth->QueueForRemoval();
-            return false;
+            auto depth = MakeHitPass(hitDepthName, depthTemplate, *pipeline->FindFirstPass(depthName));
+            auto forward = MakeHitPass(hitForwardName, forwardTemplate, *pipeline->FindFirstPass(forwardName));
+            if (!depth || !forward || !pipeline->AddPassAfter(depth, depthName)) return false;
+            if (!pipeline->AddPassAfter(forward, forwardName))
+            {
+                depth->QueueForRemoval();
+                return false;
+            }
+        }
+        if (required && !pipeline->FindFirstPass(fillName))
+        {
+            AZ::RPI::PassRequest classifyRequest;
+            classifyRequest.m_passName = classifyName;
+            classifyRequest.m_templateName = classifyTemplate;
+            AZ::RPI::PassRequest fillRequest;
+            fillRequest.m_passName = fillName;
+            fillRequest.m_templateName = fillTemplate;
+            auto classify = system->CreatePassFromRequest(&classifyRequest);
+            auto fill = system->CreatePassFromRequest(&fillRequest);
+            if (!classify || !fill || !pipeline->AddPassAfter(classify, hitDepthName)) return false;
+            if (!pipeline->AddPassAfter(fill, classifyName))
+            {
+                classify->QueueForRemoval();
+                return false;
+            }
+        }
+        if (required && !pipeline->FindFirstPass(backupName))
+        {
+            auto backup = MakeHitPass(backupName, backupTemplate, *pipeline->FindFirstPass(depthName));
+            if (!backup || !pipeline->AddPassAfter(backup, fillName)) return false;
         }
     }
     return true;
@@ -97,6 +128,51 @@ AZ::u32 AllocateHitFaceBase(size_t faceCount)
 }
 
 using Material = AZ::Data::Instance<AZ::RPI::Material>;
+using Image = AZ::Data::Instance<AZ::RPI::Image>;
+
+Image MakeDepthHeightBounds(const AZ::RHI::ImageDescriptor& desc, AZStd::span<const AZ::u8> pixels, bool clamp)
+{
+    const AZ::u32 width = desc.m_size.m_width;
+    const AZ::u32 height = desc.m_size.m_height;
+    constexpr AZ::u32 blockSize = 4; // Matches SilPomIntersectMode in Heightfield.azsli.
+    if (desc.m_format != AZ::RHI::Format::R32_FLOAT || width == 0 || height == 0
+        || (!clamp && (width != height || width < blockSize || (width & (width - 1)) != 0)))
+    {
+        return {};
+    }
+    const AZ::u32 blocksX = (width + blockSize - 1) / blockSize;
+    const AZ::u32 blocksY = (height + blockSize - 1) / blockSize;
+    struct Range { float low, high; };
+    AZStd::vector<Range> ranges;
+    ranges.reserve(size_t(blocksX) * blocksY);
+    for (AZ::u32 by = 0; by < height; by += blockSize)
+    {
+        for (AZ::u32 bx = 0; bx < width; bx += blockSize)
+        {
+            Range range{1.f, 0.f};
+            // Four bilinear cells use five texels along each axis. Apply the
+            // same edge addressing as the height sampler to the final taps.
+            for (AZ::u32 y = by; y <= by + blockSize; ++y)
+            {
+                const AZ::u32 row = clamp ? AZStd::min(y, height - 1) : y & (height - 1);
+                for (AZ::u32 x = bx; x <= bx + blockSize; ++x)
+                {
+                    const AZ::u32 column = clamp ? AZStd::min(x, width - 1) : x & (width - 1);
+                    const size_t index = size_t(row) * width + column;
+                    float value;
+                    memcpy(&value, pixels.data() + index * sizeof(value), sizeof(value));
+                    range.low = AZStd::min(range.low, value);
+                    range.high = AZStd::max(range.high, value);
+                }
+            }
+            ranges.push_back(range);
+        }
+    }
+    const auto& pool = AZ::RPI::ImageSystemInterface::Get()->GetSystemStreamingPool();
+    return AZ::RPI::StreamingImage::CreateFromCpuData(*pool, AZ::RHI::ImageDimension::Image2D,
+        AZ::RHI::Size(blocksX, blocksY, 1), AZ::RHI::Format::R32G32_FLOAT,
+        ranges.data(), ranges.size() * sizeof(Range));
+}
 using Handle = AZ::Render::MeshFeatureProcessorInterface::MeshHandle;
 struct Vertex { AZ::Vector3 position, normal; AZ::Vector2 uv; };
 AZ::Data::Asset<AZ::RPI::BufferAsset> Buffer(const void* data, size_t count, AZ::u32 stride, bool raw = false)
@@ -208,6 +284,10 @@ struct MeshController::Generation
     AZStd::vector<AZ::Data::Instance<AZ::RPI::Image>> heights;
     AZStd::string id;
     size_t faces = 0, bytes = 0;
+    bool depthHeightBounds = false;
+    bool neuralSeed = false;
+    bool neuralCache = false;
+    size_t trainedModelBatches = 0;
     AZStd::atomic_bool published{false};
 };
 MeshController::MeshController() = default;
@@ -218,13 +298,26 @@ void MeshConfig::Reflect(AZ::ReflectContext* context)
     if (auto* sc = azrtti_cast<AZ::SerializeContext*>(context))
     {
         sc->Class<MeshMaterialBinding>()->Version(1)->Field("MaterialIdentity", &MeshMaterialBinding::m_id)->Field("Material", &MeshMaterialBinding::m_material);
-        sc->Class<MeshProfileBinding>()->Version(1)->Field("ProfileId", &MeshProfileBinding::m_id)->Field("Height", &MeshProfileBinding::m_height)
+        sc->Class<MeshProfileBinding>()->Version(3)->Field("ProfileId", &MeshProfileBinding::m_id)->Field("Height", &MeshProfileBinding::m_height)
+            ->Field("NeuralCache", &MeshProfileBinding::m_neuralCache)
+            ->Field("NeuralModel", &MeshProfileBinding::m_neuralModel)
             ->Field("ScaleMetres", &MeshProfileBinding::m_scale)->Field("Reference", &MeshProfileBinding::m_reference)
             ->Field("Tiling", &MeshProfileBinding::m_tiling)->Field("Offset", &MeshProfileBinding::m_offset)->Field("AddressMode", &MeshProfileBinding::m_addressMode);
-        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(2)->Field("Surface", &MeshConfig::m_surface)
+        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(5)->Field("Surface", &MeshConfig::m_surface)
             ->Field("Materials", &MeshConfig::m_materials)->Field("Profiles", &MeshConfig::m_profiles)
-            ->Field("MaxCells", &MeshConfig::m_maxCells)->Field("ReliefShadowSteps", &MeshConfig::m_reliefShadowSteps);
+            ->Field("ReliefDepthMultiplier", &MeshConfig::m_reliefDepthMultiplier)
+            ->Field("MaxCells", &MeshConfig::m_maxCells)->Field("ReliefShadowSteps", &MeshConfig::m_reliefShadowSteps)
+            ->Field("UseDepthHeightBounds", &MeshConfig::m_useDepthHeightBounds)
+            ->Field("UseNeuralSeed", &MeshConfig::m_useNeuralSeed);
     }
+}
+bool MeshConfig::UsesTrainedProfiles() const
+{
+    return AZStd::any_of(m_profiles.begin(), m_profiles.end(), [](const auto& profile) { return profile.IsTrained(); });
+}
+AZ::Crc32 MeshConfig::GetReliefDepthVisibility() const
+{
+    return UsesTrainedProfiles() ? AZ::Edit::PropertyVisibility::Show : AZ::Edit::PropertyVisibility::Hide;
 }
 void MeshController::Reflect(AZ::ReflectContext* context)
 {
@@ -260,7 +353,11 @@ void MeshController::ConnectAssets()
     };
     queue(m_configuration.m_surface); queue(m_template);
     for (auto& binding : m_configuration.m_materials) queue(binding.m_material);
-    for (auto& profile : m_configuration.m_profiles) queue(profile.m_height);
+    for (auto& profile : m_configuration.m_profiles)
+    {
+        queue(profile.m_height);
+        queue(profile.m_neuralCache);
+    }
 }
 void MeshController::Activate(AZ::EntityId entity)
 {
@@ -280,6 +377,8 @@ void MeshController::Release(AZStd::unique_ptr<Generation>& generation)
 }
 void MeshController::Deactivate()
 {
+    AZ::RPI::SceneNotificationBus::Handler::BusDisconnect();
+    m_checkHitPasses = false;
     AZ::TickBus::Handler::BusDisconnect(); MeshRequestBus::Handler::BusDisconnect();
     AZ::TransformNotificationBus::Handler::BusDisconnect(); AZ::Data::AssetBus::MultiHandler::BusDisconnect();
     Release(m_pending); Release(m_active); m_processor = nullptr; m_entity.SetInvalid(); m_status = "Inactive";
@@ -314,11 +413,23 @@ void MeshController::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
     if (asset.GetId() == m_configuration.m_surface.GetId()) m_configuration.m_surface = asset;
     if (asset.GetId() == m_template.GetId()) m_template = asset;
     for (auto& binding : m_configuration.m_materials) if (asset.GetId() == binding.m_material.GetId()) binding.m_material = asset;
-    for (auto& profile : m_configuration.m_profiles) if (asset.GetId() == profile.m_height.GetId()) profile.m_height = asset;
+    for (auto& profile : m_configuration.m_profiles)
+    {
+        if (asset.GetId() == profile.m_height.GetId()) profile.m_height = asset;
+        if (asset.GetId() == profile.m_neuralCache.GetId()) profile.m_neuralCache = asset;
+    }
     m_dirty = true;
 }
 void MeshController::OnAssetError(AZ::Data::Asset<AZ::Data::AssetData>)
 { Release(m_pending); m_dirty = false; m_status = "Asset load failed; previous complete generation retained. Check Asset Processor."; }
+
+void MeshController::OnRenderPipelineChanged(AZ::RPI::RenderPipeline* pipeline, AZ::RPI::SceneNotification::RenderPipelineChangeType)
+{
+    if (pipeline && pipeline->GetDescriptor().m_materialPipelineTag == "MainPipeline")
+    {
+        m_checkHitPasses = true;
+    }
+}
 
 bool MeshController::Prepare()
 {
@@ -350,6 +461,11 @@ bool MeshController::Prepare()
         if (!profiles.emplace(p.m_id, p).second || p.m_id == 0) { m_status = "Duplicate/zero profile ID"; return false; }
         if (!p.m_height.GetId().IsValid()) { m_status = AZStd::string::format("Assign height texture for profile %u", p.m_id); return false; }
         if (!p.m_height.IsReady()) { m_status = "Loading height textures"; return true; }
+        if (c.m_useNeuralSeed && p.m_neuralCache.GetId().IsValid() && !p.m_neuralCache.IsReady())
+        {
+            m_status = "Loading neural hit cache";
+            return true;
+        }
     }
     const float scale = m_world.GetUniformScale();
     if (!std::isfinite(scale) || scale <= 0 || c.m_maxCells < 1 || c.m_maxCells > 65536 || c.m_reliefShadowSteps > 64)
@@ -358,7 +474,16 @@ bool MeshController::Prepare()
     if (!scene) { m_status = "Waiting for render scene"; return true; }
     m_processor = scene->GetFeatureProcessor<AZ::Render::MeshFeatureProcessorInterface>();
     if (!m_processor) { m_status = "Waiting for MeshFeatureProcessor"; return true; }
-    const bool reuseDepthHits = InstallHitPasses(*scene);
+    const bool requiresTrainedHits = c.UsesTrainedProfiles();
+    const float depthMultiplier = requiresTrainedHits ? c.m_reliefDepthMultiplier : 1.0f;
+    if (!std::isfinite(depthMultiplier) || depthMultiplier < 0.0f || depthMultiplier > MeshConfig::MaxReliefDepthMultiplier)
+    { m_status = "Relief depth multiplier must be between 0 and 2"; return false; }
+    const bool reuseDepthHits = InstallHitPasses(*scene, requiresTrainedHits);
+    if (requiresTrainedHits && (!reuseDepthHits || !c.m_useNeuralSeed || c.m_maxCells != 65525 || c.m_reliefShadowSteps != 0))
+    {
+        m_status = "Trained profiles require single-sample DX12 winning-hit resolve, smooth 4 px, and relief shadows off";
+        return true;
+    }
     if (AZ::Render::r_meshInstancingEnabled)
     { m_status = "Planar face renderer currently requires r_meshInstancingEnabled=false"; return false; }
     auto candidate = AZStd::make_unique<Generation>(); candidate->id = asset.m_generation;
@@ -366,6 +491,7 @@ bool MeshController::Prepare()
     AZ::Transform rigid = m_world; rigid.SetUniformScale(1);
     using Key = AZStd::pair<AZStd::string, AZ::u32>;
     AZStd::map<Key, AZStd::vector<AZ::u32>> groups;
+    AZStd::map<AZ::u32, Image> depthHeightBounds;
     for (AZ::u32 i = 0; i < asset.m_faces.size(); ++i)
     {
         const auto& f = asset.m_faces[i];
@@ -405,7 +531,30 @@ bool MeshController::Prepare()
                     || !p.m_tiling.IsFinite() || !p.m_offset.IsFinite() || p.m_addressMode > 1
                     || std::abs(p.m_tiling.GetX()) < 1e-8f || std::abs(p.m_tiling.GetY()) < 1e-8f)
                     return fail("Invalid displacement profile settings");
+                const float reliefScale = p.m_scale * depthMultiplier;
                 const auto& desc = p.m_height->GetImageDescriptor();
+                if (requiresTrainedHits)
+                {
+                    struct TrainedProfile { float scale, reference; AZ::u32 address, width, height, profileId; };
+                    constexpr TrainedProfile trained[] = {
+                        {.10f, .05f, 0, 6656, 6144, 1},
+                        {.12f, 32768.f/65535.f, 1, 2176, 1440, 2},
+                        {.045f, 32768.f/65535.f, 1, 1728, 1728, 3},
+                        {.10f, .05f, 0, 6656, 6144, 1},
+                        {.19f, 32768.f/65535.f, 1, 4096, 4096, 2},
+                        {.052f, 32768.f/65535.f, 1, 1728, 1728, 3},
+                        {.10f, .05f, 1, 512, 4096, 4}
+                    };
+                    if (p.m_neuralModel < 1 || p.m_neuralModel > AZ_ARRAY_SIZE(trained)
+                        || p.m_neuralCache.GetId().IsValid())
+                        return fail("Assign each displaced profile its matching trained model and no legacy cache");
+                    const auto& model = trained[p.m_neuralModel - 1];
+                    if (model.profileId != key.second || std::abs(p.m_scale - model.scale) > 1e-6f
+                        || std::abs(p.m_reference - model.reference) > 1e-6f
+                        || p.m_addressMode != model.address || desc.m_size.m_width != model.width || desc.m_size.m_height != model.height
+                        || p.m_tiling != AZ::Vector2(1) || p.m_offset != AZ::Vector2(0))
+                        return fail("Trained model does not match the authored displacement profile");
+                }
                 if (desc.m_mipLevels != 1 || desc.m_arraySize != 1 || desc.m_size.m_depth != 1
                     || (desc.m_format != AZ::RHI::Format::R32_FLOAT && desc.m_format != AZ::RHI::Format::R16_UNORM && desc.m_format != AZ::RHI::Format::R8_UNORM))
                     return fail("Height must be normalized linear, single-mip R32_FLOAT/R16_UNORM/R8_UNORM");
@@ -425,12 +574,14 @@ bool MeshController::Prepare()
                 {
                     const auto& corners = asset.m_faces[index].m_corners;
                     const auto a=corners[0].m_position*scale, b=corners[1].m_position*scale, d=corners[2].m_position*scale;
-                    const auto e1=b-a, e2=d-a, normal=e1.Cross(e2).GetNormalizedSafe();
+                    const auto e1=b-a, e2=d-a, cross=e1.Cross(e2);
+                    const float areaSquared=cross.GetLengthSq();
                     const auto uv0=corners[0].m_uv, uv1=corners[1].m_uv, uv2=corners[2].m_uv;
                     const auto t1=uv1-uv0, t2=uv2-uv0;
                     const float det=t1.GetX()*t2.GetY()-t1.GetY()*t2.GetX();
-                    if (normal.GetLengthSq()<.9f || std::abs(det)<1e-10f)
+                    if (!std::isfinite(areaSquared) || areaSquared<1e-16f || std::abs(det)<1e-10f)
                         return fail("Degenerate triangle or UV mapping: "+asset.m_faces[index].m_id);
+                    const auto normal=cross/std::sqrt(areaSquared);
                     const auto du=(e1*t2.GetY()-e2*t1.GetY())/det;
                     const auto dv=(e2*t1.GetX()-e1*t2.GetX())/det;
                     auto append=[&](const AZ::Vector3& v) { packed.insert(packed.end(),{v.GetX(),v.GetY(),v.GetZ(),0}); };
@@ -446,8 +597,8 @@ bool MeshController::Prepare()
                     for (const auto& corner : corners)
                     {
                         const auto point=corner.m_position*scale;
-                        bounds.AddPoint(point+corner.m_direction*(-p.m_scale*p.m_reference));
-                        bounds.AddPoint(point+corner.m_direction*(p.m_scale*(1-p.m_reference)));
+                        bounds.AddPoint(point+corner.m_direction*(-reliefScale*p.m_reference));
+                        bounds.AddPoint(point+corner.m_direction*(reliefScale*(1-p.m_reference)));
                     }
                 }
                 candidate->bytes+=packed.size()*sizeof(float);
@@ -460,17 +611,62 @@ bool MeshController::Prepare()
                 material=Snapshot(m_template,materialAssets[key.first].Get());
                 if(!material) return fail("Cannot create planar face material");
                 AZ::Data::Instance<AZ::RPI::Image> height=AZ::RPI::StreamingImage::FindOrCreate(p.m_height);
+                const bool legacyNeural = reuseDepthHits && c.m_useNeuralSeed && p.m_addressMode == 1
+                    && std::abs(p.m_scale - .02f) < 1e-6f && std::abs(p.m_reference - .05f) < 1e-6f;
+                const bool neuralSeed = requiresTrainedHits || legacyNeural;
+                Image neuralCache;
+                if (legacyNeural && p.m_neuralCache.GetId().IsValid())
+                {
+                    const auto& cacheDesc = p.m_neuralCache->GetImageDescriptor();
+                    if (cacheDesc.m_size.m_width != 3072 || cacheDesc.m_size.m_height != 1536
+                        || cacheDesc.m_size.m_depth != 1 || cacheDesc.m_arraySize != 1 || cacheDesc.m_mipLevels != 1
+                        || cacheDesc.m_format != AZ::RHI::Format::R16G16B16A16_FLOAT
+                        || desc.m_size.m_width != 6656 || desc.m_size.m_height != 6144
+                        || p.m_tiling != AZ::Vector2(1) || p.m_offset != AZ::Vector2(0))
+                    {
+                        return fail("Tower neural cache requires its authored height atlas and a 3072 x 1536 single-mip RGBA16F cache");
+                    }
+                    neuralCache = AZ::RPI::StreamingImage::FindOrCreate(p.m_neuralCache);
+                    if (!neuralCache) return fail("Cannot create neural hit cache image");
+                }
+                Image minMax;
+                if (reuseDepthHits && !neuralSeed && c.m_useDepthHeightBounds && c.m_maxCells >= 4096)
+                {
+                    auto [atlasEntry, inserted] = depthHeightBounds.try_emplace(key.second);
+                    if (inserted)
+                    {
+                        atlasEntry->second = MakeDepthHeightBounds(desc, pixels, p.m_addressMode != 0);
+                    }
+                    minMax = atlasEntry->second;
+                }
                 const bool valid=Set(material,"mesh.bufferIndex",bindless.begin()->second)
-                    && Set(material,"surface.heightMap",height) && Set(material,"surface.scale",p.m_scale)
+                    && Set(material,"surface.heightMap",height) && Set(material,"surface.scale",reliefScale)
                     && Set(material,"surface.reference",p.m_reference) && Set(material,"surface.tileU",p.m_tiling.GetX())
                     && Set(material,"surface.tileV",p.m_tiling.GetY()) && Set(material,"surface.offsetU",p.m_offset.GetX())
                     && Set(material,"surface.offsetV",p.m_offset.GetY()) && Set(material,"surface.addressMode",p.m_addressMode)
-                    && Set(material,"surface.maxCells",c.m_maxCells) && Set(material,"surface.useHierarchy",false)
+                    && Set(material,"surface.maxCells",c.m_maxCells) && Set(material,"surface.useHierarchy",bool(minMax))
+                    && Set(material,"surface.useNeuralSeed",neuralSeed)
+                    && Set(material,"surface.neuralModel",p.m_neuralModel)
+                    && Set(material,"surface.useNeuralCache",bool(neuralCache))
+                    && (!neuralCache || Set(material,"surface.neuralCache",neuralCache))
+                    && (!minMax || Set(material,"surface.heightBounds",minMax))
                     && Set(material,"surface.reliefShadowSteps",c.m_reliefShadowSteps);
                 if(!valid) return fail("Planar face material contract mismatch");
                 if (reuseDepthHits && !Set(material, "mesh.hitFaceBase", AllocateHitFaceBase(packed.size() / 36)))
                     return fail("SilPOM hit material contract mismatch");
                 candidate->buffers.push_back(buffer); candidate->heights.push_back(height);
+                candidate->neuralSeed |= neuralSeed;
+                if (p.m_neuralModel != 0) ++candidate->trainedModelBatches;
+                if (neuralCache)
+                {
+                    candidate->heights.push_back(neuralCache);
+                    candidate->neuralCache = true;
+                }
+                if (minMax)
+                {
+                    candidate->heights.push_back(minMax);
+                    candidate->depthHeightBounds = true;
+                }
                 bounds.Expand(AZ::Vector3(1e-5f));
             }
             material->Compile();
@@ -502,11 +698,26 @@ bool MeshController::Prepare()
             candidate->packetHandlers.push_back(AZStd::move(handler));
         }
     }
+    if (requiresTrainedHits && !AZ::RPI::SceneNotificationBus::Handler::BusIsConnected())
+    {
+        AZ::RPI::SceneNotificationBus::Handler::BusConnect(scene->GetId());
+    }
     m_pending = AZStd::move(candidate); m_status = "Preparing complete mesh generation"; return false;
 }
 void MeshController::OnTick(float, AZ::ScriptTimePoint)
 {
     if (m_dirty) { Release(m_pending); m_dirty = Prepare(); }
+    if (m_checkHitPasses)
+    {
+        // Play can rebuild the pass tree after the mesh generation is ready.
+        // Restore its passes on the tick, outside the pipeline notification.
+        m_checkHitPasses = false;
+        auto* scene = AZ::RPI::Scene::GetSceneForEntityId(m_entity);
+        if (!scene || !InstallHitPasses(*scene, true))
+        {
+            m_checkHitPasses = true;
+        }
+    }
     if (m_pending)
     {
         bool ready = true;
@@ -538,7 +749,25 @@ void MeshController::OnTick(float, AZ::ScriptTimePoint)
                         m_processor->SetDrawItemEnabled(handle, tag, tag != motionTag);
                     }
             Release(m_active); m_active = AZStd::move(m_pending);
+            if (!m_active->trainedModelBatches)
+            {
+                AZ::RPI::SceneNotificationBus::Handler::BusDisconnect();
+                m_checkHitPasses = false;
+            }
             m_status = AZStd::string::format("Ready: %zu batches, %zu planar tagged triangles, %zu descriptor bytes", m_active->handles.size(), m_active->faces, m_active->bytes);
+            if (m_active->depthHeightBounds)
+            {
+                m_status += "; depth height bounds";
+            }
+            if (m_active->trainedModelBatches)
+            {
+                m_status += AZStd::string::format("; %zu trained profile batches, smooth 4 px winning-hit resolve",
+                    m_active->trainedModelBatches);
+            }
+            else if (m_active->neuralSeed)
+            {
+                m_status += m_active->neuralCache ? "; baked neural hit cache" : "; neural depth seed";
+            }
         }
     }
 }

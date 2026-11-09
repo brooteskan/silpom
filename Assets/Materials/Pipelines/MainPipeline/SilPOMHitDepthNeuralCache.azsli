@@ -1,0 +1,4 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#define SILPOM_NEURAL_NO_MARCH 1
+#include "SilPOMHitDepthNeural.azsli"
