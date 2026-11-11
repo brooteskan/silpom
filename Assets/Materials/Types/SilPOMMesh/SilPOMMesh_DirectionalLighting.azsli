@@ -6,6 +6,82 @@
 #include <Atom/Features/Pipeline/Forward/ForwardPassDirectionalLights.azsli>
 #undef ApplyDirectionalLights
 
+void ApplySpiralLightRay(Surface surface, inout LightingData lightingData, MaterialParameters params, float3 ray, float lux)
+{
+    if (lux <= 0.0f || dot(ray, silpomLitFace.normal) <= 0.0f) return;
+    const float rayLength = length(ray);
+    const float3 toLight = ray / rayLength;
+    const float intensity = lux * rayLength;
+    const real3 diffuse = GetDiffuseLighting(surface, lightingData,
+        real3(intensity, intensity, intensity), real3(mul(silpomLitRotation, toLight)));
+    if (!any(diffuse > 0.0f)) return;
+
+    const float2 low = min(silpomLitFace.uv0, min(silpomLitFace.uv1, silpomLitFace.uv2));
+    const float shadowReach = min(0.30f, 8.0f * abs(silpomLitPatch.scale));
+    const float relief = SilPomReliefVisibility(GetMaterialTexture(params.m_silpomHeightMap),
+        silpomLitPatch, silpomLitFace, silpomLitUv, low, toLight, 18u, shadowReach);
+    lightingData.diffuseLighting += diffuse * relief;
+}
+
+void ApplySpiralLight(Surface surface, inout LightingData lightingData, MaterialParameters params)
+{
+    const uint windowCount = params.m_silpomSpiralWindowCount;
+    if (params.m_silpomSpiralLightPeakLux <= 0.0f && windowCount == 0) return;
+
+    const float4 path = params.m_silpomSpiralLightPath;
+    const float3 position = silpomLitFace.origin
+        + mul(transpose(silpomLitRotation), surface.position - silpomLitOriginWS);
+    const float2 end = params.m_silpomSpiralLightEnd;
+    const float endFade = end.y > 0.0f ? saturate((end.x - position.z) / end.y) : 1.0f;
+    if (endFade <= 0.0f) return;
+    const float radius = length(position.xy);
+    if (radius < 1e-4f) return;
+
+    const float twoPi = 6.28318530718f;
+    const float2 radial = position.xy / radius;
+    const float corridorRadius = length(path.xy);
+    const float2 window = path.xy / corridorRadius;
+    const float angleTurns = atan2(window.x * radial.y - window.y * radial.x, dot(window, radial)) / twoPi;
+    const float heightTurns = (position.z - path.z) / path.w;
+    // Unwrap against height, then blend to zero before crossing into the next stair turn.
+    const float turns = angleTurns + round(heightTurns - angleTurns);
+    const float across = abs(heightTurns - turns);
+    if (across >= 0.49f) return;
+
+    const float3 tangent = normalize(float3(-radial.y, radial.x, path.w / (twoPi * corridorRadius)));
+    // Bias the ray toward the centre of the corridor, consistently across wall facets.
+    const float3 offset = float3(radial * (corridorRadius - radius), 0.35f * (path.z + turns * path.w - position.z));
+    const float3 towardCorridor = 0.24f * offset / max(length(offset), 0.2f);
+    const float acrossFade = (1.0f - smoothstep(0.37f, 0.49f, across)) * (endFade * endFade * (3.0f - 2.0f * endFade));
+    const float firstLux = max(0.0f, params.m_silpomSpiralLightPeakLux)
+        * (1.0f - smoothstep(0.0f, 1.0f, abs(turns)));
+    const float firstBlend = smoothstep(-0.045f, 0.045f, turns);
+    if (windowCount == 0)
+    {
+        ApplySpiralLightRay(surface, lightingData, params, (1.0f - 2.0f * firstBlend) * tangent + towardCorridor,
+            firstLux * acrossFade);
+        return;
+    }
+
+    float2 lobes = firstLux * float2(1.0f - firstBlend, firstBlend);
+    float brightest = firstLux;
+    [loop] for (uint i = 0; i < windowCount; ++i)
+    {
+        const float2 windowLight = asfloat(Bindless::GetByteAddressBuffer(params.m_silpomSpiralWindowBuffer).Load2(i * 8u));
+        const float delta = turns - windowLight.x;
+        const float lux = windowLight.y * (1.0f - smoothstep(0.0f, 1.0f, abs(delta)));
+        const float blend = smoothstep(-0.045f, 0.045f, delta);
+        lobes = max(lobes, lux * float2(1.0f - blend, blend));
+        brightest = max(brightest, lux);
+    }
+    const float total = lobes.x + lobes.y;
+    if (total <= 0.0f) return;
+    // Keep both shadow directions where windows overlap without stacking their brightness.
+    const float fade = acrossFade * brightest / total;
+    ApplySpiralLightRay(surface, lightingData, params, tangent + towardCorridor, lobes.x * fade);
+    ApplySpiralLightRay(surface, lightingData, params, -tangent + towardCorridor, lobes.y * fade);
+}
+
 void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,float4 screenUv)
 {
     if(!silpomLitValid)
@@ -43,4 +119,5 @@ void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,floa
         DirectionalLightUtil light=DirectionalLightUtil::Init(srgLight,surface);
         light.Apply(srgLight,surface,visibility,lightingData);
     }
+    ApplySpiralLight(surface, lightingData, params);
 }

@@ -54,7 +54,12 @@ SilPomShellVertex VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
     sv.m_instanceId=instanceId;
     const MaterialParameters params=GetMaterialParameters();
 #if SILPOM_WALL_BACKUP_SHELL
-    if(!SilPomIsTowerWallModel(params.m_silpomNeuralModel) || params.m_silpomMaxCells!=SP_TOWER_LOD_4PX_RESOLVE)
+    // The opening trim and doorway reveal need the same inset coverage
+    // when a neural hit is missed along a triangle edge.
+    const uint model=params.m_silpomNeuralModel;
+    const bool isOpeningSurface=model==6u || model==7u;
+    if((!SilPomIsTowerWallModel(model) && !isOpeningSurface)
+        || params.m_silpomMaxCells!=SP_TOWER_LOD_4PX_RESOLVE)
         return output;
 #endif
     const SilPomMeshFace face=SilPomLoadFace(params.m_meshBufferIndex,uint(round(IN.position.z)));

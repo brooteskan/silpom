@@ -389,6 +389,8 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     IN.position.z=asfloat(record.z&SP_HIT_RECORD_DEPTH);
     float4 hitH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,IN.position.z,1));
     geo.positionWS=hitH.xyz/hitH.w;
+    // Tiled decal/light culling uses reciprocal clip W, not the proxy's W.
+    IN.position.w=hitH.w;
     IN.silpomDiagnostic=float4(float(status),0,0,0);
 #else
     float4 farH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,0,1));
@@ -445,6 +447,7 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     precise float4 clip=mul(GetViewProjectionMatrix(SV),float4(geo.positionWS,1));
     if(clip.w<=0 || clip.z<0 || clip.z>clip.w) discard;
     IN.position.z=clip.z/clip.w;
+    IN.position.w=rcp(clip.w);
     float2 tiledUv=hit.uv;
     IN.silpomDiagnostic=float4(float(hit.status),float(hit.cells),hit.t,0);
 #if SILPOM_HIT_DEPTH
@@ -513,6 +516,7 @@ Surface EvaluateSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,cons
 }
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_LightingEval.azsli>
 #include "SilPOMMesh_DirectionalLighting.azsli"
+#include "../../../Shaders/SilPOM/ForwardLighting.azsli"
 #elif MATERIALPIPELINE_SHADER_HAS_GEOMETRIC_PIXEL_STAGE
 void EvaluateSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,const MaterialParameters params){}
 #endif

@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+
+#include <Atom/Features/Pipeline/Forward/ForwardPassEvaluateLighting.azsli>
+
+#undef EvaluateLighting
+#define EvaluateLighting EvaluateLighting_SilPom
+
+LightingData EvaluateLighting_SilPom(inout Surface surface, float4 screenPosition,
+    float3 viewPositions[MAX_SHADING_VIEWS])
+{
+    LightCullingTileIterator tileIterator;
+#if ENABLE_LIGHT_CULLING
+    tileIterator.Init(screenPosition, PassSrg::m_lightListRemapped, PassSrg::m_tileLightData);
+#else
+    tileIterator.InitNoCulling();
+#endif
+
+    // Decal normals must inform the BRDF, and the modified surface must reach
+    // the albedo/normal outputs used by fullscreen indirect lighting.
+    ApplyDecals_ForwardPass(tileIterator, surface);
+
+    LightingData lightingData;
+    InitializeLightingData(surface, viewPositions, lightingData);
+    ApplyDirectLighting_ForwardPass(surface, lightingData, screenPosition, tileIterator);
+    ApplyIbl_ForwardPass(surface, lightingData);
+    FinalizeLightingData(surface, lightingData);
+    return lightingData;
+}

@@ -3,6 +3,7 @@
 #include <SilPOM/MeshSurfaceAsset.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Component/TransformBus.h>
+#include <AzCore/Math/Vector4.h>
 #include <AzFramework/Components/ComponentAdapter.h>
 #include <Atom/RPI.Public/SceneBus.h>
 #include <Atom/RPI.Reflect/Material/MaterialAsset.h>
@@ -16,11 +17,14 @@ struct MeshMaterialBinding
     AZ_TYPE_INFO(MeshMaterialBinding, "{B592E91C-172C-4A55-A887-B4870B8F19F5}");
     AZStd::string m_id;
     AZ::Data::Asset<AZ::RPI::MaterialAsset> m_material{AZ::Data::AssetLoadBehavior::NoLoad};
+    AZ::u32 m_lightingChannelMask = 1;
+    bool m_disableEnvironmentLighting = false;
+    bool m_receiveSpiralLight = false;
 };
 struct MeshProfileBinding
 {
     AZ_TYPE_INFO(MeshProfileBinding, "{9B32A1E0-E4E5-43BC-B321-45B407B75F58}");
-    bool IsTrained() const { return m_neuralModel != 0; }
+    bool IsTrained() const { return !m_useBaseMesh && m_neuralModel != 0; }
     AZ::u32 m_id = 1;
     AZ::Data::Asset<AZ::RPI::StreamingImageAsset> m_height{AZ::Data::AssetLoadBehavior::NoLoad};
     AZ::Data::Asset<AZ::RPI::StreamingImageAsset> m_neuralCache{AZ::Data::AssetLoadBehavior::NoLoad};
@@ -28,6 +32,7 @@ struct MeshProfileBinding
     AZ::Vector2 m_tiling = AZ::Vector2(1), m_offset = AZ::Vector2(0);
     AZ::u32 m_addressMode = 0;
     AZ::u32 m_neuralModel = 0;
+    bool m_useBaseMesh = false;
 };
 class MeshConfig final : public AZ::ComponentConfig
 {
@@ -36,6 +41,7 @@ public:
     AZ_CLASS_ALLOCATOR(MeshConfig, AZ::SystemAllocator);
     static void Reflect(AZ::ReflectContext* context);
     static constexpr float MaxReliefDepthMultiplier = 2.0f;
+    static constexpr size_t MaxAdditionalSpiralWindows = 8;
     bool UsesTrainedProfiles() const;
     AZ::Crc32 GetReliefDepthVisibility() const;
     AZ::Data::Asset<MeshSurfaceAsset> m_surface{AZ::Data::AssetLoadBehavior::NoLoad};
@@ -44,6 +50,13 @@ public:
     float m_reliefDepthMultiplier = 1.0f;
     AZ::u32 m_maxCells = 4096;
     AZ::u32 m_reliefShadowSteps = 16;
+    // Local window XY, centre height of its stair corridor, and signed rise per turn.
+    AZ::Vector4 m_spiralLightPath = AZ::Vector4::CreateZero();
+    float m_spiralLightPeakLux = 0.0f;
+    // Local end height and fade distance below it. A zero distance leaves the path unbounded.
+    AZ::Vector2 m_spiralLightEnd = AZ::Vector2::CreateZero();
+    // Signed turns from the path origin and peak lux for each additional window.
+    AZStd::vector<AZ::Vector2> m_spiralLightWindows;
     bool m_useDepthHeightBounds = false;
     bool m_useNeuralSeed = false;
 };

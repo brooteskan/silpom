@@ -297,16 +297,26 @@ void MeshConfig::Reflect(AZ::ReflectContext* context)
 {
     if (auto* sc = azrtti_cast<AZ::SerializeContext*>(context))
     {
-        sc->Class<MeshMaterialBinding>()->Version(1)->Field("MaterialIdentity", &MeshMaterialBinding::m_id)->Field("Material", &MeshMaterialBinding::m_material);
-        sc->Class<MeshProfileBinding>()->Version(3)->Field("ProfileId", &MeshProfileBinding::m_id)->Field("Height", &MeshProfileBinding::m_height)
+        sc->Class<MeshMaterialBinding>()->Version(3)
+            ->Field("MaterialIdentity", &MeshMaterialBinding::m_id)
+            ->Field("Material", &MeshMaterialBinding::m_material)
+            ->Field("LightingChannelMask", &MeshMaterialBinding::m_lightingChannelMask)
+            ->Field("DisableEnvironmentLighting", &MeshMaterialBinding::m_disableEnvironmentLighting)
+            ->Field("ReceiveSpiralLight", &MeshMaterialBinding::m_receiveSpiralLight);
+        sc->Class<MeshProfileBinding>()->Version(4)->Field("ProfileId", &MeshProfileBinding::m_id)->Field("Height", &MeshProfileBinding::m_height)
             ->Field("NeuralCache", &MeshProfileBinding::m_neuralCache)
             ->Field("NeuralModel", &MeshProfileBinding::m_neuralModel)
+            ->Field("UseBaseMesh", &MeshProfileBinding::m_useBaseMesh)
             ->Field("ScaleMetres", &MeshProfileBinding::m_scale)->Field("Reference", &MeshProfileBinding::m_reference)
             ->Field("Tiling", &MeshProfileBinding::m_tiling)->Field("Offset", &MeshProfileBinding::m_offset)->Field("AddressMode", &MeshProfileBinding::m_addressMode);
-        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(5)->Field("Surface", &MeshConfig::m_surface)
+        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(8)->Field("Surface", &MeshConfig::m_surface)
             ->Field("Materials", &MeshConfig::m_materials)->Field("Profiles", &MeshConfig::m_profiles)
             ->Field("ReliefDepthMultiplier", &MeshConfig::m_reliefDepthMultiplier)
             ->Field("MaxCells", &MeshConfig::m_maxCells)->Field("ReliefShadowSteps", &MeshConfig::m_reliefShadowSteps)
+            ->Field("SpiralLightPath", &MeshConfig::m_spiralLightPath)
+            ->Field("SpiralLightPeakLux", &MeshConfig::m_spiralLightPeakLux)
+            ->Field("SpiralLightEnd", &MeshConfig::m_spiralLightEnd)
+            ->Field("SpiralLightWindows", &MeshConfig::m_spiralLightWindows)
             ->Field("UseDepthHeightBounds", &MeshConfig::m_useDepthHeightBounds)
             ->Field("UseNeuralSeed", &MeshConfig::m_useNeuralSeed);
     }
@@ -355,6 +365,7 @@ void MeshController::ConnectAssets()
     for (auto& binding : m_configuration.m_materials) queue(binding.m_material);
     for (auto& profile : m_configuration.m_profiles)
     {
+        if (profile.m_useBaseMesh) continue;
         queue(profile.m_height);
         queue(profile.m_neuralCache);
     }
@@ -448,17 +459,18 @@ bool MeshController::Prepare()
         if (face.m_region && AZStd::none_of(c.m_profiles.begin(), c.m_profiles.end(), [&](const auto& p) { return p.m_id == face.m_profile; }))
         { MeshProfileBinding profile; profile.m_id = face.m_profile; c.m_profiles.push_back(profile); initialized = true; }
     if (initialized) { m_status = "Material slots and profiles discovered; assign their materials and height images"; return false; }
-    AZStd::map<AZStd::string, AZ::Data::Asset<AZ::RPI::MaterialAsset>> materialAssets;
+    AZStd::map<AZStd::string, const MeshMaterialBinding*> materialBindings;
     AZStd::map<AZ::u32, MeshProfileBinding> profiles;
     for (const auto& b : c.m_materials)
     {
-        if (!materialAssets.emplace(b.m_id, b.m_material).second) { m_status = "Duplicate material binding"; return false; }
+        if (!materialBindings.emplace(b.m_id, &b).second) { m_status = "Duplicate material binding"; return false; }
         if (!b.m_material.GetId().IsValid()) { m_status = "Assign material: " + b.m_id; return false; }
         if (!b.m_material.IsReady()) { m_status = "Loading materials"; return true; }
     }
     for (const auto& p : c.m_profiles)
     {
         if (!profiles.emplace(p.m_id, p).second || p.m_id == 0) { m_status = "Duplicate/zero profile ID"; return false; }
+        if (p.m_useBaseMesh) continue;
         if (!p.m_height.GetId().IsValid()) { m_status = AZStd::string::format("Assign height texture for profile %u", p.m_id); return false; }
         if (!p.m_height.IsReady()) { m_status = "Loading height textures"; return true; }
         if (c.m_useNeuralSeed && p.m_neuralCache.GetId().IsValid() && !p.m_neuralCache.IsReady())
@@ -488,6 +500,38 @@ bool MeshController::Prepare()
     { m_status = "Planar face renderer currently requires r_meshInstancingEnabled=false"; return false; }
     auto candidate = AZStd::make_unique<Generation>(); candidate->id = asset.m_generation;
     auto fail = [&](const AZStd::string& message) { Release(candidate); m_status = message; return false; };
+    const bool hasSpiralLight = c.m_spiralLightPeakLux > 0.0f || !c.m_spiralLightWindows.empty();
+    const AZ::Vector4 spiralPath = c.m_spiralLightPath * scale;
+    const AZ::Vector2 spiralEnd = c.m_spiralLightEnd * scale;
+    if (hasSpiralLight && (!spiralEnd.IsFinite() || spiralEnd.GetY() < 0.0f))
+        return fail("Spiral light needs a finite end height and nonnegative fade distance");
+    if (hasSpiralLight && (!spiralPath.IsFinite() || !std::isfinite(c.m_spiralLightPeakLux)
+        || std::abs(spiralPath.GetW()) < 1e-4f || AZ::Vector2(spiralPath.GetX(), spiralPath.GetY()).GetLengthSq() < 1e-8f))
+        return fail("Spiral light needs a local window position and a nonzero rise per turn");
+
+    const auto windowCount = aznumeric_cast<AZ::u32>(c.m_spiralLightWindows.size());
+    AZ::u32 windowBufferIndex = 0;
+    if (windowCount > 0)
+    {
+        if (windowCount > MeshConfig::MaxAdditionalSpiralWindows)
+            return fail("Spiral light supports up to eight additional windows");
+        AZStd::vector<float> packedWindows;
+        packedWindows.reserve(2 * windowCount);
+        for (const auto& window : c.m_spiralLightWindows)
+        {
+            if (!window.IsFinite() || window.GetY() < 0.0f)
+                return fail("Spiral windows require finite turns and nonnegative peak lux");
+            packedWindows.insert(packedWindows.end(), {window.GetX(), window.GetY()});
+        }
+        auto buffer = AZ::RPI::Buffer::FindOrCreate(Buffer(packedWindows.data(), packedWindows.size(), sizeof(float), true));
+        if (!buffer) return fail("Cannot allocate spiral window data");
+        buffer->WaitForUpload();
+        const auto bindless = buffer->GetBufferView()->GetBindlessReadIndex();
+        if (bindless.size() != 1 || bindless.begin()->second == AZ::u32(-1))
+            return fail("Spiral windows require one bindless-capable GPU");
+        windowBufferIndex = bindless.begin()->second;
+        candidate->buffers.push_back(buffer);
+    }
     AZ::Transform rigid = m_world; rigid.SetUniformScale(1);
     using Key = AZStd::pair<AZStd::string, AZ::u32>;
     AZStd::map<Key, AZStd::vector<AZ::u32>> groups;
@@ -495,14 +539,17 @@ bool MeshController::Prepare()
     for (AZ::u32 i = 0; i < asset.m_faces.size(); ++i)
     {
         const auto& f = asset.m_faces[i];
-        if (f.m_corners.size() != 3 || !materialAssets.contains(f.m_materialId) || (f.m_region && !profiles.contains(f.m_profile)))
+        const auto profile = f.m_region ? profiles.find(f.m_profile) : profiles.end();
+        if (f.m_corners.size() != 3 || !materialBindings.contains(f.m_materialId) || (f.m_region && profile == profiles.end()))
             return fail("Invalid surface/material/profile binding; reimport the mesh");
-        groups[{f.m_materialId, f.m_region ? f.m_profile : 0}].push_back(i);
+        const AZ::u32 displacedProfile = profile != profiles.end() && !profile->second.m_useBaseMesh ? f.m_profile : 0;
+        groups[{f.m_materialId, displacedProfile}].push_back(i);
     }
     {
         for (const auto& [key, faces] : groups)
         {
-            auto source = Snapshot(materialAssets[key.first]);
+            const auto& binding = *materialBindings.find(key.first)->second;
+            auto source = Snapshot(binding.m_material);
             if (!source) return fail("Cannot create authored material");
             Material material = source;
             AZStd::vector<Vertex> vertices; AZStd::vector<AZ::u32> indices;
@@ -522,7 +569,7 @@ bool MeshController::Prepare()
                 AZ::Data::AssetCatalogRequestBus::BroadcastResult(standardType, &AZ::Data::AssetCatalogRequests::GetAssetIdByPath,
                     "materials/types/standardpbr_generated.azmaterialtype", azrtti_typeid<AZ::RPI::MaterialTypeAsset>(), false);
                 const auto opacity = source->FindPropertyIndex(AZ::Name("opacity.mode"));
-                if (!standardType.IsValid() || materialAssets[key.first]->GetMaterialTypeAsset().GetId() != standardType
+                if (!standardType.IsValid() || binding.m_material->GetMaterialTypeAsset().GetId() != standardType
                     || !opacity.IsValid() || !source->GetPropertyValue(opacity).Is<AZ::u32>()
                     || source->GetPropertyValue(opacity).GetValue<AZ::u32>() != 0)
                     return fail("Displaced batches currently require opaque StandardPBR materials");
@@ -608,7 +655,7 @@ bool MeshController::Prepare()
                 buffer->WaitForUpload();
                 const auto bindless=buffer->GetBufferView()->GetBindlessReadIndex();
                 if(bindless.size()!=1 || bindless.begin()->second==AZ::u32(-1)) return fail("One bindless-capable GPU is required");
-                material=Snapshot(m_template,materialAssets[key.first].Get());
+                material=Snapshot(m_template,binding.m_material.Get());
                 if(!material) return fail("Cannot create planar face material");
                 AZ::Data::Instance<AZ::RPI::Image> height=AZ::RPI::StreamingImage::FindOrCreate(p.m_height);
                 const bool legacyNeural = reuseDepthHits && c.m_useNeuralSeed && p.m_addressMode == 1
@@ -652,6 +699,15 @@ bool MeshController::Prepare()
                     && (!minMax || Set(material,"surface.heightBounds",minMax))
                     && Set(material,"surface.reliefShadowSteps",c.m_reliefShadowSteps);
                 if(!valid) return fail("Planar face material contract mismatch");
+                if (binding.m_receiveSpiralLight && hasSpiralLight)
+                {
+                    if (!Set(material, "spiralLight.path", spiralPath)
+                        || !Set(material, "spiralLight.peakLux", c.m_spiralLightPeakLux)
+                        || !Set(material, "spiralLight.end", spiralEnd)
+                        || (windowCount > 0 && (!Set(material, "spiralLight.windowCount", windowCount)
+                            || !Set(material, "spiralLight.windowBuffer", windowBufferIndex))))
+                        return fail("Spiral light material contract mismatch");
+                }
                 if (reuseDepthHits && !Set(material, "mesh.hitFaceBase", AllocateHitFaceBase(packed.size() / 36)))
                     return fail("SilPOM hit material contract mismatch");
                 candidate->buffers.push_back(buffer); candidate->heights.push_back(height);
@@ -669,11 +725,14 @@ bool MeshController::Prepare()
                 }
                 bounds.Expand(AZ::Vector3(1e-5f));
             }
+            if (binding.m_disableEnvironmentLighting && !Set(material, "general.enableIBL", false))
+                return fail("Material cannot disable environment lighting");
             material->Compile();
             auto model = Model(vertices, indices, bounds); if (!model) return fail("Cannot create generation geometry");
             AZ::Render::MeshHandleDescriptor descriptor(model, material);
             descriptor.m_entityId = m_entity; descriptor.m_isRayTracingEnabled = false; descriptor.m_excludeFromReflectionCubeMaps = true;
             auto handle = m_processor->AcquireMesh(descriptor); if (!handle.IsValid()) return fail("Mesh acquisition failed");
+            m_processor->SetLightingChannelMask(handle, binding.m_lightingChannelMask);
             // Atom does not initialize invisible meshes. Allow initialization,
             // but disable every new draw item in its update notification before
             // the subsequent culling/submission phase. Never draw a partial

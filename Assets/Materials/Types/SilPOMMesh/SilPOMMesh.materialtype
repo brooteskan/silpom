@@ -235,6 +235,56 @@
                 ]
             },
             {
+                "name": "spiralLight",
+                "properties": [
+                    {
+                        "name": "path",
+                        "type": "Vector4",
+                        "defaultValue": [0, 0, 0, 0],
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomSpiralLightPath"
+                        }
+                    },
+                    {
+                        "name": "peakLux",
+                        "type": "Float",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomSpiralLightPeakLux"
+                        }
+                    },
+                    {
+                        "name": "end",
+                        "type": "Vector2",
+                        "defaultValue": [0, 0],
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomSpiralLightEnd"
+                        }
+                    },
+                    {
+                        "name": "windowCount",
+                        "type": "UInt",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomSpiralWindowCount"
+                        }
+                    },
+                    {
+                        "name": "windowBuffer",
+                        "type": "UInt",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomSpiralWindowBuffer"
+                        }
+                    }
+                ]
+            },
+            {
                 "name": "mesh",
                 "properties": [
                     {

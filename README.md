@@ -38,6 +38,12 @@ R8_UNORM). Height geometry uses explicit bilinear texel reads; ordinary averaged
 mips cannot represent the same surface. Use a single-mip LUT image preset.
 Color, normal and AO maps use ordinary filtered samples at the hit UV.
 
+SilPOM Patch and SilPOM Mesh surfaces receive Atom Decal components in the main
+forward pipeline. Assign a decal material with base-color and/or normal textures;
+the component's Opacity and Normal Map Opacity control the two blends separately.
+Projection uses the displaced surface position. Decal normals feed both direct
+and indirect lighting, and decals leave the heightfield geometry unchanged.
+
 `Tests/editor_smoke.py` creates an unsaved wall fixture, captures front/grazing/
 inside views, checks component lifecycle and exits. For TG's existing StoneWall
 textures, first run:

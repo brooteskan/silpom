@@ -96,12 +96,27 @@ public:
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useNeuralSeed,"Neural depth seed",
                         "Use the Irish Fieldstone neural seed on the DX12 depth-hit path for clamped profiles at 0.02 m and reference 0.05")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_reliefShadowSteps,"Relief shadow steps","Local directional-light relief shadows: 0 disables, 1-64 samples. External shadows always use the base mesh.")
-                    ->Attribute(AZ::Edit::Attributes::Min,0)->Attribute(AZ::Edit::Attributes::Max,64);
+                    ->Attribute(AZ::Edit::Attributes::Min,0)->Attribute(AZ::Edit::Attributes::Max,64)
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_spiralLightPath,"Spiral light path",
+                        "Window XY, stair corridor centre height, and signed rise per turn in mesh space.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_spiralLightPeakLux,"Spiral light peak lux",
+                        "Diffuse bounce around the window. Zero disables it.")
+                    ->Attribute(AZ::Edit::Attributes::Min,0.0f)
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_spiralLightWindows,"Additional spiral windows",
+                        "For each window, X is signed turns from the first window and Y is peak lux.");
                 edit->Class<MeshMaterialBinding>("Material slot","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshMaterialBinding::m_id,"Authored material ID","")
-                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshMaterialBinding::m_material,"Material","StandardPBR material; planar face variant is managed automatically");
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshMaterialBinding::m_material,"Material","StandardPBR material; planar face variant is managed automatically")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshMaterialBinding::m_lightingChannelMask,
+                        "Lighting channel mask","Direct lights affect this material's faces when they share a channel. The default mask is 1.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshMaterialBinding::m_disableEnvironmentLighting,
+                        "Disable environment lighting","Turn off image-based and ambient lighting for this material binding.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshMaterialBinding::m_receiveSpiralLight,
+                        "Receive spiral light","Apply the stair-window bounce to this binding's relief faces.");
                 edit->Class<MeshProfileBinding>("Displacement profile","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_id,"Profile ID","")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_useBaseMesh,"Use base mesh",
+                        "Shade these faces using the authored material on the original mesh, including StandardPBR parallax.")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_height,"Height image","Normalized linear single-mip scalar image")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_neuralCache,"Neural hit cache",
                         "Optional baked Irish Fieldstone tower predictions for this height atlas")
