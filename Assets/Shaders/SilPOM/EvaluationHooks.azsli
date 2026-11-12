@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+// Offline evaluation can observe the actual solver. Normal builds have no
+// counters, resources, branches or diagnostic shader options.
+#ifndef SILPOM_DIAGNOSTIC
+#define SILPOM_DIAGNOSTIC(event,value)
+#endif
+#ifndef SP_XY
+#define SP_XY(value) (value).xy
+#endif
+#ifndef SP_UNROLL
+#define SP_UNROLL [unroll]
+#define SP_BRANCH [branch]
+#define SP_LOOP [loop]
+#endif
+#ifndef SP_SAMPLE_HEIGHT
+#define SP_SAMPLE_HEIGHT(texture,uv) texture.SampleLevel(GetMaterialTextureSampler(),uv,0).r
+#endif
+#ifndef SP_OUT
+#define SP_OUT out
+#endif

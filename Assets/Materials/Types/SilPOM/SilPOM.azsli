@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
+float SilPomPlanarPaintHeight();
+#define DECAL_PAINT_HEIGHT() SilPomPlanarPaintHeight()
+#endif
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_MaterialInputs.azsli>
 #if !SHADOWMAP
 #include "../../../Shaders/SilPOM/Heightfield.azsli"
@@ -14,6 +18,25 @@ SilPomPatch SilPomGetPatch(const MaterialParameters params)
     p.addressMode=params.m_silpomAddressMode; p.maxCells=params.m_silpomMaxCells;
     GetMaterialTexture(params.m_silpomHeightMap).GetDimensions(p.textureWidth,p.textureHeight);
     return p;
+}
+#endif
+
+#if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
+static SilPomPatch silpomPaintPatch;
+static float2 silpomPaintUv;
+static uint silpomPaintTexture;
+static bool silpomPaintValid=false;
+float SilPomPlanarPaintHeight()
+{
+    if(!silpomPaintValid)return -1;
+    const SilPomPatch p=silpomPaintPatch;
+    const float2 q=silpomPaintUv*float2(p.textureWidth,p.textureHeight)-.5f;
+    const int2 cell=int2(floor(q));const float2 f=frac(q);
+    const float a=SilPomTexel(GetMaterialTexture(silpomPaintTexture),p,cell.x,cell.y);
+    const float b=SilPomTexel(GetMaterialTexture(silpomPaintTexture),p,cell.x+1,cell.y);
+    const float c=SilPomTexel(GetMaterialTexture(silpomPaintTexture),p,cell.x,cell.y+1);
+    const float d=SilPomTexel(GetMaterialTexture(silpomPaintTexture),p,cell.x+1,cell.y+1);
+    return saturate(lerp(lerp(a,b,f.x),lerp(c,d,f.x),f.y));
 }
 #endif
 
@@ -154,6 +177,8 @@ COMMON_OPTIONS_EMISSIVE()
 #undef EvaluateSurface
 Surface EvaluateSurface(VsOutput IN, VsSystemValues SV, PixelGeometryData geo, const MaterialParameters params)
 {
+    silpomPaintPatch=SilPomGetPatch(params);silpomPaintUv=geo.uvs[0];
+    silpomPaintTexture=params.m_silpomHeightMap;silpomPaintValid=!geo.isDisplacementClipped;
     bool failed=geo.isDisplacementClipped;
     float3 geometricNormal=geo.vertexNormal;
     // The supplied normal map already describes the full relief slope in the planar frame.

@@ -1,0 +1,11 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "TextureSettings",
+    "ClassData": {
+        "Preset": "Decal_AlbedoWithOpacity",
+        "SizeReduceLevel": 0,
+        "EnableMipmap": true,
+        "MaintainAlphaCoverage": false
+    }
+}

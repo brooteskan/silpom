@@ -18,6 +18,114 @@ bool TriangleHit(SilPomRay ray,Triangle tr,float& t)
 }
 int main()
 {
+    // Adjacent turns must meet without the former forced-zero helical stripe.
+    {
+        Require(SilPomSpiralTurnBlend(0)==0 && SilPomSpiralTurnBlend(1)==1
+            && SilPomSpiralTurnBlend(.5f)==.5f,"Spiral turn blend must join at its endpoints and midpoint");
+        const auto lightAt=[](float angle,float height)
+        {
+            const float lower=angle+floor(height-angle);
+            const float blend=SilPomSpiralTurnBlend(height-lower);
+            float lowerLux=0,upperLux=0;
+            for(int w=-4;w<=4;++w)
+            {
+                lowerLux=std::max(lowerLux,SilPomSpiralWindowLux(lower,float(w),1));
+                upperLux=std::max(upperLux,SilPomSpiralWindowLux(lower+1,float(w),1));
+            }
+            return lowerLux+(upperLux-lowerLux)*blend;
+        };
+        for(int a=0;a<=100;++a)
+        {
+            const float angle=-.5f+float(a)*.01f;
+            for(int h=0;h<=400;++h)
+            {
+                const float height=-2.0f+float(h)*.01f;
+                Require(lightAt(angle,height)>=.4999f,"Overlapping lit turns must not develop an artificial black band");
+            }
+            for(float boundary:{angle,angle+.5f,angle+1})
+                Require(std::abs(lightAt(angle,boundary-1e-5f)-lightAt(angle,boundary+1e-5f))<1e-4f,
+                    "Spiral illumination must remain continuous at half- and whole-turn boundaries");
+        }
+        for(float height:{-.75f,0.0f,.75f})
+            Require(std::abs(lightAt(-.5f,height)-lightAt(.5f,height))<1e-6f,
+                "The angular wrap must not introduce another spiral seam");
+        Require(SilPomSpiralWindowLux(2,0,1)==0 && SilPomSpiralWindowLux(0,0,0)==0,
+            "Turn blending must retain finite window reach and respect disabled windows");
+    }
+    // The shared fade/gain applies linearly to first and additional windows.
+    {
+        Require(SilPomSpiralLightGain(21,24,2,1)==1 && SilPomSpiralLightGain(24,24,2,1)==0,
+            "Top fade must be full below its start and zero at its end");
+        Require(SilPomSpiralLightGain(23,24,2,1)==.5f,"Top fade midpoint must be smooth half brightness");
+        float previous=1;
+        for(uint i=0;i<=200;++i)
+        {
+            const float z=22.0f+float(i)*.01f;
+            const float gain=SilPomSpiralLightGain(z,24,2,1);
+            Require(gain>=0 && gain<=previous+1e-6f,"Top fade must decrease continuously without bright bands");
+            Require(std::abs(SilPomSpiralLightGain(z,24,2,2)-2*gain)<1e-6f,
+                "Master brightness must scale the whole fade linearly");
+            previous=gain;
+        }
+        Require(SilPomSpiralLightGain(22.4312485f,24,2,1)>0.8f,
+            "The uppermost authored window must no longer be clipped by the old 20 m limit");
+        Require(SilPomSpiralLightGain(20,24,0,3)==3 && SilPomSpiralLightGain(100,24,0,3)==3,
+            "Zero fade distance must disable the height limit");
+        Require(SilPomSpiralLightGain(20,24,2,0)==0,"Zero brightness must mute all windows");
+    }
+    // Defaults preserve the old LOD cutoff; an explicit cap includes overlap.
+    {
+        const float baseline=.1f*.95f*1.8f*328.0f/4.0f;
+        Require(std::abs(SilPomQualityLodDepth(.1f,.05f,1.8f,4,0,0)-baseline)<1e-5f,
+            "Default quality settings must preserve the existing LOD cutoff");
+        const float cheaper=SilPomQualityLodDepth(.1f,.05f,1.8f,4,8,0);
+        Require(std::abs(cheaper-baseline*.5f)<1e-5f,"Doubling pixel error budget must halve relief cutoff");
+        for(float cap:{.01f,.1f,1.0f,10.0f})
+        {
+            const float cutoff=SilPomQualityLodDepth(.1f,.05f,1.8f,4,0,cap);
+            const float overlap=SilPomQualityLodOverlap(.1f,cap);
+            Require(cutoff>=overlap && cutoff+overlap<=cap+1e-6f,
+                "A short distance cap must retain shell overlap and bound the near draw");
+        }
+        Require(SilPomQualityLodDepth(0,.05f,1.8f,4,0,0)==0,"Flat relief must use shell only");
+        Require(SilPomValidationDistanceBlend(100,0,0)==0,"Zero fade end must disable distance quality");
+        Require(SilPomValidationDistanceBlend(5,10,30)==0 && SilPomValidationDistanceBlend(40,10,30)==1,
+            "Distance quality must clamp to its endpoints");
+        const float midpoint=SilPomValidationDistanceBlend(20,10,30);
+        Require(midpoint==.5f && SilPomDistanceBudget(6,4,midpoint)==5,
+            "Iteration budgets must interpolate through the fade");
+        Require(SilPomDistanceBudget(4,0,1)==0 && SilPomDistanceBudget(1,16,0)==1,
+            "Distance budgets must retain zero retries and exact near defaults");
+    }
+    // A nearly converged seed distinguishes the work cap from the acceptance tolerance.
+    {
+        Texture flat{4,4,std::vector<float>(16,.5f)};
+        SilPomPatch p{};
+        p.width=p.height=p.tileU=p.tileV=1;
+        p.scale=.1f;p.reference=.5f;p.textureWidth=p.textureHeight=4;
+        SilPomMeshFace face{};
+        face.du={1,0,0};face.dv={0,1,0};face.normal=face.d0=face.d1=face.d2={0,0,1};
+        face.uv1={1,0};face.uv2={0,1};
+        const auto baseNormal=SilPomShadingNormal(flat,p,face,{.25f,.25f},{0,0},false);
+        Require(flat.loads==0 && baseNormal.z==1,"Base-normal quality must avoid all height texture reads");
+        SilPomShadingNormal(flat,p,face,{.25f,.25f},{0,0},true);
+        Require(flat.loads==4,"Height-derived normal must read a bilinear cell");
+        flat.loads=0;
+        SilPomRay ray{{.25f,.25f,1},{0,0,-1},0,2};
+        float2 uv{.25f,.25f};float t=1.00001f;
+        Require(SilPomRefineFace(flat,p,face,ray,{0,0},uv,t,1,1)==SP_REFINE_REJECTED,
+            "An iteration cap must not accept an unchecked final correction");
+        Require(flat.loads==4,"One iteration must evaluate only one bilinear height");
+        uv={.25f,.25f};t=1.00001f;flat.loads=0;
+        Require(SilPomRefineFace(flat,p,face,ray,{0,0},uv,t,2,1)==SP_HIT && flat.loads==8,
+            "An additional iteration must validate the corrected intersection");
+        uv={.25f,.25f};t=1.00001f;flat.loads=0;
+        Require(SilPomRefineFace(flat,p,face,ray,{0,0},uv,t,1,10)==SP_HIT && flat.loads==4,
+            "Looser tolerance must permit earlier acceptance of a close seed");
+        ray.origin={.75f,.75f,1};uv={.75f,.75f};t=1;
+        Require(SilPomRefineFace(flat,p,face,ray,{0,0},uv,t,4,100)==SP_MISS,
+            "Relaxed validation must retain triangle containment");
+    }
     std::vector<Face> input;
     Vector vertices[9];for(int z=0;z<3;++z)for(int x=0;x<3;++x)vertices[z*3+x]={double(x-1),.6*std::max(x-1,0),double(z-1)};
     unsigned indices[8][3]={{0,1,4},{0,4,3},{1,2,5},{1,5,4},{3,4,7},{3,7,6},{4,5,8},{4,8,7}};

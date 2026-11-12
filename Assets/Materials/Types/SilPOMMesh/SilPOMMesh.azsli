@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
+float SilPomPaintHeight();
+#define DECAL_PAINT_HEIGHT() SilPomPaintHeight()
+#endif
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_MaterialInputs.azsli>
 #include <Atom/Features/Bindless.azsli>
 #include "../../../Shaders/SilPOM/MeshFace.azsli"
@@ -7,8 +11,11 @@
 #if !SHADOWMAP
 #include "../../../Shaders/SilPOM/Heightfield.azsli"
 #include "../../../Shaders/SilPOM/PlanarFace.azsli"
+#define SILPOM_VALIDATION_GATHER o_silpomValidationGather
+#define SILPOM_LEVEL2 o_silpomLevelTwo
 #include "../../../Shaders/SilPOM/BlendedFace.azsli"
 #include "../../../Shaders/SilPOM/ReliefShadow.azsli"
+#include "../../../Shaders/SilPOM/LevelThree.azsli"
 #endif
 #if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
 // Per-fragment state passed from geometry evaluation to direct lighting.
@@ -19,6 +26,21 @@ static float2 silpomLitUv;
 static float3x3 silpomLitRotation;
 static float3 silpomLitOriginWS;
 static bool silpomLitValid=false;
+static uint silpomPaintHeightTexture;
+float SilPomPaintHeight()
+{
+    if(!silpomLitValid)return -1;
+    const SilPomPatch p=silpomLitPatch;
+    const float2 low=min(silpomLitFace.uv0,min(silpomLitFace.uv1,silpomLitFace.uv2));
+    const float2 tiled=(silpomLitUv-low)*float2(p.tileU/p.width,p.tileV/p.height)+float2(p.offsetU,p.offsetV);
+    const float2 q=tiled*float2(p.textureWidth,p.textureHeight)-.5f;
+    const int2 cell=int2(floor(q));const float2 f=frac(q);
+    const float a=SilPomTexel(GetMaterialTexture(silpomPaintHeightTexture),p,cell.x,cell.y);
+    const float b=SilPomTexel(GetMaterialTexture(silpomPaintHeightTexture),p,cell.x+1,cell.y);
+    const float c=SilPomTexel(GetMaterialTexture(silpomPaintHeightTexture),p,cell.x,cell.y+1);
+    const float d=SilPomTexel(GetMaterialTexture(silpomPaintHeightTexture),p,cell.x+1,cell.y+1);
+    return saturate(lerp(lerp(a,b,f.x),lerp(c,d,f.x),f.y));
+}
 #endif
 #if SILPOM_HIT_DEPTH
 static float2 silpomDepthHitUv;
@@ -29,14 +51,12 @@ float SilPomTowerLodDepth(MaterialParameters params)
     if(params.m_silpomMaxCells==SP_TOWER_LOD_SHELL) return 0;
     const uint mode=SilPomTowerUsesSmoothLod(params.m_silpomMaxCells)?SP_TOWER_LOD_4PX:params.m_silpomMaxCells;
     const float budget=2.0f*float(1u<<(SP_TOWER_LOD_2PX-mode));
-    const float relief=abs(params.m_silpomScale)*max(abs(params.m_silpomReference),abs(1-params.m_silpomReference));
-    // Project the relief along the vertical image axis at the 656-line
-    // benchmark reference. Return a view-depth cutoff for the two draws.
-    return relief*abs(ViewSrg::m_projectionMatrix[1][1])*328.0f/budget;
+    return SilPomQualityLodDepth(params.m_silpomScale,params.m_silpomReference,
+        ViewSrg::m_projectionMatrix[1][1],budget,params.m_silpomReliefLodPixelBudget,params.m_silpomMaxReliefDistance);
 }
 float SilPomTowerLodOverlap(MaterialParameters params)
 {
-    return 2.0f*abs(params.m_silpomScale);
+    return SilPomQualityLodOverlap(params.m_silpomScale,params.m_silpomMaxReliefDistance);
 }
 #endif
 static const uint SP_MESH_FACE_BYTES=144u;
@@ -384,7 +404,9 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     uint status=record.w&3;
     bool failed=status!=SP_HIT;
     float2 faceUv=asfloat(record.xy);
-    float3 normal=failed?f.normal:SilPomFaceNormal(GetMaterialTexture(params.m_silpomHeightMap),p,f,faceUv,low);
+    float3 normal=f.normal;
+    [branch] if(!failed && params.m_silpomUseHeightDerivedNormals)
+        normal=SilPomFaceNormal(GetMaterialTexture(params.m_silpomHeightMap),p,f,faceUv,low);
     float2 tiledUv=failed?faceUv:float2((faceUv.x-low.x)*p.tileU/p.width+p.offsetU,(faceUv.y-low.y)*p.tileV/p.height+p.offsetV);
     IN.position.z=asfloat(record.z&SP_HIT_RECORD_DEPTH);
     float4 hitH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,IN.position.z,1));
@@ -407,9 +429,22 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     if(viewRate>1e-6f)
         ray.tMax=min(ray.tMax,max(0.0f,(cutoff+overlap-nearViewDepth)/viewRate));
 #endif
+#if SILPOM_NEURAL_NO_MARCH
+    uint validationIterations=params.m_silpomValidationIterations;
+    uint validationRetryCap=params.m_silpomValidationRetryCap;
+    float validationTolerance=params.m_silpomValidationToleranceMultiplier;
+    [branch] if(params.m_silpomValidationDistanceEnd>0.0f)
+    {
+        const float faceDistance=length(mul(model,float4(f.origin,1)).xyz-ViewSrg::m_worldPosition.xyz);
+        const float blend=SilPomValidationDistanceBlend(faceDistance,params.m_silpomValidationDistanceStart,params.m_silpomValidationDistanceEnd);
+        validationIterations=SilPomDistanceBudget(validationIterations,params.m_silpomDistantValidationIterations,blend);
+        validationRetryCap=SilPomDistanceBudget(validationRetryCap,params.m_silpomDistantValidationRetryCap,blend);
+        validationTolerance=lerp(validationTolerance,params.m_silpomDistantValidationToleranceMultiplier,blend);
+    }
+#endif
     SilPomHit hit=SilPomIntersectFace(GetMaterialTexture(params.m_silpomHeightMap),p,f,ray,low
 #if SILPOM_NEURAL_NO_MARCH
-        ,params.m_silpomNeuralModel
+        ,params.m_silpomNeuralModel,validationIterations,validationRetryCap,validationTolerance
 #endif
 #if SILPOM_HIT_NEURAL_CACHE
         ,GetMaterialTexture(params.m_silpomNeuralCache)
@@ -417,6 +452,7 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
 #if SILPOM_MESH_DEPTH_BOUNDS
         ,GetMaterialTexture(params.m_silpomHeightBounds),true
 #endif
+        ,params.m_silpomUseHeightDerivedNormals
     );
     if(hit.status==SP_MISS) discard;
 #if SILPOM_TOWER_LOD_NEAR
@@ -506,6 +542,7 @@ COMMON_OPTIONS_EMISSIVE()
 #undef EvaluateSurface
 Surface EvaluateSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,const MaterialParameters params)
 {
+    silpomPaintHeightTexture=params.m_silpomHeightMap;
     Surface surface=EvaluateSurface_StandardPBR(IN,SV,geo,params);
     if(geo.isDisplacementClipped)
     {

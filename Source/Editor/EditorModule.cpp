@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "Module.h"
 #include "PlanarBenchmark.h"
+#include "DecalPainter.h"
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <Atom/Feature/Utils/EditorRenderComponentAdapter.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -95,12 +96,57 @@ public:
                         "Experimental block skipping with depth-hit reuse, clamped R32F or square power-of-two repeating R32F heights, and a budget of at least 4096 cells")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useNeuralSeed,"Neural depth seed",
                         "Use the Irish Fieldstone neural seed on the DX12 depth-hit path for clamped profiles at 0.02 m and reference 0.05")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useLevelTwoPredictor,"Level 2 predictor (experimental)","Eight height probes and two learned candidate seeds for the open-shaft profiles. More GPU work is possible. The nearer validated hit wins; the second seed uses one retry. Off preserves the Level 1 baseline.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useR16HeightTextures,"R16 height textures (less GPU memory)","Experimental: use shared runtime R16_UNORM copies of R32 height maps. Halves their height payload; can reduce texture bandwidth. Off preserves source formats. Source assets are unchanged.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useValidationGather,"Gather validation (may be cheaper)","Experimental: fetch each validation height quad with GatherRed. Exact loads at addressing borders. Does not change the neural estimator, iterations, retries or tolerance. GPU benefit depends on hardware.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_validationIterations,"Validation iterations (lower = cheaper)","Maximum iterations per no-march solve. Baseline 6; try 4. Lower values can increase fallback coverage.")
+                    ->Attribute(AZ::Edit::Attributes::Min,1)->Attribute(AZ::Edit::Attributes::Max,16)
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_validationRetryCap,"Validation retry cap (lower = cheaper)","Retries after the first no-march solve. Baseline 4; walls retain their one-retry limit. Try 1; 0 disables retries.")
+                    ->Attribute(AZ::Edit::Attributes::Min,0)->Attribute(AZ::Edit::Attributes::Max,4)
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_validationToleranceMultiplier,"Validation tolerance (higher may be cheaper)","No-march convergence tolerance multiplier. Baseline 1. Higher values may finish sooner but reduce hit accuracy.")
+                    ->Attribute(AZ::Edit::Attributes::Min,0.01f)->Attribute(AZ::Edit::Attributes::Max,100.00f)
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_reliefLodPixelBudget,"Relief LOD pixel budget (higher = cheaper)","0 preserves the current mode (4 pixels for the tower). Higher values switch to ordinary geometry sooner. Uses the existing 656-line reference.")
+                    ->Attribute(AZ::Edit::Attributes::Min,0.00f)->Attribute(AZ::Edit::Attributes::Max,64.00f)
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_maxReliefDistance,"Maximum relief distance (closer = cheaper)","0 uses automatic LOD only. Positive values cap the near relief draw at this view depth in metres, including the transition overlap. LOD modes only.")
+                    ->Attribute(AZ::Edit::Attributes::Min,0.00f)->Attribute(AZ::Edit::Attributes::Max,100000.00f)
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_validationDistanceStart,"Validation distance fade start","Camera distance to the face origin in metres where validation begins transitioning toward distant settings.")
+                    ->Attribute(AZ::Edit::Attributes::Min,0.00f)->Attribute(AZ::Edit::Attributes::Max,100000.00f)
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_validationDistanceEnd,"Validation distance fade end (0 = off)","0 disables distance-based validation. Otherwise must exceed fade start; distant settings apply fully beyond this camera distance.")
+                    ->Attribute(AZ::Edit::Attributes::Min,0.00f)->Attribute(AZ::Edit::Attributes::Max,100000.00f)
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_distantValidationIterations,"Distant validation iterations (lower = cheaper)","Maximum solve iterations beyond fade end. Interpolated from the normal validation limit between start and end.")
+                    ->Attribute(AZ::Edit::Attributes::Min,1)->Attribute(AZ::Edit::Attributes::Max,16)
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_distantValidationRetryCap,"Distant validation retry cap (lower = cheaper)","Retry cap beyond fade end. 0 disables retries; existing wall and confidence limits still apply.")
+                    ->Attribute(AZ::Edit::Attributes::Min,0)->Attribute(AZ::Edit::Attributes::Max,4)
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_distantValidationToleranceMultiplier,"Distant validation tolerance (higher may be cheaper)","Convergence tolerance multiplier beyond fade end. Higher values can finish sooner but accept less accurate hits.")
+                    ->Attribute(AZ::Edit::Attributes::Min,0.01f)->Attribute(AZ::Edit::Attributes::Max,100.00f)
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox,&MeshConfig::m_localShadowMethod,"Local shadow method",
+                        "Affects local relief visibility for spiral and directional lights. External shadows and camera intersections are unchanged.")
+                    ->EnumAttribute(LocalShadowMethod::Baseline,"March (baseline)")
+                    ->EnumAttribute(LocalShadowMethod::Gather,"March with Gather (may be cheaper)")
+                    ->EnumAttribute(LocalShadowMethod::Neural,"Level 3 neural (experimental)")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_neuralShadowConfidence,"Neural shadow confidence (higher = safer)",
+                        "Confidence required to replace a local shadow march. Higher values use the fallback more often; lower values can be cheaper with larger visibility errors.")
+                    ->Attribute(AZ::Edit::Attributes::Min,.9f)->Attribute(AZ::Edit::Attributes::Max,.99999f)
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_spiralLightShadowSteps,"Spiral-light shadow samples (lower = cheaper)","Samples per spiral-light shadow ray. 0 disables these local shadows while retaining the light. Only affects materials receiving spiral light.")
+                    ->Attribute(AZ::Edit::Attributes::Min,0)->Attribute(AZ::Edit::Attributes::Max,64)
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useHeightDerivedNormals,"Height-derived normals (off = cheaper)","Calculate lighting normals from the displacement height gradient. Off uses the face normal and retains the material normal map. Does not disable intersection validation.")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_reliefShadowSteps,"Relief shadow steps","Local directional-light relief shadows: 0 disables, 1-64 samples. External shadows always use the base mesh.")
                     ->Attribute(AZ::Edit::Attributes::Min,0)->Attribute(AZ::Edit::Attributes::Max,64)
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox,&MeshConfig::m_spiralLightMode,"Spiral light",
+                        "Off disables the first and all additional spiral windows. Selected materials respects Receive spiral light. All SILPOM surfaces illuminates every displaced batch; ordinary geometry, including the stairs, is unchanged.")
+                    ->EnumAttribute(SpiralLightMode::Off,"Off (cheaper)")
+                    ->EnumAttribute(SpiralLightMode::SelectedMaterials,"Selected materials")
+                    ->EnumAttribute(SpiralLightMode::AllSilPomSurfaces,"All SILPOM surfaces")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_spiralLightBrightness,"Spiral light master brightness",
+                        "Multiplier for the first window and every additional spiral window together. 1 preserves their lux values, 2 doubles them, 0 mutes all spiral light and its local shadow work. Ordinary stairs are unchanged.")
+                    ->Attribute(AZ::Edit::Attributes::Min,0.0f)->Attribute(AZ::Edit::Attributes::Max,100.0f)
+                    ->Attribute(AZ::Edit::Attributes::Step,0.1f)
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_spiralLightEnd,"Spiral light top fade",
+                        "X: local end height in metres, where spiral light reaches zero. Y: fade distance below that height, using a smooth curve. Increase Y for a softer cutoff; Y=0 disables the height limit. Applies to every spiral window.")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_spiralLightPath,"Spiral light path",
                         "Window XY, stair corridor centre height, and signed rise per turn in mesh space.")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_spiralLightPeakLux,"Spiral light peak lux",
-                        "Diffuse bounce around the window. Zero disables it.")
+                        "Brightness of the first spiral window only. Additional windows have independent peak lux; use Spiral light = Off to disable all of them.")
                     ->Attribute(AZ::Edit::Attributes::Min,0.0f)
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_spiralLightWindows,"Additional spiral windows",
                         "For each window, X is signed turns from the first window and Y is peak lux.");
@@ -112,7 +158,7 @@ public:
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshMaterialBinding::m_disableEnvironmentLighting,
                         "Disable environment lighting","Turn off image-based and ambient lighting for this material binding.")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshMaterialBinding::m_receiveSpiralLight,
-                        "Receive spiral light","Apply the stair-window bounce to this binding's relief faces.");
+                        "Receive spiral light","Applies to this binding's relief faces in Selected materials mode. All SILPOM surfaces overrides this flag; ordinary geometry never receives this effect.");
                 edit->Class<MeshProfileBinding>("Displacement profile","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_id,"Profile ID","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_useBaseMesh,"Use base mesh",
@@ -170,9 +216,11 @@ public:
         m_descriptors.push_back(EditorPatchComponent::CreateDescriptor());
         m_descriptors.push_back(PlanarBenchmark::CreateDescriptor());
         m_descriptors.push_back(EditorMeshComponent::CreateDescriptor());
+        m_descriptors.push_back(CreateEditorPaintDescriptor());
+        m_descriptors.push_back(DecalPainterSystem::CreateDescriptor());
     }
     AZ::ComponentTypeList GetRequiredSystemComponents() const override
-    {return {azrtti_typeid<PlanarBenchmark>(),azrtti_typeid<MeshAssetSystem>()};}
+    {return {azrtti_typeid<PlanarBenchmark>(),azrtti_typeid<MeshAssetSystem>(),azrtti_typeid<DecalPainterSystem>()};}
 };
 }
 AZ_DECLARE_MODULE_CLASS(Gem_SilPOM_Editor,SilPOM::EditorModule)

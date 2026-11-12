@@ -1,0 +1,95 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#include "NeuralTowerLevelTwoWeights.azsli"
+void SilPomEvaluateLevelTwo(float feature[19],const float w0[24][19],const float b0[24],
+    const float w1[24][5],const float b1[5],SP_OUT float output[5])
+{
+    SP_UNROLL for(uint k=0;k<5;++k) output[k]=b1[k];
+    SP_UNROLL for(uint j=0;j<24;++j)
+    {
+        float unit=b0[j];
+        SP_UNROLL for(uint i=0;i<19;++i) unit+=feature[i]*w0[j][i];
+        unit=max(unit,0.0f);unit*=unit;
+        SP_UNROLL for(uint n=0;n<5;++n) output[n]+=unit*w1[j][n];
+    }
+}
+// Eight ordered residual/edge probes, two travel rates and incidence. Two
+// independently trained hypotheses are corrected by the original solver.
+SilPomHit SilPomPredictTowerHit2(Texture2D texture,SilPomPatch p,SilPomMeshFace face,
+    SilPomRay worldRay,SilPomRay search,float2 low,uint model,uint iterations,uint retryCap,float tolerance)
+{
+    SilPomHit miss=SP_ZERO(SilPomHit);
+    SilPomRay originalSearch=search;
+    SilPomRay projected;
+    if(!SilPomPreparePrediction(p,face,worldRay,search,projected)) return miss;
+    float span=search.tMax-search.tMin;
+    float2 size=float2(p.textureWidth,p.textureHeight),inset=.5f/size;
+    float2 tile=float2(p.tileU/p.width,p.tileV/p.height);
+    float2 offset=float2(p.offsetU,p.offsetV);
+    float feature[19];
+    float nearestResidual=1e20f,inside=-1.0f;
+    SP_UNROLL for(uint i=0;i<8;++i)
+    {
+        float t=search.tMin+span*((float(i)+.5f)*.125f);
+        float3 location=projected.origin+projected.direction*t;
+        float2 tex=(SP_XY(location)-low)*tile+offset;
+        float2 addressed=p.addressMode==0?frac(tex):clamp(tex,inset,1-inset);
+        float height=SP_SAMPLE_HEIGHT(texture,addressed);
+        SILPOM_DIAGNOSTIC(12,0);
+        feature[i]=clamp(height-(location.z/p.scale+p.reference),-1.5f,1.5f);
+        float3 w=SilPomFaceWeights(face,SP_XY(location));
+        feature[10+i]=clamp(24.0f*min(w.x,min(w.y,w.z)),-1.0f,1.0f);
+        nearestResidual=min(nearestResidual,abs(feature[i]));
+        inside=max(inside,feature[10+i]);
+    }
+    float2 rate=clamp(SP_XY(projected.direction)*span*tile*size/16.0f,-2.0f,2.0f);
+    feature[8]=rate.x;feature[9]=rate.y;feature[18]=-dot(face.normal,worldRay.direction);
+#ifdef SILPOM_CAPTURE_FEATURES
+    SILPOM_CAPTURE_INTERVAL(search.tMin,span);
+    if(SILPOM_CAPTURE_FEATURES(feature,19)) return miss;
+#endif
+    float output[5];
+#ifdef SILPOM_OVERRIDE_LEVEL2
+    if(!SILPOM_OVERRIDE_LEVEL2(feature,model,output))
+#endif
+    {
+        SP_BRANCH if(model==4u) SilPomEvaluateLevelTwo(feature,L2WallW0,L2WallB0,L2WallW1,L2WallB1,output);
+        else if(model==5u) SilPomEvaluateLevelTwo(feature,L2StairsW0,L2StairsB0,L2StairsW1,L2StairsB1,output);
+        else if(model==6u) SilPomEvaluateLevelTwo(feature,L2TrimW0,L2TrimB0,L2TrimW1,L2TrimB1,output);
+        else SilPomEvaluateLevelTwo(feature,L2RevealW0,L2RevealB0,L2RevealW1,L2RevealB1,output);
+    }
+    bool recover=SilPomTowerFillEnabled(p.maxCells) && inside>=0.0f && nearestResidual<.12f;
+    if(output[2]<(recover?-3.5f:-2.944439f))
+    {
+        // A weak Level 2 prediction retains the complete baseline opportunity.
+        SILPOM_DIAGNOSTIC(14,0);
+        return SilPomPredictTowerHit(texture,p,face,worldRay,originalSearch,low,model,iterations,retryCap,tolerance);
+    }
+    float a=rcp(1.0f+exp(-clamp(output[0],-20.0f,20.0f)));
+    float b=rcp(1.0f+exp(-clamp(output[1],-20.0f,20.0f)));
+    if(output[4]>output[3]) { float temporary=a;a=b;b=temporary; }
+    SilPomHit hit=SilPomNoMarchCandidate(texture,p,face,worldRay,projected,low,search.tMin+a*span,iterations,tolerance);
+    uint usedRetries=0;
+    if(retryCap>0u)
+    {
+        SILPOM_DIAGNOSTIC(9,0);SILPOM_DIAGNOSTIC(13,0);
+        SilPomHit second=SilPomNoMarchCandidate(texture,p,face,worldRay,projected,low,search.tMin+b*span,iterations,tolerance);
+        if(second.status==SP_HIT && (hit.status!=SP_HIT || second.t<hit.t))
+        {
+            // Count a distinct nearer solution, excluding sub-micrometre
+            // roundoff when both seeds reach the same root. Depth keeps min(t).
+            bool distinct=hit.status!=SP_HIT || second.t<hit.t-1e-6f;
+            hit=second;
+            if(distinct) { SILPOM_DIAGNOSTIC(15,0); }
+        }
+        usedRetries=1u;
+    }
+    if(hit.status==SP_HIT) return hit;
+    if(retryCap>usedRetries)
+    {
+        // The old seed and descriptor retries share the remaining total cap.
+        SILPOM_DIAGNOSTIC(9,0);SILPOM_DIAGNOSTIC(14,0);
+        return SilPomPredictTowerHit(texture,p,face,worldRay,originalSearch,low,model,iterations,retryCap-usedRetries-1u,tolerance);
+    }
+    return hit;
+}

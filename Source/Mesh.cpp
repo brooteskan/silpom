@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include <SilPOM/Mesh.h>
+#include <SilPOM/HeightPrecision.h>
+#include <AtomCore/Instance/InstanceDatabase.h>
 #include <cmath>
 #include <Atom/RPI.Public/Scene.h>
 #include <Atom/RPI.Public/RenderPipeline.h>
@@ -130,12 +132,36 @@ AZ::u32 AllocateHitFaceBase(size_t faceCount)
 using Material = AZ::Data::Instance<AZ::RPI::Material>;
 using Image = AZ::Data::Instance<AZ::RPI::Image>;
 
-Image MakeDepthHeightBounds(const AZ::RHI::ImageDescriptor& desc, AZStd::span<const AZ::u8> pixels, bool clamp)
+Image MakeR16Height(const AZ::Data::Asset<AZ::RPI::StreamingImageAsset>& source, AZStd::span<const AZ::u8> pixels)
+{
+    // Share across batches and entities, without reusing an older asset revision.
+    // Prepare runs on the tick thread.
+    const auto key = AZStd::string::format("SilPOM.R16.v1:%s:%d", source.GetId().ToString<AZStd::string>().c_str(),
+        source->GetCreationToken());
+    const AZ::Uuid id = AZ::Uuid::CreateName(key.c_str());
+    auto existing = AZ::Data::InstanceDatabase<AZ::RPI::StreamingImage>::Instance().Find(AZ::Data::InstanceId::CreateUuid(id));
+    if (existing) return existing;
+    AZStd::vector<AZ::u16> converted(pixels.size() / sizeof(float));
+    for (size_t i = 0; i < converted.size(); ++i)
+    {
+        float value;
+        memcpy(&value, pixels.data() + i * sizeof(value), sizeof(value));
+        converted[i] = EncodeHeightUnorm16(value);
+    }
+    const auto& pool = AZ::RPI::ImageSystemInterface::Get()->GetSystemStreamingPool();
+    return AZ::RPI::StreamingImage::CreateFromCpuData(*pool, AZ::RHI::ImageDimension::Image2D,
+        source->GetImageDescriptor().m_size, AZ::RHI::Format::R16_UNORM,
+        converted.data(), converted.size() * sizeof(AZ::u16), id);
+}
+
+Image MakeDepthHeightBounds(const AZ::RHI::ImageDescriptor& desc, AZStd::span<const AZ::u8> pixels, bool clamp, bool quantizeR32)
 {
     const AZ::u32 width = desc.m_size.m_width;
     const AZ::u32 height = desc.m_size.m_height;
     constexpr AZ::u32 blockSize = 4; // Matches SilPomIntersectMode in Heightfield.azsli.
-    if (desc.m_format != AZ::RHI::Format::R32_FLOAT || width == 0 || height == 0
+    const bool r32 = desc.m_format == AZ::RHI::Format::R32_FLOAT;
+    const bool r16 = desc.m_format == AZ::RHI::Format::R16_UNORM;
+    if ((!r32 && !r16 && desc.m_format != AZ::RHI::Format::R8_UNORM) || width == 0 || height == 0
         || (!clamp && (width != height || width < blockSize || (width & (width - 1)) != 0)))
     {
         return {};
@@ -160,10 +186,27 @@ Image MakeDepthHeightBounds(const AZ::RHI::ImageDescriptor& desc, AZStd::span<co
                     const AZ::u32 column = clamp ? AZStd::min(x, width - 1) : x & (width - 1);
                     const size_t index = size_t(row) * width + column;
                     float value;
-                    memcpy(&value, pixels.data() + index * sizeof(value), sizeof(value));
+                    if (r32)
+                    {
+                        memcpy(&value, pixels.data() + index * sizeof(value), sizeof(value));
+                        if (quantizeR32) value = DecodeHeightUnorm16(EncodeHeightUnorm16(value));
+                    }
+                    else if (r16)
+                    {
+                        AZ::u16 encoded;
+                        memcpy(&encoded, pixels.data() + index * sizeof(encoded), sizeof(encoded));
+                        value = DecodeHeightUnorm16(encoded);
+                    }
+                    else value = float(pixels[index]) / 255.0f;
                     range.low = AZStd::min(range.low, value);
                     range.high = AZStd::max(range.high, value);
                 }
+            }
+            // Allow for CPU/GPU UNORM conversion rounding differences.
+            if (!r32 || quantizeR32)
+            {
+                range.low = AZStd::max(0.f, range.low - 2e-7f);
+                range.high = AZStd::min(1.f, range.high + 2e-7f);
             }
             ranges.push_back(range);
         }
@@ -242,8 +285,9 @@ template<class T> bool Set(const Material& material, const char* name, const T& 
     material->SetPropertyValue(index, value); return true;
 }
 Material Snapshot(const AZ::Data::Asset<AZ::RPI::MaterialAsset>& source,
-    const AZ::RPI::MaterialAsset* authored = nullptr)
+    const AZ::RPI::MaterialAsset* authored = nullptr, AZ::Data::AssetId replacedHeight = {}, const Image& replacement = {})
 {
+    bool replaceParallax = false;
     AZ::RPI::MaterialAssetCreator creator;
     const auto& type = source->GetMaterialTypeAsset();
     creator.Begin(AZ::Uuid::CreateRandom(), type);
@@ -261,6 +305,14 @@ Material Snapshot(const AZ::Data::Asset<AZ::RPI::MaterialAsset>& source,
         for (size_t i = 0; i < authoredValues.size(); ++i)
         {
             const auto name = authoredLayout->GetPropertyDescriptor(AZ::RPI::MaterialPropertyIndex(i))->GetName();
+            if (replacement && name == AZ::Name("parallax.textureMap")
+                && authoredValues[i].Is<AZ::Data::Asset<AZ::RPI::ImageAsset>>()
+                && authoredValues[i].GetValue<AZ::Data::Asset<AZ::RPI::ImageAsset>>().GetId() == replacedHeight)
+            {
+                // Avoid retaining R32 through the copied PBR parallax property.
+                replaceParallax = true;
+                continue;
+            }
             if (layout->FindPropertyIndex(name).IsValid()) creator.SetPropertyValue(name, authoredValues[i]);
         }
         const AZ::Name doubleSided("general.doubleSided");
@@ -270,7 +322,10 @@ Material Snapshot(const AZ::Data::Asset<AZ::RPI::MaterialAsset>& source,
         creator.SetPropertyValue(doubleSided, true);
     }
     AZ::Data::Asset<AZ::RPI::MaterialAsset> asset;
-    return creator.End(asset) ? AZ::RPI::Material::Create(asset) : Material{};
+    if (!creator.End(asset)) return {};
+    auto material = AZ::RPI::Material::Create(asset);
+    if (replaceParallax && (!material || !Set(material, "parallax.textureMap", replacement))) return {};
+    return material;
 }
 }
 struct MeshController::Generation
@@ -284,10 +339,12 @@ struct MeshController::Generation
     AZStd::vector<AZ::Data::Instance<AZ::RPI::Image>> heights;
     AZStd::string id;
     size_t faces = 0, bytes = 0;
+    size_t sourceHeightBytes = 0, heightBytes = 0;
     bool depthHeightBounds = false;
     bool neuralSeed = false;
     bool neuralCache = false;
     size_t trainedModelBatches = 0;
+    size_t spiralLightBatches = 0;
     AZStd::atomic_bool published{false};
 };
 MeshController::MeshController() = default;
@@ -309,10 +366,35 @@ void MeshConfig::Reflect(AZ::ReflectContext* context)
             ->Field("UseBaseMesh", &MeshProfileBinding::m_useBaseMesh)
             ->Field("ScaleMetres", &MeshProfileBinding::m_scale)->Field("Reference", &MeshProfileBinding::m_reference)
             ->Field("Tiling", &MeshProfileBinding::m_tiling)->Field("Offset", &MeshProfileBinding::m_offset)->Field("AddressMode", &MeshProfileBinding::m_addressMode);
-        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(8)->Field("Surface", &MeshConfig::m_surface)
+        sc->Enum<SpiralLightMode>()
+            ->Value("Off", SpiralLightMode::Off)
+            ->Value("SelectedMaterials", SpiralLightMode::SelectedMaterials)
+            ->Value("AllSilPomSurfaces", SpiralLightMode::AllSilPomSurfaces);
+        sc->Enum<LocalShadowMethod>()->Value("Baseline",LocalShadowMethod::Baseline)
+            ->Value("Gather",LocalShadowMethod::Gather)->Value("Neural",LocalShadowMethod::Neural);
+        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(15)->Field("Surface", &MeshConfig::m_surface)
             ->Field("Materials", &MeshConfig::m_materials)->Field("Profiles", &MeshConfig::m_profiles)
             ->Field("ReliefDepthMultiplier", &MeshConfig::m_reliefDepthMultiplier)
+            ->Field("ValidationIterations", &MeshConfig::m_validationIterations)
+            ->Field("ValidationRetryCap", &MeshConfig::m_validationRetryCap)
+            ->Field("ValidationToleranceMultiplier", &MeshConfig::m_validationToleranceMultiplier)
+            ->Field("UseR16HeightTextures", &MeshConfig::m_useR16HeightTextures)
+            ->Field("UseValidationGather", &MeshConfig::m_useValidationGather)
+            ->Field("UseLevelTwoPredictor", &MeshConfig::m_useLevelTwoPredictor)
+            ->Field("ReliefLodPixelBudget", &MeshConfig::m_reliefLodPixelBudget)
+            ->Field("MaxReliefDistance", &MeshConfig::m_maxReliefDistance)
+            ->Field("ValidationDistanceStart", &MeshConfig::m_validationDistanceStart)
+            ->Field("ValidationDistanceEnd", &MeshConfig::m_validationDistanceEnd)
+            ->Field("DistantValidationIterations", &MeshConfig::m_distantValidationIterations)
+            ->Field("DistantValidationRetryCap", &MeshConfig::m_distantValidationRetryCap)
+            ->Field("DistantValidationToleranceMultiplier", &MeshConfig::m_distantValidationToleranceMultiplier)
+            ->Field("SpiralLightShadowSteps", &MeshConfig::m_spiralLightShadowSteps)
+            ->Field("LocalShadowMethod", &MeshConfig::m_localShadowMethod)
+            ->Field("NeuralShadowConfidence", &MeshConfig::m_neuralShadowConfidence)
+            ->Field("UseHeightDerivedNormals", &MeshConfig::m_useHeightDerivedNormals)
             ->Field("MaxCells", &MeshConfig::m_maxCells)->Field("ReliefShadowSteps", &MeshConfig::m_reliefShadowSteps)
+            ->Field("SpiralLightMode", &MeshConfig::m_spiralLightMode)
+            ->Field("SpiralLightBrightness", &MeshConfig::m_spiralLightBrightness)
             ->Field("SpiralLightPath", &MeshConfig::m_spiralLightPath)
             ->Field("SpiralLightPeakLux", &MeshConfig::m_spiralLightPeakLux)
             ->Field("SpiralLightEnd", &MeshConfig::m_spiralLightEnd)
@@ -479,6 +561,25 @@ bool MeshController::Prepare()
             return true;
         }
     }
+    if (static_cast<AZ::u32>(c.m_localShadowMethod)>2 || !std::isfinite(c.m_neuralShadowConfidence)
+        || c.m_neuralShadowConfidence<.9f || c.m_neuralShadowConfidence>.99999f)
+    { m_status="Invalid local shadow method or confidence (0.9-0.99999)";return false; }
+    if (c.m_validationIterations < 1 || c.m_validationIterations > 16 || c.m_validationRetryCap > 4
+        || !std::isfinite(c.m_validationToleranceMultiplier) || c.m_validationToleranceMultiplier < 0.01f
+        || c.m_validationToleranceMultiplier > 100.0f)
+    { m_status = "Invalid neural validation settings: iterations 1-16, retries 0-4, tolerance 0.01-100"; return false; }
+    if (!std::isfinite(c.m_reliefLodPixelBudget) || c.m_reliefLodPixelBudget > 64.0f
+        || !std::isfinite(c.m_maxReliefDistance) || c.m_maxReliefDistance > 100000.0f
+        || !std::isfinite(c.m_validationDistanceStart) || c.m_validationDistanceStart > 100000.0f
+        || !std::isfinite(c.m_validationDistanceEnd) || c.m_validationDistanceEnd > 100000.0f
+        || c.m_distantValidationIterations < 1 || c.m_distantValidationIterations > 16
+        || c.m_distantValidationRetryCap > 4
+        || !std::isfinite(c.m_distantValidationToleranceMultiplier) || c.m_distantValidationToleranceMultiplier < 0.01f || c.m_distantValidationToleranceMultiplier > 100.0f
+        || c.m_spiralLightShadowSteps > 64
+        || c.m_reliefLodPixelBudget < 0.0f || c.m_maxReliefDistance < 0.0f
+        || c.m_validationDistanceStart < 0.0f || c.m_validationDistanceEnd < 0.0f
+        || (c.m_validationDistanceEnd > 0.0f && c.m_validationDistanceEnd <= c.m_validationDistanceStart))
+    { m_status = "Invalid quality settings: LOD 0-64, nonnegative distances, fade end above start, iterations 1-16, retries 0-4, tolerance 0.01-100, shadows 0-64"; return false; }
     const float scale = m_world.GetUniformScale();
     if (!std::isfinite(scale) || scale <= 0 || c.m_maxCells < 1 || c.m_maxCells > 65536 || c.m_reliefShadowSteps > 64)
     { m_status = "Invalid positive uniform scale, cell budget or relief shadow steps (0-64)"; return false; }
@@ -493,14 +594,20 @@ bool MeshController::Prepare()
     const bool reuseDepthHits = InstallHitPasses(*scene, requiresTrainedHits);
     if (requiresTrainedHits && (!reuseDepthHits || !c.m_useNeuralSeed || c.m_maxCells != 65525 || c.m_reliefShadowSteps != 0))
     {
-        m_status = "Trained profiles require single-sample DX12 winning-hit resolve, smooth 4 px, and relief shadows off";
+        m_status = "Trained profiles require single-sample DX12 winning-hit resolve (Maximum cells 65525) and relief shadows off";
         return true;
     }
     if (AZ::Render::r_meshInstancingEnabled)
     { m_status = "Planar face renderer currently requires r_meshInstancingEnabled=false"; return false; }
     auto candidate = AZStd::make_unique<Generation>(); candidate->id = asset.m_generation;
     auto fail = [&](const AZStd::string& message) { Release(candidate); m_status = message; return false; };
-    const bool hasSpiralLight = c.m_spiralLightPeakLux > 0.0f || !c.m_spiralLightWindows.empty();
+    if (static_cast<AZ::u32>(c.m_spiralLightMode) > static_cast<AZ::u32>(SpiralLightMode::AllSilPomSurfaces))
+        return fail("Invalid spiral light mode");
+    if (!std::isfinite(c.m_spiralLightBrightness) || c.m_spiralLightBrightness < 0.0f || c.m_spiralLightBrightness > 100.0f)
+        return fail("Spiral light master brightness must be between 0 and 100");
+    const bool hasSpiralLight = c.m_spiralLightMode != SpiralLightMode::Off
+        && c.m_spiralLightBrightness > 0.0f
+        && (c.m_spiralLightPeakLux > 0.0f || !c.m_spiralLightWindows.empty());
     const AZ::Vector4 spiralPath = c.m_spiralLightPath * scale;
     const AZ::Vector2 spiralEnd = c.m_spiralLightEnd * scale;
     if (hasSpiralLight && (!spiralEnd.IsFinite() || spiralEnd.GetY() < 0.0f))
@@ -509,7 +616,7 @@ bool MeshController::Prepare()
         || std::abs(spiralPath.GetW()) < 1e-4f || AZ::Vector2(spiralPath.GetX(), spiralPath.GetY()).GetLengthSq() < 1e-8f))
         return fail("Spiral light needs a local window position and a nonzero rise per turn");
 
-    const auto windowCount = aznumeric_cast<AZ::u32>(c.m_spiralLightWindows.size());
+    const auto windowCount = hasSpiralLight ? aznumeric_cast<AZ::u32>(c.m_spiralLightWindows.size()) : 0u;
     AZ::u32 windowBufferIndex = 0;
     if (windowCount > 0)
     {
@@ -536,6 +643,7 @@ bool MeshController::Prepare()
     using Key = AZStd::pair<AZStd::string, AZ::u32>;
     AZStd::map<Key, AZStd::vector<AZ::u32>> groups;
     AZStd::map<AZ::u32, Image> depthHeightBounds;
+    AZStd::map<AZ::Data::AssetId, Image> heightImages;
     for (AZ::u32 i = 0; i < asset.m_faces.size(); ++i)
     {
         const auto& f = asset.m_faces[i];
@@ -655,9 +763,19 @@ bool MeshController::Prepare()
                 buffer->WaitForUpload();
                 const auto bindless=buffer->GetBufferView()->GetBindlessReadIndex();
                 if(bindless.size()!=1 || bindless.begin()->second==AZ::u32(-1)) return fail("One bindless-capable GPU is required");
-                material=Snapshot(m_template,binding.m_material.Get());
+                auto [heightEntry, newHeight] = heightImages.try_emplace(p.m_height.GetId());
+                const bool convertHeight = c.m_useR16HeightTextures && desc.m_format == AZ::RHI::Format::R32_FLOAT;
+                if (newHeight)
+                {
+                    heightEntry->second = convertHeight ? MakeR16Height(p.m_height, pixels)
+                        : AZ::RPI::StreamingImage::FindOrCreate(p.m_height);
+                    candidate->sourceHeightBytes += pixels.size();
+                    candidate->heightBytes += convertHeight ? pixels.size() / 2 : pixels.size();
+                }
+                Image height = heightEntry->second;
+                if (!height) return fail("Cannot create height texture");
+                material=Snapshot(m_template,binding.m_material.Get(), p.m_height.GetId(), convertHeight ? height : Image{});
                 if(!material) return fail("Cannot create planar face material");
-                AZ::Data::Instance<AZ::RPI::Image> height=AZ::RPI::StreamingImage::FindOrCreate(p.m_height);
                 const bool legacyNeural = reuseDepthHits && c.m_useNeuralSeed && p.m_addressMode == 1
                     && std::abs(p.m_scale - .02f) < 1e-6f && std::abs(p.m_reference - .05f) < 1e-6f;
                 const bool neuralSeed = requiresTrainedHits || legacyNeural;
@@ -682,7 +800,7 @@ bool MeshController::Prepare()
                     auto [atlasEntry, inserted] = depthHeightBounds.try_emplace(key.second);
                     if (inserted)
                     {
-                        atlasEntry->second = MakeDepthHeightBounds(desc, pixels, p.m_addressMode != 0);
+                        atlasEntry->second = MakeDepthHeightBounds(desc, pixels, p.m_addressMode != 0, convertHeight);
                     }
                     minMax = atlasEntry->second;
                 }
@@ -694,19 +812,37 @@ bool MeshController::Prepare()
                     && Set(material,"surface.maxCells",c.m_maxCells) && Set(material,"surface.useHierarchy",bool(minMax))
                     && Set(material,"surface.useNeuralSeed",neuralSeed)
                     && Set(material,"surface.neuralModel",p.m_neuralModel)
+                    && Set(material,"surface.validationIterations",c.m_validationIterations)
+                    && Set(material,"surface.validationGather",c.m_useValidationGather)
+                    && Set(material,"surface.levelTwoPredictor",c.m_useLevelTwoPredictor)
+                    && Set(material,"surface.validationRetryCap",c.m_validationRetryCap)
+                    && Set(material,"surface.validationToleranceMultiplier",c.m_validationToleranceMultiplier)
+                    && Set(material,"surface.reliefLodPixelBudget",c.m_reliefLodPixelBudget)
+                    && Set(material,"surface.maxReliefDistance",c.m_maxReliefDistance)
+                    && Set(material,"surface.validationDistanceStart",c.m_validationDistanceStart)
+                    && Set(material,"surface.validationDistanceEnd",c.m_validationDistanceEnd)
+                    && Set(material,"surface.distantValidationIterations",c.m_distantValidationIterations)
+                    && Set(material,"surface.distantValidationRetryCap",c.m_distantValidationRetryCap)
+                    && Set(material,"surface.distantValidationToleranceMultiplier",c.m_distantValidationToleranceMultiplier)
+                    && Set(material,"surface.spiralLightShadowSteps",c.m_spiralLightShadowSteps)
+                    && Set(material,"surface.localShadowMethod",static_cast<AZ::u32>(c.m_localShadowMethod))
+                    && Set(material,"surface.neuralShadowConfidence",c.m_neuralShadowConfidence)
+                    && Set(material,"surface.useHeightDerivedNormals",c.m_useHeightDerivedNormals)
                     && Set(material,"surface.useNeuralCache",bool(neuralCache))
                     && (!neuralCache || Set(material,"surface.neuralCache",neuralCache))
                     && (!minMax || Set(material,"surface.heightBounds",minMax))
                     && Set(material,"surface.reliefShadowSteps",c.m_reliefShadowSteps);
                 if(!valid) return fail("Planar face material contract mismatch");
-                if (binding.m_receiveSpiralLight && hasSpiralLight)
+                if (hasSpiralLight && (c.m_spiralLightMode == SpiralLightMode::AllSilPomSurfaces || binding.m_receiveSpiralLight))
                 {
                     if (!Set(material, "spiralLight.path", spiralPath)
+                        || !Set(material, "spiralLight.brightness", c.m_spiralLightBrightness)
                         || !Set(material, "spiralLight.peakLux", c.m_spiralLightPeakLux)
                         || !Set(material, "spiralLight.end", spiralEnd)
                         || (windowCount > 0 && (!Set(material, "spiralLight.windowCount", windowCount)
                             || !Set(material, "spiralLight.windowBuffer", windowBufferIndex))))
                         return fail("Spiral light material contract mismatch");
+                    ++candidate->spiralLightBatches;
                 }
                 if (reuseDepthHits && !Set(material, "mesh.hitFaceBase", AllocateHitFaceBase(packed.size() / 36)))
                     return fail("SilPOM hit material contract mismatch");
@@ -814,19 +950,35 @@ void MeshController::OnTick(float, AZ::ScriptTimePoint)
                 m_checkHitPasses = false;
             }
             m_status = AZStd::string::format("Ready: %zu batches, %zu planar tagged triangles, %zu descriptor bytes", m_active->handles.size(), m_active->faces, m_active->bytes);
+            m_status += AZStd::string::format("; %s, height payload %.2f MiB (source %.2f MiB); validation %s",
+                m_configuration.m_useR16HeightTextures ? "R16 UNORM heights" : "source height formats",
+                double(m_active->heightBytes) / 1048576, double(m_active->sourceHeightBytes) / 1048576,
+                m_configuration.m_useValidationGather ? "Gather" : "four loads");
+            m_status += m_configuration.m_useLevelTwoPredictor ? "; Level 2 predictor" : "; Level 1 predictor";
+            m_status += m_configuration.m_localShadowMethod==LocalShadowMethod::Baseline ? "; local shadows: baseline"
+                :m_configuration.m_localShadowMethod==LocalShadowMethod::Gather ? "; local shadows: Gather" : "; local shadows: neural";
             if (m_active->depthHeightBounds)
             {
                 m_status += "; depth height bounds";
             }
             if (m_active->trainedModelBatches)
             {
-                m_status += AZStd::string::format("; %zu trained profile batches, smooth 4 px winning-hit resolve",
-                    m_active->trainedModelBatches);
+                const float pixelBudget = m_configuration.m_reliefLodPixelBudget > 0.0f ? m_configuration.m_reliefLodPixelBudget : 4.0f;
+                m_status += AZStd::string::format("; %zu trained profile batches, smooth %g px winning-hit resolve",
+                    m_active->trainedModelBatches, pixelBudget);
+                if (m_configuration.m_maxReliefDistance > 0.0f)
+                    m_status += AZStd::string::format("; relief cap %g m", m_configuration.m_maxReliefDistance);
             }
             else if (m_active->neuralSeed)
             {
                 m_status += m_active->neuralCache ? "; baked neural hit cache" : "; neural depth seed";
             }
+            if (m_configuration.m_spiralLightMode == SpiralLightMode::Off)
+                m_status += "; spiral light off";
+            else if (m_configuration.m_spiralLightBrightness == 0.0f)
+                m_status += "; spiral light muted (brightness 0)";
+            else
+                m_status += AZStd::string::format("; spiral light on %zu relief batches", m_active->spiralLightBatches);
         }
     }
 }

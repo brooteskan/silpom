@@ -5,6 +5,14 @@
 #define ApplyDirectionalLights ApplyDirectionalLights_StandardSilPom
 #include <Atom/Features/Pipeline/Forward/ForwardPassDirectionalLights.azsli>
 #undef ApplyDirectionalLights
+float SilPomLocalVisibility(Texture2D texture,SilPomPatch p,SilPomMeshFace face,float2 uv,float2 low,
+    float3 light,uint steps,float reach,MaterialParameters params)
+{
+    if(o_silpomLocalShadowMethod==SilPomLocalShadowMethod::Baseline)
+        return SilPomReliefVisibility(texture,p,face,uv,low,light,steps,reach);
+    return SilPomLearnedReliefVisibility(texture,p,face,uv,low,light,steps,reach,params.m_silpomNeuralModel,
+        o_silpomLocalShadowMethod==SilPomLocalShadowMethod::Neural,params.m_silpomNeuralShadowConfidence);
+}
 
 void ApplySpiralLightRay(Surface surface, inout LightingData lightingData, MaterialParameters params, float3 ray, float lux)
 {
@@ -18,21 +26,21 @@ void ApplySpiralLightRay(Surface surface, inout LightingData lightingData, Mater
 
     const float2 low = min(silpomLitFace.uv0, min(silpomLitFace.uv1, silpomLitFace.uv2));
     const float shadowReach = min(0.30f, 8.0f * abs(silpomLitPatch.scale));
-    const float relief = SilPomReliefVisibility(GetMaterialTexture(params.m_silpomHeightMap),
-        silpomLitPatch, silpomLitFace, silpomLitUv, low, toLight, 18u, shadowReach);
+    const float relief = SilPomLocalVisibility(GetMaterialTexture(params.m_silpomHeightMap),
+        silpomLitPatch, silpomLitFace, silpomLitUv, low, toLight, params.m_silpomSpiralLightShadowSteps, shadowReach,params);
     lightingData.diffuseLighting += diffuse * relief;
 }
 
 void ApplySpiralLight(Surface surface, inout LightingData lightingData, MaterialParameters params)
 {
     const uint windowCount = params.m_silpomSpiralWindowCount;
-    if (params.m_silpomSpiralLightPeakLux <= 0.0f && windowCount == 0) return;
+    if (params.m_silpomSpiralLightBrightness <= 0.0f || (params.m_silpomSpiralLightPeakLux <= 0.0f && windowCount == 0)) return;
 
     const float4 path = params.m_silpomSpiralLightPath;
     const float3 position = silpomLitFace.origin
         + mul(transpose(silpomLitRotation), surface.position - silpomLitOriginWS);
     const float2 end = params.m_silpomSpiralLightEnd;
-    const float endFade = end.y > 0.0f ? saturate((end.x - position.z) / end.y) : 1.0f;
+    const float endFade = SilPomSpiralLightGain(position.z,end.x,end.y,params.m_silpomSpiralLightBrightness);
     if (endFade <= 0.0f) return;
     const float radius = length(position.xy);
     if (radius < 1e-4f) return;
@@ -43,43 +51,48 @@ void ApplySpiralLight(Surface surface, inout LightingData lightingData, Material
     const float2 window = path.xy / corridorRadius;
     const float angleTurns = atan2(window.x * radial.y - window.y * radial.x, dot(window, radial)) / twoPi;
     const float heightTurns = (position.z - path.z) / path.w;
-    // Unwrap against height, then blend to zero before crossing into the next stair turn.
-    const float turns = angleTurns + round(heightTurns - angleTurns);
-    const float across = abs(heightTurns - turns);
-    if (across >= 0.49f) return;
+    // Blend adjacent spiral turns instead of fading each turn to an unlit seam.
+    // The cubic weights and the blended ray bias stay continuous at turn boundaries.
+    const float lowerTurn = angleTurns + floor(heightTurns - angleTurns);
+    const float upperTurn = lowerTurn + 1.0f;
+    const float turnBlend = SilPomSpiralTurnBlend(heightTurns - lowerTurn);
+    const float turns = lerp(lowerTurn, upperTurn, turnBlend);
 
     const float3 tangent = normalize(float3(-radial.y, radial.x, path.w / (twoPi * corridorRadius)));
     // Bias the ray toward the centre of the corridor, consistently across wall facets.
     const float3 offset = float3(radial * (corridorRadius - radius), 0.35f * (path.z + turns * path.w - position.z));
     const float3 towardCorridor = 0.24f * offset / max(length(offset), 0.2f);
-    const float acrossFade = (1.0f - smoothstep(0.37f, 0.49f, across)) * (endFade * endFade * (3.0f - 2.0f * endFade));
-    const float firstLux = max(0.0f, params.m_silpomSpiralLightPeakLux)
-        * (1.0f - smoothstep(0.0f, 1.0f, abs(turns)));
-    const float firstBlend = smoothstep(-0.045f, 0.045f, turns);
-    if (windowCount == 0)
-    {
-        ApplySpiralLightRay(surface, lightingData, params, (1.0f - 2.0f * firstBlend) * tangent + towardCorridor,
-            firstLux * acrossFade);
-        return;
-    }
-
-    float2 lobes = firstLux * float2(1.0f - firstBlend, firstBlend);
-    float brightest = firstLux;
+    const float firstLower = SilPomSpiralWindowLux(lowerTurn,0.0f,params.m_silpomSpiralLightPeakLux);
+    const float firstUpper = SilPomSpiralWindowLux(upperTurn,0.0f,params.m_silpomSpiralLightPeakLux);
+    const float lowerBlend = smoothstep(-0.045f,0.045f,lowerTurn);
+    const float upperBlend = smoothstep(-0.045f,0.045f,upperTurn);
+    float2 lowerLobes = firstLower * float2(1.0f-lowerBlend,lowerBlend);
+    float2 upperLobes = firstUpper * float2(1.0f-upperBlend,upperBlend);
+    float brightestLower = firstLower;
+    float brightestUpper = firstUpper;
     [loop] for (uint i = 0; i < windowCount; ++i)
     {
         const float2 windowLight = asfloat(Bindless::GetByteAddressBuffer(params.m_silpomSpiralWindowBuffer).Load2(i * 8u));
-        const float delta = turns - windowLight.x;
-        const float lux = windowLight.y * (1.0f - smoothstep(0.0f, 1.0f, abs(delta)));
-        const float blend = smoothstep(-0.045f, 0.045f, delta);
-        lobes = max(lobes, lux * float2(1.0f - blend, blend));
-        brightest = max(brightest, lux);
+        // One window-buffer fetch supplies both neighboring turns.
+        const float luxLower = SilPomSpiralWindowLux(lowerTurn,windowLight.x,windowLight.y);
+        const float luxUpper = SilPomSpiralWindowLux(upperTurn,windowLight.x,windowLight.y);
+        const float blendLower = smoothstep(-0.045f,0.045f,lowerTurn-windowLight.x);
+        const float blendUpper = smoothstep(-0.045f,0.045f,upperTurn-windowLight.x);
+        lowerLobes = max(lowerLobes,luxLower*float2(1.0f-blendLower,blendLower));
+        upperLobes = max(upperLobes,luxUpper*float2(1.0f-blendUpper,blendUpper));
+        brightestLower = max(brightestLower,luxLower);
+        brightestUpper = max(brightestUpper,luxUpper);
     }
-    const float total = lobes.x + lobes.y;
-    if (total <= 0.0f) return;
-    // Keep both shadow directions where windows overlap without stacking their brightness.
-    const float fade = acrossFade * brightest / total;
-    ApplySpiralLightRay(surface, lightingData, params, tangent + towardCorridor, lobes.x * fade);
-    ApplySpiralLightRay(surface, lightingData, params, -tangent + towardCorridor, lobes.y * fade);
+    // Keep each turn's original non-stacking brightness, then interpolate its
+    // directional contributions. This retains the same maximum two shadow rays.
+    const float lowerTotal = lowerLobes.x + lowerLobes.y;
+    const float upperTotal = upperLobes.x + upperLobes.y;
+    if(lowerTotal>0.0f) lowerLobes*=brightestLower/lowerTotal;
+    if(upperTotal>0.0f) upperLobes*=brightestUpper/upperTotal;
+    const float2 lobes = lerp(lowerLobes,upperLobes,turnBlend);
+    if(!any(lobes>0.0f)) return;
+    ApplySpiralLightRay(surface, lightingData, params, tangent + towardCorridor, lobes.x * endFade);
+    ApplySpiralLightRay(surface, lightingData, params, -tangent + towardCorridor, lobes.y * endFade);
 }
 
 void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,float4 screenUv)
@@ -111,9 +124,9 @@ void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,floa
         if(o_enableShadows && params.m_silpomReliefShadowSteps>0 && visibility>0)
         {
             float2 low=min(silpomLitFace.uv0,min(silpomLitFace.uv1,silpomLitFace.uv2));
-            visibility*=SilPomReliefVisibility(GetMaterialTexture(params.m_silpomHeightMap),
+            visibility*=SilPomLocalVisibility(GetMaterialTexture(params.m_silpomHeightMap),
                 silpomLitPatch,silpomLitFace,silpomLitUv,low,
-                mul(transpose(silpomLitRotation),toLight),params.m_silpomReliefShadowSteps);
+                mul(transpose(silpomLitRotation),toLight),params.m_silpomReliefShadowSteps,0.0f,params);
         }
 #endif
         DirectionalLightUtil light=DirectionalLightUtil::Init(srgLight,surface);

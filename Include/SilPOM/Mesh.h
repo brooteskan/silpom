@@ -12,6 +12,15 @@
 
 namespace SilPOM
 {
+enum class SpiralLightMode : AZ::u32
+{
+    Off = 0,
+    SelectedMaterials = 1,
+    AllSilPomSurfaces = 2
+};
+AZ_TYPE_INFO_SPECIALIZE(SpiralLightMode, "{375431D9-B6A5-49DD-8663-268A00CF6709}");
+enum class LocalShadowMethod : AZ::u32 { Baseline=0, Gather=1, Neural=2 };
+AZ_TYPE_INFO_SPECIALIZE(LocalShadowMethod, "{8C21E33E-53B1-45A9-9554-57656F558F10}");
 struct MeshMaterialBinding
 {
     AZ_TYPE_INFO(MeshMaterialBinding, "{B592E91C-172C-4A55-A887-B4870B8F19F5}");
@@ -50,6 +59,25 @@ public:
     float m_reliefDepthMultiplier = 1.0f;
     AZ::u32 m_maxCells = 4096;
     AZ::u32 m_reliefShadowSteps = 16;
+    AZ::u32 m_validationIterations = 6;
+    AZ::u32 m_validationRetryCap = 4;
+    float m_validationToleranceMultiplier = 1.0f;
+    bool m_useR16HeightTextures = false;
+    bool m_useValidationGather = false;
+    bool m_useLevelTwoPredictor = false;
+    float m_reliefLodPixelBudget = 0.00f;
+    float m_maxReliefDistance = 0.00f;
+    float m_validationDistanceStart = 0.00f;
+    float m_validationDistanceEnd = 0.00f;
+    AZ::u32 m_distantValidationIterations = 4;
+    AZ::u32 m_distantValidationRetryCap = 1;
+    float m_distantValidationToleranceMultiplier = 1.00f;
+    AZ::u32 m_spiralLightShadowSteps = 18;
+    LocalShadowMethod m_localShadowMethod = LocalShadowMethod::Baseline;
+    float m_neuralShadowConfidence = .995f;
+    bool m_useHeightDerivedNormals = true;
+    SpiralLightMode m_spiralLightMode = SpiralLightMode::SelectedMaterials;
+    float m_spiralLightBrightness = 1.0f;
     // Local window XY, centre height of its stair corridor, and signed rise per turn.
     AZ::Vector4 m_spiralLightPath = AZ::Vector4::CreateZero();
     float m_spiralLightPeakLux = 0.0f;

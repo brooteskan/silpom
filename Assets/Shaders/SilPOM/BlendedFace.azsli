@@ -4,6 +4,11 @@
 // D(u,v) is AFFINE, not normalized after interpolation: this keeps the six
 // displaced corner extrema conservative, and makes shared edges identical.
 #include "MeshFace.azsli"
+#include "Quality.azsli"
+#include "EvaluationHooks.azsli"
+#if !defined(SILPOM_CPU) && defined(SILPOM_VALIDATION_GATHER)
+#include "ValidationHeight.azsli"
+#endif
 // A planar seed need not intersect the deformed surface. Newton rejection is
 // not traversal-budget exhaustion and must not be published as diagnostic
 // geometry at the bounding-box entry point.
@@ -82,30 +87,44 @@ float3 SilPomFaceNormal(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,float2 uv,
     float3 baseNormal=normalize(f.normal-dualU*h.y-dualV*h.z);
     return normalize(SilPomRotateNormal(baseNormal,f.normal,normalize(SilPomFaceDirection(f,uv))));
 }
+float3 SilPomShadingNormal(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,float2 uv,float2 low,bool useHeight)
+{
+    if(!useHeight) return f.normal;
+    return SilPomFaceNormal(texture,p,f,uv,low);
+}
 // Bounded Newton refinement of a planar-kernel seed. Never accept an
 // unconverged iterate as geometry. This is a local heuristic, not a complete
 // intersection algorithm for arbitrary curved surfaces or folded volumes.
 uint SilPomRefineFace(SP_TEX texture, SilPomPatch p, SilPomMeshFace f,
-    SilPomRay ray,float2 low,SP_REF(float2) uv,SP_REF(float) t,uint maxIterations=16)
+    SilPomRay ray,float2 low,SP_REF(float2) uv,SP_REF(float) t,uint maxIterations=16,float toleranceMultiplier=1.0f)
 {
     float area=SilPomUvArea(f);
     float3 dU=((f.d1-f.d0)*(f.uv2.y-f.uv0.y)-(f.d2-f.d0)*(f.uv1.y-f.uv0.y))*(1/area);
     float3 dV=((f.d2-f.d0)*(f.uv1.x-f.uv0.x)-(f.d1-f.d0)*(f.uv2.x-f.uv0.x))*(1/area);
-    float tolerance=2e-6f*max(1.0f,max(length(f.du),length(f.dv)));
+    float tolerance=2e-6f*max(1.0f,max(length(f.du),length(f.dv)))*toleranceMultiplier;
     for(uint iteration=0;iteration<maxIterations;++iteration)
     {
+        SILPOM_DIAGNOSTIC(1,iteration);
+#if !defined(SILPOM_CPU) && defined(SILPOM_VALIDATION_GATHER)
+        float3 h;
+        [branch] if(SILPOM_VALIDATION_GATHER) h=SilPomGatherFaceHeight(texture,p,uv,low);
+        else h=SilPomFaceHeight(texture,p,uv,low);
+#else
         float3 h=SilPomFaceHeight(texture,p,uv,low);
+#endif
         float3 D=SilPomFaceDirection(f,uv);
         float3 position=f.origin+f.du*(uv.x-f.uv0.x)+f.dv*(uv.y-f.uv0.y)+D*h.x;
         float3 residual=position-(ray.origin+ray.direction*t);
         if(dot(residual,residual)<=tolerance*tolerance)
         {
             float3 w=SilPomFaceWeights(f,uv);
-            return min(w.x,min(w.y,w.z))>=-2e-6f && t>=ray.tMin && t<=ray.tMax ? SP_HIT : SP_MISS;
+            uint status=min(w.x,min(w.y,w.z))>=-2e-6f && t>=ray.tMin && t<=ray.tMax ? SP_HIT : SP_MISS;
+            SILPOM_DIAGNOSTIC(2,status);
+            return status;
         }
         float3 U=f.du+dU*h.x+D*h.y,V=f.dv+dV*h.x+D*h.z;
         float determinant=dot(U,cross(V,ray.direction));
-        if(abs(determinant)<1e-9f) return SP_REFINE_REJECTED;
+        if(abs(determinant)<1e-9f) { SILPOM_DIAGNOSTIC(3,0); return SP_REFINE_REJECTED; }
         float deltaU=-dot(residual,cross(V,ray.direction))/determinant;
         float deltaV=-dot(U,cross(residual,ray.direction))/determinant;
         float deltaT=dot(U,cross(V,residual))/determinant;
@@ -114,8 +133,9 @@ uint SilPomRefineFace(SP_TEX texture, SilPomPatch p, SilPomMeshFace f,
         float damping=step>.25f?.25f/step:1.0f;
         uv.x+=deltaU*damping;uv.y+=deltaV*damping;t+=deltaT*damping;
         if(uv.x<low.x-p.width || uv.x>low.x+2*p.width || uv.y<low.y-p.height || uv.y>low.y+2*p.height)
-            return SP_REFINE_REJECTED;
+        { SILPOM_DIAGNOSTIC(4,0); return SP_REFINE_REJECTED; }
     }
+    SILPOM_DIAGNOSTIC(5,0);
     return SP_REFINE_REJECTED;
 }
 // The displaced point is a convex combination of the six corner extrema.
@@ -180,6 +200,7 @@ SilPomHit SilPomSearchFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,
 #if SILPOM_MESH_DEPTH_BOUNDS
     ,SP_BOUND_TEX bounds,bool useBounds
 #endif
+    ,bool useHeightDerivedNormals=true
 )
 {
     SilPomHit best=SP_ZERO(SilPomHit);best.t=worldRay.tMax;
@@ -224,7 +245,7 @@ SilPomHit SilPomSearchFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,
 #if SILPOM_HIT_DEPTH
                     best.faceUv=uv;
 #else
-                    best.normal=SilPomFaceNormal(texture,p,f,uv,low);
+                    best.normal=SilPomShadingNormal(texture,p,f,uv,low,useHeightDerivedNormals);
 #endif
                 }
                 break;
@@ -258,7 +279,9 @@ void SilPomFaceBounds(SilPomMeshFace f,float scale,float reference,SP_REF(float3
 }
 
 #if SILPOM_HIT_NEURAL
+#ifndef SILPOM_EVALUATION
 #include "NeuralTower.azsli"
+#endif
 #if SILPOM_NEURAL_NO_MARCH
 // SPDX-License-Identifier: MIT
 // Fitted offline on the 0.02 m tower atlas.
@@ -303,13 +326,13 @@ static const float2 TowerNoMarchB1 = float2(1.917806715e-01f, 4.202251509e-02f);
 #include "NeuralWeldedTowerWeights.azsli"
 #include "NeuralOpenShaftTowerWeights.azsli"
 
-float2 SilPomEvaluateHitModel(float feature[11], float w0[16][11], float b0[16], float2 w1[16], float2 b1)
+float2 SilPomEvaluateHitModel(float feature[11], const float w0[16][11], const float b0[16], const float2 w1[16], float2 b1)
 {
     float2 logits=b1;
-    [unroll] for(uint j=0;j<16;++j)
+    SP_UNROLL for(uint j=0;j<16;++j)
     {
         float unit=b0[j];
-        [unroll] for(uint k=0;k<11;++k) unit+=feature[k]*w0[j][k];
+        SP_UNROLL for(uint k=0;k<11;++k) unit+=feature[k]*w0[j][k];
         unit=max(unit,0.0f);
         logits+=unit*unit*w1[j];
     }
@@ -318,14 +341,16 @@ float2 SilPomEvaluateHitModel(float feature[11], float w0[16][11], float b0[16],
 
 // Fixed-feature inference and bounded Newton validation. No heightfield walk.
 SilPomHit SilPomNoMarchCandidate(Texture2D texture, SilPomPatch p, SilPomMeshFace face,
-    SilPomRay worldRay, SilPomRay projected, float2 low, float seedT)
+    SilPomRay worldRay, SilPomRay projected, float2 low, float seedT,uint validationIterations,float toleranceMultiplier)
 {
-    SilPomHit hit=(SilPomHit)0;
+    SilPomHit hit=SP_ZERO(SilPomHit);
     float t=seedT;
-    float2 uv=projected.origin.xy+projected.direction.xy*t;
+    float2 uv=SP_XY(projected.origin)+SP_XY(projected.direction)*t;
     const float3 weights=max(SilPomFaceWeights(face,uv),0.0f);
     uv=(weights.x*face.uv0+weights.y*face.uv1+weights.z*face.uv2)/(weights.x+weights.y+weights.z);
-    if(SilPomRefineFace(texture,p,face,worldRay,low,uv,t,6)!=SP_HIT) return hit;
+    SILPOM_DIAGNOSTIC(6,0);
+    if(SilPomRefineFace(texture,p,face,worldRay,low,uv,t,validationIterations,toleranceMultiplier)!=SP_HIT) return hit;
+    SILPOM_DIAGNOSTIC(7,0);
     hit.status=SP_HIT;
     hit.t=t;
     hit.position=worldRay.origin+worldRay.direction*t;
@@ -334,19 +359,18 @@ SilPomHit SilPomNoMarchCandidate(Texture2D texture, SilPomPatch p, SilPomMeshFac
     return hit;
 }
 
-SilPomHit SilPomPredictTowerHit(Texture2D texture, SilPomPatch p, SilPomMeshFace face,
-    SilPomRay worldRay, SilPomRay search, float2 low, uint model)
+bool SilPomPreparePrediction(SilPomPatch p,SilPomMeshFace face,SilPomRay worldRay,
+    SP_REF(SilPomRay) search,SP_REF(SilPomRay) projected)
 {
-    SilPomHit miss=(SilPomHit)0;
     const float3 average=(face.d0+face.d1+face.d2)*(1.0f/3.0f);
-    SilPomRay projected=search;
-    if(!SilPomMakeSeedRay(face,average,worldRay,projected)) return miss;
+    projected=search;
+    if(!SilPomMakeSeedRay(face,average,worldRay,projected)) return false;
     const float middle=(search.tMin+search.tMax)*.5f;
-    const float2 midUv=projected.origin.xy+projected.direction.xy*middle;
+    const float2 midUv=SP_XY(projected.origin)+SP_XY(projected.direction)*middle;
     const float3 weights=max(SilPomFaceWeights(face,midUv),0.0f);
     const float3 local=(face.d0*weights.x+face.d1*weights.y+face.d2*weights.z)/
         (weights.x+weights.y+weights.z);
-    if(!SilPomMakeSeedRay(face,local,worldRay,projected)) return miss;
+    if(!SilPomMakeSeedRay(face,local,worldRay,projected)) return false;
 
     const float3 heights=float3(dot(face.normal,face.d0),dot(face.normal,face.d1),
         dot(face.normal,face.d2))/dot(face.normal,local);
@@ -361,9 +385,20 @@ SilPomHit SilPomPredictTowerHit(Texture2D texture, SilPomPatch p, SilPomMeshFace
         search.tMin=max(search.tMin,min(a,b));
         search.tMax=min(search.tMax,max(a,b));
     }
-    else if(projected.origin.z<minZ || projected.origin.z>maxZ) return miss;
+    else if(projected.origin.z<minZ || projected.origin.z>maxZ) return false;
     const float span=search.tMax-search.tMin;
-    if(span<=1e-7f) return miss;
+    if(span<=1e-7f) return false;
+
+    return true;
+}
+
+SilPomHit SilPomPredictTowerHit(Texture2D texture, SilPomPatch p, SilPomMeshFace face,
+    SilPomRay worldRay, SilPomRay search, float2 low, uint model,uint validationIterations,uint retryCap,float toleranceMultiplier)
+{
+    SilPomHit miss=SP_ZERO(SilPomHit);
+    SilPomRay projected;
+    if(!SilPomPreparePrediction(p,face,worldRay,search,projected)) return miss;
+    const float span=search.tMax-search.tMin;
 
     const float2 size=float2(p.textureWidth,p.textureHeight);
     const float2 tile=float2(p.tileU/p.width,p.tileV/p.height);
@@ -372,24 +407,32 @@ SilPomHit SilPomPredictTowerHit(Texture2D texture, SilPomPatch p, SilPomMeshFace
     float feature[11];
     // These four independent texture samples are a descriptor of the ray.
     // The network, rather than a crossing search, chooses the first candidate.
-    [unroll] for(uint i=0;i<4;++i)
+    SP_UNROLL for(uint i=0;i<4;++i)
     {
         const float t=search.tMin+span*((float(i)+.5f)*.25f);
         const float3 location=projected.origin+projected.direction*t;
-        const float2 tex=(location.xy-low)*tile+offset;
+        const float2 tex=(SP_XY(location)-low)*tile+offset;
         const float2 addressed=p.addressMode==0 ? frac(tex) : clamp(tex,inset,1-inset);
-        const float height=texture.SampleLevel(GetMaterialTextureSampler(),addressed,0).r;
+        const float height=SP_SAMPLE_HEIGHT(texture,addressed);
         feature[i]=clamp(height-(location.z/p.scale+p.reference),-1.5f,1.5f);
-        const float3 w=SilPomFaceWeights(face,location.xy);
+        const float3 w=SilPomFaceWeights(face,SP_XY(location));
         feature[6+i]=clamp(24.0f*min(w.x,min(w.y,w.z)),-1.0f,1.0f);
     }
-    const float2 rate=clamp(projected.direction.xy*span*tile*size/16.0f,-2.0f,2.0f);
+    const float2 rate=clamp(SP_XY(projected.direction)*span*tile*size/16.0f,-2.0f,2.0f);
     feature[4]=rate.x;
     feature[5]=rate.y;
     feature[10]=-dot(face.normal,worldRay.direction);
+#ifdef SILPOM_CAPTURE_FEATURES
+    SILPOM_CAPTURE_INTERVAL(search.tMin,span);
+    if(SILPOM_CAPTURE_FEATURES(feature,11)) return miss;
+#endif
     float2 logits;
+#ifdef SILPOM_OVERRIDE_MODEL
+    if(!SILPOM_OVERRIDE_MODEL(feature,model,logits))
+#endif
+    {
     // The model is constant for the material batch.
-    [branch] if(model==1u) logits=SilPomEvaluateHitModel(feature,WeldedWallW0,WeldedWallB0,WeldedWallW1,WeldedWallB1);
+    SP_BRANCH if(model==1u) logits=SilPomEvaluateHitModel(feature,WeldedWallW0,WeldedWallB0,WeldedWallW1,WeldedWallB1);
     else if(model==2u) logits=SilPomEvaluateHitModel(feature,WeldedStairsW0,WeldedStairsB0,WeldedStairsW1,WeldedStairsB1);
     else if(model==3u) logits=SilPomEvaluateHitModel(feature,WeldedDoorW0,WeldedDoorB0,WeldedDoorW1,WeldedDoorB1);
     else if(model==4u) logits=SilPomEvaluateHitModel(feature,OpenShaftWallW0,OpenShaftWallB0,OpenShaftWallW1,OpenShaftWallB1);
@@ -398,39 +441,45 @@ SilPomHit SilPomPredictTowerHit(Texture2D texture, SilPomPatch p, SilPomMeshFace
     else if(model==7u) logits=SilPomEvaluateHitModel(feature,OpenShaftRevealW0,OpenShaftRevealB0,OpenShaftRevealW1,OpenShaftRevealB1);
     else if(model==0u) logits=SilPomEvaluateHitModel(feature,TowerNoMarchW0,TowerNoMarchB0,TowerNoMarchW1,TowerNoMarchB1);
     else return miss;
+    }
     float4 residuals=abs(float4(feature[0],feature[1],feature[2],feature[3]));
     const float nearestResidual=min(min(residuals.x,residuals.y),min(residuals.z,residuals.w));
     const float insideFace=max(max(feature[6],feature[7]),max(feature[8],feature[9]));
     // A small residual and an interior descriptor sample justify trying the
     // local solver even if the network is slightly below its usual cutoff.
     const bool recoverMiss=SilPomTowerFillEnabled(p.maxCells) && insideFace>=0.0f && nearestResidual<.12f;
-    if(logits.y<(recoverMiss?-3.5f:-2.944439f)) return miss;
+    if(logits.y<(recoverMiss?-3.5f:-2.944439f)) { SILPOM_DIAGNOSTIC(8,0); return miss; }
     const float fraction=rcp(1.0f+exp(-clamp(logits.x,-20.0f,20.0f)));
-    SilPomHit hit=SilPomNoMarchCandidate(texture,p,face,worldRay,projected,low,search.tMin+fraction*span);
+    SilPomHit hit=SilPomNoMarchCandidate(texture,p,face,worldRay,projected,low,search.tMin+fraction*span,validationIterations,toleranceMultiplier);
     if(hit.status==SP_HIT || !SilPomTowerNoMarch(p.maxCells)) return hit;
 
     // Retry independent descriptor seeds in residual order. An unsuccessful
     // solve does not advance the ray or supply the start of the next solve.
     // The welded wall model gets one retry after its first Newton attempt.
-    const uint attempts=(!SilPomIsTowerWallModel(model) && recoverMiss && logits.y>0.0f) ? 4u : 1u;
-    [loop] for(uint attempt=0;attempt<attempts;++attempt)
+    const uint attempts=min(retryCap,(!SilPomIsTowerWallModel(model) && recoverMiss && logits.y>0.0f) ? 4u : 1u);
+    SP_LOOP for(uint attempt=0;attempt<attempts;++attempt)
     {
+        SILPOM_DIAGNOSTIC(9,0);
         const uint first=residuals.x<=residuals.y?0u:1u;
         const uint second=residuals.z<=residuals.w?2u:3u;
         const uint nearest=residuals[first]<=residuals[second]?first:second;
         hit=SilPomNoMarchCandidate(texture,p,face,worldRay,projected,low,
-            search.tMin+span*((float(nearest)+.5f)*.25f));
+            search.tMin+span*((float(nearest)+.5f)*.25f),validationIterations,toleranceMultiplier);
         if(hit.status==SP_HIT) return hit;
         residuals[nearest]=2.0f;
     }
     return hit;
 }
 
+#ifdef SILPOM_LEVEL2
+#include "LevelTwo.azsli"
+#endif
+
 // Intersect the authored triangle for the grazing fill or the shell transition.
 SilPomHit SilPomTowerBaseHit(SilPomPatch p, SilPomMeshFace face, SilPomRay ray, float2 low,
     bool grazingOnly=true)
 {
-    SilPomHit hit=(SilPomHit)0;
+    SilPomHit hit=SP_ZERO(SilPomHit);
     const float incidence=dot(face.normal,ray.direction);
     if(grazingOnly ? (incidence>=-1e-7f || incidence<=-SP_TOWER_MAX_FILL_INCIDENCE) :
         abs(incidence)<=1e-7f) return hit;
@@ -458,7 +507,7 @@ SilPomHit SilPomTowerBaseHit(SilPomPatch p, SilPomMeshFace face, SilPomRay ray, 
 
 SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilPomRay worldRay,float2 low
 #if SILPOM_NEURAL_NO_MARCH
-    ,uint model
+    ,uint model,uint validationIterations,uint retryCap,float toleranceMultiplier
 #endif
 #if SILPOM_HIT_NEURAL_CACHE
     ,SP_TEX neuralCache
@@ -466,6 +515,7 @@ SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilP
 #if SILPOM_MESH_DEPTH_BOUNDS
     ,SP_BOUND_TEX bounds,bool useBounds
 #endif
+    ,bool useHeightDerivedNormals=true
 )
 {
     SilPomHit best=SP_ZERO(SilPomHit);best.t=worldRay.tMax;
@@ -501,9 +551,18 @@ SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilP
     if(neural.status==SP_HIT) return neural;
     }
 #if SILPOM_NEURAL_NO_MARCH
-    SilPomHit predicted=SilPomPredictTowerHit(texture,p,f,worldRay,searchRay,low,model);
+    SilPomHit predicted;
+#ifdef SILPOM_LEVEL2
+    SP_BRANCH if(SILPOM_LEVEL2 && model>=4u && model<=7u)
+        predicted=SilPomPredictTowerHit2(texture,p,f,worldRay,searchRay,low,model,validationIterations,retryCap,toleranceMultiplier);
+    else
+#endif
+        predicted=SilPomPredictTowerHit(texture,p,f,worldRay,searchRay,low,model,validationIterations,retryCap,toleranceMultiplier);
     if(predicted.status==SP_HIT || !SilPomTowerFillEnabled(p.maxCells)) return predicted;
-    return SilPomTowerBaseHit(p,f,worldRay,low);
+    SILPOM_DIAGNOSTIC(10,0);
+    SilPomHit fill=SilPomTowerBaseHit(p,f,worldRay,low);
+    SILPOM_DIAGNOSTIC(11,fill.status);
+    return fill;
 #endif
 #endif
 
@@ -520,6 +579,7 @@ SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilP
 #if SILPOM_MESH_DEPTH_BOUNDS
             ,bounds,useBounds
 #endif
+            ,useHeightDerivedNormals
         );
 #if SILPOM_MESH_DEPTH_BOUNDS
         // Block skips charge an upper bound on cell visits at diagonal crossings.

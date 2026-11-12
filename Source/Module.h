@@ -3,6 +3,7 @@
 #include <AzCore/Module/Module.h>
 #include <SilPOM/Patch.h>
 #include <SilPOM/Mesh.h>
+#include <SilPOM/DecalPaint.h>
 namespace SilPOM
 {
 class Module : public AZ::Module
@@ -14,6 +15,7 @@ public:
         m_descriptors.push_back(PatchComponent::CreateDescriptor());
         m_descriptors.push_back(MeshAssetSystem::CreateDescriptor());
         m_descriptors.push_back(MeshComponent::CreateDescriptor());
+        m_descriptors.push_back(PaintComponent::CreateDescriptor());
     }
     AZ::ComponentTypeList GetRequiredSystemComponents() const override { return {azrtti_typeid<MeshAssetSystem>()}; }
 };

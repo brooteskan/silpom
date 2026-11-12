@@ -71,7 +71,7 @@ class Profile:
         return ((self.height[y, x] * (1 - f) + self.height[y, xx] * f) * (1 - g)
                 + (self.height[yy, x] * (1 - f) + self.height[yy, xx] * f) * g)
 
-    def dataset(self, trace, count, seed):
+    def dataset(self, trace, count, seed, retain_rays=False):
         rng = np.random.default_rng(seed)
         ids = rng.integers(len(self.xyz), size=count, dtype=np.uint32)
         b = rng.random((count, 2))
@@ -152,14 +152,20 @@ class Profile:
         visible = teacher[:, 0] == 1
         target = np.clip((teacher[:, 1] - start) / span, 0, 1).astype(np.float32)
         known = teacher[:, 0] <= 1
-        return inputs[known], visible[known], target[known], span[known], int((~known).sum())
+        result = inputs[known], visible[known], target[known], span[known], int((~known).sum())
+        if retain_rays:
+            details = {"rays": rays[known], "ids": np.ascontiguousarray(ids[known]),
+                       "teacher": teacher[known], "unresolved_rays": rays[~known],
+                       "unresolved_ids": np.ascontiguousarray(ids[~known])}
+            return result, details
+        return result
 
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-np.clip(x, -20, 20)))
 
 
-def fit(data, seed):
+def fit(data, seed, checkpoint=None, steps=3300, checkpoint_steps=(800, 1600, 2500, 3300), sample_weights=None):
     x, visible, target, span, _ = data
     rng = np.random.default_rng(seed)
     w = [rng.normal(0, .19, (11, 16)).astype(np.float32), np.full(16, .06, np.float32),
@@ -168,8 +174,16 @@ def fit(data, seed):
     # Increase the loss on long grazing rays using a bounded world-distance term.
     ratio = np.clip(span / .05, 1, 8).astype(np.float32)
     blend = .2 * np.clip((.30 - abs(x[:, -1])) / .18, 0, 1) * np.clip((ratio - 1) / 2, 0, 1)
-    for step in range(1, 3301):
+    probabilities = None
+    if sample_weights is not None:
+        probabilities = np.asarray(sample_weights, dtype=np.float64)
+        if probabilities.shape != (len(x),) or not np.isfinite(probabilities).all() or (probabilities <= 0).any():
+            raise ValueError("Sample weights must be finite, positive and match the training set")
+        probabilities = probabilities / probabilities.sum()
+    for step in range(1, steps + 1):
         ids = rng.integers(len(x), size=1024)
+        if probabilities is not None:
+            ids = rng.choice(len(x), size=1024, p=probabilities)
         features = x[ids]
         active = np.maximum(features @ w[0] + w[1], 0)
         prediction = sigmoid(active**2 @ w[2] + w[3])
@@ -184,6 +198,8 @@ def fit(data, seed):
             momentum[j] = .9 * momentum[j] + .1 * grad
             variance[j] = .999 * variance[j] + .001 * grad**2
             w[j] -= lr * (momentum[j] / (1 - .9**step)) / (np.sqrt(variance[j] / (1 - .999**step)) + 1e-8)
+        if checkpoint and (step in checkpoint_steps or step == steps):
+            checkpoint(step, [value.copy() for value in w])
     return w
 
 
@@ -193,15 +209,15 @@ def score(data, w):
     grazing = abs(x[:, -1]) < .12
     error = abs(pred[:, 0] - target) * span * 1000
     report = {"rays": len(x), "unresolved_labels_excluded": unresolved,
-              "miss_rejection_at_005": float((pred[~hit, 1] < .05).mean())}
+              "miss_rejection_at_005": float((pred[~hit, 1] < .05).mean()) if (~hit).any() else None}
     for name, mask in (("all", np.ones_like(hit)), ("grazing", grazing), ("long_grazing", grazing & (span > .10))):
         selected = hit & mask
         report[name] = {
             "rays": int(mask.sum()), "hits": int(selected.sum()),
-            "seed_p50_mm": float(np.median(error[selected])),
-            "seed_p95_mm": float(np.quantile(error[selected], .95)),
-            "midpoint_p95_mm": float(np.quantile(abs(.5 - target[selected]) * span[selected] * 1000, .95)),
-            "hit_recall_at_005": float((pred[selected, 1] >= .05).mean()),
+            "seed_p50_mm": float(np.median(error[selected])) if selected.any() else None,
+            "seed_p95_mm": float(np.quantile(error[selected], .95)) if selected.any() else None,
+            "midpoint_p95_mm": float(np.quantile(abs(.5 - target[selected]) * span[selected] * 1000, .95)) if selected.any() else None,
+            "hit_recall_at_005": float((pred[selected, 1] >= .05).mean()) if selected.any() else None,
         }
     return report
 

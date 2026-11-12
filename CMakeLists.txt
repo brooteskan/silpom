@@ -20,9 +20,80 @@ if(NOT COMMAND o3de_gem_setup)
     add_executable(silpom_relief_shadow_tests Tests/ReliefShadowTests.cpp)
     target_compile_features(silpom_relief_shadow_tests PRIVATE cxx_std_17)
     add_test(NAME SilPOM.ReliefShadows COMMAND silpom_relief_shadow_tests)
+    add_executable(silpom_decal_paint_tests Tests/DecalPaintTests.cpp)
+    target_compile_features(silpom_decal_paint_tests PRIVATE cxx_std_17)
+    add_test(NAME SilPOM.DecalPaint COMMAND silpom_decal_paint_tests)
+    add_executable(silpom_height_precision_tests Tests/HeightPrecisionTests.cpp)
+    target_compile_features(silpom_height_precision_tests PRIVATE cxx_std_17)
+    add_test(NAME SilPOM.HeightPrecision COMMAND silpom_height_precision_tests)
+    if(WIN32)
+        add_library(silpom_level_one SHARED Tools/level_one_evaluator.cpp)
+        add_library(silpom_welded_teacher SHARED Tools/welded_tower_teacher.cpp)
+        add_library(silpom_visibility SHARED Tools/visibility_evaluator.cpp)
+        foreach(tool IN ITEMS silpom_level_one silpom_welded_teacher silpom_visibility)
+            target_compile_features(${tool} PRIVATE cxx_std_17)
+            target_include_directories(${tool} PRIVATE Include)
+            if(MSVC)
+                target_compile_options(${tool} PRIVATE /W4 /fp:precise)
+            endif()
+        endforeach()
+        set(SILPOM_PYTHON "" CACHE FILEPATH "Python with numpy/Pillow for Level 1 evaluation tests")
+        if(SILPOM_PYTHON)
+            add_test(NAME SilPOM.LevelOne COMMAND "${SILPOM_PYTHON}"
+                ${CMAKE_CURRENT_SOURCE_DIR}/Tests/LevelOneTests.py $<TARGET_FILE_DIR:silpom_level_one>)
+            add_test(NAME SilPOM.LevelTwo COMMAND "${SILPOM_PYTHON}"
+                ${CMAKE_CURRENT_SOURCE_DIR}/Tests/LevelTwoTests.py $<TARGET_FILE_DIR:silpom_level_one>)
+        endif()
+    endif()
     set(SILPOM_DXC "" CACHE FILEPATH "DXC executable for optional Windows GPU conformance tests")
     option(SILPOM_DXR_TESTS "Build optional procedural ray tracing conformance test" OFF)
     if(WIN32 AND SILPOM_DXC)
+        add_executable(silpom_level_one_gpu_tests Tests/LevelOneGpuTests.cpp)
+        target_compile_features(silpom_level_one_gpu_tests PRIVATE cxx_std_17)
+        target_compile_definitions(silpom_level_one_gpu_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+        target_link_libraries(silpom_level_one_gpu_tests PRIVATE d3d12 dxgi dxguid)
+        foreach(profile IN ITEMS 6_2 6_7)
+            set(level_one_shader ${CMAKE_CURRENT_BINARY_DIR}/level-one-${profile}.dxil)
+            add_custom_command(OUTPUT ${level_one_shader}
+                COMMAND "${SILPOM_DXC}" -T cs_${profile} -E Main -Fo ${level_one_shader} ${CMAKE_CURRENT_SOURCE_DIR}/Tests/LevelOneGpu.hlsl
+                DEPENDS Tests/LevelOneGpu.hlsl Assets/Shaders/SilPOM/EvaluationHooks.azsli
+                    Assets/Shaders/SilPOM/BlendedFace.azsli Assets/Shaders/SilPOM/LevelTwo.azsli
+                    Assets/Shaders/SilPOM/NeuralTowerLevelTwoWeights.azsli
+                    Assets/Shaders/SilPOM/NeuralOpenShaftTowerWeights.azsli
+                    Assets/Shaders/SilPOM/NeuralWeldedTowerWeights.azsli VERBATIM)
+            add_custom_target(silpom_level_one_shader_${profile} DEPENDS ${level_one_shader})
+            add_dependencies(silpom_level_one_gpu_tests silpom_level_one_shader_${profile})
+            add_test(NAME SilPOM.LevelOne.GPU.SM${profile}
+                COMMAND silpom_level_one_gpu_tests ${level_one_shader})
+            set(level_two_shader ${CMAKE_CURRENT_BINARY_DIR}/level-two-${profile}.dxil)
+            add_custom_command(OUTPUT ${level_two_shader}
+                COMMAND "${SILPOM_DXC}" -T cs_${profile} -D SILPOM_LEVEL_TWO_TEST=1 -E Main
+                    -Fo ${level_two_shader} ${CMAKE_CURRENT_SOURCE_DIR}/Tests/LevelOneGpu.hlsl
+                DEPENDS Tests/LevelOneGpu.hlsl Assets/Shaders/SilPOM/LevelTwo.azsli
+                    Assets/Shaders/SilPOM/NeuralTowerLevelTwoWeights.azsli
+                    Assets/Shaders/SilPOM/NeuralOpenShaftTowerWeights.azsli
+                    Assets/Shaders/SilPOM/NeuralWeldedTowerWeights.azsli
+                    Assets/Shaders/SilPOM/BlendedFace.azsli VERBATIM)
+            add_custom_target(silpom_level_two_shader_${profile} DEPENDS ${level_two_shader})
+            add_dependencies(silpom_level_one_gpu_tests silpom_level_two_shader_${profile})
+            add_test(NAME SilPOM.LevelTwo.GPU.SM${profile}
+                COMMAND silpom_level_one_gpu_tests ${level_two_shader} 2)
+        endforeach()
+        add_executable(silpom_validation_gather_gpu_tests Tests/ValidationGatherGpuTests.cpp)
+        target_compile_features(silpom_validation_gather_gpu_tests PRIVATE cxx_std_17)
+        target_compile_definitions(silpom_validation_gather_gpu_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+        target_link_libraries(silpom_validation_gather_gpu_tests PRIVATE d3d12 dxgi dxguid)
+        foreach(profile IN ITEMS 6_2 6_7)
+            set(gather_shader ${CMAKE_CURRENT_BINARY_DIR}/validation-gather-${profile}.dxil)
+            add_custom_command(OUTPUT ${gather_shader}
+                COMMAND "${SILPOM_DXC}" -T cs_${profile} -E Main -Fo ${gather_shader} ${CMAKE_CURRENT_SOURCE_DIR}/Tests/ValidationGatherGpu.hlsl
+                DEPENDS Tests/ValidationGatherGpu.hlsl Assets/Shaders/SilPOM/ValidationHeight.azsli
+                    Assets/Shaders/SilPOM/BlendedFace.azsli Assets/Shaders/SilPOM/Heightfield.azsli VERBATIM)
+            add_custom_target(silpom_gather_shader_${profile} DEPENDS ${gather_shader})
+            add_dependencies(silpom_validation_gather_gpu_tests silpom_gather_shader_${profile})
+            add_test(NAME SilPOM.ValidationGather.SM${profile}
+                COMMAND silpom_validation_gather_gpu_tests ${gather_shader})
+        endforeach()
         add_executable(silpom_gpu_tests Tests/GpuTests.cpp)
         target_compile_features(silpom_gpu_tests PRIVATE cxx_std_17)
         target_compile_definitions(silpom_gpu_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
