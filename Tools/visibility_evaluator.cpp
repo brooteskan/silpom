@@ -13,7 +13,8 @@ extern "C" __declspec(dllexport) bool EvaluateVisibility(const float* source,uin
     float* output,uint* diagnostics,float* features)
 {
     if(!source||!packed||!requests||!ids||!output||!diagnostics||!features||!width||!height
-        ||mode>2||model>7||!std::isfinite(confidence)||confidence<.5f||confidence>=1) return false;
+        ||mode>3||model>7||!std::isfinite(confidence)||confidence<=0||confidence>=1) return false;
+    if(mode==3 && (model<4||scale<=0)) return false;
     for(uint i=0;i<count;++i) if(ids[i]>=faceCount) return false;
     if(weights) for(uint i=0;i<145;++i) if(!std::isfinite(weights[i])) return false;
     const auto vector=[](const float* p) {return float3(p[0],p[1],p[2]);};
@@ -29,7 +30,8 @@ extern "C" __declspec(dllexport) bool EvaluateVisibility(const float* source,uin
         const float2 low{min(face.uv0.x,min(face.uv1.x,face.uv2.x)),min(face.uv0.y,min(face.uv1.y,face.uv2.y))};
         const float w=max(face.uv0.x,max(face.uv1.x,face.uv2.x))-low.x;
         const float h=max(face.uv0.y,max(face.uv1.y,face.uv2.y))-low.y;
-        if(w<=0||h<=0||q[6]<0||q[6]>64||q[5]<0) return false;
+        if(w<=0||h<=0||q[6]<0||q[6]>64||q[5]<0
+            ||(mode==3 && q[6]>0 && q[6]<5)) return false;
         const SilPomPatch patch{w,h,scale,reference,w,h,low.x,low.y,width,height,address,4096};
         const float2 uv{q[0],q[1]};const auto light=vector(q+2);const uint steps=uint(q[6]);
         uint64_t before=texture.loads;
@@ -43,8 +45,11 @@ extern "C" __declspec(dllexport) bool EvaluateVisibility(const float* source,uin
                 ray.start,ray.hRate,ray.bias,scale,reference,ray.reach,address!=0,cells);
         else exact=immediate;
         visibilityStats={};visibilityCaptured=false;visibilityFeatures={};visibilityProbability=.5f;
-        const float result=mode==0?baseline:SilPomLearnedReliefVisibility(texture,patch,face,uv,low,light,steps,q[5],
-            model,mode==2,confidence);
+        // In mode 3, confidence is the final classification threshold. It does
+        // not select fallback, and the result is binary, not a sigmoid value.
+        const float result=mode==0?baseline:mode==3
+            ?SilPomNeuralOnlyVisibility(texture,patch,face,uv,low,light,steps,q[5],model,confidence)
+            :SilPomLearnedReliefVisibility(texture,patch,face,uv,low,light,steps,q[5],model,mode==2,confidence);
         visibilityStats[8]=baselineQuads;visibilityStats[9]=cells;visibilityStats[10]=visibilityCaptured?1:0;
         const float values[]={baseline,result,float(exact),visibilityProbability};
         std::memcpy(output+i*4,values,sizeof(values));

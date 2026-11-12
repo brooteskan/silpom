@@ -124,6 +124,11 @@
             "shader": "./SilPOMHitForward.shader.template",
             "azsli": "./SilPOMHitForward.azsli",
             "tag": "silpom_hit_forward"
+        },
+        {
+            "shader": "./SilPOMHitForwardNeuralOnly.shader.template",
+            "azsli": "./SilPOMHitForwardNeuralOnly.azsli",
+            "tag": "silpom_hit_forward_neural_only"
         }
     ],
     "runtime": {
@@ -178,6 +183,7 @@
                 "type": "Bool",
                 "defaultValue": false
             },
+            {"name":"silpomNeuralVisibilityOnly","type":"Bool","defaultValue":false},
             {
                 "name": "silpomTowerLod",
                 "type": "Bool",

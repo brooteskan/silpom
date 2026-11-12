@@ -7,7 +7,7 @@
 option bool o_silpomReuseTexels = true;
 option bool o_silpomValidationGather = false;
 option bool o_silpomLevelTwo = false;
-option enum class SilPomLocalShadowMethod {Baseline, Gather, Neural} o_silpomLocalShadowMethod = SilPomLocalShadowMethod::Baseline;
+option enum class SilPomLocalShadowMethod {Baseline, Gather, Neural, NeuralOnly} o_silpomLocalShadowMethod = SilPomLocalShadowMethod::Baseline;
 
 // Sample interpolation makes the intersection ray agree with MSAA depth samples.
 #define VsOutput VsOutput_SilPom

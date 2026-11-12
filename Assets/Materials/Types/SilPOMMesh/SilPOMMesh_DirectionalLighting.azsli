@@ -8,10 +8,18 @@
 float SilPomLocalVisibility(Texture2D texture,SilPomPatch p,SilPomMeshFace face,float2 uv,float2 low,
     float3 light,uint steps,float reach,MaterialParameters params)
 {
+#if defined(SILPOM_NEURAL_VISIBILITY_ONLY)
+    return SilPomNeuralOnlyVisibility(texture,p,face,uv,low,light,steps,reach,params.m_silpomNeuralModel,
+        SilPomNeuralOnlyThreshold(params.m_silpomNeuralModel));
+#else
     if(o_silpomLocalShadowMethod==SilPomLocalShadowMethod::Baseline)
         return SilPomReliefVisibility(texture,p,face,uv,low,light,steps,reach);
+    // NeuralOnly is enabled exclusively on the separately compiled forward
+    // shader. An invalid material/shader binding must never start a march.
+    if(o_silpomLocalShadowMethod==SilPomLocalShadowMethod::NeuralOnly) return 0;
     return SilPomLearnedReliefVisibility(texture,p,face,uv,low,light,steps,reach,params.m_silpomNeuralModel,
         o_silpomLocalShadowMethod==SilPomLocalShadowMethod::Neural,params.m_silpomNeuralShadowConfidence);
+#endif
 }
 
 void ApplySpiralLightRay(Surface surface, inout LightingData lightingData, MaterialParameters params, float3 ray, float lux)

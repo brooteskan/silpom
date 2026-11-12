@@ -123,9 +123,10 @@ public:
                         "Affects local relief visibility for spiral and directional lights. External shadows and camera intersections are unchanged.")
                     ->EnumAttribute(LocalShadowMethod::Baseline,"March (baseline)")
                     ->EnumAttribute(LocalShadowMethod::Gather,"March with Gather (may be cheaper)")
-                    ->EnumAttribute(LocalShadowMethod::Neural,"Level 3 neural (experimental)")
-                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_neuralShadowConfidence,"Neural shadow confidence (higher = safer)",
-                        "Confidence required to replace a local shadow march. Higher values use the fallback more often; lower values can be cheaper with larger visibility errors.")
+                    ->EnumAttribute(LocalShadowMethod::Neural,"Hybrid neural + march (reference)")
+                    ->EnumAttribute(LocalShadowMethod::NeuralOnly,"Level 3 neural only (fixed probes; experimental)")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_neuralShadowConfidence,"Hybrid shadow confidence (higher = safer)",
+                        "Historical hybrid only. Higher values use more fallback. Neural only uses calibrated binary thresholds and has no march or uncertainty fallback.")
                     ->Attribute(AZ::Edit::Attributes::Min,.9f)->Attribute(AZ::Edit::Attributes::Max,.99999f)
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_spiralLightShadowSteps,"Spiral-light shadow samples (lower = cheaper)","Samples per spiral-light shadow ray. 0 disables these local shadows while retaining the light. Only affects materials receiving spiral light.")
                     ->Attribute(AZ::Edit::Attributes::Min,0)->Attribute(AZ::Edit::Attributes::Max,64)

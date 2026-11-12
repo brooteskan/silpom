@@ -38,6 +38,7 @@ function MaterialTypeSetup(context)
             context:IncludeShader("SilPOMHitDepthLodShell")
             context:IncludeShader("SilPOMHitDepthWallBackup")
             context:IncludeShader("SilPOMHitForward")
+            context:IncludeShader("SilPOMHitForwardNeuralOnly")
         end
         context:IncludeShader("ForwardPass_StandardLighting")
         context:IncludeShader("ForwardPass_StandardLighting_CustomZ")

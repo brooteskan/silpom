@@ -54,6 +54,10 @@ if(NOT COMMAND o3de_gem_setup)
     set(SILPOM_DXC "" CACHE FILEPATH "DXC executable for optional Windows GPU conformance tests")
     option(SILPOM_DXR_TESTS "Build optional procedural ray tracing conformance test" OFF)
     if(WIN32 AND SILPOM_DXC)
+        if(SILPOM_PYTHON)
+            add_test(NAME SilPOM.VisibilityOnly COMMAND "${SILPOM_PYTHON}"
+                ${CMAKE_CURRENT_SOURCE_DIR}/Tests/VisibilityOnlyTests.py $<TARGET_FILE_DIR:silpom_visibility> "${SILPOM_DXC}")
+        endif()
         add_executable(silpom_visibility_gpu_tests Tests/VisibilityGpuTests.cpp)
         target_compile_features(silpom_visibility_gpu_tests PRIVATE cxx_std_17)
         target_compile_definitions(silpom_visibility_gpu_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
@@ -63,12 +67,26 @@ if(NOT COMMAND o3de_gem_setup)
             add_custom_command(OUTPUT ${visibility_shader}
                 COMMAND "${SILPOM_DXC}" -T cs_${profile} -E Main -Fo ${visibility_shader} ${CMAKE_CURRENT_SOURCE_DIR}/Tests/VisibilityGpu.hlsl
                 DEPENDS Tests/VisibilityGpu.hlsl Assets/Shaders/SilPOM/LevelThree.azsli
+                    Assets/Shaders/SilPOM/VisibilityInputs.azsli Assets/Shaders/SilPOM/VisibilityClassificationThresholds.azsli
                     Assets/Shaders/SilPOM/NeuralVisibilityWeights.azsli Assets/Shaders/SilPOM/ReliefShadow.azsli
                     Assets/Shaders/SilPOM/ValidationHeight.azsli Assets/Shaders/SilPOM/BlendedFace.azsli
                     Assets/Shaders/SilPOM/PlanarFace.azsli Assets/Shaders/SilPOM/Heightfield.azsli VERBATIM)
             add_custom_target(silpom_visibility_shader_${profile} DEPENDS ${visibility_shader})
             add_dependencies(silpom_visibility_gpu_tests silpom_visibility_shader_${profile})
             add_test(NAME SilPOM.Visibility.GPU.SM${profile} COMMAND silpom_visibility_gpu_tests ${visibility_shader})
+            set(visibility_only_shader ${CMAKE_CURRENT_BINARY_DIR}/visibility-only-${profile}.dxil)
+            add_custom_command(OUTPUT ${visibility_only_shader}
+                COMMAND "${SILPOM_DXC}" -T cs_${profile} -D SILPOM_NEURAL_VISIBILITY_ONLY=1 -E Main
+                    -Fo ${visibility_only_shader} ${CMAKE_CURRENT_SOURCE_DIR}/Tests/VisibilityGpu.hlsl
+                DEPENDS Tests/VisibilityGpu.hlsl Assets/Shaders/SilPOM/NeuralVisibility.azsli
+                    Assets/Shaders/SilPOM/VisibilityInputs.azsli Assets/Shaders/SilPOM/VisibilityClassificationThresholds.azsli
+                    Assets/Shaders/SilPOM/NeuralVisibilityWeights.azsli Assets/Shaders/SilPOM/ReliefShadow.azsli
+                    Assets/Shaders/SilPOM/ValidationHeight.azsli Assets/Shaders/SilPOM/BlendedFace.azsli
+                    Assets/Shaders/SilPOM/PlanarFace.azsli Assets/Shaders/SilPOM/Heightfield.azsli VERBATIM)
+            add_custom_target(silpom_visibility_only_shader_${profile} DEPENDS ${visibility_only_shader})
+            add_dependencies(silpom_visibility_gpu_tests silpom_visibility_only_shader_${profile})
+            add_test(NAME SilPOM.VisibilityOnly.GPU.SM${profile}
+                COMMAND silpom_visibility_gpu_tests ${visibility_only_shader} only)
         endforeach()
         add_executable(silpom_level_one_gpu_tests Tests/LevelOneGpuTests.cpp)
         target_compile_features(silpom_level_one_gpu_tests PRIVATE cxx_std_17)

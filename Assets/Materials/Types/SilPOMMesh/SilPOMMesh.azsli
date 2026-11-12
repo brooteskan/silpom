@@ -15,7 +15,11 @@ float SilPomPaintHeight();
 #define SILPOM_LEVEL2 o_silpomLevelTwo
 #include "../../../Shaders/SilPOM/BlendedFace.azsli"
 #include "../../../Shaders/SilPOM/ReliefShadow.azsli"
+#if defined(SILPOM_NEURAL_VISIBILITY_ONLY)
+#include "../../../Shaders/SilPOM/NeuralVisibility.azsli"
+#else
 #include "../../../Shaders/SilPOM/LevelThree.azsli"
+#endif
 #endif
 #if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
 // Per-fragment state passed from geometry evaluation to direct lighting.

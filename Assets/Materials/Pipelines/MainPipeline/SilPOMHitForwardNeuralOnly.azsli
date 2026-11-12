@@ -1,0 +1,4 @@
+// SPDX-License-Identifier: MIT
+// Compilation boundary: this visibility variant cannot include a local marcher.
+#define SILPOM_NEURAL_VISIBILITY_ONLY 1
+#include "SilPOMHitForward.azsli"

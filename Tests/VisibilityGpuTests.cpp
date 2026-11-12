@@ -17,7 +17,8 @@ int main(int argc,char** argv)
 {
     try
     {
-        if(argc!=2) throw std::runtime_error("Usage: silpom_visibility_gpu_tests shader.dxil");
+        if(argc!=2 && argc!=3) throw std::runtime_error("Usage: silpom_visibility_gpu_tests shader.dxil [only]");
+        const bool neuralOnly=argc==3;
         static_assert(sizeof(SilPomPatch)==48);
         ComPtr<IDXGIFactory6> factory;Check(CreateDXGIFactory2(0,IID_PPV_ARGS(&factory)));
         ComPtr<IDXGIAdapter1> adapter;
@@ -84,8 +85,8 @@ int main(int argc,char** argv)
 
         constexpr UINT count=1024;
         struct Request {float2 uv;float3 light;float reach;uint steps;};
-        struct Result {float values[4];uint counts[8];};
-        static_assert(sizeof(Request)==28 && sizeof(Result)==48);
+        struct Result {float values[4];uint counts[12];};
+        static_assert(sizeof(Request)==28 && sizeof(Result)==64);
         auto output=buffer(count*sizeof(Result),D3D12_HEAP_TYPE_DEFAULT,D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
         auto readback=buffer(count*sizeof(Result),D3D12_HEAP_TYPE_READBACK,D3D12_RESOURCE_STATE_COPY_DEST);
         std::mt19937 random(971);std::uniform_real_distribution<float> coordinate(-.25f,1.25f),unit(0,1);
@@ -104,6 +105,7 @@ int main(int argc,char** argv)
         for(UINT model:{4u,5u,6u,7u}) for(UINT steps:{0u,9u,64u}) for(UINT clamp:{0u,1u})
         for(UINT mode:{1u,2u}) for(UINT pattern:{0u,1u})
         {
+            if(neuralOnly && mode!=2) continue;
             for(auto& q:requests) q.steps=steps;
             auto inputs=upload(requests.data(),requests.size()*sizeof(Request));
             Texture texture{32,16,std::vector<float>(32*16,.6f)};
@@ -139,7 +141,11 @@ int main(int argc,char** argv)
             {
                 visibilityStats={};visibilityProbability=.5f;
                 const auto q=requests[i];
-                float expected=SilPomLearnedReliefVisibility(texture,patch,face,q.uv,{0,0},q.light,q.steps,q.reach,model,mode==2,confidence);
+                float expected=neuralOnly
+                    ?SilPomNeuralOnlyVisibility(texture,patch,face,q.uv,{0,0},q.light,q.steps,q.reach,model,SilPomNeuralOnlyThreshold(model))
+                    :SilPomLearnedReliefVisibility(texture,patch,face,q.uv,{0,0},q.light,q.steps,q.reach,model,mode==2,confidence);
+                if(neuralOnly && (visibilityStats[5]||visibilityStats[6]||visibilityStats[0]>5))
+                    throw std::runtime_error("Neural-only violated its no-march/fixed-probe contract");
                 const auto& result=values[i];
                 float delta=abs(visibilityProbability-result.values[1]);
                 // Physical reach can land exactly at the global height bound.
@@ -148,11 +154,11 @@ int main(int argc,char** argv)
                 int quadDelta=int(result.counts[0])-int(visibilityStats[0]);
                 bool topBoundary=quadDelta==0 || (q.reach>0 && expected==1 && abs(quadDelta)==1);
                 bool eventMismatch=false;
-                for(UINT k=1;k<8;++k) eventMismatch|=result.counts[k]!=visibilityStats[k];
+                for(UINT k=1;k<12;++k) eventMismatch|=result.counts[k]!=visibilityStats[k];
                 if(expected!=result.values[0] || delta>2e-5f || !topBoundary || eventMismatch)
                 {
                     std::cerr<<"Visibility CPU="<<expected<<" GPU="<<result.values[0]<<" probability delta="<<delta;
-                    for(UINT k=0;k<8;++k) if(result.counts[k]!=visibilityStats[k])
+                    for(UINT k=0;k<12;++k) if(result.counts[k]!=visibilityStats[k])
                         std::cerr<<" slot "<<k<<" CPU="<<visibilityStats[k]<<" GPU="<<result.counts[k];
                     throw std::runtime_error(" CPU/GPU mismatch model="+std::to_string(model)+" mode="+std::to_string(mode)
                         +" steps="+std::to_string(steps)+" clamp="+std::to_string(clamp)+" pattern="+std::to_string(pattern)+" ray="+std::to_string(i));

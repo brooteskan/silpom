@@ -74,9 +74,9 @@
                     {
                         "name": "localShadowMethod",
                         "displayName": "Local shadow method",
-                        "description": "Baseline march, exact Gather march, or Level 3 learned local visibility with uncertain predictions falling back to marching.",
+                        "description": "Baseline/Gather march, historical hybrid, or separately compiled neural-only binary visibility with at most four probes and no local march.",
                         "type": "Enum",
-                        "enumValues": ["Baseline", "Gather", "Neural"],
+                        "enumValues": ["Baseline", "Gather", "Neural", "NeuralOnly"],
                         "defaultValue": "Baseline",
                         "connection": {"type": "ShaderOption", "name": "o_silpomLocalShadowMethod"}
                     },

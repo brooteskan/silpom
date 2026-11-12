@@ -1,0 +1,85 @@
+No-fallback Level 3 experiment at relief depth 0.5 -- 2026-11-12
+
+This is the requested replacement experiment: retain the existing four-probe
+descriptor and 10 -> 12 -> 1 network, remove all local marching, and select
+binary decision cutoffs on independent calibration data. Weights are unchanged.
+The old hybrid is retained as a separate reference. No marching was restored
+to make the standalone model's error rate look better.
+
+Setup: RX 7900 XTX, DX12 SM 6.7, source-built O3DE Editor, VueLiveLink,
+1280x720, three fixed views, 600 timestamp samples per view, prewarmed methods,
+TAA/vsync off. All methods use relief depth 0.5, Level 1 camera intersections,
+6 validation iterations / retry cap 4 / tolerance 1, source R32 heights,
+validation Gather off and no relief-distance cap. Hybrid confidence is 0.995.
+The user's depth-0.3 preset was restored without saving the level. Results
+must not be compared directly to the earlier depth-0.3 hybrid benchmark.
+
+Forward-pass median GPU milliseconds (mean column averages view medians):
+                         lower-glancing  lower-facing  upper-glancing   mean
+  Baseline, 9                  0.6460        0.6240          0.6550     0.6417
+  Gather, 9                    0.4700        0.4580          0.4690     0.4657
+  Historical hybrid, 9         0.5540        0.5090          0.5500     0.5377
+  Neural only, 9               0.5520        0.5370          0.5390     0.5427
+  Baseline, 64                 2.1780        2.0830          2.2705     2.1772
+  Gather, 64                   1.1100        1.0450          1.1200     1.0917
+  Neural only, 64              0.5520        0.5440          0.5390     0.5450
+  Baseline repeat, 9           0.6480        0.6200          0.6560     0.6413
+
+At nine samples, neural-only is 16.5% slower than Gather and essentially costs
+the same as the hybrid. Removing fallback alone does not beat the inexpensive
+march in this case. At 64, neural-only is 50.1% cheaper than Gather in the
+forward pass. Its near-constant cost follows the fixed acquisition/MLP budget.
+These timings establish measured costs, not separate register, arithmetic or
+wave-divergence contributions; those were not individually profiled.
+
+Mean of view medians for all SILPOM leaf passes (ms):
+                            Baseline    Gather    Neural only
+  9 samples                   1.6768    1.4985        1.5717
+  64 samples                  3.2017    2.1140        1.5778
+Graphics-queue spans are respectively 3.1972/3.0193/3.0892 ms at 9 and
+4.7405/3.6272/3.1078 ms at 64. Spans include inter-pass gaps. This does not
+measure CPU frame time or establish a particular FPS improvement.
+
+Quality is not qualified for a production replacement:
+At depth 0.5, independent held-out visibility tests find 3,445 errors in
+200,000 requests (1.7225%) for neural-only, versus 966 (0.483%) for baseline.
+The requests include grazing/back-facing stress cases; query error rates are
+not screen-pixel error rates. The oracle is the FP64 bilinear-cell trace in
+the existing frozen displacement frame, including its shared analytic cases.
+Per-profile counts, denominators and calibration cutoffs are published in
+NeuralOnlyEvaluation.json. Saturated descriptors are counted separately in
+the full local report; they continue to classify and never start a march.
+
+All six Gather still images match their baseline images pixel for pixel.
+Neural-only changes 3.00%-13.20% of pixels across the captured views; 0.13%-2.31%
+of pixels differ by more than 8/255 in a channel, with a maximum difference of
+27/255. Approximate shadow decisions affect many more pixels than the hybrid.
+Fixed-view/motion screenshots are retained locally for visual inspection;
+these checks do not prove temporal stability for arbitrary light/camera motion.
+
+A regression test constructs two positions in one height texture with identical
+ten-float descriptors but opposite independently checked visibility because a
+thin ridge falls between probes. The existing descriptor omits information
+needed for that case. A material-specific spatial feature atlas and a small
+decoder are the appropriate next representation experiment.
+
+Contract and validation:
+The production neural-only forward shader is compiled separately, with neither
+local marcher present after preprocessing. Material preparation rejects missing
+supported profiles/heights, depths other than calibrated 0.5 and schedules
+outside 0 or 5-64. The live Editor checks confirmed depth and schedule rejection.
+The 22 standalone groups pass, including 49,152 neural-only CPU/GPU comparisons
+per shader model (SM 6.2/6.7), fixed maximum-five-quad checks, binary thresholds,
+and nine API/compilation/information-limit cases. Shader processing and the
+dedicated Editor capture completed successfully, with no Editor assertions.
+All component/camera/CVar restoration checks pass. The saved level is unchanged.
+
+Reproduction and evidence:
+  Tests/Run-VisibilityOnlyBenchmark.ps1
+  Tests/visibility_only_editor_benchmark.py
+  Tools/evaluate_visibility_only.py --relief-depth .5
+  Tools/NeuralOnlyEvaluation.json / NeuralOnlyBenchmark.json (compact evidence)
+  Local ignored scratch/silpom-neural-only-20261112/evaluation-depth-05/
+  Local ignored scratch/silpom-neural-only-20261112/depth-05-comparison/
+The earlier depth-1 trial was stopped after the user's depth-0.5 request;
+it is not used for the published performance comparison.

@@ -108,7 +108,8 @@
         "type": "Bool",
         "defaultValue": false
       },
-      {
+      {"name":"silpomNeuralVisibilityOnly","type":"Bool","defaultValue":false},
+            {
         "name": "silpomTowerLod",
         "type": "Bool",
         "defaultValue": false

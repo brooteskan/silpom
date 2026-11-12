@@ -44,6 +44,13 @@ int main()
         forced[144]=-20;
         Check(evaluate({.2f,.2f},{1,0,.01f},64,true)==0 && visibilityStats[4]==1,"Shadow prediction branch must execute");
         forced[144]=0;
+        visibilityStats={};
+        Check(SilPomNeuralOnlyVisibility(image,p,f,{.2f,.2f},{0,0},{1,0,.01f},64,.3f,4,.6f)==0
+            && visibilityStats[4]==1 && visibilityStats[5]==0 && visibilityStats[6]==0 && visibilityStats[0]==5,
+            "Uncertain neural-only prediction must classify, never march");
+        visibilityStats={};
+        Check(SilPomNeuralOnlyVisibility(image,p,f,{.2f,.2f},{0,0},{1,0,.01f},64,.3f,4,.4f)==1
+            && visibilityStats[3]==1 && visibilityStats[0]==5,"Binary threshold must apply to standalone neural visibility");
         std::mt19937 rng(51619);std::uniform_real_distribution<float> coord(-.5f,1.5f),unit(0,1);
         for(auto& value:image.pixels)value=unit(rng);
         uint comparisons=0;

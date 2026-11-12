@@ -371,7 +371,8 @@ void MeshConfig::Reflect(AZ::ReflectContext* context)
             ->Value("SelectedMaterials", SpiralLightMode::SelectedMaterials)
             ->Value("AllSilPomSurfaces", SpiralLightMode::AllSilPomSurfaces);
         sc->Enum<LocalShadowMethod>()->Value("Baseline",LocalShadowMethod::Baseline)
-            ->Value("Gather",LocalShadowMethod::Gather)->Value("Neural",LocalShadowMethod::Neural);
+            ->Value("Gather",LocalShadowMethod::Gather)->Value("Neural",LocalShadowMethod::Neural)
+            ->Value("NeuralOnly",LocalShadowMethod::NeuralOnly);
         sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(15)->Field("Surface", &MeshConfig::m_surface)
             ->Field("Materials", &MeshConfig::m_materials)->Field("Profiles", &MeshConfig::m_profiles)
             ->Field("ReliefDepthMultiplier", &MeshConfig::m_reliefDepthMultiplier)
@@ -561,7 +562,7 @@ bool MeshController::Prepare()
             return true;
         }
     }
-    if (static_cast<AZ::u32>(c.m_localShadowMethod)>2 || !std::isfinite(c.m_neuralShadowConfidence)
+    if (static_cast<AZ::u32>(c.m_localShadowMethod)>3 || !std::isfinite(c.m_neuralShadowConfidence)
         || c.m_neuralShadowConfidence<.9f || c.m_neuralShadowConfidence>.99999f)
     { m_status="Invalid local shadow method or confidence (0.9-0.99999)";return false; }
     if (c.m_validationIterations < 1 || c.m_validationIterations > 16 || c.m_validationRetryCap > 4
@@ -592,6 +593,12 @@ bool MeshController::Prepare()
     if (!std::isfinite(depthMultiplier) || depthMultiplier < 0.0f || depthMultiplier > MeshConfig::MaxReliefDepthMultiplier)
     { m_status = "Relief depth multiplier must be between 0 and 2"; return false; }
     const bool reuseDepthHits = InstallHitPasses(*scene, requiresTrainedHits);
+    const bool neuralVisibilityOnly = c.m_localShadowMethod == LocalShadowMethod::NeuralOnly;
+    if (neuralVisibilityOnly && (!requiresTrainedHits || !reuseDepthHits || std::abs(depthMultiplier-.5f)>1e-6f))
+    { m_status="Neural-only visibility requires trained profiles, calibrated relief depth 0.5 and DX12 MainPipeline hit reuse";return false; }
+    if (neuralVisibilityOnly && ((c.m_spiralLightShadowSteps>0 && c.m_spiralLightShadowSteps<5)
+        || (c.m_reliefShadowSteps>0 && c.m_reliefShadowSteps<5)))
+    { m_status="Neural-only visibility requires shadow schedules of 0 (off) or 5-64; it never switches to marching";return false; }
     if (requiresTrainedHits && (!reuseDepthHits || !c.m_useNeuralSeed || c.m_maxCells != 65525 || c.m_reliefShadowSteps != 0))
     {
         m_status = "Trained profiles require single-sample DX12 winning-hit resolve (Maximum cells 65525) and relief shadows off";
@@ -688,6 +695,21 @@ bool MeshController::Prepare()
                     return fail("Invalid displacement profile settings");
                 const float reliefScale = p.m_scale * depthMultiplier;
                 const auto& desc = p.m_height->GetImageDescriptor();
+                if (neuralVisibilityOnly)
+                {
+                    if (p.m_neuralModel<4 || p.m_neuralModel>7 || reliefScale<0)
+                        return fail("Neural-only visibility has no model for this profile; assign an open-shaft model 4-7 with nonnegative relief");
+                    constexpr const char* images[] = {
+                        "assets/silpomplanarab/irishfieldstonetowerwelded/wall/height.png.streamingimage",
+                        "assets/silpomplanarab/irishfieldstonetoweropenshaft/sculpted-stair-silpom/height.png.streamingimage",
+                        "assets/silpomplanarab/irishfieldstonetoweropenshaft/welded-doorway/trim-blocks/height.png.streamingimage",
+                        "assets/silpomplanarab/irishfieldstonetoweropenshaft/welded-doorway/reveal/height.png.streamingimage"};
+                    AZ::Data::AssetId expected;
+                    AZ::Data::AssetCatalogRequestBus::BroadcastResult(expected,&AZ::Data::AssetCatalogRequests::GetAssetIdByPath,
+                        images[p.m_neuralModel-4],azrtti_typeid<AZ::RPI::StreamingImageAsset>(),false);
+                    if (!expected.IsValid() || expected!=p.m_height.GetId())
+                        return fail("Neural-only visibility requires its trained height asset; retrain for a different material");
+                }
                 if (requiresTrainedHits)
                 {
                     struct TrainedProfile { float scale, reference; AZ::u32 address, width, height, profileId; };
@@ -956,7 +978,9 @@ void MeshController::OnTick(float, AZ::ScriptTimePoint)
                 m_configuration.m_useValidationGather ? "Gather" : "four loads");
             m_status += m_configuration.m_useLevelTwoPredictor ? "; Level 2 predictor" : "; Level 1 predictor";
             m_status += m_configuration.m_localShadowMethod==LocalShadowMethod::Baseline ? "; local shadows: baseline"
-                :m_configuration.m_localShadowMethod==LocalShadowMethod::Gather ? "; local shadows: Gather" : "; local shadows: neural";
+                :m_configuration.m_localShadowMethod==LocalShadowMethod::Gather ? "; local shadows: Gather"
+                :m_configuration.m_localShadowMethod==LocalShadowMethod::NeuralOnly ? "; local shadows: neural only (no march)"
+                :"; local shadows: hybrid neural + march";
             if (m_active->depthHeightBounds)
             {
                 m_status += "; depth height bounds";

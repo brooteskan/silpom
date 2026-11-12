@@ -24,6 +24,7 @@ inline bool OverrideVisibility(float* feature,float& value)
 #define SP_TEX const Texture&
 #define SP_REF(T) T&
 #define SP_UNROLL
+#define SP_OUT
 #define SP_BRANCH
 #define SILPOM_SHADOW_STAT(event) ++visibilityStats[event]
 #define SILPOM_CAPTURE_VISIBILITY(feature,ray) std::copy(feature,feature+10,visibilityFeatures.begin());visibilityCaptured=true
@@ -31,10 +32,12 @@ inline bool OverrideVisibility(float* feature,float& value)
 #define SILPOM_OVERRIDE_VISIBILITY(feature,value) OverrideVisibility(feature,value)
 #include "../Assets/Shaders/SilPOM/ReliefShadow.azsli"
 #include "../Assets/Shaders/SilPOM/LevelThree.azsli"
+#include "../Assets/Shaders/SilPOM/NeuralVisibility.azsli"
 #undef SILPOM_OVERRIDE_VISIBILITY
 #undef SILPOM_VISIBILITY_PROBABILITY
 #undef SILPOM_CAPTURE_VISIBILITY
 #undef SILPOM_SHADOW_STAT
+#undef SP_OUT
 #undef SP_BRANCH
 #undef SP_UNROLL
 #undef SP_REF

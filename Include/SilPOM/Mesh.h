@@ -19,7 +19,8 @@ enum class SpiralLightMode : AZ::u32
     AllSilPomSurfaces = 2
 };
 AZ_TYPE_INFO_SPECIALIZE(SpiralLightMode, "{375431D9-B6A5-49DD-8663-268A00CF6709}");
-enum class LocalShadowMethod : AZ::u32 { Baseline=0, Gather=1, Neural=2 };
+// Preserve serialized value 2 as the historical hybrid comparison.
+enum class LocalShadowMethod : AZ::u32 { Baseline=0, Gather=1, Neural=2, NeuralOnly=3 };
 AZ_TYPE_INFO_SPECIALIZE(LocalShadowMethod, "{8C21E33E-53B1-45A9-9554-57656F558F10}");
 struct MeshMaterialBinding
 {
