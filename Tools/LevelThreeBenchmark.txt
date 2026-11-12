@@ -1,0 +1,70 @@
+Level 3 local relief visibility comparison -- 2026-11-12
+
+GPU: AMD Radeon RX 7900 XTX; DX12 Shader Model 6.7; source-built O3DE Editor.
+VueLiveLink, 1280x720, three matched camera views (lower glancing, lower facing,
+upper glancing). 600 GPU timestamp samples per view after method prewarming
+and settling. TAA and vsync off. Camera intersections remain Level 1,
+validation 6 / retry 4 / tolerance 1, source R32 heights, validation Gather off,
+automatic pixel LOD, no relief-distance cap. Only local shadow method and
+spiral-light shadow sample count change. Neural confidence is 0.995.
+
+Local-light forward-pass median GPU milliseconds (lower is cheaper):
+                           lower-glancing  lower-facing  upper-glancing  mean
+  Baseline, 9 samples             0.6670        0.6695          0.7370    0.6912
+  Gather, 9                       0.5180        0.5580          0.5200    0.5320
+  Neural, 9                       0.5640        0.6290          0.5960    0.5963
+  Baseline, 64                    2.4270        2.1995          2.5490    2.3918
+  Gather, 64                      1.1950        1.1085          1.2170    1.1735
+  Neural, 64                      1.2570        1.1220          1.2910    1.2233
+  Baseline repeat, 9              0.6680        0.6430          0.6780    0.6630
+
+These means average the three view medians; they are not whole-frame FPS.
+Neural is about 12.1% more expensive than Gather at 9 samples and 4.2% more
+expensive at 64 in this run. Both methods beat the original marcher in this
+pass. The repeated baseline shows timing drift, especially in the upper view;
+small differences should not be generalized beyond this run and hardware.
+
+Mean of per-view median sums of all SILPOM leaf passes (milliseconds):
+                     Baseline       Gather        Neural
+  9 samples            1.5388        1.4745        1.4923
+  64 samples           3.1780        1.9633        2.0382
+The repeated 9-sample baseline is 1.4613 ms. Overall 9-sample savings are
+within this run's variability. The graphics-queue timestamp span is likewise
+about 3.1 ms for all three at 9 samples; it includes inter-pass gaps and is
+not an isolated shader duration or a CPU frame-time measurement.
+
+Why fewer neural height queries do not establish a GPU win:
+The learned path gathers four probes, constructs features, evaluates a
+10 -> 12 -> 1 network and a sigmoid, then often still marches. The existing
+marcher can exit on an earlier blocker. Different per-pixel fallback lengths
+can also limit the benefit of skipped work within a GPU wave. The measured
+neural/Gather difference establishes that these costs outweigh the query
+savings here; instruction/register/wave contributions have not been profiled
+separately. Gathering the same exact heights is the clear measured win.
+
+Quality:
+All six Gather screenshots (3 views x 2 sample counts) match the corresponding
+baseline images pixel for pixel. Neural changes 0 to 0.0407% of pixels per
+image; the largest channel difference is 24/255. These are small local changes,
+not a guarantee against temporal artifacts or errors in other views.
+
+On 50,000 independent held-out visibility requests per profile, the default
+neural threshold adds respectively 10 / 11 / 18 / 14 false-lit results for
+wall / stairs / trim / reveal, with no additional false-shadow results.
+This is 53 added false-lit results in 200,000 requests (0.0265%). The baseline
+itself misses thin occluders between discrete samples; the reference traverses
+the continuous bilinear height surface in a frozen displacement frame. It
+does not trace other faces. The stairs model is tested offline; the level's
+stairs remain ordinary geometry. Higher confidence increases fallback use.
+
+Implementation and evidence:
+All 19 regression groups pass, including 98,304 CPU/GPU checks per SM 6.2/6.7.
+The shader assets processed successfully, and the Editor comparison completed
+without assertions and restored its controls. The saved VueLiveLink level is
+byte-identical to the pre-implementation copy; its default remains Baseline.
+
+Companion TG harness: scripts/SilPOMLevelThreeAB/Run.ps1, capture.py.
+Local ignored evidence: scratch/silpom-level-three-20261112/comparison/
+(results.json, per-frame timestamps, fixed-view and motion screenshots,
+Editor.log), training/training.json, held-out-budgets.json, final-tests.log.
+No further scene benchmarking was run after the user requested wrapping up.
