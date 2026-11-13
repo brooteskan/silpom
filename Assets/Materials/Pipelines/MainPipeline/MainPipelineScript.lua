@@ -44,6 +44,8 @@ function MaterialTypeSetup(context)
             context:IncludeShader("SilPOMHitForwardLevelFive")
             context:IncludeShader("SilPOMHitForwardShared")
             context:IncludeShader("SilPOMHitForwardSharedProxy")
+            context:IncludeShader("SilPOMHitForwardSharedCompare")
+            context:IncludeShader("SilPOMHitForwardSharedProxyCompare")
             context:IncludeShader("SilPOMHitDepthLearnedProxy")
         end
         context:IncludeShader("ForwardPass_StandardLighting")

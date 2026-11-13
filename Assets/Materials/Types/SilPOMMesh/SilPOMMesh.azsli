@@ -558,6 +558,9 @@ COMMON_OPTIONS_OCCLUSION()
 COMMON_OPTIONS_EMISSIVE()
 #if defined(SILPOM_LEARNED_MATERIAL)
 #include "../../../Shaders/SilPOM/LearnedMaterialSurface.azsli"
+#if SILPOM_SHARED_VISIBILITY && SILPOM_DIRECTIONAL_COMPARISON
+#include "../../../Shaders/SilPOM/DirectionalEstimator.azsli"
+#endif
 #else
 #define EvaluateSurface EvaluateSurface_SilPomFaceBase
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_SurfaceEval.azsli>
@@ -575,10 +578,24 @@ Surface EvaluateSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,cons
     float4 materialDerivatives=float4(ddx(geo.uvs[0]),ddy(geo.uvs[0]));
 #endif
 #if SILPOM_LEVEL_FIVE
-    if(silpomLitProxy)return SilPomEvaluateProxySurface(IN,SV,geo,params);
+    if(silpomLitProxy)
+    {
+#if SILPOM_SHARED_VISIBILITY && SILPOM_DIRECTIONAL_COMPARISON
+        if(o_silpomLightingEstimator!=SilPomLightingEstimator::CurrentRouting && o_silpomLightingEstimator!=SilPomLightingEstimator::PhysicalRayNeural)
+        {
+            float comparisonMaterial[6];SilPomAcquireComparisonMaterial(geo.uvs[0],params,materialDerivatives,comparisonMaterial);
+            SilPomAcquireDirectionalEstimator(materialDerivatives);
+        }
+#endif
+        return SilPomEvaluateProxySurface(IN,SV,geo,params);
+    }
 #endif
 #if defined(SILPOM_LEARNED_MATERIAL)
     Surface surface=SilPomEvaluateLearnedSurface(IN,SV,geo,params,materialDerivatives);
+#if SILPOM_SHARED_VISIBILITY && SILPOM_DIRECTIONAL_COMPARISON
+    if(o_silpomLightingEstimator!=SilPomLightingEstimator::CurrentRouting && o_silpomLightingEstimator!=SilPomLightingEstimator::PhysicalRayNeural)
+        SilPomAcquireDirectionalEstimator(materialDerivatives);
+#endif
 #else
     Surface surface=EvaluateSurface_StandardPBR(IN,SV,geo,params);
 #endif

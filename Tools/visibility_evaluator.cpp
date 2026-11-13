@@ -39,7 +39,7 @@ extern "C" __declspec(dllexport) bool EvaluateVisibility(const float* source,uin
         const uint baselineQuads=uint((texture.loads-before)/4);
         SilPomLocalShadowRay ray{};float immediate=1;uint cells=0;
         double exact=immediate;
-        if(SilPomPrepareLocalShadow(texture,patch,face,uv,low,light,steps,q[5],ray,immediate))
+        if(SilPomPrepareLocalShadow(texture,patch,face,uv,low,light,steps,q[5],mode==3,ray,immediate))
             exact=SilPOM::VisibilityReference::Trace(source,int(width),int(height),
                 double(uv.x)*width-.5,double(uv.y)*height-.5,double(ray.uRate)*width,double(ray.vRate)*height,
                 ray.start,ray.hRate,ray.bias,scale,reference,ray.reach,address!=0,cells);

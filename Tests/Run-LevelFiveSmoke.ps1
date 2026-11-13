@@ -5,6 +5,8 @@ Check Level 5 proxy selection, raster depth, transitions, dynamic lighting and r
 .DESCRIPTION
 Requires the source-built Editor and processed assets. Opens a dedicated Editor,
 uses fixed cameras and render readbacks, restores controls, and never saves the level.
+Temporarily changes one valid coefficient in each learned source bundle to verify
+Asset Processor hot reload, then restores the original bytes even after failure.
 Results and screenshots go under ignored user/SilPOMLevelFiveSmoke. The original
 component settings, camera and console variables are restored after comparison.
 #>
@@ -25,6 +27,12 @@ New-Item -ItemType Directory -Path $output -Force | Out-Null
 $oldOutput = $env:TG_SILPOM_LEVEL_FIVE_TEST_OUTPUT
 $oldLeaveOpen = $env:TG_SILPOM_LEVEL_FIVE_LEAVE_OPEN
 $server = $null
+$bundleBackups = @{}
+foreach ($name in @('wall.l4mat','wall-shared.l4shared','wall-appearance.l5app','wall-depth.l5depth')) {
+    $path = Join-Path $project ('Assets/SilPOMLearned/' + $name)
+    $bundleBackups[$path] = [IO.File]::ReadAllBytes($path)
+    [IO.File]::WriteAllBytes((Join-Path $output $name), $bundleBackups[$path])
+}
 try {
     $env:TG_SILPOM_LEVEL_FIVE_TEST_OUTPUT = $output
     $env:TG_SILPOM_LEVEL_FIVE_LEAVE_OPEN = if ($LeaveOpen) { '1' } else { '0' }
@@ -61,6 +69,14 @@ try {
     if ($editor.HasExited -and $editor.ExitCode -ne 0) { throw "The correctness-test Editor exited with code $($editor.ExitCode)." }
     Write-Output "Correctness test complete: $output"
 } finally {
+    # Also restore if the editor process crashes before its Python finally runs.
+    foreach ($path in $bundleBackups.Keys) {
+        $actual = [IO.File]::ReadAllBytes($path)
+        $expected = $bundleBackups[$path]
+        if ([Convert]::ToBase64String($actual) -ne [Convert]::ToBase64String($expected)) {
+            [IO.File]::WriteAllBytes($path, $expected)
+        }
+    }
     if ($server -and -not $server.HasExited -and -not ($LeaveOpen -and $complete)) {
         $null = $server.CloseMainWindow()
         if (-not $server.WaitForExit(15000)) { Stop-Process -Id $server.Id -Force }

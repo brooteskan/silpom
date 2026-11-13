@@ -39,7 +39,7 @@ Texture2D heightImage : register(t0);
 StructuredBuffer<SilPomRay> rays : register(t1);
 struct Result { float4 hit; uint counts[16]; };
 RWStructuredBuffer<Result> results : register(u0);
-cbuffer Parameters : register(b0) { SilPomPatch patch; uint count; uint model; uint iterations; }
+cbuffer Parameters : register(b0) { SilPomPatch patch; uint count; uint model; uint iterations; uint recoveryFixture; }
 [numthreads(64,1,1)]
 void Main(uint3 id : SV_DispatchThreadID)
 {
@@ -49,7 +49,10 @@ void Main(uint3 id : SV_DispatchThreadID)
     face.origin=float3(0,0,0);face.du=float3(1,0,0);face.dv=float3(0,1,0);
     face.normal=float3(0,0,1);face.uv0=float2(0,0);face.uv1=float2(1,0);face.uv2=float2(0,1);
     face.d0=float3(0,0,1);face.d1=float3(.2f,0,1);face.d2=float3(0,.1f,1);
-    SilPomHit hit=SilPomIntersectFace(heightImage,patch,face,rays[id.x],float2(0,0),model,iterations,1,5);
+    SilPomHit hit;
+    if(recoveryFixture!=0u)
+        hit=SilPomRecoverNearestHit(heightImage,patch,face,rays[id.x],rays[id.x],float2(0,0),(SilPomHit)0,model);
+    else hit=SilPomIntersectFace(heightImage,patch,face,rays[id.x],float2(0,0),model,iterations,1,5);
     Result result;
     result.hit=float4(float(hit.status),hit.t,hit.faceUv);
     [unroll] for(uint j=0;j<16;++j) result.counts[j]=counters[j];

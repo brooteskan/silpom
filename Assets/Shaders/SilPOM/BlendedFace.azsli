@@ -474,6 +474,7 @@ SilPomHit SilPomPredictTowerHit(Texture2D texture, SilPomPatch p, SilPomMeshFace
 #ifdef SILPOM_LEVEL2
 #include "LevelTwo.azsli"
 #endif
+#include "NearestHit.azsli"
 
 // Intersect the authored triangle for the grazing fill or the shell transition.
 SilPomHit SilPomTowerBaseHit(SilPomPatch p, SilPomMeshFace face, SilPomRay ray, float2 low,
@@ -558,6 +559,7 @@ SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilP
     else
 #endif
         predicted=SilPomPredictTowerHit(texture,p,f,worldRay,searchRay,low,model,validationIterations,retryCap,toleranceMultiplier);
+    predicted=SilPomRecoverNearestHit(texture,p,f,worldRay,searchRay,low,predicted,model);
     if(predicted.status==SP_HIT || !SilPomTowerFillEnabled(p.maxCells)) return predicted;
     SILPOM_DIAGNOSTIC(10,0);
     SilPomHit fill=SilPomTowerBaseHit(p,f,worldRay,low);

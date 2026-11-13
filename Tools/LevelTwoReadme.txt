@@ -3,7 +3,7 @@ SILPOM Level 2 experimental intersection predictor
 VueLiveLink > Irish Fieldstone Tower (Open Shaft) > SilPOM Mesh:
   Level 2 predictor (experimental)
 
-Off retains Level 1. On selects the new predictor for open-shaft models 4-7;
+Off selects Level 1. On selects the new predictor for open-shaft models 4-7;
 other profile models retain Level 1. Shader specialization removes the unused
 path. It works with SM 6.2 and 6.7 and with either height format/Gather setting.
 
@@ -19,8 +19,11 @@ second is also validated, even if the first succeeded. The nearer accepted
 intersection wins. This improves first-hit selection but is still a heuristic,
 not a complete traversal guarantee. A second seed uses one retry. Remaining
 retries can run the baseline seed/recovery path after both learned seeds fail;
-all attempts share the configured total cap. Low-confidence Level 2 predictions
-retain the full Level 1 opportunity. Existing grazing fill is unchanged.
+all learned attempts share the configured total cap. Low-confidence Level 2
+predictions retain the full Level 1 opportunity. Grazing model-4 walls then run
+bounded ordered nearest-hit recovery before flat fill, with either predictor.
+Recovery has its own fixed work cap; it does not modify the saved candidate
+budgets. See Docs/NeuralValidation.md for eligibility and remaining limitations.
 
 This is a quality experiment, not an assumed performance improvement. It uses
 eight descriptor probes instead of four and may run more corrections. Keep

@@ -236,6 +236,62 @@ def proxy_state():
     assert v.z<=.7501
     return [v.x,v.y,v.z]
 
+def verify_learned_hot_reload(pose):
+    """Real AP source reloads, with configuration fixed throughout each A/B/A."""
+    result['learned_hot_reload']={}
+    def generation():
+        status=str(silpom.SilPomMeshRequestBus(bus.Event,'GetStatus',tower))
+        assert status.startswith('Ready:') and '; active generation ' in status,status
+        return status.split('; active generation ',1)[1].split(';',1)[0]
+    def wait_generation(previous,expected=None):
+        deadline=time.monotonic()+180
+        while time.monotonic()<deadline:
+            general.idle_wait_frames(1)
+            if silpom.SilPomMeshRequestBus(bus.Event,'IsReady',tower):
+                active=generation()
+                if active!=previous and (expected is None or active==expected):
+                    general.idle_wait_frames(20);return active
+        raise AssertionError(('Learned asset did not publish a new generation',previous,
+            str(silpom.SilPomMeshRequestBus(bus.Event,'GetStatus',tower))))
+    cases=[('wall.l4mat',False,False,False,304,'AlbedoOutput'),
+        ('wall-shared.l4shared',True,False,False,304,'AlbedoOutput'),
+        ('wall-appearance.l5app',True,True,False,352,'NormalOutput'),
+        ('wall-depth.l5depth',True,True,True,352,'NormalOutput')]
+    for filename,shared,proxy,depth,index,slot in cases:
+        # These changes choose the case BEFORE reload. No property is changed
+        # until both source edits and their rendered comparisons have completed.
+        for label,value in ((LEARNED_DEPTH,False),(PROXY,False),(MATERIAL,False),(SHARED,shared),
+                            (MATERIAL,not shared),(PROXY,proxy),(LEARNED_DEPTH,depth)):
+            set_value(label,value)
+        view((60 if proxy else 8,0,12),(-1,0,0),pose)
+        path=PROJECT/'Assets/SilPOMLearned'/filename;original=path.read_bytes()
+        assert original[:8] in (b'SILPMAT4',b'SILPSHR4',b'SILPAPP5',b'SILPDEP5')
+        mutated=bytearray(original);offset=68+index*4
+        value=struct.unpack_from('<f',mutated,offset)[0];struct.pack_into('<f',mutated,offset,value+2)
+        stem='reload-'+filename;before=generation()
+        def capture(part):
+            general.idle_wait_frames(15)
+            capture_attachment(OUTPUT/(stem+'-'+part+'-hit.dds'),'Hit')
+            capture_attachment(OUTPUT/(stem+'-'+part+'.dds'),slot)
+        def compare(a,b):
+            return compare_attachment(OUTPUT/(stem+'-'+a+'.dds'),OUTPUT/(stem+'-'+b+'.dds'),
+                OUTPUT/(stem+'-'+a+'-hit.dds'),OUTPUT/(stem+'-'+b+'-hit.dds'),proxy)
+        capture('a')
+        try:
+            path.write_bytes(mutated)
+            changed=wait_generation(before);capture('b');delta=compare('a','b')
+            assert delta['changed_pixels']>0,(filename,'Reload changed generation but not pixels',delta)
+            path.write_bytes(original);restored=wait_generation(changed,before);capture('restored')
+            noise=compare('a','restored')
+            assert noise['max_abs']<1e-5,(filename,'Restored bundle did not restore appearance',noise)
+            result['learned_hot_reload'][filename]={'before_generation':before,'changed_generation':changed,
+                'restored_generation':restored,'changed_coefficient':index,'attachment':slot,
+                'render_difference':delta,'restored_difference':noise,
+                'source_restored':path.read_bytes()==original,'configuration_changed_during_reload':False};flush()
+        finally:
+            if path.read_bytes()!=original:path.write_bytes(original)
+    set_value(SHARED,True);set_value(PROXY,True);set_value(LEARNED_DEPTH,True)
+
 def verify_proxy_capture(name):
     general.idle_wait_frames(15)
     owners=set(silpom.SilPomMeshRequestBus(bus.Event,'GetProxyFaceOwners',tower));assert owners,'No selected proxy faces'
@@ -312,11 +368,14 @@ def main():
     view((45,45,12),(-1,-1,0),pose);general.idle_wait_frames(20);verify_proxy_capture('far-quarter')
     view((120,0,12),(-1,0,0),pose);general.idle_wait_frames(20);verify_proxy_capture('far-distant')
     # Walk through the geometric threshold without changing the selection policy.
+    for label in (NEAR_SUN,PROXY_SUN):
+        assert editor.EditorComponentAPIBus(bus.Broadcast,'GetComponentProperty',component,properties[label]).GetValue(),label
     result['transition_states']=[]
     for distance in (120,80,60,40,20,8,4):
         view((distance,0,12),(-1,0,0),pose);general.idle_wait_frames(10)
         result['transition_states'].append({'distance':distance,'state':proxy_state()})
     assert result['transition_states'][-1]['state'][0]==0,'Close wall retained distant proxies'
+    result['transition_with_both_directional_heads_enabled']=True
     screenshot(OUTPUT/'near-after-transition.png')
     view((60,0,12),(-1,0,0),pose);general.idle_wait_frames(30);verify_proxy_capture('decal-view')
     # Change an actual directional light, keeping external shadow integration.
@@ -366,6 +425,8 @@ def main():
     panel.findChild(QtWidgets.QCheckBox,'EnablePainting').setChecked(False);general.undo();general.idle_wait_frames(10)
     assert silpom.DecalPaintRequestBus(bus.Event,'GetDabCount',canvas)==0
     result['decal_and_undo']=True;assert LEVEL.read_bytes()==source
+    result['inspection_camera']=view(cases[0][1],cases[0][2],cases[0][3]);general.idle_wait_frames(20)
+    result['stage']='learned asset hot reload';flush();verify_learned_hot_reload(pose)
     result['inspection_camera']=view(cases[0][1],cases[0][2],cases[0][3]);general.idle_wait_frames(20)
     screenshot(OUTPUT/'combined-inspection.png');result.update(passed=True,stage='complete')
 try:

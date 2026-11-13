@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+// Learned lighting contract v2. Distances are world-space ray parameters for
+// a normalized light direction. Zero means relief-top exit, never a texel count.
+// Acquisition schedules select descriptor locations inside this interval only.
+float SilPomPhysicalShadowReach(float start,float top,float bias,float hRate,float maxDistance)
+{
+    if(hRate<=0) return 0;
+    float end=max(0.0f,(top-start-bias)/hRate);
+    return maxDistance>0?min(end,maxDistance):end;
+}

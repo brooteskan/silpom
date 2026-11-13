@@ -147,6 +147,8 @@
         },
         {"shader":"./SilPOMHitForwardShared.shader.template","azsli":"./SilPOMHitForwardShared.azsli","tag":"silpom_hit_forward_shared"},
         {"shader":"./SilPOMHitForwardSharedProxy.shader.template","azsli":"./SilPOMHitForwardSharedProxy.azsli","tag":"silpom_hit_forward_shared_proxy"},
+        {"shader":"./SilPOMHitForwardSharedCompare.shader.template","azsli":"./SilPOMHitForwardSharedCompare.azsli","tag":"silpom_hit_forward_shared_compare"},
+        {"shader":"./SilPOMHitForwardSharedProxyCompare.shader.template","azsli":"./SilPOMHitForwardSharedProxyCompare.azsli","tag":"silpom_hit_forward_shared_proxy_compare"},
         {"shader":"./SilPOMHitDepthLearnedProxy.shader.template","azsli":"./SilPOMHitDepthLearnedProxy.azsli","tag":"silpom_hit_depth_learned_proxy"}
     ],
     "runtime": {
@@ -217,6 +219,7 @@
                 "defaultValue": false
             },
             {"name":"silpomSharedVisibility","type":"Bool","defaultValue":false},
+            {"name":"silpomLightingComparison","type":"Bool","defaultValue":false},
             {"name":"silpomProxyDepth","type":"Bool","defaultValue":false},
             {
                 "name": "silpomProxyLod",

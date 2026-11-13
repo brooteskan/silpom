@@ -72,6 +72,7 @@
                         }
                     },
                     {"name":"learnedMaterial","type":"Bool","defaultValue":false},
+                    {"name":"lightingEstimator","displayName":"Lighting estimator","type":"Enum","enumValues":["CurrentRouting","PhysicalRayNeural","DirectionalField32","AngularOccluders4","AngularOccluders8"],"defaultValue":"CurrentRouting","connection":{"type":"ShaderOption","name":"o_silpomLightingEstimator"}},
                     {"name":"neuralDirectionalVisibility","type":"Bool","defaultValue":false,"connection":{"type":"ShaderInput","name":"m_silpomNeuralDirectionalVisibility"}},
                     {"name":"proxyDirectionalResponse","type":"Bool","defaultValue":false,"connection":{"type":"ShaderInput","name":"m_silpomProxyDirectionalResponse"}},
                     {"name":"sharedVisibility","type":"Bool","defaultValue":false},

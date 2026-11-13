@@ -102,7 +102,7 @@ int main(int argc,char** argv)
         face.uv0={0,0};face.uv1={1,0};face.uv2={0,1};
         face.d0={0,0,1};face.d1={.2f,0,1};face.d2={0,.1f,1};
         UINT comparisons=0,inferences=0,accepted=0,topBoundaryQuads=0;float maxProbabilityError=0;
-        for(UINT model:{4u,5u,6u,7u}) for(UINT steps:{0u,9u,64u}) for(UINT clamp:{0u,1u})
+        for(UINT model:{4u,5u,6u,7u}) for(UINT steps:{0u,9u,16u,64u}) for(UINT clamp:{0u,1u})
         for(UINT mode:{1u,2u}) for(UINT pattern:{0u,1u})
         {
             if(neuralOnly && mode!=2) continue;

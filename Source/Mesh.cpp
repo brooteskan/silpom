@@ -3,6 +3,7 @@
 #include <SilPOM/HeightPrecision.h>
 #include <SilPOM/AppearanceCodec.h>
 #include <SilPOM/ReliefLod.h>
+#include <SilPOM/DirectionalEstimatorContract.h>
 #include <Atom/RPI.Public/View.h>
 #include <Atom/RPI.Public/ViewportContext.h>
 #include <Atom/RPI.Public/ViewportContextBus.h>
@@ -398,7 +399,11 @@ void MeshConfig::Reflect(AZ::ReflectContext* context)
         sc->Enum<LocalShadowMethod>()->Value("Baseline",LocalShadowMethod::Baseline)
             ->Value("Gather",LocalShadowMethod::Gather)->Value("Neural",LocalShadowMethod::Neural)
             ->Value("NeuralOnly",LocalShadowMethod::NeuralOnly);
-        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(19)->Field("Surface", &MeshConfig::m_surface)
+        sc->Enum<LightingEstimator>()->Value("CurrentRouting",LightingEstimator::CurrentRouting)
+            ->Value("PhysicalRayNeural",LightingEstimator::PhysicalRayNeural)->Value("DirectionalField32",LightingEstimator::DirectionalField32)
+            ->Value("AngularOccluders4",LightingEstimator::AngularOccluders4)->Value("AngularOccluders8",LightingEstimator::AngularOccluders8);
+        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(20)->Field("Surface", &MeshConfig::m_surface)
+            ->Field("LightingEstimator", &MeshConfig::m_lightingEstimator)
             ->Field("Materials", &MeshConfig::m_materials)->Field("Profiles", &MeshConfig::m_profiles)
             ->Field("ReliefDepthMultiplier", &MeshConfig::m_reliefDepthMultiplier)
             ->Field("ValidationIterations", &MeshConfig::m_validationIterations)
@@ -557,6 +562,8 @@ void MeshController::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
 {
     if (asset.GetId() == m_configuration.m_surface.GetId()) m_configuration.m_surface = asset;
     if (asset.GetId() == m_template.GetId()) m_template = asset;
+    if (asset.GetId() == m_learnedMaterial.GetId()) m_learnedMaterial = asset;
+    if (asset.GetId() == m_appearance.GetId()) m_appearance = asset;
     for (auto& binding : m_configuration.m_materials) if (asset.GetId() == binding.m_material.GetId()) binding.m_material = asset;
     for (auto& profile : m_configuration.m_profiles)
     {
@@ -579,6 +586,12 @@ void MeshController::OnRenderPipelineChanged(AZ::RPI::RenderPipeline* pipeline, 
 bool MeshController::Prepare()
 {
     auto& c = m_configuration;
+    if(static_cast<AZ::u32>(c.m_lightingEstimator)>4u)
+    {m_status="Unknown lighting estimator; previous complete generation retained";return false;}
+    if(c.m_lightingEstimator!=LightingEstimator::CurrentRouting && c.m_localShadowMethod!=LocalShadowMethod::NeuralOnly)
+    {m_status="Lighting estimator comparison requires neural-only local visibility";return false;}
+    if(c.m_lightingEstimator!=LightingEstimator::CurrentRouting && !c.m_useLevelFourShared)
+    {m_status="Directional field / angular occluders require the canonical wall's Level 4B shared features";return false;}
     if (!c.m_surface.GetId().IsValid()) { m_status = "Assign an imported .silpommesh surface"; return false; }
     if (!c.m_surface.IsReady()) { m_status = "Loading mesh surface"; return true; }
     if (!m_template.GetId().IsValid()) { m_status = "SilPOM mesh shader template is missing; process Gem assets"; return false; }
@@ -591,8 +604,10 @@ bool MeshController::Prepare()
     if(c.m_useLevelFiveProxy)
     {
         if(c.m_useLevelFourWallMaterial){m_status="Level 5 uses ordinary base color; disable Level 4A for this independent comparison";return false;}
-        if(c.m_localShadowMethod!=LocalShadowMethod::NeuralOnly||!c.m_useHeightDerivedNormals)
-        {m_status="Level 5A requires neural-only local visibility and height-derived normals for its calibrated near path";return false;}
+        // Near hits already honor useHeightDerivedNormals in the forward
+        // shader. Proxy appearance is decoded independently of that switch.
+        if(c.m_localShadowMethod!=LocalShadowMethod::NeuralOnly)
+        {m_status="Level 5A requires neural-only local visibility";return false;}
         if(!std::isfinite(c.m_levelFivePixelBudget)||c.m_levelFivePixelBudget<.05f||c.m_levelFivePixelBudget>4.f)
         {m_status="Level 5A pixel error budget must be 0.05-4 pixels";return false;}
         if(!m_appearance.IsReady()){m_status=c.m_useLevelFiveDepth?"Process Assets/SilPOMLearned/wall-depth.l5depth before enabling Level 5B":"Process Assets/SilPOMLearned/wall-appearance.l5app before enabling Level 5A";return m_appearance.GetId().IsValid();}
@@ -606,6 +621,8 @@ bool MeshController::Prepare()
         if(!m_learnedMaterial.IsReady()){m_status="Loading Level 4 material";return true;}
         if(!m_learnedMaterial->Validate()||memcmp(m_learnedMaterial->Header().magic,c.m_useLevelFourShared?"SILPSHR4":"SILPMAT4",8))
         {m_status="Invalid Level 4 material bundle";return false;}
+        if(static_cast<AZ::u32>(c.m_lightingEstimator)>=2u && m_learnedMaterial->m_generation!=DirectionalEstimatorContract::SharedGeneration)
+        {m_status="Directional estimator features changed; retrain the full-wall heads before comparison";return false;}
     }
     if (asset.m_surfaceVersion != MeshSurfaceAsset::Version || asset.m_faces.empty()) { m_status = "Unsupported/empty mesh surface"; return false; }
     bool initialized = false;
@@ -683,6 +700,9 @@ bool MeshController::Prepare()
     if (AZ::Render::r_meshInstancingEnabled)
     { m_status = "Planar face renderer currently requires r_meshInstancingEnabled=false"; return false; }
     auto candidate = AZStd::make_unique<Generation>(); candidate->id = asset.m_generation;
+    if ((c.m_useLevelFourWallMaterial || c.m_useLevelFourShared) && m_learnedMaterial.IsReady())
+        candidate->id += ":" + m_learnedMaterial->m_generation;
+    if (c.m_useLevelFiveProxy && m_appearance.IsReady()) candidate->id += ":" + m_appearance->m_generation;
     auto fail = [&](const AZStd::string& message) { Release(candidate); m_status = message; return false; };
     if (static_cast<AZ::u32>(c.m_spiralLightMode) > static_cast<AZ::u32>(SpiralLightMode::AllSilPomSurfaces))
         return fail("Invalid spiral light mode");
@@ -1033,6 +1053,10 @@ bool MeshController::Prepare()
                     && Set(material,"surface.distantValidationToleranceMultiplier",c.m_distantValidationToleranceMultiplier)
                     && Set(material,"surface.spiralLightShadowSteps",c.m_spiralLightShadowSteps)
                     && Set(material,"surface.localShadowMethod",static_cast<AZ::u32>(c.m_localShadowMethod))
+                    // New full-surface heads are trained only for the canonical
+                    // wall. Other material profiles retain their current route.
+                    && Set(material,"surface.lightingEstimator",p.m_neuralModel==4u
+                        ?static_cast<AZ::u32>(c.m_lightingEstimator):0u)
                     && Set(material,"surface.neuralDirectionalVisibility",c.m_neuralDirectionalVisibility)
                     && Set(material,"surface.proxyDirectionalResponse",c.m_proxyDirectionalResponse)
                     && Set(material,"surface.neuralShadowConfidence",c.m_neuralShadowConfidence)
@@ -1259,6 +1283,7 @@ void MeshController::OnTick(float, AZ::ScriptTimePoint)
                 m_checkHitPasses = false;
             }
             m_status = AZStd::string::format("Ready: %zu batches, %zu planar tagged triangles, %zu descriptor bytes", m_active->handles.size(), m_active->faces, m_active->bytes);
+            m_status += "; active generation " + m_active->id;
             m_status += AZStd::string::format("; %s, height payload %.2f MiB (source %.2f MiB); validation %s",
                 m_configuration.m_useR16HeightTextures ? "R16 UNORM heights" : "source height formats",
                 double(m_active->heightBytes) / 1048576, double(m_active->sourceHeightBytes) / 1048576,

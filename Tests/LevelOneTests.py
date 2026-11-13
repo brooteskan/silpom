@@ -55,12 +55,15 @@ class LevelOne(unittest.TestCase):
         self.assertEqual(tuple(stat[0,[0,1,2,7]]), (2,1,1,0))
         self.assertLess(hit[0,4], 1e-6)
 
-    def test_confidence_and_fill_are_separate_outcomes(self):
+    def test_recovery_precedes_flat_fill_after_confidence_rejection(self):
         profile = Profile(np.full((3,5), .5))
         ray = details([.1,.2,.02, .9987492,0,-.05])
         hit, stat = self.evaluator.evaluate(profile, ray, 4, (2,1,5), weights(classification=-100))
         self.assertEqual(hit[0,0], 1)
-        self.assertEqual(tuple(stat[0,[0,1,5,6,7]]), (0,0,1,1,1))
+        # A low-confidence prediction still gets a geometric grazing search.
+        # This flat fixture has a real exact root, so no proxy fill is needed.
+        self.assertEqual(tuple(stat[0,[0,1,5,6,7]]), (1,0,1,0,0))
+        self.assertLess(hit[0,4], 1e-6)
         self.assertAlmostEqual(hit[0,1], .4, places=5)
 
     def test_shipping_and_exported_weight_order_match(self):

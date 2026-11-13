@@ -51,6 +51,22 @@ int main()
         visibilityStats={};
         Check(SilPomNeuralOnlyVisibility(image,p,f,{.2f,.2f},{0,0},{1,0,.01f},64,.3f,4,.4f)==1
             && visibilityStats[3]==1 && visibilityStats[0]==5,"Binary threshold must apply to standalone neural visibility");
+        // Physical support is independent of descriptor budget. Include a
+        // blocker-distance contract without relying on classifier coefficients.
+        image.pixels.assign(image.pixels.size(),0);p.scale=.05f;
+        SilPomLocalShadowRay directional{},finite{};float immediate=1;
+        float end=0;
+        for(uint count:{5u,9u,16u,32u,64u})
+        {
+            Check(SilPomPrepareLocalShadow(image,p,f,{.2f,.2f},{0,0},{1,0,.34f},count,0,true,directional,immediate),"Physical interval should be active");
+            if(end==0)end=directional.reach;
+            Check(abs(directional.reach-end)<1e-6f,"Descriptor count changed physical reach");
+            Check(SilPomPrepareLocalShadow(image,p,f,{.2f,.2f},{0,0},{1,0,.34f},count,.01f,true,finite,immediate),"Finite interval should be active");
+            Check(abs(finite.reach-.01f)<1e-6f,"Physical light-distance cap changed");
+        }
+        Check(!SilPomPrepareLocalShadow(image,p,f,{.2f,.2f},{0,0},{1,0,-.1f},16,0,true,directional,immediate)
+            &&immediate==0,"Back-facing physical shadow must be immediate");
+        p.scale=.2f;
         std::mt19937 rng(51619);std::uniform_real_distribution<float> coord(-.5f,1.5f),unit(0,1);
         for(auto& value:image.pixels)value=unit(rng);
         uint comparisons=0;

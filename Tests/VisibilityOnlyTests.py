@@ -59,14 +59,32 @@ class VisibilityOnly(unittest.TestCase):
         metrics=classification(o,s);self.assertEqual(metrics['total_error_rate'],0)
 
     def test_four_probe_descriptor_can_hide_a_thin_blocker(self):
-        p=Profile();p.height.fill(0);p.height[:,260]=1
-        # At the first receiver, the ridge lies between probes 3 and 6.
+        p=Profile();p.address=1;p.height.fill(0);p.height[:,260]=1
+        # At the first receiver, the ridge lies between physical-range probes.
         # The second receiver sees an empty region with identical probe values.
-        q=np.asarray([[.125,.25,1,0,.01,0,9],[.5,.25,1,0,.01,0,9]],np.float32)
+        q=np.asarray([[.125,.25,1,0,.04,0,9],[.5,.25,1,0,.04,0,9]],np.float32)
         o,s,x=self.native.evaluate(p,q,np.zeros(2,np.uint32),4,3,.5)
         np.testing.assert_array_equal(x[0],x[1])
         np.testing.assert_array_equal(o[:,2],[0,1])
         self.assertEqual(o[0,1],o[1,1]);self.assertTrue((s[:,10]==1).all())
+
+    def test_directional_blocker_beyond_legacy_sixteen_texels(self):
+        p=Profile();p.height=np.zeros((4,1000),np.float32);p.height[:,222:226]=1
+        p.atlas=p.height.shape[::-1];p.scale=.05;p.reference=.05
+        # One-metre UV basis: 1 mm texels, 5 cm relief. The blocker is
+        # 23-26 texels away; a 16-texel directional schedule cannot reach it.
+        light=[float(np.sqrt(1-.34**2)),0,.34]
+        q=np.asarray([[.2,.2,*light,0,n] for n in (16,32,64)]+[[.2,.2,*light,.016,16]],np.float32)
+        w=[np.zeros((10,12),np.float32),np.zeros(12,np.float32),np.zeros(12,np.float32),np.asarray([20],np.float32)]
+        o,s,x=self.native.evaluate(p,q,np.zeros(len(q),np.uint32),4,3,.5,w)
+        self.assertEqual(o[0,0],1,'Historical 16-texel baseline should miss this blocker')
+        np.testing.assert_array_equal(o[:,2],[0,0,0,1])
+        self.assertEqual(o[0,1],0,'Physical near descriptor must see the distant blocker')
+        self.assertEqual(o[-1,1],1,'An explicit shorter light distance must exclude the blocker')
+        self.assertFalse(s[:,5:7].any());self.assertLessEqual(s[:,0].max(),5)
+        # Descriptor counts can change acquisition/approximation, never the
+        # continuous teacher interval or its shadow label.
+        self.assertEqual(len(set(o[:3,2])),1)
 
     def test_neural_compilation_contains_neither_marcher(self):
         with tempfile.TemporaryDirectory(prefix='silpom-visibility-') as folder:

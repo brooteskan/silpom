@@ -1,4 +1,11 @@
-Neural-only local visibility experiment -- 2026-11-12
+Current physical-reach revision
+-------------------------------
+See PhysicalLightingReadme.txt and PhysicalLightingValidation.json for the
+current independently retrained near classifier and live bundle reload checks.
+The original hybrid weights remain separate. Historical quality and timing
+numbers below describe the previous classifier and interval, not this revision.
+
+Historical neural-only local visibility experiment -- 2026-11-12
 
 This tests the existing four-probe / 10 -> 12 -> 1 network as a replacement
 for the local shadow marcher. It does not qualify that network's quality for

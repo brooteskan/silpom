@@ -5,6 +5,28 @@ import numpy as np
 binary=Path(sys.argv.pop(1));root=Path(__file__).resolve().parents[1]
 FP=np.ctypeslib.ndpointer(dtype=np.float32,flags='C_CONTIGUOUS');UP=np.ctypeslib.ndpointer(dtype=np.uint32,flags='C_CONTIGUOUS')
 class Reference(unittest.TestCase):
+    def directional(self,height,q,address=1):
+        h,w=height.shape
+        face=np.array([[0,0,0,1,0,0,0,1,0,0,0,1,0,0,1,*([0,0,1]*3),0,0,1]],np.float32)
+        dll=ctypes.CDLL(str(binary/'silpom_appearance_reference.dll'))
+        dll.RenderDirectionalVisibility.argtypes=[FP,ctypes.c_uint,ctypes.c_uint,ctypes.c_float,ctypes.c_float,ctypes.c_uint,FP,ctypes.c_uint,FP,UP,ctypes.c_uint,ctypes.c_uint,FP]
+        dll.RenderDirectionalVisibility.restype=ctypes.c_bool
+        q=np.ascontiguousarray(q,np.float32);out=np.empty((len(q),3),np.float32)
+        self.assertTrue(dll.RenderDirectionalVisibility(np.ascontiguousarray(height,np.float32),w,h,.05,.05,address,face,1,q,np.zeros(len(q),np.uint32),len(q),16,out))
+        return out
+    def test_continuous_directional_teacher_flat_and_finite_reach(self):
+        q=[[.2,.2,0,0,1,.94,0,math.sqrt(1-.94**2),reach,1,1,1,0] for reach in (.016,.025,.1,.3,0)]
+        flat=self.directional(np.full((4,1000),.75,np.float32),q)
+        np.testing.assert_allclose(flat,[[1,1,0]]*len(q),atol=1e-6)
+        height=np.zeros((4,1000),np.float32);height[:,222:223]=1
+        out=self.directional(height,q)
+        np.testing.assert_equal(out[:,1:],[[1,0]]*len(q))
+        np.testing.assert_equal(out[:,0],[1,0,0,0,0])
+    def test_directional_teacher_respects_repeat_boundary(self):
+        height=np.zeros((4,256),np.float32);height[:,2:8]=1
+        q=[[.98,.2,0,0,1,.99,0,math.sqrt(1-.99**2),.3,.1,.1,1,0]]
+        np.testing.assert_equal(self.directional(height,q,0),[[0,1,0]])
+        np.testing.assert_equal(self.directional(height,q,1),[[1,1,0]])
     def shared_depth(self,height,q,samples=16,visibility=False):
         h,w=height.shape
         face=np.array([[0,0,0,1,0,0,0,1,0,0,0,1,0,0,1,*([0,0,1]*3),0,0,1]],np.float32)
@@ -24,6 +46,17 @@ class Reference(unittest.TestCase):
         height=np.zeros((64,256),np.float32);height[:,72:81]=1
         z=math.sqrt(1-.99**2);q=[[.25,.2,0,0,1,x,0,z,.3,.1,.1,1,0] for x in (.99,-.99)]
         out=self.shared_depth(height,q,16,True);np.testing.assert_equal(out[:,0],[0,1])
+    def test_transition_targets_include_blocker_beyond_sixteen_texels(self):
+        height=np.zeros((4,1000),np.float32);height[:,222:226]=1
+        light=[math.sqrt(1-.34**2),0,.34]
+        q=[[.2,.2,0,0,1,*light,reach,.01,.01,1,0] for reach in (0,.016)]
+        # 4B and 5B visibility teacher, followed by the frozen 5A appearance
+        # teacher. Same fixture as VisibilityOnlyTests: both representations
+        # must include the blocker when directional response is enabled.
+        out=self.shared_depth(height,q,4,True);np.testing.assert_equal(out[:,0],[0,1])
+        out=self.render(height,q,4)
+        np.testing.assert_allclose(out[0,4:8],0,atol=1e-7)
+        self.assertGreater(float(out[1,4:7].sum()),0)
     def render(self,height,q,samples=16):
         h,w=height.shape;maps=np.zeros((h,w,6),np.float32);maps[...,:3]=[.2,.3,.4];maps[...,3:5]=.5;maps[...,5]=.6
         face=np.array([[0,0,0,1,0,0,0,1,0,0,0,1,0,0,1,*([0,0,1]*3),0,0,1]],np.float32)

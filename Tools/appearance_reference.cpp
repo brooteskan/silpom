@@ -6,6 +6,8 @@
 #include <thread>
 #include <atomic>
 using namespace SilPOM::Cpu;
+#include "../Assets/Shaders/SilPOM/PhysicalShadowReach.azsli"
+#include "visibility_reference.h"
 namespace
 {
 float3 Vec(const float* p){return {p[0],p[1],p[2]};}
@@ -35,7 +37,7 @@ float Visibility(const Texture& texture,const Surface& s,float2 uv,float3 L,floa
     const float ur=dot(L,cross(f.dv,D))/det,vr=dot(f.du,cross(L,D))/det,hr=dot(f.du,cross(f.dv,L))/det;
     const float start=SilPomFaceHeight(texture,p,uv,s.low).x,top=p.scale*(1-p.reference),bias=max(1e-5f,abs(p.scale)*.002f);
     if(hr<=0)return 0;
-    float end=max(0.f,(top-start-bias)/hr);if(reach>0)end=min(end,reach);
+    const float end=SilPomPhysicalShadowReach(start,top,bias,hr,reach);
     const float rate=max(abs(ur)*p.textureWidth,abs(vr)*p.textureHeight);
     const uint requested=uint(std::ceil(end*rate*2));capped=capped||requested>4096;
     const uint steps=std::min(4096u,std::max(1u,requested));
@@ -141,6 +143,49 @@ extern "C" __declspec(dllexport) bool RenderSharedDepth(const float* heights,uin
                 }
             }
             if(valid)out[0]/=valid;out[1]=float(valid)/samples;out[2]=float(cappedCount)/samples;
+        }
+    });
+    for(auto& worker:workers)worker.join();return true;
+}
+
+// Dedicated continuous-cell visibility labels for whole-hemisphere training.
+// Existing appearance/shared-depth reference paths above remain frozen.
+extern "C" __declspec(dllexport) bool RenderDirectionalVisibility(const float* heights,uint width,uint height,
+    float scale,float reference,uint address,const float* faces,uint faceCount,const float* queries,
+    const uint* ids,uint count,uint samples,float* output)
+{
+    const uint side=uint(std::sqrt(float(samples)));
+    if(!width||!height||!faceCount||!samples||samples>256||side*side!=samples)return false;
+    std::vector<Surface> surfaces;for(uint i=0;i<faceCount;++i)surfaces.push_back(Unpack(faces+i*27,width,height,scale,reference));
+    std::atomic<uint> next{0};std::vector<std::thread> workers;
+    for(uint worker=0;worker<8;++worker)workers.emplace_back([&]{
+        const Texture texture{width,height,std::vector<float>(heights,heights+size_t(width)*height)};
+        for(uint i=next.fetch_add(1);i<count;i=next.fetch_add(1))
+        {
+            float* out=output+i*3;out[0]=out[1]=out[2]=0;if(ids[i]>=faceCount)continue;
+            Surface s=surfaces[ids[i]];auto& f=s.face;const auto* q=queries+i*13;
+            const float3 L=s.T*q[5]+s.B*q[6]+f.normal*q[7],D=SilPomFaceDirection(f,{q[0],q[1]});
+            f.origin=f.origin+f.du*(-16-f.uv0.x)+f.dv*(-16-f.uv0.y);
+            f.uv0={-16,-16};f.uv1={32,-16};f.uv2={-16,32};f.d0=f.d1=f.d2=D;
+            s.low={-16,-16};s.patch={48,48,scale,reference,48,48,-16,-16,width,height,address,65536};
+            uint valid=0;
+            const float det=dot(f.du,cross(f.dv,D));
+            if(abs(det)<1e-10f){out[2]=1;continue;}
+            const float ur=dot(L,cross(f.dv,D))/det,vr=dot(f.du,cross(L,D))/det,hr=dot(f.du,cross(f.dv,L))/det;
+            for(uint j=0;j<samples;++j)
+            {
+                const float a=(float(j%side)+.5f)/side-.5f,b=(float(j/side)+.5f)/side-.5f;
+                const float2 uv{q[0]+(q[11]*a*q[9]-q[12]*b*q[10])/width,q[1]+(q[12]*a*q[9]+q[11]*b*q[10])/height};
+                if(hr<=0){++valid;continue;}
+                const float start=SilPomFaceHeight(texture,s.patch,uv,s.low).x;
+                const float bias=max(1e-5f,abs(scale)*.002f);
+                const float end=SilPomPhysicalShadowReach(start,scale*(1-reference),bias,hr,q[8]);
+                uint cells=0;const double v=SilPOM::VisibilityReference::Trace(heights,width,height,
+                    double(uv.x)*width-.5,double(uv.y)*height-.5,double(ur)*width,double(vr)*height,
+                    start,hr,bias,scale,reference,end,address!=0,cells);
+                if(v>=0){out[0]+=float(v);++valid;}else out[2]+=1.0f/samples;
+            }
+            if(valid)out[0]/=valid;out[1]=float(valid)/samples;
         }
     });
     for(auto& worker:workers)worker.join();return true;

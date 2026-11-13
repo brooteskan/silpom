@@ -1,10 +1,11 @@
 -- SPDX-License-Identifier: MIT
 function GetMaterialPropertyDependencies()
     return {"surface.scale", "surface.useHierarchy", "surface.useNeuralSeed", "surface.useNeuralCache",
-        "surface.neuralModel", "surface.maxCells", "mesh.hitFaceBase", "surface.localShadowMethod", "surface.learnedMaterial", "surface.proxyLodEnabled", "surface.sharedVisibility", "surface.proxyDepthEnabled"}
+        "surface.neuralModel", "surface.maxCells", "mesh.hitFaceBase", "surface.localShadowMethod", "surface.learnedMaterial", "surface.proxyLodEnabled", "surface.sharedVisibility", "surface.proxyDepthEnabled", "surface.lightingEstimator"}
 end
 
 function Process(context)
+    context:SetInternalMaterialPropertyValue_bool("silpomLightingComparison",context:GetMaterialPropertyValue_enum("surface.lightingEstimator") ~= 0)
     context:SetInternalMaterialPropertyValue_bool("silpomSharedVisibility",context:GetMaterialPropertyValue_bool("surface.sharedVisibility"))
     context:SetInternalMaterialPropertyValue_bool("silpomProxyDepth",context:GetMaterialPropertyValue_bool("surface.proxyDepthEnabled"))
     context:SetInternalMaterialPropertyValue_bool("silpomProxyLod",context:GetMaterialPropertyValue_bool("surface.proxyLodEnabled"))

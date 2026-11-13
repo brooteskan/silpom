@@ -5,6 +5,7 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <Atom/Feature/Utils/EditorRenderComponentAdapter.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <SilPOM/MeshSettingRules.h>
 namespace SilPOM
 {
 class EditorPatchComponent final : public AZ::Render::EditorRenderComponentAdapter<PatchController,PatchComponent,PatchConfig>
@@ -60,7 +61,20 @@ class EditorMeshComponent final : public AZ::Render::EditorRenderComponentAdapte
 public:
     using BaseClass=AZ::Render::EditorRenderComponentAdapter<MeshController,MeshComponent,MeshConfig>;
     AZ_EDITOR_COMPONENT(EditorMeshComponent,"{D88524B3-CC98-4A85-8E3B-470FE888B61B}",BaseClass);
-    void Activate() override { BaseClass::Activate(); AZ::TickBus::Handler::BusConnect(); }
+    void Activate() override
+    {
+        BaseClass::Activate();
+        auto config=m_controller.GetConfiguration();
+        const auto current=Choices(config);
+        m_previousChoices=MeshSettingRules::Normalize(current);
+        if(!(current==m_previousChoices))
+        {
+            ApplyChoices(config,m_previousChoices);
+            m_controller.SetConfiguration(config);
+            SetDirty();
+        }
+        AZ::TickBus::Handler::BusConnect();
+    }
     void Deactivate() override { AZ::TickBus::Handler::BusDisconnect(); BaseClass::Deactivate(); }
     AZStd::string Status() const { return m_controller.GetStatus(); }
     static void Reflect(AZ::ReflectContext* context)
@@ -93,11 +107,13 @@ public:
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_profiles,"Displacement profiles","Profile IDs come from Blender face tags")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_maxCells,"Maximum cells","Planar traversal budget per ray; exhaustion is magenta")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useDepthHeightBounds,"Depth height bounds",
-                        "Experimental block skipping with depth-hit reuse, clamped R32F or square power-of-two repeating R32F heights, and a budget of at least 4096 cells")
+                        "Experimental block skipping with depth-hit reuse. Selecting bounds disables the legacy neural depth seed. Unavailable on trained profiles, which require neural depth. Requires supported heights and at least 4096 cells.")
+                    ->Attribute(AZ::Edit::Attributes::ReadOnly,&MeshConfig::UsesTrainedProfiles)
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useNeuralSeed,"Neural depth seed",
-                        "Use the Irish Fieldstone neural seed on the DX12 depth-hit path for clamped profiles at 0.02 m and reference 0.05")
+                        "Selecting neural depth disables height bounds. Required and read-only on trained profiles. The legacy seed supports clamped profiles at 0.02 m and reference 0.05.")
+                    ->Attribute(AZ::Edit::Attributes::ReadOnly,&MeshConfig::UsesTrainedProfiles)
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useLevelTwoPredictor,"Level 2 predictor (experimental)","Eight height probes and two learned candidate seeds for the open-shaft profiles. More GPU work is possible. The nearer validated hit wins; the second seed uses one retry. Off preserves the Level 1 baseline.")
-                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useLevelFourWallMaterial,"Level 4A wall material (experimental)","Decode supported wall color, detail normal and roughness from a trained mip atlas. Requires neural-only visibility. Performance is unmeasured; off preserves ordinary textures.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useLevelFourWallMaterial,"Level 4A wall material (experimental)","Decode supported wall color, detail normal and roughness. Enabling selects neural-only visibility and disables 4B, 5A/5B and lighting comparisons. Performance is unmeasured.")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useLevelFourShared,"Level 4B shared material / visibility (experimental)","Reuses acquired material state plus four filtered horizon features for small per-light visibility heads. Removes Level 3 height probes on the canonical wall. Select instead of 4A; requires neural-only visibility at depth 0.5. Cheaper only if filtering and head cost beats the probes; unmeasured.")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useLevelFiveProxy,"Level 5A learned relief LOD (experimental)","Select safe distant wall patches before intersection. Removes prediction, refinement and fine height normals on the selected proxy; preserves dynamic lights and decals. Requires neural-only visibility at depth 0.5, with Level 4A off. GPU benefit is unmeasured.")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useLevelFiveDepth,"Level 5B bounded proxy depth (experimental)","Adds one fixed-cost depth head to selected 5A proxies, constrained to the known displacement interval. Keeps authored coverage; no validation or recovery. Requires 5A. Adds work versus 5A; may improve depth quality, GPU cost is unmeasured.")
@@ -131,6 +147,13 @@ public:
                     ->EnumAttribute(LocalShadowMethod::Gather,"March with Gather (may be cheaper)")
                     ->EnumAttribute(LocalShadowMethod::Neural,"Hybrid neural + march (reference)")
                     ->EnumAttribute(LocalShadowMethod::NeuralOnly,"Level 3 neural only (fixed probes; experimental)")
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox,&MeshConfig::m_lightingEstimator,"Lighting estimator",
+                        "Current routing preserves the approved reference and existing light enable switches. Comparisons change local direct-light visibility only; camera hits and nearest-hit recovery stay fixed. New full-wall models require Level 4B, depth 0.5 and neural-only mode. Other material profiles retain current routing. Proxy comparisons replace the joint visibility/reflectance gain with visibility on the existing proxy BRDF; they are experimental, not a reference-equivalent factorization.")
+                    ->EnumAttribute(LightingEstimator::CurrentRouting,"Current routing (approved reference)")
+                    ->EnumAttribute(LightingEstimator::PhysicalRayNeural,"Physical per-ray neural (comparison)")
+                    ->EnumAttribute(LightingEstimator::DirectionalField32,"32-direction neural field (experimental wall)")
+                    ->EnumAttribute(LightingEstimator::AngularOccluders4,"4 neural angular occluders (experimental wall)")
+                    ->EnumAttribute(LightingEstimator::AngularOccluders8,"8 neural angular occluders (experimental wall)")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_neuralShadowConfidence,"Hybrid shadow confidence (higher = safer)",
                         "Historical hybrid only. Higher values use more fallback. Neural only uses calibrated binary thresholds and has no march or uncertainty fallback.")
                     ->Attribute(AZ::Edit::Attributes::Min,.9f)->Attribute(AZ::Edit::Attributes::Max,.99999f)
@@ -188,11 +211,28 @@ public:
         }
     }
 private:
+    static MeshSettingRules::Choices Choices(const MeshConfig& c)
+    {
+        return {c.m_useLevelFourWallMaterial,c.m_useLevelFourShared,c.m_useLevelFiveProxy,c.m_useLevelFiveDepth,
+            c.m_neuralDirectionalVisibility,c.m_proxyDirectionalResponse,c.m_useDepthHeightBounds,c.m_useNeuralSeed,
+            c.UsesTrainedProfiles(),static_cast<AZ::u32>(c.m_localShadowMethod),static_cast<AZ::u32>(c.m_lightingEstimator)};
+    }
+    static void ApplyChoices(MeshConfig& c,const MeshSettingRules::Choices& choice)
+    {
+        c.m_useLevelFourWallMaterial=choice.material;c.m_useLevelFourShared=choice.shared;
+        c.m_useLevelFiveProxy=choice.proxy;c.m_useLevelFiveDepth=choice.proxyDepth;
+        c.m_neuralDirectionalVisibility=choice.directional;c.m_proxyDirectionalResponse=choice.proxyDirectional;
+        c.m_useDepthHeightBounds=choice.bounds;c.m_useNeuralSeed=choice.neuralDepth;
+        c.m_localShadowMethod=static_cast<LocalShadowMethod>(choice.shadow);
+        c.m_lightingEstimator=static_cast<LightingEstimator>(choice.lighting);
+    }
     AZ::u32 OnConfigurationChanged() override
     {
         // The generic adapter deactivates the controller for every property
         // edit, which would destroy its last-known-good generation.
-        const auto config = m_controller.GetConfiguration();
+        auto config = m_controller.GetConfiguration();
+        m_previousChoices=MeshSettingRules::Edit(m_previousChoices,Choices(config));
+        ApplyChoices(config,m_previousChoices);
         m_controller.SetConfiguration(config);
         return AZ::Edit::PropertyRefreshLevels::AttributesAndValues;
     }
@@ -213,6 +253,7 @@ private:
         }
     }
     AZStd::string m_lastStatus;
+    MeshSettingRules::Choices m_previousChoices;
     size_t m_lastSlots=0;
 };
 class EditorModule final : public Module

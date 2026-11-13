@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.24)
 if(NOT COMMAND o3de_gem_setup)
     project(SilPOMCore LANGUAGES CXX)
     enable_testing()
+    add_executable(silpom_mesh_setting_rules_tests Tests/MeshSettingRulesTests.cpp)
+    target_compile_features(silpom_mesh_setting_rules_tests PRIVATE cxx_std_20)
+    add_test(NAME SilPOM.MeshSettingRules COMMAND silpom_mesh_setting_rules_tests)
     add_executable(silpom_core_tests Tests/HeightfieldTests.cpp)
     target_compile_features(silpom_core_tests PRIVATE cxx_std_17)
     if(MSVC)
@@ -38,6 +41,12 @@ if(NOT COMMAND o3de_gem_setup)
     add_executable(silpom_relief_lod_tests Tests/ReliefLodTests.cpp)
     target_compile_features(silpom_relief_lod_tests PRIVATE cxx_std_17)
     add_test(NAME SilPOM.ReliefLod COMMAND silpom_relief_lod_tests)
+    add_executable(silpom_nearest_hit_tests Tests/NearestHitTests.cpp)
+    target_compile_features(silpom_nearest_hit_tests PRIVATE cxx_std_17)
+    add_test(NAME SilPOM.NearestHit COMMAND silpom_nearest_hit_tests)
+    add_executable(silpom_nearest_hit_equivalence_tests Tests/NearestHitEquivalenceTests.cpp)
+    target_compile_features(silpom_nearest_hit_equivalence_tests PRIVATE cxx_std_17)
+    add_test(NAME SilPOM.NearestHit.Equivalence COMMAND silpom_nearest_hit_equivalence_tests)
     if(WIN32)
         add_library(silpom_level_one SHARED Tools/level_one_evaluator.cpp)
         add_library(silpom_welded_teacher SHARED Tools/welded_tower_teacher.cpp)
@@ -52,6 +61,10 @@ if(NOT COMMAND o3de_gem_setup)
         endforeach()
         set(SILPOM_PYTHON "" CACHE FILEPATH "Python with numpy/Pillow for Level 1 evaluation tests")
         if(SILPOM_PYTHON)
+        add_test(NAME SilPOM.DirectionalEstimator.Models COMMAND "${SILPOM_PYTHON}"
+            ${CMAKE_CURRENT_SOURCE_DIR}/Tests/DirectionalEstimatorModelTests.py)
+            add_test(NAME SilPOM.DirectionalOcclusion COMMAND "${SILPOM_PYTHON}"
+                ${CMAKE_CURRENT_SOURCE_DIR}/Tests/DirectionalOcclusionTests.py)
             add_test(NAME SilPOM.AppearanceReference COMMAND "${SILPOM_PYTHON}"
                 ${CMAKE_CURRENT_SOURCE_DIR}/Tests/AppearanceReferenceTests.py $<TARGET_FILE_DIR:silpom_appearance_reference>)
             add_test(NAME SilPOM.LevelOne COMMAND "${SILPOM_PYTHON}"
@@ -85,6 +98,22 @@ if(NOT COMMAND o3de_gem_setup)
             add_test(NAME SilPOM.VisibilityOnly COMMAND "${SILPOM_PYTHON}"
                 ${CMAKE_CURRENT_SOURCE_DIR}/Tests/VisibilityOnlyTests.py $<TARGET_FILE_DIR:silpom_visibility> "${SILPOM_DXC}")
         endif()
+        add_executable(silpom_directional_estimator_gpu_tests Tests/DirectionalEstimatorGpuTests.cpp)
+        target_compile_features(silpom_directional_estimator_gpu_tests PRIVATE cxx_std_17)
+        target_compile_definitions(silpom_directional_estimator_gpu_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+        target_link_libraries(silpom_directional_estimator_gpu_tests PRIVATE d3d12 dxgi dxguid)
+        foreach(profile IN ITEMS 6_2 6_7)
+            set(directional_shader ${CMAKE_CURRENT_BINARY_DIR}/directional-estimator-${profile}.dxil)
+            add_custom_command(OUTPUT ${directional_shader}
+                COMMAND "${SILPOM_DXC}" -T cs_${profile} -E Main -Fo ${directional_shader} ${CMAKE_CURRENT_SOURCE_DIR}/Tests/DirectionalEstimatorGpu.hlsl
+                DEPENDS Tests/DirectionalEstimatorGpu.hlsl Assets/Shaders/SilPOM/DirectionalEstimator.azsli Assets/Shaders/SilPOM/DirectionalEstimatorWeights.azsli VERBATIM)
+            add_custom_target(silpom_directional_estimator_shader_${profile} DEPENDS ${directional_shader})
+            add_dependencies(silpom_directional_estimator_gpu_tests silpom_directional_estimator_shader_${profile})
+        endforeach()
+        if(SILPOM_PYTHON)
+            add_test(NAME SilPOM.DirectionalEstimator.GPU COMMAND "${SILPOM_PYTHON}"
+                ${CMAKE_CURRENT_SOURCE_DIR}/Tests/DirectionalEstimatorModelTests.py ${CMAKE_CURRENT_BINARY_DIR})
+        endif()
         add_executable(silpom_material_gpu_tests Tests/MaterialCodecGpuTests.cpp)
         target_compile_features(silpom_material_gpu_tests PRIVATE cxx_std_17)
         target_compile_definitions(silpom_material_gpu_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
@@ -107,6 +136,7 @@ if(NOT COMMAND o3de_gem_setup)
             add_custom_command(OUTPUT ${visibility_shader}
                 COMMAND "${SILPOM_DXC}" -T cs_${profile} -E Main -Fo ${visibility_shader} ${CMAKE_CURRENT_SOURCE_DIR}/Tests/VisibilityGpu.hlsl
                 DEPENDS Tests/VisibilityGpu.hlsl Assets/Shaders/SilPOM/LevelThree.azsli
+                    Assets/Shaders/SilPOM/PhysicalShadowReach.azsli
                     Assets/Shaders/SilPOM/VisibilityInputs.azsli Assets/Shaders/SilPOM/VisibilityClassificationThresholds.azsli
                     Assets/Shaders/SilPOM/NeuralVisibilityWeights.azsli Assets/Shaders/SilPOM/ReliefShadow.azsli
                     Assets/Shaders/SilPOM/ValidationHeight.azsli Assets/Shaders/SilPOM/BlendedFace.azsli
@@ -119,6 +149,7 @@ if(NOT COMMAND o3de_gem_setup)
                 COMMAND "${SILPOM_DXC}" -T cs_${profile} -D SILPOM_NEURAL_VISIBILITY_ONLY=1 -E Main
                     -Fo ${visibility_only_shader} ${CMAKE_CURRENT_SOURCE_DIR}/Tests/VisibilityGpu.hlsl
                 DEPENDS Tests/VisibilityGpu.hlsl Assets/Shaders/SilPOM/NeuralVisibility.azsli
+                    Assets/Shaders/SilPOM/PhysicalShadowReach.azsli Assets/Shaders/SilPOM/NeuralVisibilityPhysicalWeights.azsli
                     Assets/Shaders/SilPOM/VisibilityInputs.azsli Assets/Shaders/SilPOM/VisibilityClassificationThresholds.azsli
                     Assets/Shaders/SilPOM/NeuralVisibilityWeights.azsli Assets/Shaders/SilPOM/ReliefShadow.azsli
                     Assets/Shaders/SilPOM/ValidationHeight.azsli Assets/Shaders/SilPOM/BlendedFace.azsli
@@ -138,6 +169,7 @@ if(NOT COMMAND o3de_gem_setup)
                 COMMAND "${SILPOM_DXC}" -T cs_${profile} -E Main -Fo ${level_one_shader} ${CMAKE_CURRENT_SOURCE_DIR}/Tests/LevelOneGpu.hlsl
                 DEPENDS Tests/LevelOneGpu.hlsl Assets/Shaders/SilPOM/EvaluationHooks.azsli
                     Assets/Shaders/SilPOM/BlendedFace.azsli Assets/Shaders/SilPOM/LevelTwo.azsli
+                    Assets/Shaders/SilPOM/NearestHit.azsli Assets/Shaders/SilPOM/Heightfield.azsli
                     Assets/Shaders/SilPOM/NeuralTowerLevelTwoWeights.azsli
                     Assets/Shaders/SilPOM/NeuralOpenShaftTowerWeights.azsli
                     Assets/Shaders/SilPOM/NeuralWeldedTowerWeights.azsli VERBATIM)
@@ -150,6 +182,7 @@ if(NOT COMMAND o3de_gem_setup)
                 COMMAND "${SILPOM_DXC}" -T cs_${profile} -D SILPOM_LEVEL_TWO_TEST=1 -E Main
                     -Fo ${level_two_shader} ${CMAKE_CURRENT_SOURCE_DIR}/Tests/LevelOneGpu.hlsl
                 DEPENDS Tests/LevelOneGpu.hlsl Assets/Shaders/SilPOM/LevelTwo.azsli
+                    Assets/Shaders/SilPOM/NearestHit.azsli Assets/Shaders/SilPOM/Heightfield.azsli
                     Assets/Shaders/SilPOM/NeuralTowerLevelTwoWeights.azsli
                     Assets/Shaders/SilPOM/NeuralOpenShaftTowerWeights.azsli
                     Assets/Shaders/SilPOM/NeuralWeldedTowerWeights.azsli

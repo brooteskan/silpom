@@ -1,0 +1,93 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+// A compact recovery path for grazing wall rays. Ordered, half-texel height
+// probes locate an earlier seed; only the affine-surface validator can publish
+// geometry. A fixed acquisition/validation budget bounds difficult rays.
+SilPomHit SilPomRecoverNearestHit(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,
+    SilPomRay worldRay,SilPomRay search,float2 low,SilPomHit predicted,uint model)
+{
+    SP_BRANCH if(model!=4u || abs(dot(f.normal,worldRay.direction))>=.30f*length(worldRay.direction) || p.scale<=0.0f)
+        return predicted;
+    SilPomRay projected=search;
+    if(!SilPomMakeSeedRay(f,(f.d0+f.d1+f.d2)*(1.0f/3.0f),worldRay,projected)) return predicted;
+    projected.tMin=search.tMin;projected.tMax=search.tMax;
+    SilPomRay bounded=projected;
+    const float2 center=low+float2(p.width,p.height)*.5f;
+    bounded.origin.x-=center.x;bounded.origin.y-=center.y;
+    float begin=0,end=0;
+    if(!SilPomInterval(bounded,p,begin,end)) return predicted;
+    const float span=end-begin;
+    const float2 size=float2(p.textureWidth,p.textureHeight),inset=.5f/size;
+    const float2 tile=float2(p.tileU/p.width,p.tileV/p.height);
+    const float travel=max(abs(projected.direction.x*tile.x)*p.textureWidth,
+        abs(projected.direction.y*tile.y)*p.textureHeight)*span;
+    const uint count=uint(min(max(floor(travel*2.0f)+1.0f,1.0f),128.0f));
+    float previous=0;
+    uint attempts=0;
+    // Fetch independent probes together to overlap texture latency. The mask
+    // consumes the whole batch before validation; candidate processing remains
+    // in precisely the reference order, with the same coordinates and budget.
+    static const uint batchSize=4u;
+    SP_LOOP for(uint firstProbe=0u;firstProbe<=count;firstProbe+=batchSize)
+    {
+        float4 residuals=float4(0,0,0,0);
+        SP_UNROLL for(uint offset=0u;offset<batchSize;++offset)
+        {
+            const uint probe=firstProbe+offset;
+            if(probe<=count)
+            {
+                const float t=begin+span*(float(probe)/float(count));
+                const float3 location=projected.origin+projected.direction*t;
+                const float2 tex=(SP_XY(location)-low)*tile+float2(p.offsetU,p.offsetV);
+                const float2 addressed=p.addressMode==0u?frac(tex):clamp(tex,inset,1.0f-inset);
+                residuals[offset]=SP_SAMPLE_HEIGHT(texture,addressed)-(location.z/p.scale+p.reference);
+            }
+        }
+        uint candidates=0u;
+        float leftResidual=previous;
+        SP_UNROLL for(uint offset=0u;offset<batchSize;++offset)
+        {
+            const uint probe=firstProbe+offset;
+            if(probe>0u && probe<=count
+                && (leftResidual*residuals[offset]<=0.0f || abs(residuals[offset])<.002f))
+                candidates|=1u<<offset;
+            leftResidual=residuals[offset];
+        }
+        // Clear the lowest bit each time: candidate order is unchanged,
+        // and the validator has one loop body rather than four unrolled copies.
+        SP_LOOP while(candidates!=0u)
+        {
+            const uint offset=(candidates&1u)!=0u?0u:((candidates&2u)!=0u?1u:((candidates&4u)!=0u?2u:3u));
+            candidates&=candidates-1u;
+            leftResidual=previous;
+            if(offset!=0u) leftResidual=residuals[offset-1u];
+            const uint probe=firstProbe+offset;
+            // Recreate the reference expressions only for candidate probes.
+            // Keeping four times live across texture fetches costs registers.
+            const float leftT=begin+span*(float(probe-1u)/float(count));
+            const float residual=residuals[offset];
+            const float t=begin+span*(float(probe)/float(count));
+            const float difference=leftResidual-residual;
+            const float weight=abs(difference)>1e-8f?clamp(leftResidual/difference,0.0f,1.0f):.5f;
+            float candidateT=leftT+(t-leftT)*weight;
+            float2 uv=SP_XY(projected.origin)+SP_XY(projected.direction)*candidateT;
+            SilPomRay validation=worldRay;
+            if(predicted.status==SP_HIT) validation.tMax=min(validation.tMax,predicted.t);
+            if(SilPomRefineFace(texture,p,f,validation,low,uv,candidateT,8u,1.0f)==SP_HIT)
+            {
+                SilPomHit hit=predicted;
+                hit.status=SP_HIT;hit.t=candidateT;
+                hit.position=worldRay.origin+worldRay.direction*candidateT;
+                hit.faceUv=uv;
+                hit.uv=(uv-low)*tile+float2(p.offsetU,p.offsetV);
+                return hit;
+            }
+            if(++attempts==4u) return predicted;
+        }
+        const uint last=min(batchSize-1u,count-firstProbe);
+        previous=residuals[last];
+    }
+    // Exhaustion retains an existing validated hit or the original miss. Never
+    // publish an unconverged iterate or the proxy entry depth as a surface.
+    return predicted;
+}

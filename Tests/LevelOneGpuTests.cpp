@@ -69,7 +69,7 @@ int main(int argc,char** argv)
         parameters[0].ParameterType=D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;parameters[0].DescriptorTable={1,&range};
         parameters[1].ParameterType=D3D12_ROOT_PARAMETER_TYPE_SRV;parameters[1].Descriptor={1,0};
         parameters[2].ParameterType=D3D12_ROOT_PARAMETER_TYPE_UAV;parameters[2].Descriptor={0,0};
-        parameters[3].ParameterType=D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;parameters[3].Constants={0,0,15};
+        parameters[3].ParameterType=D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;parameters[3].Constants={0,0,16};
         D3D12_STATIC_SAMPLER_DESC sampler{};
         sampler.Filter=D3D12_FILTER_MIN_MAG_MIP_LINEAR;
         sampler.AddressU=sampler.AddressV=sampler.AddressW=D3D12_TEXTURE_ADDRESS_MODE_WRAP;
@@ -96,9 +96,12 @@ int main(int argc,char** argv)
         face.uv0={0,0};face.uv1={1,0};face.uv2={0,1};
         face.d0={0,0,1};face.d1={.2f,0,1};face.d2={0,.1f,1};
         UINT comparisons=0;float maxDepthError=0;
-        for(UINT model:{4u,5u,6u,7u}) for(UINT iterations:{2u,6u}) for(UINT clamp:{0u,1u})
+        for(UINT pattern:{0u,1u}) for(UINT model:{4u,5u,6u,7u}) for(UINT iterations:{2u,6u}) for(UINT clamp:{0u,1u})
         {
+            if(pattern && model!=4u) continue;
             Texture texture{8,8,std::vector<float>(64,.75f)};
+            if(pattern) for(UINT y=0;y<8;++y) for(UINT x=0;x<8;++x)
+                texture.pixels[y*8+x]=(x%4u<2u)?.9f:.1f;
             std::vector<char> padded(256*8);
             for(UINT y=0;y<8;++y) memcpy(padded.data()+y*256,texture.pixels.data()+y*8,32);
             D3D12_RESOURCE_DESC td{};td.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;td.Width=8;td.Height=8;
@@ -120,6 +123,7 @@ int main(int argc,char** argv)
             list->SetComputeRootUnorderedAccessView(2,output->GetGPUVirtualAddress());
             list->SetComputeRoot32BitConstants(3,12,&patch,0);list->SetComputeRoot32BitConstant(3,count,12);
             list->SetComputeRoot32BitConstant(3,model,13);list->SetComputeRoot32BitConstant(3,iterations,14);
+            list->SetComputeRoot32BitConstant(3,pattern,15);
             list->SetPipelineState(pipeline.Get());list->Dispatch(count/64,1,1);
             barrier(output.Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);
             list->CopyResource(readback.Get(),output.Get());
@@ -128,11 +132,23 @@ int main(int argc,char** argv)
             for(UINT i=0;i<count;++i)
             {
                 levelOneStats={};
-                auto expected=SilPomIntersectFace(texture,patch,face,rays[i],{0,0},model,iterations,1,5);
+                auto expected=pattern?SilPomRecoverNearestHit(texture,patch,face,rays[i],rays[i],{0,0},{},model)
+                    :SilPomIntersectFace(texture,patch,face,rays[i],{0,0},model,iterations,1,5);
                 const auto& result=values[i];
                 const float depthError=abs(float(expected.t)-result.hit[1]);
+                bool countersMatch=true;
+                for(UINT k=0;k<16;++k)
+                {
+                    // The striped fixture tests recovery independently of
+                    // neural descriptors: hardware-filter weight precision is
+                    // implementation-dependent. Exact-load validation must
+                    // still agree on final geometry, while Newton's iteration
+                    // count can differ by FP32 roundoff near convergence.
+                    if(pattern) continue;
+                    if(result.counts[k]!=levelOneStats[k]) countersMatch=false;
+                }
                 if(expected.status!=uint(result.hit[0])||(expected.status==SP_HIT&&depthError>2e-5f)
-                    ||memcmp(result.counts,levelOneStats.data(),sizeof(result.counts)))
+                    ||!countersMatch)
                 {
                     std::cerr<<"status CPU="<<expected.status<<" GPU="<<result.hit[0]<<" depth error="<<depthError;
                     for(UINT k=0;k<16;++k) if(result.counts[k]!=levelOneStats[k])

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "NeuralVisibilityWeights.azsli"
+#include "PhysicalShadowReach.azsli"
 #ifndef SILPOM_SHADOW_STAT
 #define SILPOM_SHADOW_STAT(event)
 #endif
@@ -19,7 +20,7 @@ float SilPomShadowHeight(SP_TEX texture,SilPomPatch p,float2 uv,float2 low)
 #endif
 }
 bool SilPomPrepareLocalShadow(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,float2 uv,float2 low,
-    float3 toLight,uint steps,float maxDistance,SP_REF(SilPomLocalShadowRay) ray,SP_REF(float) immediate)
+    float3 toLight,uint steps,float maxDistance,bool physicalReach,SP_REF(SilPomLocalShadowRay) ray,SP_REF(float) immediate)
 {
     immediate=1;
     if(steps==0 || abs(p.scale)<1e-8f) return false;
@@ -29,6 +30,7 @@ bool SilPomPrepareLocalShadow(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,floa
     ray.uRate=dot(toLight,cross(f.dv,D))/determinant;
     ray.vRate=dot(f.du,cross(toLight,D))/determinant;
     ray.hRate=dot(f.du,cross(f.dv,toLight))/determinant;
+    if(physicalReach && ray.hRate<=0) { immediate=0;return false; }
     float rate=max(abs(ray.uRate*p.tileU/p.width)*p.textureWidth,
                    abs(ray.vRate*p.tileV/p.height)*p.textureHeight);
     if(rate<1e-8f) { immediate=ray.hRate>=0?1:0;return false; }
@@ -36,9 +38,10 @@ bool SilPomPrepareLocalShadow(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,floa
     ray.top=max(-p.scale*p.reference,p.scale*(1-p.reference));
     ray.bias=max(1e-5f,abs(p.scale)*.002f);
     ray.count=min(steps,64u);ray.step=1.0f/rate;ray.extra=0;
-    if(maxDistance>0)
+    if(physicalReach || maxDistance>0)
     {
-        float reach=ray.hRate>0?min(maxDistance,(ray.top-ray.start-ray.bias)/ray.hRate):maxDistance;
+        float reach=physicalReach?SilPomPhysicalShadowReach(ray.start,ray.top,ray.bias,ray.hRate,maxDistance)
+            :ray.hRate>0?min(maxDistance,(ray.top-ray.start-ray.bias)/ray.hRate):maxDistance;
         if(reach<=0) return false;
         ray.step=min(ray.step,reach/float(ray.count));
         ray.extra=max(0.0f,reach-ray.step*float(ray.count));
@@ -88,6 +91,15 @@ bool SilPomVisibilityFeatures(SP_TEX texture,SilPomPatch p,float2 uv,float2 low,
 #endif
     return true;
 }
+float SilPomVisibilityProbabilityFromLogit(float logit)
+{
+    float visible=rcp(1.0f+exp(-clamp(logit,-20.0f,20.0f)));
+#ifdef SILPOM_VISIBILITY_PROBABILITY
+    SILPOM_VISIBILITY_PROBABILITY(visible);
+#endif
+    SILPOM_SHADOW_STAT(7);
+    return visible;
+}
 float SilPomVisibilityProbability(float feature[10],uint model)
 {
     float logit;
@@ -100,10 +112,5 @@ float SilPomVisibilityProbability(float feature[10],uint model)
         else if(model==6u) logit=SilPomVisibilityNetwork(feature,VisibilityTrimW0,VisibilityTrimB0,VisibilityTrimW1,VisibilityTrimB1);
         else logit=SilPomVisibilityNetwork(feature,VisibilityRevealW0,VisibilityRevealB0,VisibilityRevealW1,VisibilityRevealB1);
     }
-    float visible=rcp(1.0f+exp(-clamp(logit,-20.0f,20.0f)));
-#ifdef SILPOM_VISIBILITY_PROBABILITY
-    SILPOM_VISIBILITY_PROBABILITY(visible);
-#endif
-    SILPOM_SHADOW_STAT(7);
-    return visible;
+    return SilPomVisibilityProbabilityFromLogit(logit);
 }

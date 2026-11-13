@@ -1,0 +1,95 @@
+{
+  "field": {
+    "calibration_mae": 0.032509349286556244,
+    "selected_step": 9200,
+    "test_mae": 0.034557096660137177,
+    "test_constant_mae": 0.20126104354858398,
+    "test_unknown": 0
+  },
+  "4": {
+    "calibration_mae": 0.07467225939035416,
+    "selected_step": 8400,
+    "test_mae": 0.0748983770608902,
+    "test_constant_mae": 0.2492474615573883,
+    "test_unknown": 0
+  },
+  "8": {
+    "calibration_mae": 0.08259332925081253,
+    "selected_step": 8900,
+    "test_mae": 0.08494208008050919,
+    "test_constant_mae": 0.2492474615573883,
+    "test_unknown": 0
+  },
+  "contract": {
+    "address": 0,
+    "reach": [
+      0.025,
+      0.1,
+      0.3,
+      0.0
+    ],
+    "samples": 16,
+    "scale": 0.05,
+    "schema": 1,
+    "shared": "1fff6abee2af373dbea3036a43a8475cf0cae9200e695b630c33be997d89b0c0",
+    "source": "178c3b3ed900b0c2f390af8542412979e6f26f6c5eaf4f09d08606499900ba0e",
+    "source_code": "a1d05a329c199bd067d4a55368dad76cbf124fe0dfeba9d0e6b21bef342840e2",
+    "teacher": "2c1b82ba75e3848b9aed587fb3792abade81095455a314c8cd9d8af57b04c75f"
+  },
+  "train_receivers": 12288,
+  "calibration_receivers": 2048,
+  "test_receivers": 2048,
+  "spatial_split": "32x32 UV blocks, hash mod 10: 0-7 train, 8 calibration, 9 test",
+  "benchmark_performed": false,
+  "experimental": true,
+  "filter": "16 stratified reference samples, camera-independent UV footprint context",
+  "reference": "frozen affine local displacement direction; continued material; scene shadows remain external",
+  "arbitrary_angle_evaluation": {
+    "field": {
+      "heldout_random_angle_mae": 0.16860778629779816,
+      "subsets": {
+        "one_texel_square": {
+          "receivers": 682,
+          "mae": 0.1790417581796646
+        },
+        "filtered": {
+          "receivers": 1366,
+          "mae": 0.16339845955371857
+        }
+      }
+    },
+    "4": {
+      "heldout_random_angle_mae": 0.113768070936203,
+      "subsets": {
+        "one_texel_square": {
+          "receivers": 682,
+          "mae": 0.0972074493765831
+        },
+        "filtered": {
+          "receivers": 1366,
+          "mae": 0.12203625589609146
+        }
+      }
+    },
+    "8": {
+      "heldout_random_angle_mae": 0.13341911137104034,
+      "subsets": {
+        "one_texel_square": {
+          "receivers": 682,
+          "mae": 0.10611548274755478
+        },
+        "filtered": {
+          "receivers": 1366,
+          "mae": 0.14705093204975128
+        }
+      }
+    },
+    "train_unknown_labels": 7,
+    "calibration_unknown_labels": 0,
+    "test_unknown_labels": 0
+  },
+  "shipping_weights_sha256": "083d5463b48d76f0ce16bd3a56f6d126388d6be59eaf449356af2314b4f22bf4",
+  "canonical_field_test_metric_only": true,
+  "addressing": "repeat",
+  "spatial_partitions_verified": true
+}

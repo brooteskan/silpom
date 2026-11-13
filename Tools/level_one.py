@@ -66,12 +66,16 @@ class Evaluator:
 
 def outcomes(data, details, hits, stats, depth_tolerance_m=.00025):
     teacher_hit = data[1]
-    final_hit, refined, fill = hits[:, 0] == 1, stats[:, 2:4].sum(axis=1) > 0, stats[:, 7] > 0
+    final_hit, fill = hits[:, 0] == 1, stats[:, 7] > 0
+    # Geometric recovery can succeed after every neural candidate failed.
+    # All accepted non-fill hits have passed surface validation.
+    refined = final_hit & ~fill
     errors = np.abs(hits[:, 1] - details["teacher"][:, 1])
     comparable = refined & teacher_hit
     summarize = {
         "rays": len(hits), "teacher_hits": int(teacher_hit.sum()),
         "primary_successes": int(stats[:, 2].sum()), "retry_successes": int(stats[:, 3].sum()),
+        "recovered_after_predictor_miss": int((refined & (stats[:, 2:4].sum(axis=1) == 0)).sum()),
         "rays_with_retries": int((stats[:, 4] > 0).sum()), "retries": int(stats[:, 4].sum()),
         "confidence_rejections": int(stats[:, 5].sum()), "fallback_fills": int(fill.sum()),
         "uncovered_teacher_hits": int((teacher_hit & ~final_hit).sum()),
@@ -139,7 +143,7 @@ def audit(profile, details, hits, stats, count):
     if not count:
         return []
     incidence = np.abs(np.einsum("ij,ij->i", profile.normal[details["ids"]], details["rays"][:, 3:]))
-    refined = stats[:, 2:4].sum(axis=1) > 0
+    refined = (hits[:, 0] == 1) & (stats[:, 7] == 0)
     teacher_hit = details["teacher"][:, 0] == 1
     errors = np.where(refined & teacher_hit, np.abs(hits[:, 1] - details["teacher"][:, 1]), -1)
     groups = [np.argsort(-errors)[errors[np.argsort(-errors)] > .00025],
