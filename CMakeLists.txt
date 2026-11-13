@@ -76,7 +76,7 @@ if(NOT COMMAND o3de_gem_setup)
             set(appearance_shader ${CMAKE_CURRENT_BINARY_DIR}/appearance-${profile}.dxil)
             add_custom_command(OUTPUT ${appearance_shader}
                 COMMAND "${SILPOM_DXC}" -T cs_${profile} -E Main -Fo ${appearance_shader} ${CMAKE_CURRENT_SOURCE_DIR}/Tests/AppearanceGpu.hlsl
-                DEPENDS Tests/AppearanceGpu.hlsl Assets/Shaders/SilPOM/AppearanceDecode.azsli VERBATIM)
+                DEPENDS Tests/AppearanceGpu.hlsl Assets/Shaders/SilPOM/AppearanceDecode.azsli Assets/Shaders/SilPOM/ExperimentalDecode.azsli VERBATIM)
             add_custom_target(silpom_appearance_shader_${profile} DEPENDS ${appearance_shader})
             add_dependencies(silpom_appearance_gpu_tests silpom_appearance_shader_${profile})
             add_test(NAME SilPOM.Appearance.GPU.SM${profile} COMMAND silpom_appearance_gpu_tests ${appearance_shader})

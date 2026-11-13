@@ -67,7 +67,12 @@ Surface SilPomEvaluateProxySurface(VsOutput IN,VsSystemValues SV,PixelGeometryDa
     real metallic=OverrideMetallicEnabled()?GetMetallicOverride():real(params.m_metallicFactor);
     surface.SetAlbedoAndSpecularF0(color,real(params.m_specularF0Factor),metallic);
     real roughness=.08f+.92f*decoded[2];
-    surface.roughnessLinear=OverrideRoughnessEnabled()?GetRoughnessOverride():o_roughness_useTexture
+    surface.roughnessLinear=OverrideRoughnessEnabled()?GetRoughnessOverride():
+#if SILPOM_LEARNED_MATERIAL
+        params.m_silpomMaterialUseRoughness
+#else
+        o_roughness_useTexture
+#endif
         ?lerp(real(params.m_roughnessLowerBound),real(params.m_roughnessUpperBound),roughness):real(params.m_roughnessFactor);
     surface.CalculateRoughnessA();surface.alpha=real(params.m_opacityFactor);surface.opacityAffectsSpecularFactor=real(params.m_opacityAffectsSpecularFactor);
     surface.emissiveLighting=o_emissiveEnabled?real3(params.m_emissiveColor.rgb)*real(params.m_emissiveIntensity)*lerp(real(1),surface.alpha,real(params.m_emissiveAffectedByAlpha)):real3(0,0,0);

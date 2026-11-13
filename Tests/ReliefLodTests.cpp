@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "../Include/SilPOM/ReliefLod.h"
 #include "../Include/SilPOM/AppearanceCodec.h"
+#include "../Include/SilPOM/ExperimentalCodecs.h"
 #include <iostream>
 #include <random>
 using namespace SilPOM;
@@ -46,5 +47,28 @@ int main()
     float x[22]{},s[3],l[2];AppearanceCodec::Decode(x,w,18,3,s);AppearanceCodec::Decode(x,w+355,22,2,l);
     for(float v:s)if(v!=.5f)return 1;for(float v:l)if(v!=.5f)return 1;
     w[0]=std::numeric_limits<float>::quiet_NaN();if(AppearanceCodec::Validate(h,bytes,w))return 1;
-    std::cout<<"Projective error bound, viewport scaling, hysteresis, boundary/grazing guards and appearance bundle passed\n";
+    float coefficients[DepthCodec::Weights]{};
+    for(bool shared:{false,true})
+    {
+        auto header=h;memcpy(header.magic,shared?"SILPSHR4":"SILPDEP5",8);
+        header.width=shared?1664:832;header.height=shared?1536:768;header.mips=shared?11:10;
+        header.weights=shared?SharedCodec::Weights:DepthCodec::Weights;
+        const auto size=sizeof(h)+header.weights*4+MaterialCodec::PixelCount(header.width,header.height,header.mips)*(shared?12:8);
+        auto validate=[&](size_t n){return shared?SharedCodec::Validate(header,n,coefficients):DepthCodec::Validate(header,n,coefficients);};
+        if(!validate(size)||validate(size-1)||MaterialCodec::Validate(header,size,coefficients)||AppearanceCodec::Validate(header,size,coefficients))return 1;
+        header.version=1;if(validate(size))return 1;header.version=2;
+        coefficients[header.weights-1]=std::numeric_limits<float>::infinity();if(validate(size))return 1;coefficients[header.weights-1]=0;
+    }
+    float inputs[23]{};if(SharedCodec::Decode(inputs,coefficients)!=.5f||DepthCodec::Decode(inputs,coefficients)!=.5f)return 1;
+    for(unsigned i=0;i<10000;++i)
+    {
+        const float scale=float(random()*.2-.1),reference=float(random()),nd=float(.4+.6*random()),nv=float(.35+.65*random());
+        const float lo=scale*(-reference)*nd/nv,hi=scale*(1-reference)*nd/nv;
+        const float t=DepthCodec::RayOffset(float(random()*3-1),scale,reference,nd,nv);
+        if(t<std::min(lo,hi)-1e-6f||t>std::max(lo,hi)+1e-6f)return 1;
+        // Independently substitute the ray into the displaced plane equation.
+        const float fraction=float(random()),distance=DepthCodec::RayOffset(fraction,scale,reference,nd,nv);
+        if(std::abs(distance*nv-scale*(fraction-reference)*nd)>1e-6f)return 1;
+    }
+    std::cout<<"Projective bounds, selection, codec kinds and bounded proxy-plane depth passed\n";
 }

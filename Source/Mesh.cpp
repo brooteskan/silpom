@@ -293,7 +293,7 @@ template<class T> bool Set(const Material& material, const char* name, const T& 
     material->SetPropertyValue(index, value); return true;
 }
 Material Snapshot(const AZ::Data::Asset<AZ::RPI::MaterialAsset>& source,
-    const AZ::RPI::MaterialAsset* authored = nullptr, AZ::Data::AssetId replacedHeight = {}, const Image& replacement = {},bool decoded=false)
+    const AZ::RPI::MaterialAsset* authored = nullptr, AZ::Data::AssetId replacedHeight = {}, const Image& replacement = {},bool decoded=false,bool keepBaseColor=false)
 {
     bool replaceParallax = false;
     AZ::RPI::MaterialAssetCreator creator;
@@ -313,7 +313,7 @@ Material Snapshot(const AZ::Data::Asset<AZ::RPI::MaterialAsset>& source,
         for (size_t i = 0; i < authoredValues.size(); ++i)
         {
             const auto name = authoredLayout->GetPropertyDescriptor(AZ::RPI::MaterialPropertyIndex(i))->GetName();
-            if(decoded && (name==AZ::Name("baseColor.textureMap")||name==AZ::Name("normal.textureMap")||name==AZ::Name("roughness.textureMap")||name==AZ::Name("emissive.textureMap"))) continue;
+            if(decoded && ((!keepBaseColor&&name==AZ::Name("baseColor.textureMap"))||name==AZ::Name("normal.textureMap")||name==AZ::Name("roughness.textureMap")||name==AZ::Name("emissive.textureMap"))) continue;
             if (replacement && name == AZ::Name("parallax.textureMap")
                 && authoredValues[i].Is<AZ::Data::Asset<AZ::RPI::ImageAsset>>()
                 && authoredValues[i].GetValue<AZ::Data::Asset<AZ::RPI::ImageAsset>>().GetId() == replacedHeight)
@@ -398,7 +398,7 @@ void MeshConfig::Reflect(AZ::ReflectContext* context)
         sc->Enum<LocalShadowMethod>()->Value("Baseline",LocalShadowMethod::Baseline)
             ->Value("Gather",LocalShadowMethod::Gather)->Value("Neural",LocalShadowMethod::Neural)
             ->Value("NeuralOnly",LocalShadowMethod::NeuralOnly);
-        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(17)->Field("Surface", &MeshConfig::m_surface)
+        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(18)->Field("Surface", &MeshConfig::m_surface)
             ->Field("Materials", &MeshConfig::m_materials)->Field("Profiles", &MeshConfig::m_profiles)
             ->Field("ReliefDepthMultiplier", &MeshConfig::m_reliefDepthMultiplier)
             ->Field("ValidationIterations", &MeshConfig::m_validationIterations)
@@ -408,7 +408,9 @@ void MeshConfig::Reflect(AZ::ReflectContext* context)
             ->Field("UseValidationGather", &MeshConfig::m_useValidationGather)
             ->Field("UseLevelTwoPredictor", &MeshConfig::m_useLevelTwoPredictor)
             ->Field("UseLevelFourWallMaterial", &MeshConfig::m_useLevelFourWallMaterial)
+            ->Field("UseLevelFourShared", &MeshConfig::m_useLevelFourShared)
             ->Field("UseLevelFiveProxy", &MeshConfig::m_useLevelFiveProxy)
+            ->Field("UseLevelFiveDepth", &MeshConfig::m_useLevelFiveDepth)
             ->Field("LevelFivePixelBudget", &MeshConfig::m_levelFivePixelBudget)
             ->Field("ReliefLodPixelBudget", &MeshConfig::m_reliefLodPixelBudget)
             ->Field("MaxReliefDistance", &MeshConfig::m_maxReliefDistance)
@@ -475,11 +477,11 @@ void MeshController::ConnectAssets()
         { AZ::Data::AssetBus::MultiHandler::BusConnect(asset.GetId()); asset.QueueLoad(); }
     };
     queue(m_configuration.m_surface); queue(m_template);
-    if(m_configuration.m_useLevelFourWallMaterial)
+    if(m_configuration.m_useLevelFourWallMaterial||m_configuration.m_useLevelFourShared)
     {
         AZ::Data::AssetId id;
         AZ::Data::AssetCatalogRequestBus::BroadcastResult(id,&AZ::Data::AssetCatalogRequests::GetAssetIdByPath,
-            "assets/silpomlearned/wall.silpommaterial",azrtti_typeid<LearnedMaterialAsset>(),false);
+            m_configuration.m_useLevelFourShared?"assets/silpomlearned/wall-shared.silpommaterial":"assets/silpomlearned/wall.silpommaterial",azrtti_typeid<LearnedMaterialAsset>(),false);
         if(id.IsValid())m_learnedMaterial=AZ::Data::AssetManager::Instance().GetAsset<LearnedMaterialAsset>(id,AZ::Data::AssetLoadBehavior::NoLoad);
         queue(m_learnedMaterial);
     }
@@ -488,7 +490,7 @@ void MeshController::ConnectAssets()
         AZ::Data::AssetId id;
         // The two encodings have different source stems and products.
         AZ::Data::AssetCatalogRequestBus::BroadcastResult(id,&AZ::Data::AssetCatalogRequests::GetAssetIdByPath,
-            "assets/silpomlearned/wall-appearance.silpommaterial",azrtti_typeid<LearnedMaterialAsset>(),false);
+            m_configuration.m_useLevelFiveDepth?"assets/silpomlearned/wall-depth.silpommaterial":"assets/silpomlearned/wall-appearance.silpommaterial",azrtti_typeid<LearnedMaterialAsset>(),false);
         if(id.IsValid())m_appearance=AZ::Data::AssetManager::Instance().GetAsset<LearnedMaterialAsset>(id,AZ::Data::AssetLoadBehavior::NoLoad);
         queue(m_appearance);
     }
@@ -580,23 +582,27 @@ bool MeshController::Prepare()
     if (!m_template.GetId().IsValid()) { m_status = "SilPOM mesh shader template is missing; process Gem assets"; return false; }
     if (!m_template.IsReady()) { m_status = "Loading mesh material template"; return true; }
     const auto& asset = *c.m_surface;
+    if(c.m_useLevelFourShared&&c.m_useLevelFourWallMaterial)
+    {m_status="Choose Level 4A or Level 4B, not both";return false;}
+    if(c.m_useLevelFiveDepth&&!c.m_useLevelFiveProxy)
+    {m_status="Level 5B bounded depth requires Level 5A proxy selection";return false;}
     if(c.m_useLevelFiveProxy)
     {
-        if(c.m_useLevelFourWallMaterial){m_status="Level 5A currently uses ordinary base color; disable Level 4A for this independent comparison";return false;}
+        if(c.m_useLevelFourWallMaterial){m_status="Level 5 uses ordinary base color; disable Level 4A for this independent comparison";return false;}
         if(c.m_localShadowMethod!=LocalShadowMethod::NeuralOnly||!c.m_useHeightDerivedNormals)
         {m_status="Level 5A requires neural-only local visibility and height-derived normals for its calibrated near path";return false;}
         if(!std::isfinite(c.m_levelFivePixelBudget)||c.m_levelFivePixelBudget<.05f||c.m_levelFivePixelBudget>4.f)
         {m_status="Level 5A pixel error budget must be 0.05-4 pixels";return false;}
-        if(!m_appearance.IsReady()){m_status="Process Assets/SilPOMLearned/wall-appearance.l5app before enabling Level 5A";return m_appearance.GetId().IsValid();}
-        if(!m_appearance->Validate()||memcmp(m_appearance->Header().magic,"SILPAPP5",8))
+        if(!m_appearance.IsReady()){m_status=c.m_useLevelFiveDepth?"Process Assets/SilPOMLearned/wall-depth.l5depth before enabling Level 5B":"Process Assets/SilPOMLearned/wall-appearance.l5app before enabling Level 5A";return m_appearance.GetId().IsValid();}
+        if(!m_appearance->Validate()||memcmp(m_appearance->Header().magic,c.m_useLevelFiveDepth?"SILPDEP5":"SILPAPP5",8))
         {m_status="Invalid Level 5A appearance bundle";return false;}
     }
-    if(c.m_useLevelFourWallMaterial)
+    if(c.m_useLevelFourWallMaterial||c.m_useLevelFourShared)
     {
         if(c.m_localShadowMethod!=LocalShadowMethod::NeuralOnly){m_status="Level 4A requires neural-only local visibility; select it before enabling material decoding";return false;}
-        if(!m_learnedMaterial.GetId().IsValid()){m_status="Process Assets/SilPOMLearned/wall.l4mat before enabling Level 4A";return false;}
+        if(!m_learnedMaterial.GetId().IsValid()){m_status=c.m_useLevelFourShared?"Process Assets/SilPOMLearned/wall-shared.l4shared before enabling Level 4B":"Process Assets/SilPOMLearned/wall.l4mat before enabling Level 4A";return false;}
         if(!m_learnedMaterial.IsReady()){m_status="Loading Level 4 material";return true;}
-        if(!m_learnedMaterial->Validate()||memcmp(m_learnedMaterial->Header().magic,"SILPMAT4",8))
+        if(!m_learnedMaterial->Validate()||memcmp(m_learnedMaterial->Header().magic,c.m_useLevelFourShared?"SILPSHR4":"SILPMAT4",8))
         {m_status="Invalid Level 4 material bundle";return false;}
     }
     if (asset.m_surfaceVersion != MeshSurfaceAsset::Version || asset.m_faces.empty()) { m_status = "Unsupported/empty mesh surface"; return false; }
@@ -757,7 +763,7 @@ bool MeshController::Prepare()
                     return fail("Displaced batches currently require opaque StandardPBR materials");
                 const auto& p = profiles[key.second];
                 bool decoded=false,proxy=false;
-                if((c.m_useLevelFourWallMaterial||c.m_useLevelFiveProxy) && p.m_neuralModel==4)
+                if((c.m_useLevelFourWallMaterial||c.m_useLevelFourShared||c.m_useLevelFiveProxy) && p.m_neuralModel==4)
                 {
                     const char* names[]={"baseColor.textureMap","normal.textureMap","roughness.textureMap"};
                     const char* files[]={"basecolor.png","normal.png","roughness.png"};
@@ -788,7 +794,7 @@ bool MeshController::Prepare()
                                 return fail("Level 4A wall decoder does not support additional textured material channels");
                         }
                         proxy=c.m_useLevelFiveProxy;
-                        decoded=c.m_useLevelFourWallMaterial;
+                        decoded=c.m_useLevelFourWallMaterial||c.m_useLevelFourShared;
                         if(decoded){++decodedBatches;++candidate->learnedMaterialBatches;}
                     }
                 }
@@ -899,7 +905,7 @@ bool MeshController::Prepare()
                 }
                 Image height = heightEntry->second;
                 if (!height) return fail("Cannot create height texture");
-                material=Snapshot(m_template,binding.m_material.Get(), p.m_height.GetId(), convertHeight ? height : Image{},decoded);
+                material=Snapshot(m_template,binding.m_material.Get(), p.m_height.GetId(), convertHeight ? height : Image{},decoded,proxy);
                 if(!material) return fail("Cannot create planar face material");
                 if(proxy)
                 {
@@ -935,12 +941,12 @@ bool MeshController::Prepare()
                     }
                     batch.buffer=AZ::RPI::Buffer::FindOrCreate(Buffer(batch.flags.data(),batch.flags.size(),4,true,true));
                     Image first=MakeLearnedMaterialImage(*m_appearance,0),second=MakeLearnedMaterialImage(*m_appearance,1);
-                    auto weights=AZ::RPI::Buffer::FindOrCreate(Buffer(m_appearance->Weights(),AppearanceCodec::Weights,4,true));
+                    auto weights=AZ::RPI::Buffer::FindOrCreate(Buffer(m_appearance->Weights(),m_appearance->Header().weights,4,true));
                     if(!batch.buffer||!first||!second||!weights)return fail("Cannot allocate Level 5 appearance resources");
                     batch.buffer->WaitForUpload();weights->WaitForUpload();
                     const auto bi=batch.buffer->GetBufferView()->GetBindlessReadIndex(),wi=weights->GetBufferView()->GetBindlessReadIndex();
                     if(bi.size()!=1||wi.size()!=1||bi.begin()->second==AZ::u32(-1)||wi.begin()->second==AZ::u32(-1))return fail("Level 5 requires one bindless GPU");
-                    if(!Set(material,"surface.proxyLodEnabled",true)||!Set(material,"surface.proxyLodBuffer",bi.begin()->second)
+                    if(!Set(material,"surface.proxyLodEnabled",true)||!Set(material,"surface.proxyDepthEnabled",c.m_useLevelFiveDepth)||!Set(material,"surface.proxyLodBuffer",bi.begin()->second)
                         ||!Set(material,"surface.appearanceFeatures0",first)||!Set(material,"surface.appearanceFeatures1",second)
                         ||!Set(material,"surface.appearanceDecoderBuffer",wi.begin()->second)||!Set(material,"surface.appearanceFeatureMipCount",m_appearance->Header().mips))
                         return fail("Level 5 appearance material contract mismatch");
@@ -952,12 +958,13 @@ bool MeshController::Prepare()
                 if(decoded)
                 {
                     Image first=MakeLearnedMaterialImage(*m_learnedMaterial,0),second=MakeLearnedMaterialImage(*m_learnedMaterial,1);
-                    auto weights=AZ::RPI::Buffer::FindOrCreate(Buffer(m_learnedMaterial->Weights(),MaterialCodec::Weights,4,true));
+                    auto weights=AZ::RPI::Buffer::FindOrCreate(Buffer(m_learnedMaterial->Weights(),m_learnedMaterial->Header().weights,4,true));
                     if(!first||!second||!weights)return fail("Cannot allocate Level 4 material resources");
                     weights->WaitForUpload();const auto weightIndices=weights->GetBufferView()->GetBindlessReadIndex();
                     if(weightIndices.size()!=1||weightIndices.begin()->second==AZ::u32(-1))return fail("Level 4 decoder requires one bindless GPU");
                     auto useMap=[&](const char* name){const auto idx=source->FindPropertyIndex(AZ::Name(name));return idx.IsValid()&&source->GetPropertyValue(idx).Is<bool>()&&source->GetPropertyValue(idx).GetValue<bool>();};
                     if(!Set(material,"surface.learnedMaterial",true)
+                        ||!Set(material,"surface.sharedVisibility",c.m_useLevelFourShared)
                         ||!Set(material,"surface.materialUseBaseColor",useMap("baseColor.useTexture"))
                         ||!Set(material,"surface.materialUseNormal",useMap("normal.useTexture"))
                         ||!Set(material,"surface.materialUseRoughness",useMap("roughness.useTexture"))
@@ -965,6 +972,12 @@ bool MeshController::Prepare()
                         ||!Set(material,"surface.materialFeatures1",second)||!Set(material,"surface.materialDecoderBuffer",weightIndices.begin()->second)
                         ||!Set(material,"surface.materialFeatureMipCount",m_learnedMaterial->Header().mips))return fail("Level 4 material contract mismatch");
                     candidate->heights.push_back(first);candidate->heights.push_back(second);candidate->buffers.push_back(weights);
+                    if(c.m_useLevelFourShared)
+                    {
+                        Image third=MakeLearnedMaterialImage(*m_learnedMaterial,2);
+                        if(!third||!Set(material,"surface.materialFeatures2",third))return fail("Cannot bind shared visibility features");
+                        candidate->heights.push_back(third);
+                    }
                 }
                 const bool legacyNeural = reuseDepthHits && c.m_useNeuralSeed && p.m_addressMode == 1
                     && std::abs(p.m_scale - .02f) < 1e-6f && std::abs(p.m_reference - .05f) < 1e-6f;
@@ -1091,7 +1104,7 @@ bool MeshController::Prepare()
     {
         AZ::RPI::SceneNotificationBus::Handler::BusConnect(scene->GetId());
     }
-    if(c.m_useLevelFourWallMaterial && !decodedBatches)return fail("Level 4A has no matching fieldstone-wall material; no representation was changed");
+    if((c.m_useLevelFourWallMaterial||c.m_useLevelFourShared) && !decodedBatches)return fail("Level 4 has no matching fieldstone-wall material; no representation was changed");
     if(c.m_useLevelFiveProxy&&candidate->proxyBatches.empty())return fail("Level 5A has no matching canonical wall batches");
     m_pending = AZStd::move(candidate); m_status = "Preparing complete mesh generation"; return false;
 }
@@ -1249,7 +1262,8 @@ void MeshController::OnTick(float, AZ::ScriptTimePoint)
                 :m_configuration.m_localShadowMethod==LocalShadowMethod::Gather ? "; local shadows: Gather"
                 :m_configuration.m_localShadowMethod==LocalShadowMethod::NeuralOnly ? "; local shadows: neural only (no march)"
                 :"; local shadows: hybrid neural + march";
-            if(m_active->learnedMaterialBatches)m_status+=AZStd::string::format("; Level 4A material on %zu batches",m_active->learnedMaterialBatches);
+            if(m_active->learnedMaterialBatches)m_status+=AZStd::string::format("; Level %s material on %zu batches",m_configuration.m_useLevelFourShared?"4B shared":"4A",m_active->learnedMaterialBatches);
+            if(m_configuration.m_useLevelFiveDepth)m_status+="; Level 5B bounded proxy depth (authored coverage)";
             if(!m_active->proxyBatches.empty())m_status+=AZStd::string::format("; Level 5A patch selection on %zu wall batches",m_active->proxyBatches.size());
             if (m_active->depthHeightBounds)
             {

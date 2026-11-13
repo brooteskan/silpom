@@ -67,7 +67,9 @@ public:
     bool m_useValidationGather = false;
     bool m_useLevelTwoPredictor = false;
     bool m_useLevelFourWallMaterial = false;
+    bool m_useLevelFourShared = false;
     bool m_useLevelFiveProxy = false;
+    bool m_useLevelFiveDepth = false;
     float m_levelFivePixelBudget = .75f;
     float m_reliefLodPixelBudget = 0.00f;
     float m_maxReliefDistance = 0.00f;

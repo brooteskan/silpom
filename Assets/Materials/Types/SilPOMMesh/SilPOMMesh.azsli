@@ -569,11 +569,16 @@ COMMON_OPTIONS_EMISSIVE()
 Surface EvaluateSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,const MaterialParameters params)
 {
     silpomPaintHeightTexture=params.m_silpomHeightMap;
+#if defined(SILPOM_LEARNED_MATERIAL)
+    // Derivatives must be evaluated while all quad lanes are active, before
+    // neighboring pixels can take different near/proxy material branches.
+    float4 materialDerivatives=float4(ddx(geo.uvs[0]),ddy(geo.uvs[0]));
+#endif
 #if SILPOM_LEVEL_FIVE
     if(silpomLitProxy)return SilPomEvaluateProxySurface(IN,SV,geo,params);
 #endif
 #if defined(SILPOM_LEARNED_MATERIAL)
-    Surface surface=SilPomEvaluateLearnedSurface(IN,SV,geo,params);
+    Surface surface=SilPomEvaluateLearnedSurface(IN,SV,geo,params,materialDerivatives);
 #else
     Surface surface=EvaluateSurface_StandardPBR(IN,SV,geo,params);
 #endif

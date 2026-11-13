@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#ifndef SILPOM_EXPERIMENT_WEIGHT
+#define SILPOM_EXPERIMENT_WEIGHT(i) asfloat(Bindless::GetByteAddressBuffer(bufferIndex).Load((i)*4u))
+#endif
+float SilPomDecodeSharedVisibility(float x[20],uint bufferIndex)
+{
+    float result=SILPOM_EXPERIMENT_WEIGHT(574u);
+    SP_UNROLL for(uint j=0;j<12;++j)
+    {
+        float z=SILPOM_EXPERIMENT_WEIGHT(550u+j);
+        SP_UNROLL for(uint k=0;k<20;++k)z+=x[k]*SILPOM_EXPERIMENT_WEIGHT(310u+j*20u+k);
+        result+=max(z,0.0f)*SILPOM_EXPERIMENT_WEIGHT(562u+j);
+    }
+    return rcp(1.0f+exp(-clamp(result,-16.0f,16.0f)));
+}
+float SilPomDecodeProxyDepth(float x[23],uint bufferIndex)
+{
+    float result=SILPOM_EXPERIMENT_WEIGHT(1157u);
+    SP_UNROLL for(uint j=0;j<16;++j)
+    {
+        float z=SILPOM_EXPERIMENT_WEIGHT(1125u+j);
+        SP_UNROLL for(uint k=0;k<23;++k)z+=x[k]*SILPOM_EXPERIMENT_WEIGHT(757u+j*23u+k);
+        result+=max(z,0.0f)*SILPOM_EXPERIMENT_WEIGHT(1141u+j);
+    }
+    return rcp(1.0f+exp(-clamp(result,-16.0f,16.0f)));
+}
+float SilPomProxyRayOffset(float heightFraction,float scale,float reference,float normalDirection,float normalView)
+{
+    return scale*(saturate(heightFraction)-reference)*normalDirection/normalView;
+}

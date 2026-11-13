@@ -99,3 +99,49 @@ extern "C" __declspec(dllexport) bool RenderAppearance(const float* heights,uint
     });
     for(auto& w:workers)w.join();return true;
 }
+
+// Local-plane reference for 4B visibility and 5B bounded depth. Queries use
+// the same layout as RenderAppearance. Coverage is returned as a teacher
+// diagnostic only: runtime coverage remains the authored raster triangle.
+extern "C" __declspec(dllexport) bool RenderSharedDepth(const float* heights,uint width,uint height,
+    float scale,float reference,const float* faces,uint faceCount,const float* queries,
+    const uint* ids,uint count,uint samples,bool visibility,float* output)
+{
+    const uint side=uint(std::sqrt(float(samples)));
+    if(!width||!height||!faceCount||!samples||samples>256||side*side!=samples)return false;
+    std::vector<Surface> surfaces;for(uint i=0;i<faceCount;++i)surfaces.push_back(Unpack(faces+i*27,width,height,scale,reference));
+    std::atomic<uint> next{0};std::vector<std::thread> workers;
+    for(uint worker=0;worker<8;++worker)workers.emplace_back([&]{
+        const Texture texture{width,height,std::vector<float>(heights,heights+size_t(width)*height)};
+        for(uint i=next.fetch_add(1);i<count;i=next.fetch_add(1))
+        {
+            float* out=output+i*3;out[0]=out[1]=out[2]=0;if(ids[i]>=faceCount)continue;
+            Surface s=surfaces[ids[i]];auto& f=s.face;const auto* q=queries+i*13;
+            const float3 V=s.T*q[2]+s.B*q[3]+f.normal*q[4],L=s.T*q[5]+s.B*q[6]+f.normal*q[7];
+            const auto D=SilPomFaceDirection(f,{q[0],q[1]});
+            // Continue the local UV metric without treating incidental source
+            // triangulation edges as holes in coarse pixel footprints.
+            f.origin=f.origin+f.du*(-16-f.uv0.x)+f.dv*(-16-f.uv0.y);
+            f.uv0={-16,-16};f.uv1={32,-16};f.uv2={-16,32};f.d0=f.d1=f.d2=D;
+            s.low={-16,-16};s.patch={48,48,scale,reference,48,48,-16,-16,width,height,1,65536};
+            uint valid=0,cappedCount=0;
+            for(uint j=0;j<samples;++j)
+            {
+                const float a=(float(j%side)+.5f)/side-.5f,b=(float(j/side)+.5f)/side-.5f;
+                const float2 uv{q[0]+(q[11]*a*q[9]-q[12]*b*q[10])/width,q[1]+(q[12]*a*q[9]+q[11]*b*q[10])/height};
+                if(visibility){bool capped=false;out[0]+=Visibility(texture,s,uv,L,q[8],capped);cappedCount+=capped;++valid;}
+                else
+                {
+                    const auto base=f.origin+f.du*(uv.x-f.uv0.x)+f.dv*(uv.y-f.uv0.y);
+                    const float distance=max(.2f,abs(scale)*4/max(.1f,q[4]));
+                    const SilPomRay ray{base+V*distance,V*(-1.f),0,2*distance+abs(scale)*4};
+                    const auto hit=SilPomIntersectFace(texture,s.patch,f,ray,s.low);
+                    if(hit.status!=SP_HIT)continue;
+                    out[0]+=SilPomFaceHeight(texture,s.patch,hit.faceUv,s.low).x/scale+reference;++valid;
+                }
+            }
+            if(valid)out[0]/=valid;out[1]=float(valid)/samples;out[2]=float(cappedCount)/samples;
+        }
+    });
+    for(auto& worker:workers)worker.join();return true;
+}

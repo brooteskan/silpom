@@ -5,8 +5,8 @@ This default-off experiment removes detailed intersection work from selected
 distant wall patches. It does not establish a GPU performance improvement.
 No GPU benchmark is part of this implementation or its correctness tests.
 Level 4A remains the independent learned-material comparison. Shared near
-material/visibility encoding (4B) and learned depth/coverage (5B) remain
-conditional experiments from the outline, rather than prerequisites for 5A.
+material/visibility encoding (4B) and bounded depth (5B) are separate default-off
+experiments described in LevelFourFiveBReadme.txt. Coverage remains authored.
 
 Controls
 --------

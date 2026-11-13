@@ -1,0 +1,181 @@
+{
+  "standalone_test_groups_passed": 30,
+  "asset_processing_failed_jobs": 0,
+  "benchmark_performed": false,
+  "editor": {
+    "passed": true,
+    "benchmark_performed": false,
+    "stage": "complete",
+    "level_sha256": "8d105c8848e6cdd9cadfcdb221bdcf05800c4bf9876e6ccc529e4ceacc639985",
+    "original_settings": {
+      "Relief depth multiplier": 0.30000001192092896,
+      "Local shadow method": 0,
+      "Level 4A wall material (experimental)": false,
+      "Level 4B shared material / visibility (experimental)": false,
+      "Level 5A learned relief LOD (experimental)": false,
+      "Level 5B bounded proxy depth (experimental)": false,
+      "Level 5A error budget (higher = more proxies)": 0.75,
+      "Spiral light master brightness": 0.20000000298023224,
+      "Height-derived normals (off = cheaper)": true
+    },
+    "level4_hit_regression_passed": true,
+    "level4b_hit_regression_passed": true,
+    "last_capture": {
+      "name": "decal-view",
+      "state": [
+        306.0,
+        1130.0,
+        0.2092341184616089
+      ],
+      "selected_pixels": 2215,
+      "proxy_pixels": 2215,
+      "refined_pixels": 0
+    },
+    "proxy_views": {
+      "far-front": {
+        "state": [
+          306.0,
+          1130.0,
+          0.2092341184616089
+        ],
+        "visible_proxy_pixels": 2213
+      },
+      "far-depth": {
+        "state": [
+          306.0,
+          1130.0,
+          0.2092341184616089
+        ],
+        "visible_proxy_pixels": 2215
+      },
+      "far-combined": {
+        "state": [
+          306.0,
+          1130.0,
+          0.2092341184616089
+        ],
+        "visible_proxy_pixels": 2215
+      },
+      "far-quarter": {
+        "state": [
+          313.0,
+          1130.0,
+          0.19534938037395477
+        ],
+        "visible_proxy_pixels": 2281
+      },
+      "far-distant": {
+        "state": [
+          322.0,
+          1130.0,
+          0.09969291090965271
+        ],
+        "visible_proxy_pixels": 714
+      },
+      "decal-view": {
+        "state": [
+          306.0,
+          1130.0,
+          0.2092341184616089
+        ],
+        "visible_proxy_pixels": 2215
+      }
+    },
+    "level5b_depth_changed_pixels": 2213,
+    "combined_modes_ready": true,
+    "resize": {
+      "small": [
+        306.0,
+        1130.0,
+        0.2092341184616089
+      ],
+      "large": [
+        158.0,
+        1130.0,
+        0.4184682369232178
+      ]
+    },
+    "transition_states": [
+      {
+        "distance": 120,
+        "state": [
+          322.0,
+          1130.0,
+          0.09969291090965271
+        ]
+      },
+      {
+        "distance": 80,
+        "state": [
+          322.0,
+          1130.0,
+          0.15547262132167816
+        ]
+      },
+      {
+        "distance": 60,
+        "state": [
+          314.0,
+          1130.0,
+          0.2228035181760788
+        ]
+      },
+      {
+        "distance": 40,
+        "state": [
+          251.0,
+          1130.0,
+          0.34413087368011475
+        ]
+      },
+      {
+        "distance": 20,
+        "state": [
+          44.0,
+          1130.0,
+          0.7303511500358582
+        ]
+      },
+      {
+        "distance": 8,
+        "state": [
+          0.0,
+          1130.0,
+          0.0
+        ]
+      },
+      {
+        "distance": 4,
+        "state": [
+          0.0,
+          1130.0,
+          0.0
+        ]
+      }
+    ],
+    "sun_changed_proxy_pixels": 2240,
+    "dynamic_light": true,
+    "decal_pick": [
+      590.1499633789062,
+      846.3298950195312,
+      11.877387046813965
+    ],
+    "decal_changed_proxy_pixels": 33,
+    "decal_and_undo": true,
+    "inspection_camera": {
+      "position": [
+        591.7293456086396,
+        849.7239757697325,
+        9.960862579345703
+      ],
+      "rotation": [
+        9.090276920822323,
+        0.0,
+        -157.90396884425914
+      ]
+    },
+    "restored": false,
+    "left_open_with_4b_5b": true,
+    "saved_level_unchanged": true
+  }
+}

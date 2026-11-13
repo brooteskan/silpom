@@ -4,7 +4,7 @@ Level 4A: experimental learned wall material
 This implements the material-decoding part of Level 4. It is an opt-in
 comparison candidate, not an established performance improvement. No GPU
 benchmark was run for this change. Shared material/visibility features (4B)
-remain a separate experiment after the isolated costs have been measured.
+are a separate default-off experiment; see LevelFourFiveBReadme.txt.
 
 Use
 ---

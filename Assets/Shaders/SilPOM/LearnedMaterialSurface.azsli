@@ -1,24 +1,38 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "MaterialDecode.azsli"
+#if SILPOM_SHARED_VISIBILITY
+#include "SharedVisibility.azsli"
+#endif
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_SurfaceData.azsli>
-Surface SilPomEvaluateLearnedSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,MaterialParameters params)
+Surface SilPomEvaluateLearnedSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,MaterialParameters params,float4 derivatives)
 {
     float2 uv=geo.uvs[0];
-    SilPomMaterialFootprint f=SilPomMaterialFootprintFor(ddx(uv)*float2(6656,6144),ddy(uv)*float2(6656,6144));
+    SilPomMaterialFootprint f=SilPomMaterialFootprintFor(derivatives.xy*float2(6656,6144),derivatives.zw*float2(6656,6144));
     float lod=clamp(f.lod-2.0f,0.0f,float(params.m_silpomMaterialFeatureMipCount-1u));
     float4 first=0,second=0;
+#if SILPOM_SHARED_VISIBILITY
+    float4 horizon=0;
+#endif
     for(uint i=0;i<f.taps;++i)
     {
         float2 q=uv+f.axis*((float(i)+.5f)/float(f.taps)-.5f)*f.major/float2(6656,6144);
         first+=GetMaterialTexture(params.m_silpomMaterialFeatures0).SampleLevel(GetMaterialTextureSampler(),q,lod)/float(f.taps);
         second+=GetMaterialTexture(params.m_silpomMaterialFeatures1).SampleLevel(GetMaterialTextureSampler(),q,lod)/float(f.taps);
+#if SILPOM_SHARED_VISIBILITY
+        horizon+=GetMaterialTexture(params.m_silpomMaterialFeatures2).SampleLevel(GetMaterialTextureSampler(),q,lod)/float(f.taps);
+#endif
     }
     float x[12];SP_UNROLL for(uint k=0;k<4;++k){x[k]=first[k]*2-1;x[4+k]=second[k]*2-1;}
     x[8]=clamp(log2(max(f.major,1.0f))/13.0f,0.0f,12.0f/13.0f);
     x[9]=clamp(log2(f.minor)/13.0f,0.0f,12.0f/13.0f);
     x[10]=f.axis.x*f.axis.x-f.axis.y*f.axis.y;x[11]=2*f.axis.x*f.axis.y;
     float decoded[6];SilPomDecodeMaterial(x,params.m_silpomMaterialDecoderBuffer,decoded);
+#if SILPOM_SHARED_VISIBILITY
+    SP_UNROLL for(uint i=0;i<4;++i)silpomSharedState[i]=horizon[i]*2-1;
+    silpomSharedState[4]=decoded[3]*2-1;silpomSharedState[5]=decoded[4]*2-1;silpomSharedState[6]=decoded[5]*2-1;
+    silpomSharedState[7]=dot(float3(decoded[0],decoded[1],decoded[2]),float3(.2126f,.7152f,.0722f))*2-1;
+#endif
     Surface surface=(Surface)0;surface.position=geo.positionWS;surface.lightingChannels=GetLightingChannelMask(SV);
     surface.vertexNormal=geo.vertexNormal;
     real2 normal=real2(decoded[3]*2-1,decoded[4]*2-1);

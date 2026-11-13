@@ -115,7 +115,9 @@
         "type": "Bool",
         "defaultValue": false
       },
-      {"name":"silpomProxyLod","type":"Bool","defaultValue":false}
+      {"name":"silpomSharedVisibility","type":"Bool","defaultValue":false},
+            {"name":"silpomProxyDepth","type":"Bool","defaultValue":false},
+            {"name":"silpomProxyLod","type":"Bool","defaultValue":false}
     ],
     "functors": [
       {

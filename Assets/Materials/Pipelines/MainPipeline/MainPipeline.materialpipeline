@@ -144,7 +144,10 @@
             "shader": "./SilPOMHitForwardLevelFive.shader.template",
             "azsli": "./SilPOMHitForwardLevelFive.azsli",
             "tag": "silpom_hit_forward_level_five"
-        }
+        },
+        {"shader":"./SilPOMHitForwardShared.shader.template","azsli":"./SilPOMHitForwardShared.azsli","tag":"silpom_hit_forward_shared"},
+        {"shader":"./SilPOMHitForwardSharedProxy.shader.template","azsli":"./SilPOMHitForwardSharedProxy.azsli","tag":"silpom_hit_forward_shared_proxy"},
+        {"shader":"./SilPOMHitDepthLearnedProxy.shader.template","azsli":"./SilPOMHitDepthLearnedProxy.azsli","tag":"silpom_hit_depth_learned_proxy"}
     ],
     "runtime": {
         "properties": [
@@ -213,6 +216,8 @@
                 "type": "Bool",
                 "defaultValue": false
             },
+            {"name":"silpomSharedVisibility","type":"Bool","defaultValue":false},
+            {"name":"silpomProxyDepth","type":"Bool","defaultValue":false},
             {
                 "name": "silpomProxyLod",
                 "type": "Bool",

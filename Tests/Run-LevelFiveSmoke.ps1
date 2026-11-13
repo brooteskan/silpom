@@ -9,7 +9,7 @@ Results and screenshots go under ignored user/SilPOMLevelFiveSmoke. The original
 component settings, camera and console variables are restored after comparison.
 #>
 [CmdletBinding()]
-param([string] $OutputPath = '')
+param([string] $OutputPath = '', [switch] $LeaveOpen)
 $ErrorActionPreference = 'Stop'
 $project = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../../..')).Path
 . (Join-Path $project 'scripts/ProjectPaths.ps1')
@@ -23,27 +23,45 @@ if (-not $OutputPath) { $OutputPath = Join-Path $project ('user/SilPOMLevelFiveS
 $output = [IO.Path]::GetFullPath($OutputPath)
 New-Item -ItemType Directory -Path $output -Force | Out-Null
 $oldOutput = $env:TG_SILPOM_LEVEL_FIVE_TEST_OUTPUT
+$oldLeaveOpen = $env:TG_SILPOM_LEVEL_FIVE_LEAVE_OPEN
 $server = $null
 try {
     $env:TG_SILPOM_LEVEL_FIVE_TEST_OUTPUT = $output
+    $env:TG_SILPOM_LEVEL_FIVE_LEAVE_OPEN = if ($LeaveOpen) { '1' } else { '0' }
     $arguments = @("--project-path=$project", "--engine-path=$engine")
     $server = Start-Process -FilePath (Join-Path $bin 'AssetProcessor.exe') -ArgumentList ($arguments + '--start-hidden') -WorkingDirectory $project -WindowStyle Hidden -PassThru
     Start-Sleep -Seconds 5
     $script = Join-Path $PSScriptRoot 'level_five_editor_smoke.py'
     $parameters = $arguments + @('--autotest_mode', '--skipWelcomeScreenDialog', '--rhi=dx12', '--runpython', $script)
-    $editor = Start-Process -FilePath (Join-Path $bin 'Editor.exe') -ArgumentList $parameters -WorkingDirectory $project -WindowStyle Hidden -RedirectStandardOutput (Join-Path $output 'stdout.log') -RedirectStandardError (Join-Path $output 'stderr.log') -PassThru
-    if (-not $editor.WaitForExit(1200000)) { Stop-Process -Id $editor.Id -Force; throw 'The dedicated correctness-test editor timed out.' }
+    $windowStyle = if ($LeaveOpen) { 'Normal' } else { 'Hidden' }
+    $editor = Start-Process -FilePath (Join-Path $bin 'Editor.exe') -ArgumentList $parameters -WorkingDirectory $project -WindowStyle $windowStyle -RedirectStandardOutput (Join-Path $output 'stdout.log') -RedirectStandardError (Join-Path $output 'stderr.log') -PassThru
+    if ($LeaveOpen) {
+        $deadline = (Get-Date).AddMinutes(20)
+        $complete = $false
+        while ((Get-Date) -lt $deadline -and -not $editor.HasExited) {
+            $path = Join-Path $output 'results.json'
+            if (Test-Path -LiteralPath $path) {
+                try {
+                    $state = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+                    if ($state.left_open_with_4b_5b) { $complete = $true; break }
+                    if ($state.error) { break }
+                } catch { }
+            }
+            Start-Sleep -Seconds 2
+        }
+        if (-not $complete -and -not $editor.HasExited) { Stop-Process -Id $editor.Id -Force; throw 'Editor correctness check did not complete; inspect results.json.' }
+    } elseif (-not $editor.WaitForExit(1200000)) { Stop-Process -Id $editor.Id -Force; throw 'The dedicated correctness-test editor timed out.' }
     Copy-Item -LiteralPath (Join-Path $project 'user/log/Editor.log') -Destination (Join-Path $output 'Editor.log')
     $results = Get-Content -LiteralPath (Join-Path $output 'results.json') -Raw | ConvertFrom-Json
     if (-not $results.passed) { throw $results.error }
-    if (-not $results.restored) { throw 'The correctness test did not restore its controls.' }
-    if ((Get-Content -LiteralPath (Join-Path $output 'Editor.log') -Raw) -match 'Trace::Assert') {
-        throw 'The correctness test encountered an Editor assertion; inspect Editor.log.'
+    if (-not $results.restored -and -not ($LeaveOpen -and $results.left_open_with_4b_5b)) { throw 'The correctness test did not restore its controls.' }
+    if ((Get-Content -LiteralPath (Join-Path $output 'Editor.log') -Raw) -match 'Trace::Assert|Failed to bind shader resources for draw item') {
+        throw 'The correctness test encountered an assertion or a skipped draw from missing shader bindings; inspect Editor.log.'
     }
-    if ($editor.ExitCode -ne 0) { throw "The correctness-test Editor exited with code $($editor.ExitCode)." }
+    if ($editor.HasExited -and $editor.ExitCode -ne 0) { throw "The correctness-test Editor exited with code $($editor.ExitCode)." }
     Write-Output "Correctness test complete: $output"
 } finally {
-    if ($server -and -not $server.HasExited) {
+    if ($server -and -not $server.HasExited -and -not ($LeaveOpen -and $complete)) {
         $null = $server.CloseMainWindow()
         if (-not $server.WaitForExit(15000)) { Stop-Process -Id $server.Id -Force }
     }
@@ -53,4 +71,5 @@ try {
         foreach ($child in $children) { Stop-Process -Id $child.ProcessId -Force -ErrorAction SilentlyContinue }
     }
     $env:TG_SILPOM_LEVEL_FIVE_TEST_OUTPUT = $oldOutput
+    $env:TG_SILPOM_LEVEL_FIVE_LEAVE_OPEN = $oldLeaveOpen
 }

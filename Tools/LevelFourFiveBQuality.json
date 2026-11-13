@@ -1,0 +1,77 @@
+{
+  "shared": {
+    "kind": "shared",
+    "train_queries": 16384,
+    "held_out_queries": 4096,
+    "samples_per_pixel": 16,
+    "steps": 3500,
+    "held_out_mse": 0.021160509437322617,
+    "constant_mse": 0.0647798553109169,
+    "mae": 0.08012226969003677,
+    "p95_absolute_error": 0.31787463277578354,
+    "training_mip_participation": [
+      3779,
+      2537,
+      2628,
+      2639,
+      2628,
+      2567,
+      2533,
+      2595,
+      2599,
+      2546,
+      2217
+    ],
+    "frozen_original_features_and_decoder": true,
+    "coverage_predicted": false,
+    "bytes": 40896760,
+    "sha256": "a4498eee99348fc747de072b9d27ceedb8c4666cbbce556d37a6686837dd67a4",
+    "source_sha256": "178c3b3ed900b0c2f390af8542412979e6f26f6c5eaf4f09d08606499900ba0e",
+    "benchmark_performed": false,
+    "reference": "filtered local detailed heightfield; source UV metric and affine center D frozen per query"
+  },
+  "depth": {
+    "kind": "depth",
+    "train_queries": 16381,
+    "held_out_queries": 4096,
+    "samples_per_pixel": 16,
+    "steps": 3500,
+    "held_out_mse": 0.007029518485069275,
+    "constant_mse": 0.01592690497636795,
+    "mae": 0.060312528163194656,
+    "p95_absolute_error": 0.16295167803764343,
+    "training_mip_participation": [
+      5079,
+      2627,
+      2638,
+      2628,
+      2567,
+      2533,
+      2594,
+      2597,
+      2545,
+      2217
+    ],
+    "frozen_original_features_and_decoder": true,
+    "coverage_predicted": false,
+    "bytes": 6820396,
+    "sha256": "c27a4ad5480aa0da105b114bc1bf55d774b207cf61a28082b7c11dd72e6401ad",
+    "source_sha256": "178c3b3ed900b0c2f390af8542412979e6f26f6c5eaf4f09d08606499900ba0e",
+    "benchmark_performed": false,
+    "reference": "filtered local detailed heightfield; source UV metric and affine center D frozen per query",
+    "physical_height_mae_metres": 0.003015626408159733
+  },
+  "frozen_byte_audit": {
+    "material_features_and_weights_identical": true,
+    "appearance_features_and_weights_identical": true
+  },
+  "gpu_conformance": {
+    "inputs_per_model_per_profile": 4096,
+    "shader_models": [
+      "6.2",
+      "6.7"
+    ],
+    "max_output_difference": 3.57628e-07,
+    "benchmark_performed": false
+  }
+}

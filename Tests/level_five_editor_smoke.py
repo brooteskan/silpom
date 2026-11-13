@@ -13,6 +13,8 @@ PROJECT=Path(paths.projectroot)
 LEVEL=PROJECT/'Levels/VueLiveLink/VueLiveLink.prefab'
 OUTPUT=Path(os.environ['TG_SILPOM_LEVEL_FIVE_TEST_OUTPUT']);OUTPUT.mkdir(parents=True,exist_ok=True)
 DEPTH='Relief depth multiplier';METHOD='Local shadow method';MATERIAL='Level 4A wall material (experimental)'
+SHARED='Level 4B shared material / visibility (experimental)';LEARNED_DEPTH='Level 5B bounded proxy depth (experimental)'
+LEAVE_OPEN=os.environ.get('TG_SILPOM_LEVEL_FIVE_LEAVE_OPEN')=='1'
 BRIGHT='Spiral light master brightness';NORMAL='Height-derived normals (off = cheaper)'
 result={'passed':False,'benchmark_performed':False,'stage':'startup'}
 originals={};properties={};component=None;canvas=None;initial_view={};cvars={}
@@ -20,10 +22,15 @@ def flush():(OUTPUT/'results.json').write_text(json.dumps(result,indent=2))
 
 def ready():
     deadline = time.monotonic() + 120
+    next_status = time.monotonic() + 5
     while time.monotonic() < deadline:
         general.idle_wait_frames(1)
         if silpom.SilPomMeshRequestBus(bus.Event, "IsReady", tower):
+            result.pop('waiting_status',None)
             return
+        if time.monotonic() >= next_status:
+            result['waiting_status']=str(silpom.SilPomMeshRequestBus(bus.Event,"GetStatus",tower));flush()
+            next_status=time.monotonic()+5
     raise RuntimeError(str(silpom.SilPomMeshRequestBus(bus.Event, "GetStatus", tower)))
 
 def set_value(label, value):
@@ -136,6 +143,21 @@ def records(path):
     assert struct.unpack_from('<I',raw,128)[0]==3
     return list(struct.iter_unpack('<4I',raw[148:]))
 
+def proxy_image_changes(first,second,hit_path):
+    a=QtGui.QImage(str(first)).convertToFormat(QtGui.QImage.Format.Format_RGBA8888)
+    b=QtGui.QImage(str(second)).convertToFormat(QtGui.QImage.Format.Format_RGBA8888)
+    assert not a.isNull() and a.size()==b.size()
+    av,bv=bytes(a.constBits()),bytes(b.constBits())
+    hits=records(hit_path);assert len(hits)==a.width()*a.height()
+    changed=0
+    for i,p in enumerate(hits):
+        # Entity creation/undo can rebuild mesh generations and reallocate
+        # owner IDs. Use the representation stored in this captured frame.
+        if p[2]&0xc0000000!=0x80000000 or p[3]&3!=1:continue
+        offset=(i//a.width())*a.bytesPerLine()+(i%a.width())*4
+        changed+=any(abs(av[offset+c]-bv[offset+c])>2 for c in range(3))
+    return changed
+
 def proxy_state():
     v=silpom.SilPomMeshRequestBus(bus.Event,'GetProxyLodState',tower)
     assert v.z<=.7501
@@ -167,11 +189,11 @@ def main():
     types=editor.EditorComponentAPIBus(bus.Broadcast,'FindComponentTypeIdsByEntityType',['SilPOM Mesh'],entity.EntityType().Game)
     found=editor.EditorComponentAPIBus(bus.Broadcast,'GetComponentOfType',tower,types[0]);assert found.IsSuccess();component=found.GetValue()
     available=editor.EditorComponentAPIBus(bus.Broadcast,'BuildComponentPropertyList',component)
-    for label in (DEPTH,METHOD,MATERIAL,PROXY,BUDGET,BRIGHT,NORMAL):
+    for label in (DEPTH,METHOD,MATERIAL,SHARED,PROXY,LEARNED_DEPTH,BUDGET,BRIGHT,NORMAL):
         properties[label]=next(p for p in available if p.endswith('|'+label))
         v=editor.EditorComponentAPIBus(bus.Broadcast,'GetComponentProperty',component,properties[label]);assert v.IsSuccess();originals[label]=v.GetValue()
     result['original_settings']=originals.copy();flush()
-    for label,value in ((PROXY,False),(MATERIAL,False),(DEPTH,.5),(METHOD,3),(NORMAL,True),(BUDGET,.75)):
+    for label,value in ((LEARNED_DEPTH,False),(PROXY,False),(MATERIAL,False),(SHARED,False),(DEPTH,.5),(METHOD,3),(NORMAL,True),(BUDGET,.75)):
         v=editor.EditorComponentAPIBus(bus.Broadcast,'SetComponentProperty',component,properties[label],value);assert v.IsSuccess()
     ready()
     for key,value in (('ed_keepEditorActive',1),('ed_backgroundUpdatePeriod',-1),('r_displayInfo',0),('r_antiAliasing',0)):
@@ -184,12 +206,29 @@ def main():
     capture_attachment(OUTPUT/'level4-on.dds','Hit')
     assert hit_signature(OUTPUT/'level4-off.dds')==hit_signature(OUTPUT/'level4-on.dds')
     result['level4_hit_regression_passed']=True
+    set_value(MATERIAL,False);set_value(SHARED,True);general.idle_wait_frames(20)
+    capture_attachment(OUTPUT/'level4-shared.dds','Hit')
+    assert hit_signature(OUTPUT/'level4-off.dds')==hit_signature(OUTPUT/'level4-shared.dds')
+    screenshot(OUTPUT/'near-shared.png');result['level4b_hit_regression_passed']=True
+    set_value(SHARED,False);set_value(MATERIAL,True)
     v=editor.EditorComponentAPIBus(bus.Broadcast,'SetComponentProperty',component,properties[PROXY],True);assert v.IsSuccess();general.idle_wait_frames(10)
     assert not silpom.SilPomMeshRequestBus(bus.Event,'IsReady',tower)
     assert 'disable Level 4A' in str(silpom.SilPomMeshRequestBus(bus.Event,'GetStatus',tower))
     set_value(MATERIAL,False);ready()
     result['stage']='far front';flush();view((60,0,12),(-1,0,0),pose);general.idle_wait_frames(30)
     first=verify_proxy_capture('far-front')
+    before=records(OUTPUT/'far-front-hit.dds')
+    set_value(LEARNED_DEPTH,True);general.idle_wait_frames(30)
+    verify_proxy_capture('far-depth')
+    after=records(OUTPUT/'far-depth-hit.dds')
+    pairs=[(a,b) for a,b in zip(before,after) if a[2]&0xc0000000==0x80000000 and b[2]&0xc0000000==0x80000000 and a[3]&3==1 and b[3]&3==1]
+    changed=sum((a[2]&0x3fffffff)!=(b[2]&0x3fffffff) for a,b in pairs)
+    assert changed>0,'5B did not change any visible proxy depth'
+    assert proxy_state()==first,'Depth head changed geometric selection policy'
+    result['level5b_depth_changed_pixels']=changed
+    set_value(SHARED,True);general.idle_wait_frames(30)
+    verify_proxy_capture('far-combined')
+    result['combined_modes_ready']=True
     result['stage']='resize';flush();general.set_viewport_size(1280,800);general.update_viewport();general.idle_wait_frames(30)
     high=proxy_state();assert high[0]<=first[0],(first,high)
     result['resize']={'small':first,'large':high}
@@ -219,27 +258,40 @@ def main():
     screenshot(OUTPUT/'sun-on.png')
     response=editor.EditorComponentAPIBus(bus.Broadcast,'SetComponentProperty',sun[0],sun[1],0.0);assert response.IsSuccess()
     general.idle_wait_frames(20);screenshot(OUTPUT/'sun-off.png')
-    assert (OUTPUT/'sun-on.png').read_bytes()!=(OUTPUT/'sun-off.png').read_bytes()
+    result['sun_changed_proxy_pixels']=proxy_image_changes(OUTPUT/'sun-on.png',OUTPUT/'sun-off.png',OUTPUT/'decal-view-hit.dds')
+    assert result['sun_changed_proxy_pixels']>0,'Directional light did not affect visible proxy pixels'
     response=editor.EditorComponentAPIBus(bus.Broadcast,'SetComponentProperty',sun[0],sun[1],sun[2]);assert response.IsSuccess();general.idle_wait_frames(20)
     result['dynamic_light']=True
     canvas=silpom.DecalPainterBus(bus.Broadcast,'CreatePaintEntity')
     panel=next(w for w in QtWidgets.QApplication.allWidgets() if w.objectName()=='DecalPainter')
     viewport=QtWidgets.QWidget.find(silpom.DecalPainterBus(bus.Broadcast,'GetViewportWindowId'))
     panel.findChild(QtWidgets.QComboBox,'PaintMode').setCurrentIndex(0)
+    panel.findChild(QtWidgets.QComboBox,'BrushOperation').setCurrentIndex(0)
+    for band in ('Low','Medium','High'):panel.findChild(QtWidgets.QCheckBox,'PaintHeight'+band).setChecked(True)
     panel.findChild(QtWidgets.QDoubleSpinBox,'BrushDiameter').setValue(2.0)
     panel.findChild(QtWidgets.QDoubleSpinBox,'BrushOpacity').setValue(1.0)
     panel.findChild(QtWidgets.QCheckBox,'EnablePainting').setChecked(True)
     editor.ToolsApplicationRequestBus(bus.Broadcast,'SetSelectedEntities',[]);general.idle_wait_frames(20)
-    screenshot(OUTPUT/'before-decal.png');pick=silpom.DecalPainterBus(bus.Broadcast,'PickVisiblePixel',320,200);assert pick.GetLength()>1
+    pick=silpom.DecalPainterBus(bus.Broadcast,'PickVisiblePixel',320,200);assert pick.GetLength()>1
+    result['decal_pick']=[pick.x,pick.y,pick.z]
+    # Compare surfaces without the brush-preview overlay in either image.
+    panel.findChild(QtWidgets.QCheckBox,'EnablePainting').setChecked(False);general.idle_wait_frames(5)
+    screenshot(OUTPUT/'before-decal.png')
+    panel.findChild(QtWidgets.QCheckBox,'EnablePainting').setChecked(True);general.idle_wait_frames(5)
     local=QtCore.QPointF(320/viewport.devicePixelRatioF(),200/viewport.devicePixelRatioF())
     for kind,buttons in ((QtCore.QEvent.Type.MouseButtonPress,QtCore.Qt.MouseButton.LeftButton),(QtCore.QEvent.Type.MouseButtonRelease,QtCore.Qt.MouseButton.NoButton)):
         event=QtGui.QMouseEvent(kind,local,viewport.mapToGlobal(local),QtCore.Qt.MouseButton.LeftButton,buttons,QtCore.Qt.KeyboardModifier.NoModifier)
         QtWidgets.QApplication.sendEvent(viewport,event)
     general.idle_wait_frames(20);assert silpom.DecalPaintRequestBus(bus.Event,'GetDabCount',canvas)>0
-    screenshot(OUTPUT/'after-decal.png');assert (OUTPUT/'before-decal.png').read_bytes()!=(OUTPUT/'after-decal.png').read_bytes()
+    panel.findChild(QtWidgets.QCheckBox,'EnablePainting').setChecked(False);general.idle_wait_frames(5)
+    screenshot(OUTPUT/'after-decal.png')
+    result['decal_changed_proxy_pixels']=proxy_image_changes(OUTPUT/'before-decal.png',OUTPUT/'after-decal.png',OUTPUT/'decal-view-hit.dds')
+    assert result['decal_changed_proxy_pixels']>0,'Decal did not affect visible proxy pixels'
     panel.findChild(QtWidgets.QCheckBox,'EnablePainting').setChecked(False);general.undo();general.idle_wait_frames(10)
     assert silpom.DecalPaintRequestBus(bus.Event,'GetDabCount',canvas)==0
-    result['decal_and_undo']=True;assert LEVEL.read_bytes()==source;result.update(passed=True,stage='complete')
+    result['decal_and_undo']=True;assert LEVEL.read_bytes()==source
+    result['inspection_camera']=view(cases[0][1],cases[0][2],cases[0][3]);general.idle_wait_frames(20)
+    screenshot(OUTPUT/'combined-inspection.png');result.update(passed=True,stage='complete')
 try:
     flush();main()
 except Exception:result['error']=traceback.format_exc()
@@ -248,15 +300,22 @@ finally:
         if sun is not None:
             response=editor.EditorComponentAPIBus(bus.Broadcast,'SetComponentProperty',sun[0],sun[1],sun[2]);assert response.IsSuccess()
         if canvas is not None:editor.ToolsApplicationRequestBus(bus.Broadcast,'DeleteEntityById',canvas)
-        if component is not None:
+        if component is not None and not (LEAVE_OPEN and result['passed']):
             for label,value in originals.items():
                 response=editor.EditorComponentAPIBus(bus.Broadcast,'SetComponentProperty',component,properties[label],value);assert response.IsSuccess()
             ready()
         for key,value in cvars.items():general.run_console(f'{key} {value}')
         if initial_view:
-            general.set_current_view_position(*initial_view['position']);general.set_current_view_rotation(*initial_view['rotation'])
+            if not (LEAVE_OPEN and result['passed']):
+                general.set_current_view_position(*initial_view['position']);general.set_current_view_rotation(*initial_view['rotation'])
             general.set_viewport_expansion_policy(initial_view['policy']);general.idle_wait_frames(20)
             if initial_view['policy']=='FixedSize':general.set_viewport_size(*initial_view['size']);general.idle_wait_frames(20)
-        result['restored']=True
+        if LEAVE_OPEN and result['passed']:
+            editor.ToolsApplicationRequestBus(bus.Broadcast,'SetSelectedEntities',[tower])
+            general.open_pane('Entity Inspector');general.idle_wait_frames(20)
+        result['restored']=not (LEAVE_OPEN and result['passed'])
+        result['left_open_with_4b_5b']=LEAVE_OPEN and result['passed']
+        result['saved_level_unchanged']=hashlib.sha256(LEVEL.read_bytes()).hexdigest()==result['level_sha256']
     except Exception:result['restore_error']=traceback.format_exc();result['passed']=False
-    flush();QtCore.QTimer.singleShot(0,general.exit_no_prompt)
+    flush()
+    if not (LEAVE_OPEN and result['passed']):QtCore.QTimer.singleShot(0,general.exit_no_prompt)

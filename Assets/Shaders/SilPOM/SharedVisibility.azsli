@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#include "ExperimentalDecode.azsli"
+static float silpomSharedState[8];
+float SilPomSharedVisibility(float3 light,uint steps,float reach,MaterialParameters params)
+{
+    if(steps==0u)return 1.0f;
+    float3 T=normalize(silpomLitFace.du),B=normalize(cross(silpomLitFace.normal,T));
+    float3 L=normalize(float3(dot(light,T),dot(light,B),dot(light,silpomLitFace.normal)));
+    if(L.z<=0.0f)return 0.0f;
+    float3 D=SilPomFaceDirection(silpomLitFace,silpomLitUv);
+    float u=length(silpomLitFace.du),v=length(silpomLitFace.dv);
+    float x[20];SP_UNROLL for(uint i=0;i<8;++i)x[i]=silpomSharedState[i];
+    SP_UNROLL for(uint i=0;i<3;++i)x[8+i]=L[i];
+    x[11]=log2(u)/16.0f;x[12]=log2(v)/16.0f;x[13]=dot(silpomLitFace.du,silpomLitFace.dv)/(u*v);
+    x[14]=dot(D,T);x[15]=dot(D,B);x[16]=dot(D,silpomLitFace.normal);
+    x[17]=reach/.3f;x[18]=silpomLitUv.x*2-1;x[19]=silpomLitUv.y*2-1;
+    return SilPomDecodeSharedVisibility(x,params.m_silpomMaterialDecoderBuffer);
+}

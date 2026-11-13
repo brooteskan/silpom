@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "../Tools/LevelOneCpu.h"
 #include "../Include/SilPOM/AppearanceCodec.h"
+#include "../Include/SilPOM/ExperimentalCodecs.h"
 #include "../Include/SilPOM/HeightPrecision.h"
 #include <windows.h>
 #include <d3d12.h>
@@ -18,7 +19,7 @@ int main(int argc,char** argv)
 {
     try
     {
-        if(argc!=2 && argc!=3) throw std::runtime_error("Usage: silpom_visibility_gpu_tests shader.dxil [only]");
+        if(argc!=2 && argc!=3) throw std::runtime_error("Usage: silpom_appearance_gpu_tests shader.dxil [learned-bundle]");
         static_assert(sizeof(SilPomPatch)==48);
         ComPtr<IDXGIFactory6> factory;Check(CreateDXGIFactory2(0,IID_PPV_ARGS(&factory)));
         ComPtr<IDXGIAdapter1> adapter;
@@ -87,16 +88,18 @@ int main(int argc,char** argv)
 
         constexpr UINT count=4096;
         std::mt19937 rng(5714);std::uniform_real_distribution<float> uniform(-1,1);
-        struct Query {float x[22];};struct Result {float value[9];};
+        struct Query {float x[23];};struct Result {float value[12];};
         std::vector<Query> queries(count);for(auto& q:queries)for(float& x:q.x)x=uniform(rng);
         queries[0].x[0]=queries[0].x[1]=0;
-        std::vector<float> weights(757);for(float& w:weights)w=uniform(rng)*.15f;
+        std::vector<float> weights(SilPOM::DepthCodec::Weights);for(float& w:weights)w=uniform(rng)*.15f;
         if(argc==3)
         {
-            std::ifstream model(argv[2],std::ios::binary);model.seekg(sizeof(SilPOM::AppearanceCodec::Header));
-            model.read(reinterpret_cast<char*>(weights.data()),3028);if(!model)throw std::runtime_error("Cannot read material model");
+            std::ifstream model(argv[2],std::ios::binary);SilPOM::MaterialCodec::Header h{};
+            model.read(reinterpret_cast<char*>(&h),sizeof(h));
+            if(!model||h.weights>weights.size())throw std::runtime_error("Invalid model header");
+            model.read(reinterpret_cast<char*>(weights.data()),size_t(h.weights)*4);if(!model)throw std::runtime_error("Cannot read material model");
         }
-        auto inputs=upload(queries.data(),queries.size()*sizeof(Query));auto coefficients=upload(weights.data(),3028);
+        auto inputs=upload(queries.data(),queries.size()*sizeof(Query));auto coefficients=upload(weights.data(),weights.size()*4);
         auto output=buffer(count*sizeof(Result),D3D12_HEAP_TYPE_DEFAULT,D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
         auto readback=buffer(count*sizeof(Result),D3D12_HEAP_TYPE_READBACK,D3D12_RESOURCE_STATE_COPY_DEST);
         list->SetComputeRootSignature(root.Get());list->SetComputeRootShaderResourceView(1,inputs->GetGPUVirtualAddress());
@@ -117,6 +120,14 @@ int main(int argc,char** argv)
                 const float error=std::abs(expected[c]-values[i].value[c]);maxError=std::max(maxError,error);
                 if(!std::isfinite(values[i].value[c])||error>4e-5f)throw std::runtime_error("Appearance CPU/GPU mismatch");
             }
+            const float extra[]={SilPOM::SharedCodec::Decode(queries[i].x,weights.data()),
+                SilPOM::DepthCodec::Decode(queries[i].x,weights.data()),
+                SilPOM::DepthCodec::RayOffset(queries[i].x[0],.05f,.05f,.8f,.35f+.65f*std::abs(queries[i].x[1]))};
+            for(UINT c=0;c<3;++c)
+            {
+                const float e=std::abs(extra[c]-values[i].value[9+c]);maxError=std::max(maxError,e);
+                if(!std::isfinite(values[i].value[9+c])||e>4e-5f)throw std::runtime_error("4B/5B CPU/GPU mismatch");
+            }
             const double u=queries[i].x[0],v=queries[i].x[1],epsilon=1e-4;
             // Independently intersect the projected plane at displaced screen
             // coordinates, then take a finite difference in UV.
@@ -131,7 +142,7 @@ int main(int argc,char** argv)
             }
         }
         readback->Unmap(0,nullptr);CloseHandle(event);
-        std::cout<<count<<" appearance decoder CPU-GPU comparisons passed; max decoder error="<<maxError<<"\n";return 0;
+        std::cout<<count<<" appearance/shared/depth CPU-GPU comparisons passed; max decoder error="<<maxError<<"\n";return 0;
     }
     catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
 }

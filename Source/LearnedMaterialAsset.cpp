@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include <SilPOM/LearnedMaterialAsset.h>
 #include <SilPOM/AppearanceCodec.h>
+#include <SilPOM/ExperimentalCodecs.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AtomCore/Instance/InstanceDatabase.h>
 #include <Atom/RPI.Public/Image/ImageSystemInterface.h>
@@ -24,13 +25,16 @@ bool LearnedMaterialAsset::Validate() const
 {
     if(m_bytes.size()<sizeof(MaterialCodec::Header))return false;
     const auto h=Header();
-    if(h.weights>AppearanceCodec::Weights||m_bytes.size()<sizeof(h)+size_t(h.weights)*4)return false;
-    return MaterialCodec::Validate(h,m_bytes.size(),Weights())||AppearanceCodec::Validate(h,m_bytes.size(),Weights());
+    if(h.weights>DepthCodec::Weights||m_bytes.size()<sizeof(h)+size_t(h.weights)*4)return false;
+    return MaterialCodec::Validate(h,m_bytes.size(),Weights())||AppearanceCodec::Validate(h,m_bytes.size(),Weights())
+        ||SharedCodec::Validate(h,m_bytes.size(),Weights())||DepthCodec::Validate(h,m_bytes.size(),Weights());
 }
 AZ::Data::Instance<AZ::RPI::StreamingImage> MakeLearnedMaterialImage(const LearnedMaterialAsset& asset,AZ::u32 half)
 {
-    if(!asset.Validate()||half>1)return {};
+    if(!asset.Validate())return {};
     const auto h=asset.Header();
+    const AZ::u32 channels=!memcmp(h.magic,"SILPSHR4",8)?12u:8u;
+    if(half>=channels/4)return {};
     const auto key=AZStd::string::format("SilPOM.L4:%s:%u",asset.m_generation.c_str(),half);
     const AZ::Uuid id=AZ::Uuid::CreateName(key.c_str());const auto instance=AZ::Data::InstanceId::CreateUuid(id);
     auto& database=AZ::Data::InstanceDatabase<AZ::RPI::StreamingImage>::Instance();
@@ -44,10 +48,10 @@ AZ::Data::Instance<AZ::RPI::StreamingImage> MakeLearnedMaterialImage(const Learn
     for(AZ::u32 mip=0;mip<h.mips;++mip)
     {
         AZStd::vector<AZ::u8> pixels(size_t(w)*v*4);
-        for(size_t i=0;i<size_t(w)*v;++i)memcpy(pixels.data()+i*4,asset.m_bytes.data()+offset+i*8+half*4,4);
+        for(size_t i=0;i<size_t(w)*v;++i)memcpy(pixels.data()+i*4,asset.m_bytes.data()+offset+i*channels+half*4,4);
         const auto layout=AZ::RHI::GetImageSubresourceLayout(desc,AZ::RHI::ImageSubresource{aznumeric_cast<AZ::u16>(mip),0});
         mipCreator.BeginMip(layout);mipCreator.AddSubImage(pixels.data(),pixels.size());mipCreator.EndMip();
-        offset+=size_t(w)*v*8;w=AZStd::max(1u,w/2);v=AZStd::max(1u,v/2);
+        offset+=size_t(w)*v*channels;w=AZStd::max(1u,w/2);v=AZStd::max(1u,v/2);
     }
     if(!mipCreator.End(chain))return {};
     AZ::Data::Asset<AZ::RPI::StreamingImageAsset> image;

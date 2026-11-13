@@ -17,10 +17,12 @@ void LearnedMaterialBuilder::Reflect(AZ::ReflectContext* c)
 }
 void LearnedMaterialBuilder::Activate()
 {
-    AssetBuilderSDK::AssetBuilderDesc d;d.m_name="SilPOM learned material";d.m_version=3;
-    d.m_analysisFingerprint="material-v3-level4-and-complete-appearance-mips";d.m_busId=azrtti_typeid<LearnedMaterialBuilder>();
+    AssetBuilderSDK::AssetBuilderDesc d;d.m_name="SilPOM learned material";d.m_version=4;
+    d.m_analysisFingerprint="material-v4-shared-visibility-bounded-depth";d.m_busId=azrtti_typeid<LearnedMaterialBuilder>();
     d.m_patterns.emplace_back("*.l4mat",AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
     d.m_patterns.emplace_back("*.l5app",AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
+    d.m_patterns.emplace_back("*.l4shared",AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
+    d.m_patterns.emplace_back("*.l5depth",AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
     d.m_createJobFunction=AZStd::bind(&LearnedMaterialBuilder::CreateJobs,this,AZStd::placeholders::_1,AZStd::placeholders::_2);
     d.m_processJobFunction=AZStd::bind(&LearnedMaterialBuilder::ProcessJob,this,AZStd::placeholders::_1,AZStd::placeholders::_2);
     BusConnect(d.m_busId);AssetBuilderSDK::AssetBuilderBus::Broadcast(&AssetBuilderSDK::AssetBuilderBusTraits::RegisterBuilderInformation,d);
@@ -30,7 +32,7 @@ void LearnedMaterialBuilder::CreateJobs(const AssetBuilderSDK::CreateJobsRequest
 {
     for(const char* file:{"basecolor.png","normal.png","roughness.png"})
         r.m_sourceFileDependencyList.emplace_back((AZ::IO::Path(AZ::Utils::GetProjectPath())/"Assets/SilPOMPlanarAB/IrishFieldstoneTowerWelded/wall"/file).String(),AZ::Uuid::CreateNull());
-    if(AZ::IO::Path(q.m_sourceFile).Extension()==".l5app")
+    if(AZ::IO::Path(q.m_sourceFile).Extension()!=".l4mat")
     {
         r.m_sourceFileDependencyList.emplace_back((AZ::IO::Path(AZ::Utils::GetProjectPath())/"Assets/SilPOMPlanarAB/IrishFieldstoneTowerWelded/wall/height.png").String(),AZ::Uuid::CreateNull());
         r.m_sourceFileDependencyList.emplace_back((AZ::IO::Path(AZ::Utils::GetProjectPath())/"Assets/SilPOMPlanarAB/IrishFieldstoneTowerOpenShaft/tower-open-shaft-no-landings-silpom.silpom.json").String(),AZ::Uuid::CreateNull());
@@ -51,7 +53,7 @@ void LearnedMaterialBuilder::ProcessJob(const AssetBuilderSDK::ProcessJobRequest
         if(!data.IsSuccess()){AZ_Error("SilPOM",false,"Learned wall material source is unavailable");return;}
         original+=data.GetValue();
     }
-    if(!memcmp(asset.Header().magic,"SILPAPP5",8))
+    if(memcmp(asset.Header().magic,"SILPMAT4",8))
     {
         for(const char* file:{"Assets/SilPOMPlanarAB/IrishFieldstoneTowerWelded/wall/height.png",
             "Assets/SilPOMPlanarAB/IrishFieldstoneTowerOpenShaft/tower-open-shaft-no-landings-silpom.silpom.json"})
@@ -62,7 +64,7 @@ void LearnedMaterialBuilder::ProcessJob(const AssetBuilderSDK::ProcessJobRequest
         }
     }
     unsigned char sourceHash[32];SHA256(reinterpret_cast<const unsigned char*>(original.data()),original.size(),sourceHash);
-    if(memcmp(sourceHash,asset.Header().sourceHash,32)){AZ_Error("SilPOM",false,"Wall material source changed; retrain the Level 4 bundle");return;}
+    if(memcmp(sourceHash,asset.Header().sourceHash,32)){AZ_Error("SilPOM",false,"Wall training source changed; retrain the learned bundle");return;}
     unsigned char hash[32];SHA256(asset.m_bytes.data(),asset.m_bytes.size(),hash);
     for(auto b:hash)asset.m_generation+=AZStd::string::format("%02x",b);
     const auto output=(AZ::IO::Path(q.m_tempDirPath)/(AZ::IO::Path(q.m_sourceFile).Stem().String()+".silpommaterial")).String();

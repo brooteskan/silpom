@@ -11,7 +11,9 @@ float SilPomLocalVisibility(Texture2D texture,SilPomPatch p,SilPomMeshFace face,
 #if SILPOM_LEVEL_FIVE
     if(silpomLitProxy)return 1.0f; // directional correction reuses the acquired features below
 #endif
-#if defined(SILPOM_NEURAL_VISIBILITY_ONLY)
+#if SILPOM_SHARED_VISIBILITY
+    return SilPomSharedVisibility(light,steps,reach,params);
+#elif defined(SILPOM_NEURAL_VISIBILITY_ONLY)
     return SilPomNeuralOnlyVisibility(texture,p,face,uv,low,light,steps,reach,params.m_silpomNeuralModel,
         SilPomNeuralOnlyThreshold(params.m_silpomNeuralModel));
 #else
