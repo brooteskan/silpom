@@ -17,9 +17,10 @@ void LearnedMaterialBuilder::Reflect(AZ::ReflectContext* c)
 }
 void LearnedMaterialBuilder::Activate()
 {
-    AssetBuilderSDK::AssetBuilderDesc d;d.m_name="SilPOM learned material";d.m_version=1;
-    d.m_analysisFingerprint="material-v1-8-unorm-features-12-16-6";d.m_busId=azrtti_typeid<LearnedMaterialBuilder>();
+    AssetBuilderSDK::AssetBuilderDesc d;d.m_name="SilPOM learned material";d.m_version=3;
+    d.m_analysisFingerprint="material-v3-level4-and-complete-appearance-mips";d.m_busId=azrtti_typeid<LearnedMaterialBuilder>();
     d.m_patterns.emplace_back("*.l4mat",AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
+    d.m_patterns.emplace_back("*.l5app",AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
     d.m_createJobFunction=AZStd::bind(&LearnedMaterialBuilder::CreateJobs,this,AZStd::placeholders::_1,AZStd::placeholders::_2);
     d.m_processJobFunction=AZStd::bind(&LearnedMaterialBuilder::ProcessJob,this,AZStd::placeholders::_1,AZStd::placeholders::_2);
     BusConnect(d.m_busId);AssetBuilderSDK::AssetBuilderBus::Broadcast(&AssetBuilderSDK::AssetBuilderBusTraits::RegisterBuilderInformation,d);
@@ -29,6 +30,11 @@ void LearnedMaterialBuilder::CreateJobs(const AssetBuilderSDK::CreateJobsRequest
 {
     for(const char* file:{"basecolor.png","normal.png","roughness.png"})
         r.m_sourceFileDependencyList.emplace_back((AZ::IO::Path(AZ::Utils::GetProjectPath())/"Assets/SilPOMPlanarAB/IrishFieldstoneTowerWelded/wall"/file).String(),AZ::Uuid::CreateNull());
+    if(AZ::IO::Path(q.m_sourceFile).Extension()==".l5app")
+    {
+        r.m_sourceFileDependencyList.emplace_back((AZ::IO::Path(AZ::Utils::GetProjectPath())/"Assets/SilPOMPlanarAB/IrishFieldstoneTowerWelded/wall/height.png").String(),AZ::Uuid::CreateNull());
+        r.m_sourceFileDependencyList.emplace_back((AZ::IO::Path(AZ::Utils::GetProjectPath())/"Assets/SilPOMPlanarAB/IrishFieldstoneTowerOpenShaft/tower-open-shaft-no-landings-silpom.silpom.json").String(),AZ::Uuid::CreateNull());
+    }
     for(const auto& p:q.m_enabledPlatforms){AssetBuilderSDK::JobDescriptor j;j.m_jobKey="SilPOM learned material";j.SetPlatformIdentifier(p.m_identifier.c_str());j.m_failOnError=true;r.m_createJobOutputs.push_back(j);}
     r.m_result=AssetBuilderSDK::CreateJobsResultCode::Success;
 }
@@ -44,6 +50,16 @@ void LearnedMaterialBuilder::ProcessJob(const AssetBuilderSDK::ProcessJobRequest
         auto data=AZ::Utils::ReadFile((AZ::IO::Path(AZ::Utils::GetProjectPath())/"Assets/SilPOMPlanarAB/IrishFieldstoneTowerWelded/wall"/file).String());
         if(!data.IsSuccess()){AZ_Error("SilPOM",false,"Learned wall material source is unavailable");return;}
         original+=data.GetValue();
+    }
+    if(!memcmp(asset.Header().magic,"SILPAPP5",8))
+    {
+        for(const char* file:{"Assets/SilPOMPlanarAB/IrishFieldstoneTowerWelded/wall/height.png",
+            "Assets/SilPOMPlanarAB/IrishFieldstoneTowerOpenShaft/tower-open-shaft-no-landings-silpom.silpom.json"})
+        {
+            auto data=AZ::Utils::ReadFile((AZ::IO::Path(AZ::Utils::GetProjectPath())/file).String());
+            if(!data.IsSuccess()){AZ_Error("SilPOM",false,"Level 5 training source is unavailable");return;}
+            original+=data.GetValue();
+        }
     }
     unsigned char sourceHash[32];SHA256(reinterpret_cast<const unsigned char*>(original.data()),original.size(),sourceHash);
     if(memcmp(sourceHash,asset.Header().sourceHash,32)){AZ_Error("SilPOM",false,"Wall material source changed; retrain the Level 4 bundle");return;}

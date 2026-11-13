@@ -8,6 +8,9 @@
 float SilPomLocalVisibility(Texture2D texture,SilPomPatch p,SilPomMeshFace face,float2 uv,float2 low,
     float3 light,uint steps,float reach,MaterialParameters params)
 {
+#if SILPOM_LEVEL_FIVE
+    if(silpomLitProxy)return 1.0f; // directional correction reuses the acquired features below
+#endif
 #if defined(SILPOM_NEURAL_VISIBILITY_ONLY)
     return SilPomNeuralOnlyVisibility(texture,p,face,uv,low,light,steps,reach,params.m_silpomNeuralModel,
         SilPomNeuralOnlyThreshold(params.m_silpomNeuralModel));
@@ -36,7 +39,12 @@ void ApplySpiralLightRay(Surface surface, inout LightingData lightingData, Mater
     const float shadowReach = min(0.30f, 8.0f * abs(silpomLitPatch.scale));
     const float relief = SilPomLocalVisibility(GetMaterialTexture(params.m_silpomHeightMap),
         silpomLitPatch, silpomLitFace, silpomLitUv, low, toLight, params.m_silpomSpiralLightShadowSteps, shadowReach,params);
+#if SILPOM_LEVEL_FIVE
+    float gain=silpomLitProxy?SilPomAppearanceLightGain(toLight,shadowReach,params.m_silpomSpiralLightShadowSteps,params).x:1.0f;
+    lightingData.diffuseLighting += diffuse * relief * gain;
+#else
     lightingData.diffuseLighting += diffuse * relief;
+#endif
 }
 
 void ApplySpiralLight(Surface surface, inout LightingData lightingData, MaterialParameters params)
@@ -138,6 +146,20 @@ void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,floa
         }
 #endif
         DirectionalLightUtil light=DirectionalLightUtil::Init(srgLight,surface);
+#if SILPOM_LEVEL_FIVE
+        if(silpomLitProxy)
+        {
+            const real3 beforeDiffuse=lightingData.diffuseLighting;
+            real3 beforeSpecular[MAX_SHADING_VIEWS];
+            SP_UNROLL for(uint view=0;view<MAX_SHADING_VIEWS;++view)beforeSpecular[view]=lightingData.specularLighting[view];
+            light.Apply(srgLight,surface,visibility,lightingData);
+            const float2 gain=SilPomAppearanceLightGain(mul(transpose(silpomLitRotation),toLight),0.0f,params.m_silpomReliefShadowSteps,params);
+            lightingData.diffuseLighting=beforeDiffuse+(lightingData.diffuseLighting-beforeDiffuse)*gain.x;
+            SP_UNROLL for(uint view=0;view<MAX_SHADING_VIEWS;++view)
+                lightingData.specularLighting[view]=beforeSpecular[view]+(lightingData.specularLighting[view]-beforeSpecular[view])*gain.y;
+        }
+        else
+#endif
         light.Apply(srgLight,surface,visibility,lightingData);
     }
     ApplySpiralLight(surface, lightingData, params);

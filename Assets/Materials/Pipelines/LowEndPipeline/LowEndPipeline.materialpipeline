@@ -114,7 +114,8 @@
         "name": "silpomTowerLod",
         "type": "Bool",
         "defaultValue": false
-      }
+      },
+      {"name":"silpomProxyLod","type":"Bool","defaultValue":false}
     ],
     "functors": [
       {

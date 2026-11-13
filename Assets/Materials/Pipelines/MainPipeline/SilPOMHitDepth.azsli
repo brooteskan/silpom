@@ -54,6 +54,11 @@ SilPomShellVertex VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
     sv.m_instanceId=instanceId;
     const MaterialParameters params=GetMaterialParameters();
 #if SILPOM_WALL_BACKUP_SHELL
+    if(SilPomProxySelected(params,uint(round(IN.position.z))))return output;
+#else
+    if(params.m_silpomProxyLodEnabled)return output;
+#endif
+#if SILPOM_WALL_BACKUP_SHELL
     // The opening trim and doorway reveal need the same inset coverage
     // when a neural hit is missed along a triangle edge.
     const uint model=params.m_silpomNeuralModel;

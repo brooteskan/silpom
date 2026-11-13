@@ -1,0 +1,81 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#include "MaterialDecode.azsli"
+#include "AppearanceDecode.azsli"
+static float silpomAppearanceFeatures[8];
+static float silpomAppearanceContext[7];
+static float3 silpomAppearanceView;
+static float3 silpomAppearanceT,silpomAppearanceB;
+
+void SilPomAcquireAppearance(float2 uv,float4 derivatives,MaterialParameters params)
+{
+    SilPomMaterialFootprint f=SilPomMaterialFootprintFor(derivatives.xy*float2(6656,6144),derivatives.zw*float2(6656,6144));
+    float lod=clamp(f.lod-3.0f,0.0f,float(params.m_silpomAppearanceFeatureMipCount-1u));
+    float4 first=0,second=0;
+    [loop] for(uint i=0;i<f.taps;++i)
+    {
+        float2 q=uv+f.axis*((float(i)+.5f)/float(f.taps)-.5f)*f.major/float2(6656,6144);
+        first+=GetMaterialTexture(params.m_silpomAppearanceFeatures0).SampleLevel(PassSrg::LinearSampler,q,lod)/float(f.taps);
+        second+=GetMaterialTexture(params.m_silpomAppearanceFeatures1).SampleLevel(PassSrg::LinearSampler,q,lod)/float(f.taps);
+    }
+    SP_UNROLL for(uint k=0;k<4;++k){silpomAppearanceFeatures[k]=first[k]*2-1;silpomAppearanceFeatures[4+k]=second[k]*2-1;}
+    silpomAppearanceContext[0]=clamp(log2(max(f.major,1.0f))/13.0f,0.0f,12.0f/13.0f);
+    silpomAppearanceContext[1]=clamp(log2(f.minor)/13.0f,0.0f,12.0f/13.0f);
+    silpomAppearanceContext[2]=f.axis.x*f.axis.x-f.axis.y*f.axis.y;
+    silpomAppearanceContext[3]=2*f.axis.x*f.axis.y;
+    const float u=length(silpomLitFace.du),v=length(silpomLitFace.dv);
+    silpomAppearanceContext[4]=log2(u)/16.0f;silpomAppearanceContext[5]=log2(v)/16.0f;
+    silpomAppearanceContext[6]=dot(silpomLitFace.du,silpomLitFace.dv)/(u*v);
+    silpomAppearanceT=silpomLitFace.du/u;
+    silpomAppearanceB=normalize(cross(silpomLitFace.normal,silpomAppearanceT));
+}
+float2 SilPomAppearanceLightGain(float3 light,float reach,uint steps,MaterialParameters params)
+{
+    if(steps==0u)return float2(1,1);
+    float3 direction=normalize(float3(dot(light,silpomAppearanceT),dot(light,silpomAppearanceB),dot(light,silpomLitFace.normal)));
+    if(direction.z<=0.0f)return float2(0,0);
+    float x[22];SP_UNROLL for(uint i=0;i<8;++i)x[i]=silpomAppearanceFeatures[i];
+    SP_UNROLL for(uint i=0;i<3;++i){x[8+i]=silpomAppearanceView[i];x[11+i]=direction[i];}
+    SP_UNROLL for(uint i=0;i<7;++i)x[14+i]=silpomAppearanceContext[i];x[21]=reach/.3f;
+    float result[2];SilPomDecodeAppearanceLight(x,params.m_silpomAppearanceDecoderBuffer,result);
+    return float2(result[0],result[1]);
+}
+Surface SilPomEvaluateProxySurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,MaterialParameters params)
+{
+    uint width,height;PassSrg::m_silpomHitBuffer.GetDimensions(width,height);
+    float4 clipU=mul(ViewSrg::m_viewProjectionMatrix,float4(mul(silpomLitRotation,silpomLitFace.du),0));
+    float4 clipV=mul(ViewSrg::m_viewProjectionMatrix,float4(mul(silpomLitRotation,silpomLitFace.dv),0));
+    float4 derivatives=SilPomProxyUvDerivatives(clipU,clipV,IN.ndc,IN.position.w,float2(width,height));
+    SilPomAcquireAppearance(geo.uvs[0],derivatives,params);
+    float3 V=normalize(mul(transpose(silpomLitRotation),ViewSrg::m_worldPosition.xyz-geo.positionWS));
+    silpomAppearanceView=float3(dot(V,silpomAppearanceT),dot(V,silpomAppearanceB),dot(V,silpomLitFace.normal));
+    float x[18];SP_UNROLL for(uint i=0;i<8;++i)x[i]=silpomAppearanceFeatures[i];
+    SP_UNROLL for(uint i=0;i<3;++i)x[8+i]=silpomAppearanceView[i];
+    SP_UNROLL for(uint i=0;i<7;++i)x[11+i]=silpomAppearanceContext[i];
+    float decoded[3];SilPomDecodeAppearanceSurface(x,params.m_silpomAppearanceDecoderBuffer,decoded);
+    float2 n=(float2(decoded[0],decoded[1])*2-1)*.95f;
+    float3 normal=normalize(float3(n,sqrt(max(.01f,1-dot(n,n)))));
+    Surface surface=(Surface)0;surface.position=geo.positionWS;surface.vertexNormal=geo.vertexNormal;
+    surface.lightingChannels=GetLightingChannelMask(SV);
+    surface.normal=AdjustBackFaceNormal(mul(silpomLitRotation,silpomAppearanceT*normal.x+silpomAppearanceB*normal.y+silpomLitFace.normal*normal.z),geo.isFrontFace);
+    real3 color=real3(1,1,1);
+    if(o_baseColor_useTexture)color=LinearSrgb_To_AcesCg(real3(GetMaterialTexture(params.m_baseColorMap).SampleGrad(GetMaterialTextureSampler(),geo.uvs[0],derivatives.xy,derivatives.zw).rgb));
+    color=BlendBaseColor(color,real3(params.m_baseColor.rgb),real(params.m_baseColorFactor),o_baseColorTextureBlendMode,o_baseColor_useTexture);
+#if ENABLE_VERTEX_COLOR
+    if(o_useVertexColor&&o_color0_isBound)color=BlendBaseColor(real3(IN.color0.rgb),color,real(params.m_vertexColorFactor),o_vertexColorBlendMode,true);
+#endif
+    real metallic=OverrideMetallicEnabled()?GetMetallicOverride():real(params.m_metallicFactor);
+    surface.SetAlbedoAndSpecularF0(color,real(params.m_specularF0Factor),metallic);
+    real roughness=.08f+.92f*decoded[2];
+    surface.roughnessLinear=OverrideRoughnessEnabled()?GetRoughnessOverride():o_roughness_useTexture
+        ?lerp(real(params.m_roughnessLowerBound),real(params.m_roughnessUpperBound),roughness):real(params.m_roughnessFactor);
+    surface.CalculateRoughnessA();surface.alpha=real(params.m_opacityFactor);surface.opacityAffectsSpecularFactor=real(params.m_opacityAffectsSpecularFactor);
+    surface.emissiveLighting=o_emissiveEnabled?real3(params.m_emissiveColor.rgb)*real(params.m_emissiveIntensity)*lerp(real(1),surface.alpha,real(params.m_emissiveAffectedByAlpha)):real3(0,0,0);
+    surface.diffuseAmbientOcclusion=1;surface.specularOcclusion=1;
+#if ENABLE_CLEAR_COAT
+    surface.clearCoat.factor=o_clearCoat_feature_enabled&&o_clearCoat_enabled?real(params.m_clearCoatFactor):0;
+    surface.clearCoat.roughness=real(params.m_clearCoatRoughness);surface.clearCoat.normal=AdjustBackFaceNormal(geo.vertexNormal,geo.isFrontFace);
+    if(o_clearCoat_feature_enabled)ApplyClearCoatToSpecularF0(surface.specularF0,surface.clearCoat.factor);
+#endif
+    return surface;
+}

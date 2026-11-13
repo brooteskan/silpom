@@ -1,0 +1,48 @@
+// SPDX-License-Identifier: MIT
+// Authored proxy rasterization only. No intersection/predictor includes.
+#include <Atom/Features/SrgSemantics.azsli>
+#define MATERIALPIPELINE_SHADER_HAS_GEOMETRIC_PIXEL_STAGE 1
+#define PIPELINE_HAS_PASS_SRG 0
+#ifdef MATERIAL_TYPE_DEFINES_AZSLI_FILE_PATH
+#include MATERIAL_TYPE_DEFINES_AZSLI_FILE_PATH
+#endif
+#include <viewsrg_all.srgi>
+#include <scenesrg_all.srgi>
+#include <Atom/Features/Pipeline/Forward/ForwardPassVertexData.azsli>
+#include <Atom/Features/Pipeline/Forward/ForwardPassPipelineCallbacks.azsli>
+#include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_MaterialInputs.azsli>
+#include <Atom/Features/Bindless.azsli>
+#include "../../../Shaders/SilPOM/ProxySelection.azsli"
+#include "../../../Shaders/SilPOM/HitReuse/SilPOMHitRecord.azsli"
+struct ProxyVertex
+{
+    float4 position:SV_Position;
+    sample float2 uv:TEXCOORD0;
+    nointerpolation uint face:TEXCOORD1;
+};
+ProxyVertex VertexShader(VsInput IN,uint instanceId:SV_InstanceID)
+{
+    ProxyVertex output=(ProxyVertex)0;output.position=float4(2,2,0,1);
+    MaterialParameters params=GetMaterialParameters();uint face=uint(round(IN.position.z));
+    if(!SilPomProxySelected(params,face))return output;
+    uint offset=face*144u;
+    float3 origin=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset)).xyz;
+    float3 du=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+16u)).xyz;
+    float3 dv=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+32u)).xyz;
+    float4 u=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+64u));
+    float2 last=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+80u)).xy;
+    output.uv=IN.position.y>0?last:(IN.position.x>0?u.zw:u.xy);
+    float3 position=origin+du*(output.uv.x-u.x)+dv*(output.uv.y-u.y);
+    VsSystemValues sv;sv.m_instanceId=instanceId;
+    output.position=mul(GetViewProjectionMatrix(sv),mul(GetObjectToWorldMatrix(sv),float4(position,1)));
+    output.face=params.m_silpomHitFaceBase+face;return output;
+}
+struct ProxyOutput {precise float depth:SV_DepthLessEqual;uint4 hit:SV_Target0;};
+ProxyOutput PixelShader(ProxyVertex IN)
+{
+    ProxyOutput output;output.depth=IN.position.z;
+    // Exclude raster proxies from the neural-wall hole-fill donors: authored
+    // coverage must never be grown or reconstructed from neighboring hits.
+    output.hit=uint4(asuint(IN.uv),asuint(IN.position.z)|SP_HIT_RECORD_SHELL,(IN.face<<2)|1u);
+    return output;
+}

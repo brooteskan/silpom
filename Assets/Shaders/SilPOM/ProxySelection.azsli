@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+bool SilPomProxySelected(MaterialParameters params,uint face)
+{
+    if(!params.m_silpomProxyLodEnabled)return false;
+    return Bindless::GetByteAddressBuffer(params.m_silpomProxyLodBuffer).Load(face*4u)!=0u;
+}

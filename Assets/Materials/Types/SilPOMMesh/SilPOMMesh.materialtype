@@ -433,7 +433,13 @@
                             "type": "ShaderInput",
                             "name": "m_silpomDebug"
                         }
-                    }
+                    },
+                    {"name":"proxyLodEnabled","type":"Bool","connection":{"type":"ShaderInput","name":"m_silpomProxyLodEnabled"},"defaultValue":false},
+                    {"name":"proxyLodBuffer","type":"UInt","connection":{"type":"ShaderInput","name":"m_silpomProxyLodBuffer"},"defaultValue":0},
+                    {"name":"appearanceFeatures0","type":"Image","connection":{"type":"ShaderInput","name":"m_silpomAppearanceFeatures0"}},
+                    {"name":"appearanceFeatures1","type":"Image","connection":{"type":"ShaderInput","name":"m_silpomAppearanceFeatures1"}},
+                    {"name":"appearanceDecoderBuffer","type":"UInt","connection":{"type":"ShaderInput","name":"m_silpomAppearanceDecoderBuffer"},"defaultValue":0},
+                    {"name":"appearanceFeatureMipCount","type":"UInt","connection":{"type":"ShaderInput","name":"m_silpomAppearanceFeatureMipCount"},"defaultValue":1}
                 ]
             },
             {

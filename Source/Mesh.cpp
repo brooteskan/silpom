@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: MIT
 #include <SilPOM/Mesh.h>
 #include <SilPOM/HeightPrecision.h>
+#include <SilPOM/AppearanceCodec.h>
+#include <SilPOM/ReliefLod.h>
+#include <Atom/RPI.Public/View.h>
+#include <Atom/RPI.Public/ViewportContext.h>
+#include <Atom/RPI.Public/ViewportContextBus.h>
+#include <Atom/RPI.Public/Pass/PassAttachment.h>
+#include <Atom/RPI.Public/Shader/ShaderResourceGroup.h>
 #include <AtomCore/Instance/InstanceDatabase.h>
 #include <cmath>
 #include <Atom/RPI.Public/Scene.h>
@@ -218,16 +225,17 @@ Image MakeDepthHeightBounds(const AZ::RHI::ImageDescriptor& desc, AZStd::span<co
 }
 using Handle = AZ::Render::MeshFeatureProcessorInterface::MeshHandle;
 struct Vertex { AZ::Vector3 position, normal; AZ::Vector2 uv; };
-AZ::Data::Asset<AZ::RPI::BufferAsset> Buffer(const void* data, size_t count, AZ::u32 stride, bool raw = false)
+AZ::Data::Asset<AZ::RPI::BufferAsset> Buffer(const void* data, size_t count, AZ::u32 stride, bool raw = false,bool dynamic=false)
 {
     AZ::RPI::BufferAssetCreator creator; creator.Begin(AZ::Uuid::CreateRandom());
     AZ::RHI::BufferDescriptor descriptor;
     descriptor.m_bindFlags = AZ::RHI::BufferBindFlags::InputAssembly | AZ::RHI::BufferBindFlags::ShaderRead;
+    if(dynamic)descriptor.m_bindFlags=AZ::RHI::BufferBindFlags::DynamicInputAssembly|AZ::RHI::BufferBindFlags::ShaderRead;
     descriptor.m_byteCount = count * stride;
     creator.SetBuffer(data, descriptor.m_byteCount, descriptor);
     creator.SetBufferViewDescriptor(raw ? AZ::RHI::BufferViewDescriptor::CreateRaw(0, AZ::u32(descriptor.m_byteCount))
         : AZ::RHI::BufferViewDescriptor::CreateStructured(0, AZ::u32(count), stride));
-    creator.SetUseCommonPool(AZ::RPI::CommonBufferPoolType::StaticInputAssembly);
+    creator.SetUseCommonPool(dynamic?AZ::RPI::CommonBufferPoolType::DynamicInputAssembly:AZ::RPI::CommonBufferPoolType::StaticInputAssembly);
     AZ::Data::Asset<AZ::RPI::BufferAsset> result; creator.End(result); return result;
 }
 AZ::Data::Asset<AZ::RPI::ModelAsset> Model(const AZStd::vector<Vertex>& vertices, const AZStd::vector<AZ::u32>& indices, const AZ::Aabb& bounds)
@@ -331,6 +339,21 @@ Material Snapshot(const AZ::Data::Asset<AZ::RPI::MaterialAsset>& source,
 }
 struct MeshController::Generation
 {
+    struct ProxyPatch {AZStd::vector<AZ::u32> localFaces,sourceFaces;bool protectedBoundary=false,far=false;};
+    struct ProxyBatch
+    {
+        AZ::Data::Instance<AZ::RPI::Buffer> buffer;
+        Material material;
+        AZ::u32 bufferIndex=0;
+        AZStd::vector<AZStd::pair<AZ::u64,AZ::Data::Instance<AZ::RPI::Buffer>>> retired;
+        AZStd::vector<AZ::u32> flags;
+        AZStd::vector<ProxyPatch> patches;
+        AZ::u32 hitFaceBase=0;
+        float heightLow=0,heightHigh=0;
+    };
+    AZStd::vector<ProxyBatch> proxyBatches;
+    AZ::u64 proxyFrame=0;
+    AZ::Vector3 proxyState=AZ::Vector3::CreateZero();
     using PacketHandler = AZ::Render::ModelDataInstanceInterface::MeshDrawPacketUpdatedEvent::Handler;
     AZStd::vector<Handle> handles;
     AZStd::vector<AZStd::unique_ptr<PacketHandler>> packetHandlers;
@@ -375,7 +398,7 @@ void MeshConfig::Reflect(AZ::ReflectContext* context)
         sc->Enum<LocalShadowMethod>()->Value("Baseline",LocalShadowMethod::Baseline)
             ->Value("Gather",LocalShadowMethod::Gather)->Value("Neural",LocalShadowMethod::Neural)
             ->Value("NeuralOnly",LocalShadowMethod::NeuralOnly);
-        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(16)->Field("Surface", &MeshConfig::m_surface)
+        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(17)->Field("Surface", &MeshConfig::m_surface)
             ->Field("Materials", &MeshConfig::m_materials)->Field("Profiles", &MeshConfig::m_profiles)
             ->Field("ReliefDepthMultiplier", &MeshConfig::m_reliefDepthMultiplier)
             ->Field("ValidationIterations", &MeshConfig::m_validationIterations)
@@ -385,6 +408,8 @@ void MeshConfig::Reflect(AZ::ReflectContext* context)
             ->Field("UseValidationGather", &MeshConfig::m_useValidationGather)
             ->Field("UseLevelTwoPredictor", &MeshConfig::m_useLevelTwoPredictor)
             ->Field("UseLevelFourWallMaterial", &MeshConfig::m_useLevelFourWallMaterial)
+            ->Field("UseLevelFiveProxy", &MeshConfig::m_useLevelFiveProxy)
+            ->Field("LevelFivePixelBudget", &MeshConfig::m_levelFivePixelBudget)
             ->Field("ReliefLodPixelBudget", &MeshConfig::m_reliefLodPixelBudget)
             ->Field("MaxReliefDistance", &MeshConfig::m_maxReliefDistance)
             ->Field("ValidationDistanceStart", &MeshConfig::m_validationDistanceStart)
@@ -422,7 +447,9 @@ void MeshController::Reflect(AZ::ReflectContext* context)
     if (auto* bc = azrtti_cast<AZ::BehaviorContext*>(context))
         bc->EBus<MeshRequestBus>("SilPomMeshRequestBus")->Attribute(AZ::Script::Attributes::Module, "silpom")
             ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
-            ->Event("GetStatus", &MeshRequests::GetStatus)->Event("IsReady", &MeshRequests::IsReady);
+            ->Event("GetStatus", &MeshRequests::GetStatus)->Event("IsReady", &MeshRequests::IsReady)
+            ->Event("GetProxyLodState",&MeshRequests::GetProxyLodState)
+            ->Event("GetProxyFaceOwners",&MeshRequests::GetProxyFaceOwners);
 }
 void MeshComponent::Reflect(AZ::ReflectContext* context)
 {
@@ -455,6 +482,15 @@ void MeshController::ConnectAssets()
             "assets/silpomlearned/wall.silpommaterial",azrtti_typeid<LearnedMaterialAsset>(),false);
         if(id.IsValid())m_learnedMaterial=AZ::Data::AssetManager::Instance().GetAsset<LearnedMaterialAsset>(id,AZ::Data::AssetLoadBehavior::NoLoad);
         queue(m_learnedMaterial);
+    }
+    if(m_configuration.m_useLevelFiveProxy)
+    {
+        AZ::Data::AssetId id;
+        // The two encodings have different source stems and products.
+        AZ::Data::AssetCatalogRequestBus::BroadcastResult(id,&AZ::Data::AssetCatalogRequests::GetAssetIdByPath,
+            "assets/silpomlearned/wall-appearance.silpommaterial",azrtti_typeid<LearnedMaterialAsset>(),false);
+        if(id.IsValid())m_appearance=AZ::Data::AssetManager::Instance().GetAsset<LearnedMaterialAsset>(id,AZ::Data::AssetLoadBehavior::NoLoad);
+        queue(m_appearance);
     }
     for (auto& binding : m_configuration.m_materials) queue(binding.m_material);
     for (auto& profile : m_configuration.m_profiles)
@@ -544,12 +580,24 @@ bool MeshController::Prepare()
     if (!m_template.GetId().IsValid()) { m_status = "SilPOM mesh shader template is missing; process Gem assets"; return false; }
     if (!m_template.IsReady()) { m_status = "Loading mesh material template"; return true; }
     const auto& asset = *c.m_surface;
+    if(c.m_useLevelFiveProxy)
+    {
+        if(c.m_useLevelFourWallMaterial){m_status="Level 5A currently uses ordinary base color; disable Level 4A for this independent comparison";return false;}
+        if(c.m_localShadowMethod!=LocalShadowMethod::NeuralOnly||!c.m_useHeightDerivedNormals)
+        {m_status="Level 5A requires neural-only local visibility and height-derived normals for its calibrated near path";return false;}
+        if(!std::isfinite(c.m_levelFivePixelBudget)||c.m_levelFivePixelBudget<.05f||c.m_levelFivePixelBudget>4.f)
+        {m_status="Level 5A pixel error budget must be 0.05-4 pixels";return false;}
+        if(!m_appearance.IsReady()){m_status="Process Assets/SilPOMLearned/wall-appearance.l5app before enabling Level 5A";return m_appearance.GetId().IsValid();}
+        if(!m_appearance->Validate()||memcmp(m_appearance->Header().magic,"SILPAPP5",8))
+        {m_status="Invalid Level 5A appearance bundle";return false;}
+    }
     if(c.m_useLevelFourWallMaterial)
     {
         if(c.m_localShadowMethod!=LocalShadowMethod::NeuralOnly){m_status="Level 4A requires neural-only local visibility; select it before enabling material decoding";return false;}
         if(!m_learnedMaterial.GetId().IsValid()){m_status="Process Assets/SilPOMLearned/wall.l4mat before enabling Level 4A";return false;}
         if(!m_learnedMaterial.IsReady()){m_status="Loading Level 4 material";return true;}
-        if(!m_learnedMaterial->Validate()){m_status="Invalid Level 4 material bundle";return false;}
+        if(!m_learnedMaterial->Validate()||memcmp(m_learnedMaterial->Header().magic,"SILPMAT4",8))
+        {m_status="Invalid Level 4 material bundle";return false;}
     }
     if (asset.m_surfaceVersion != MeshSurfaceAsset::Version || asset.m_faces.empty()) { m_status = "Unsupported/empty mesh surface"; return false; }
     bool initialized = false;
@@ -708,8 +756,8 @@ bool MeshController::Prepare()
                     || source->GetPropertyValue(opacity).GetValue<AZ::u32>() != 0)
                     return fail("Displaced batches currently require opaque StandardPBR materials");
                 const auto& p = profiles[key.second];
-                bool decoded=false;
-                if(c.m_useLevelFourWallMaterial && p.m_neuralModel==4)
+                bool decoded=false,proxy=false;
+                if((c.m_useLevelFourWallMaterial||c.m_useLevelFiveProxy) && p.m_neuralModel==4)
                 {
                     const char* names[]={"baseColor.textureMap","normal.textureMap","roughness.textureMap"};
                     const char* files[]={"basecolor.png","normal.png","roughness.png"};
@@ -739,7 +787,9 @@ bool MeshController::Prepare()
                                 && name!=AZ::Name(names[0])&&name!=AZ::Name(names[1])&&name!=AZ::Name(names[2])&&name!=AZ::Name("parallax.textureMap"))
                                 return fail("Level 4A wall decoder does not support additional textured material channels");
                         }
-                        ++decodedBatches;++candidate->learnedMaterialBatches;
+                        proxy=c.m_useLevelFiveProxy;
+                        decoded=c.m_useLevelFourWallMaterial;
+                        if(decoded){++decodedBatches;++candidate->learnedMaterialBatches;}
                     }
                 }
                 if (!std::isfinite(p.m_scale) || !std::isfinite(p.m_reference) || p.m_reference < 0 || p.m_reference > 1
@@ -851,6 +901,54 @@ bool MeshController::Prepare()
                 if (!height) return fail("Cannot create height texture");
                 material=Snapshot(m_template,binding.m_material.Get(), p.m_height.GetId(), convertHeight ? height : Image{},decoded);
                 if(!material) return fail("Cannot create planar face material");
+                if(proxy)
+                {
+                    Generation::ProxyBatch batch;batch.flags.resize(faces.size(),0u);
+                    batch.heightLow=-p.m_scale*depthMultiplier*p.m_reference;
+                    batch.heightHigh=p.m_scale*depthMultiplier*(1-p.m_reference);
+                    AZStd::map<AZ::u32,AZ::u32> local;
+                    for(AZ::u32 i=0;i<faces.size();++i)local[faces[i]]=i;
+                    AZStd::set<AZ::u32> paired;
+                    auto normal=[&](const MeshFace& f){return (f.m_corners[1].m_position-f.m_corners[0].m_position).Cross(f.m_corners[2].m_position-f.m_corners[0].m_position).GetNormalizedSafe();};
+                    for(AZ::u32 i=0;i<faces.size();++i)
+                    {
+                        if(paired.contains(i))continue;
+                        Generation::ProxyPatch patch;patch.localFaces.push_back(i);patch.sourceFaces.push_back(faces[i]);paired.insert(i);
+                        const auto& face=asset.m_faces[faces[i]];
+                        float longest=0;AZ::u32 partner=AZ::u32(-1);
+                        for(size_t edge=0;edge<face.m_neighbors.size();++edge)
+                        {
+                            const auto n=face.m_neighbors[edge];if(n<0||!local.contains(AZ::u32(n)))continue;
+                            const auto j=local[AZ::u32(n)];
+                            if(paired.contains(j)||normal(face).Dot(normal(asset.m_faces[n]))<.99999f)continue;
+                            const float length=(face.m_corners[(edge+1)%3].m_position-face.m_corners[edge%3].m_position).GetLengthSq();
+                            if(length>longest){longest=length;partner=j;}
+                        }
+                        if(partner!=AZ::u32(-1)){patch.localFaces.push_back(partner);patch.sourceFaces.push_back(faces[partner]);paired.insert(partner);}
+                        for(auto index:patch.sourceFaces)
+                        {
+                            const auto& f=asset.m_faces[index];if(f.m_neighbors.size()!=3)patch.protectedBoundary=true;
+                            for(auto neighbor:f.m_neighbors)
+                                if(neighbor<0||AZ::u32(neighbor)>=asset.m_faces.size()||!local.contains(AZ::u32(neighbor)))patch.protectedBoundary=true;
+                        }
+                        batch.patches.push_back(AZStd::move(patch));
+                    }
+                    batch.buffer=AZ::RPI::Buffer::FindOrCreate(Buffer(batch.flags.data(),batch.flags.size(),4,true,true));
+                    Image first=MakeLearnedMaterialImage(*m_appearance,0),second=MakeLearnedMaterialImage(*m_appearance,1);
+                    auto weights=AZ::RPI::Buffer::FindOrCreate(Buffer(m_appearance->Weights(),AppearanceCodec::Weights,4,true));
+                    if(!batch.buffer||!first||!second||!weights)return fail("Cannot allocate Level 5 appearance resources");
+                    batch.buffer->WaitForUpload();weights->WaitForUpload();
+                    const auto bi=batch.buffer->GetBufferView()->GetBindlessReadIndex(),wi=weights->GetBufferView()->GetBindlessReadIndex();
+                    if(bi.size()!=1||wi.size()!=1||bi.begin()->second==AZ::u32(-1)||wi.begin()->second==AZ::u32(-1))return fail("Level 5 requires one bindless GPU");
+                    if(!Set(material,"surface.proxyLodEnabled",true)||!Set(material,"surface.proxyLodBuffer",bi.begin()->second)
+                        ||!Set(material,"surface.appearanceFeatures0",first)||!Set(material,"surface.appearanceFeatures1",second)
+                        ||!Set(material,"surface.appearanceDecoderBuffer",wi.begin()->second)||!Set(material,"surface.appearanceFeatureMipCount",m_appearance->Header().mips))
+                        return fail("Level 5 appearance material contract mismatch");
+                    batch.material=material;batch.bufferIndex=bi.begin()->second;
+                    candidate->buffers.push_back(batch.buffer);candidate->buffers.push_back(weights);
+                    candidate->heights.push_back(first);candidate->heights.push_back(second);
+                    candidate->proxyBatches.push_back(AZStd::move(batch));
+                }
                 if(decoded)
                 {
                     Image first=MakeLearnedMaterialImage(*m_learnedMaterial,0),second=MakeLearnedMaterialImage(*m_learnedMaterial,1);
@@ -936,8 +1034,12 @@ bool MeshController::Prepare()
                         return fail("Spiral light material contract mismatch");
                     ++candidate->spiralLightBatches;
                 }
-                if (reuseDepthHits && !Set(material, "mesh.hitFaceBase", AllocateHitFaceBase(packed.size() / 36)))
-                    return fail("SilPOM hit material contract mismatch");
+                if (reuseDepthHits)
+                {
+                    const auto base=AllocateHitFaceBase(packed.size()/36);
+                    if(!Set(material,"mesh.hitFaceBase",base))return fail("SilPOM hit material contract mismatch");
+                    if(proxy)candidate->proxyBatches.back().hitFaceBase=base;
+                }
                 candidate->buffers.push_back(buffer); candidate->heights.push_back(height);
                 candidate->neuralSeed |= neuralSeed;
                 if (p.m_neuralModel != 0) ++candidate->trainedModelBatches;
@@ -990,7 +1092,102 @@ bool MeshController::Prepare()
         AZ::RPI::SceneNotificationBus::Handler::BusConnect(scene->GetId());
     }
     if(c.m_useLevelFourWallMaterial && !decodedBatches)return fail("Level 4A has no matching fieldstone-wall material; no representation was changed");
+    if(c.m_useLevelFiveProxy&&candidate->proxyBatches.empty())return fail("Level 5A has no matching canonical wall batches");
     m_pending = AZStd::move(candidate); m_status = "Preparing complete mesh generation"; return false;
+}
+AZ::Vector3 MeshController::GetProxyLodState() const
+{
+    return m_active?m_active->proxyState:AZ::Vector3::CreateZero();
+}
+AZStd::vector<AZ::u32> MeshController::GetProxyFaceOwners() const
+{
+    AZStd::vector<AZ::u32> owners;if(m_active)for(const auto& batch:m_active->proxyBatches)
+        for(size_t i=0;i<batch.flags.size();++i)if(batch.flags[i])owners.push_back(batch.hitFaceBase+aznumeric_cast<AZ::u32>(i));
+    return owners;
+}
+void MeshController::OnBeginPrepareRender(){UpdateProxyLod();}
+void MeshController::UpdateProxyLod()
+{
+    if(!m_active||m_active->proxyBatches.empty()||!m_configuration.m_surface.IsReady())return;
+    auto* scene=AZ::RPI::Scene::GetSceneForEntityId(m_entity);
+    auto* manager=AZ::Interface<AZ::RPI::ViewportContextRequestsInterface>::Get();
+    auto viewport=manager&&scene?manager->GetViewportContextByScene(scene):AZ::RPI::ViewportContextPtr{};
+    auto view=viewport?viewport->GetDefaultView():AZ::RPI::ViewPtr{};
+    auto size=viewport?viewport->GetViewportSize():AzFramework::WindowSize{};
+    size_t mainViews=0;if(scene)for(const auto& pipeline:scene->GetRenderPipelines())
+        if(pipeline->GetDescriptor().m_materialPipelineTag=="MainPipeline")
+        {
+            ++mainViews;
+            if(auto pass=pipeline->FindFirstPass(AZ::Name("SilPOMHitDepth")))
+                if(auto* binding=pass->FindAttachmentBinding(AZ::Name("Hit"));binding&&binding->GetAttachment())
+                {
+                    const auto actual=binding->GetAttachment()->m_descriptor.m_image.m_size;
+                    // Also cover custom/upscaled render targets. Taking the
+                    // larger size is conservative while resize is in flight.
+                    size.m_width=std::max(size.m_width,actual.m_width);size.m_height=std::max(size.m_height,actual.m_height);
+                }
+        }
+    const bool valid=view&&size.m_width&&size.m_height&&mainViews==1;
+    AZ::Transform rigid=m_world;rigid.SetUniformScale(1);
+    const auto camera=view?view->GetViewToWorldMatrix().GetTranslation():AZ::Vector3::CreateZero();
+    const auto clip=view?view->GetWorldToClipMatrix():AZ::Matrix4x4::CreateIdentity();
+    const auto& source=m_configuration.m_surface->m_faces;
+    ++m_active->proxyFrame;
+    size_t selected=0,eligible=0;double maxSelected=0;
+    for(auto& batch:m_active->proxyBatches)
+    {
+        batch.retired.erase(AZStd::remove_if(batch.retired.begin(),batch.retired.end(),[&](const auto& value){return value.first<=m_active->proxyFrame;}),batch.retired.end());
+        const auto oldFlags=batch.flags;
+        bool changed=false;
+        for(auto& patch:batch.patches)
+        {
+            double error=0,facing=1;
+            eligible+=patch.localFaces.size();
+            for(auto index:patch.sourceFaces)
+            {
+                const auto& face=source[index];
+                std::array<ReliefLod::Clip,3> base;std::array<ReliefLod::Clip,6> extrema;
+                const auto normal=rigid.TransformVector((face.m_corners[1].m_position-face.m_corners[0].m_position)
+                    .Cross(face.m_corners[2].m_position-face.m_corners[0].m_position).GetNormalizedSafe());
+                auto pack=[](const AZ::Vector4& v){return ReliefLod::Clip{v.GetX(),v.GetY(),v.GetZ(),v.GetW()};};
+                for(size_t i=0;i<3;++i)
+                {
+                    const auto& corner=face.m_corners[i];const auto p=m_world.TransformPoint(corner.m_position);
+                    const auto D=rigid.TransformVector(corner.m_direction);
+                    base[i]=pack(clip*AZ::Vector4(p,1));
+                    extrema[2*i]=pack(clip*AZ::Vector4(p+D*batch.heightLow,1));
+                    extrema[2*i+1]=pack(clip*AZ::Vector4(p+D*batch.heightHigh,1));
+                    const auto toward=(camera-p).GetNormalizedSafe();
+                    facing=std::min(facing,double(std::min(normal.Dot(toward),D.GetNormalizedSafe().Dot(toward))));
+                }
+                error=std::max(error,ReliefLod::PixelError(base,extrema,size.m_width,size.m_height));
+            }
+            patch.far=valid&&ReliefLod::Select(patch.far,patch.protectedBoundary,facing,error,m_configuration.m_levelFivePixelBudget);
+            for(auto local:patch.localFaces){const auto flag=patch.far?1u:0u;changed|=batch.flags[local]!=flag;batch.flags[local]=flag;}
+            if(patch.far){selected+=patch.localFaces.size();maxSelected=std::max(maxSelected,error);}
+        }
+        if(changed)
+        {
+            // DX12 orphaning reallocates a bindless descriptor. Publish a new
+            // immutable snapshot and its actual index together instead.
+            auto next=AZ::RPI::Buffer::FindOrCreate(Buffer(batch.flags.data(),batch.flags.size(),4,true,true));
+            if(next)next->WaitForUpload();
+            const auto indices=next?next->GetBufferView()->GetBindlessReadIndex():AZStd::unordered_map<int,AZ::u32>{};
+            if(indices.size()!=1||indices.begin()->second==AZ::u32(-1)
+                ||!Set(batch.material,"surface.proxyLodBuffer",indices.begin()->second)||!batch.material->Compile())
+            {
+                batch.flags=oldFlags;for(auto& patch:batch.patches)patch.far=batch.flags[patch.localFaces.front()]!=0;
+                Set(batch.material,"surface.proxyLodBuffer",batch.bufferIndex);batch.material->Compile();
+                m_status="Level 5A selection snapshot upload failed";return;
+            }
+            if(auto srg=batch.material->GetShaderResourceGroup())srg->Compile();
+            // The backend permits at most three in-flight frames. Keep eight
+            // render preparations, in addition to RHI's deferred destruction.
+            batch.retired.push_back({m_active->proxyFrame+8,batch.buffer});
+            batch.buffer=next;batch.bufferIndex=indices.begin()->second;
+        }
+    }
+    m_active->proxyState=AZ::Vector3(float(selected),float(eligible),float(maxSelected));
 }
 void MeshController::OnTick(float, AZ::ScriptTimePoint)
 {
@@ -1053,6 +1250,7 @@ void MeshController::OnTick(float, AZ::ScriptTimePoint)
                 :m_configuration.m_localShadowMethod==LocalShadowMethod::NeuralOnly ? "; local shadows: neural only (no march)"
                 :"; local shadows: hybrid neural + march";
             if(m_active->learnedMaterialBatches)m_status+=AZStd::string::format("; Level 4A material on %zu batches",m_active->learnedMaterialBatches);
+            if(!m_active->proxyBatches.empty())m_status+=AZStd::string::format("; Level 5A patch selection on %zu wall batches",m_active->proxyBatches.size());
             if (m_active->depthHeightBounds)
             {
                 m_status += "; depth height bounds";

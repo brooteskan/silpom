@@ -1,0 +1,134 @@
+{
+  "architecture": {
+    "surface": [
+      18,
+      16,
+      3
+    ],
+    "light": [
+      22,
+      16,
+      2
+    ]
+  },
+  "features": 8,
+  "feature_base": [
+    832,
+    768
+  ],
+  "mips": 10,
+  "feature_bytes": 6815696,
+  "weights": 757,
+  "samples_per_pixel": 64,
+  "training_queries": 16384,
+  "steps": 1500,
+  "held_out_usable_queries": 4830,
+  "mae_diffuse_rgb_specular": [
+    0.0044716172851622105,
+    0.00377431558445096,
+    0.0026404624804854393,
+    0.0009949217783287168
+  ],
+  "p95_abs": [
+    0.012663362408056857,
+    0.010666927229613078,
+    0.0074019059771671895,
+    0.003225458168890327
+  ],
+  "flat_pbr_mae": [
+    0.005015552509576082,
+    0.0041568041779100895,
+    0.002802221802994609,
+    0.001418989384546876
+  ],
+  "source_sha256": "178c3b3ed900b0c2f390af8542412979e6f26f6c5eaf4f09d08606499900ba0e",
+  "benchmark_performed": false,
+  "teacher": "detailed affine displacement trace + source material + dense local visibility + GGX/Schlick; finite stratified pixel supersampling",
+  "coarse_tail": {
+    "coarse_training_queries": 2048,
+    "coarse_held_out_queries": 1022,
+    "steps": 1500,
+    "samples_per_pixel": 64,
+    "feature_mips_optimized": [
+      7,
+      8,
+      9
+    ],
+    "other_feature_mips_and_decoder_frozen": true,
+    "coarse_training_mip_participation": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      302,
+      973,
+      1296,
+      1075
+    ],
+    "held_out_loss_before": 0.0011493641650304198,
+    "held_out_loss_after": 0.0003788615285884589,
+    "mae_before": [
+      0.003989182412624359,
+      0.003356003202497959,
+      0.0023169175256043673,
+      0.0009257502970285714
+    ],
+    "mae_after": [
+      0.002198816044256091,
+      0.0018345003481954336,
+      0.0012633828446269035,
+      0.0006848527700640261
+    ],
+    "bundle_sha256": "0687c0a7274ccd8313f9dae5d0dc8524c020cc648e57d6facdeba3d3021affae",
+    "benchmark_performed": false,
+    "reference": "continued local heightfield with source-face UV metric; authored coverage remains runtime proxy geometry",
+    "fine_holdout_mae_before": [
+      0.004471879918128252,
+      0.003774587996304035,
+      0.0026407234836369753,
+      0.0009946823120117188
+    ],
+    "fine_holdout_mae_after": [
+      0.0044716172851622105,
+      0.00377431558445096,
+      0.0026404624804854393,
+      0.0009949217783287168
+    ],
+    "fine_training_mip_participation": [
+      4017,
+      3118,
+      3045,
+      2799,
+      2126,
+      1166,
+      358,
+      25,
+      0,
+      0
+    ],
+    "combined_mip_participation": [
+      4017,
+      3118,
+      3045,
+      2799,
+      2126,
+      1166,
+      660,
+      998,
+      1296,
+      1075
+    ],
+    "all_mips_trained": true,
+    "final_bundle_version": 2,
+    "fine_holdout_p95_abs_after": [
+      0.012663362408056857,
+      0.010666927229613078,
+      0.0074019059771671895,
+      0.003225458168890327
+    ]
+  },
+  "runtime_bundle_version": 2,
+  "all_feature_mips_trained": true
+}

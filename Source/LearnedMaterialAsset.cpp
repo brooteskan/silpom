@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #include <SilPOM/LearnedMaterialAsset.h>
+#include <SilPOM/AppearanceCodec.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AtomCore/Instance/InstanceDatabase.h>
 #include <Atom/RPI.Public/Image/ImageSystemInterface.h>
@@ -21,8 +22,10 @@ MaterialCodec::Header LearnedMaterialAsset::Header() const
 }
 bool LearnedMaterialAsset::Validate() const
 {
-    return m_bytes.size()>=sizeof(MaterialCodec::Header)+MaterialCodec::Weights*4
-        &&MaterialCodec::Validate(Header(),m_bytes.size(),Weights());
+    if(m_bytes.size()<sizeof(MaterialCodec::Header))return false;
+    const auto h=Header();
+    if(h.weights>AppearanceCodec::Weights||m_bytes.size()<sizeof(h)+size_t(h.weights)*4)return false;
+    return MaterialCodec::Validate(h,m_bytes.size(),Weights())||AppearanceCodec::Validate(h,m_bytes.size(),Weights());
 }
 AZ::Data::Instance<AZ::RPI::StreamingImage> MakeLearnedMaterialImage(const LearnedMaterialAsset& asset,AZ::u32 half)
 {
@@ -37,7 +40,7 @@ AZ::Data::Instance<AZ::RPI::StreamingImage> MakeLearnedMaterialImage(const Learn
     desc.m_size={h.width,h.height,1};desc.m_format=AZ::RHI::Format::R8G8B8A8_UNORM;desc.m_mipLevels=aznumeric_cast<AZ::u16>(h.mips);
     AZ::Data::Asset<AZ::RPI::ImageMipChainAsset> chain;
     AZ::RPI::ImageMipChainAssetCreator mipCreator;mipCreator.Begin(AZ::Uuid::CreateRandom(),desc.m_mipLevels,1);
-    size_t offset=sizeof(h)+MaterialCodec::Weights*4;AZ::u32 w=h.width,v=h.height;
+    size_t offset=sizeof(h)+size_t(h.weights)*4;AZ::u32 w=h.width,v=h.height;
     for(AZ::u32 mip=0;mip<h.mips;++mip)
     {
         AZStd::vector<AZ::u8> pixels(size_t(w)*v*4);

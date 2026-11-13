@@ -134,6 +134,16 @@
             "shader": "./SilPOMHitForwardLearnedMaterial.shader.template",
             "azsli": "./SilPOMHitForwardLearnedMaterial.azsli",
             "tag": "silpom_hit_forward_learned_material"
+        },
+        {
+            "shader": "./SilPOMHitDepthProxy.shader.template",
+            "azsli": "./SilPOMHitDepthProxy.azsli",
+            "tag": "silpom_hit_depth_proxy"
+        },
+        {
+            "shader": "./SilPOMHitForwardLevelFive.shader.template",
+            "azsli": "./SilPOMHitForwardLevelFive.azsli",
+            "tag": "silpom_hit_forward_level_five"
         }
     ],
     "runtime": {
@@ -188,10 +198,23 @@
                 "type": "Bool",
                 "defaultValue": false
             },
-            {"name":"silpomLearnedMaterial","type":"Bool","defaultValue":false},
-            {"name":"silpomNeuralVisibilityOnly","type":"Bool","defaultValue":false},
+            {
+                "name": "silpomLearnedMaterial",
+                "type": "Bool",
+                "defaultValue": false
+            },
+            {
+                "name": "silpomNeuralVisibilityOnly",
+                "type": "Bool",
+                "defaultValue": false
+            },
             {
                 "name": "silpomTowerLod",
+                "type": "Bool",
+                "defaultValue": false
+            },
+            {
+                "name": "silpomProxyLod",
                 "type": "Bool",
                 "defaultValue": false
             }

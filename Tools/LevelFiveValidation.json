@@ -1,0 +1,121 @@
+{
+  "passed": true,
+  "benchmark_performed": false,
+  "level_sha256": "9eed895b800664cb60e8190491926ef072aeb78549b4736000166651a7f7a0d0",
+  "level4_hit_regression_passed": true,
+  "proxy_views": {
+    "far-front": {
+      "state": [
+        306.0,
+        1130.0,
+        0.2092341184616089
+      ],
+      "visible_proxy_pixels": 2213
+    },
+    "far-quarter": {
+      "state": [
+        313.0,
+        1130.0,
+        0.19534938037395477
+      ],
+      "visible_proxy_pixels": 2281
+    },
+    "far-distant": {
+      "state": [
+        322.0,
+        1130.0,
+        0.09969291090965271
+      ],
+      "visible_proxy_pixels": 713
+    },
+    "decal-view": {
+      "state": [
+        306.0,
+        1130.0,
+        0.2092341184616089
+      ],
+      "visible_proxy_pixels": 2213
+    }
+  },
+  "resize": {
+    "small": [
+      306.0,
+      1130.0,
+      0.2092341184616089
+    ],
+    "large": [
+      158.0,
+      1130.0,
+      0.4184682369232178
+    ]
+  },
+  "transition_states": [
+    {
+      "distance": 120,
+      "state": [
+        322.0,
+        1130.0,
+        0.09969291090965271
+      ]
+    },
+    {
+      "distance": 80,
+      "state": [
+        322.0,
+        1130.0,
+        0.15547262132167816
+      ]
+    },
+    {
+      "distance": 60,
+      "state": [
+        314.0,
+        1130.0,
+        0.2228035181760788
+      ]
+    },
+    {
+      "distance": 40,
+      "state": [
+        251.0,
+        1130.0,
+        0.34413087368011475
+      ]
+    },
+    {
+      "distance": 20,
+      "state": [
+        44.0,
+        1130.0,
+        0.7303511500358582
+      ]
+    },
+    {
+      "distance": 8,
+      "state": [
+        0.0,
+        1130.0,
+        0.0
+      ]
+    },
+    {
+      "distance": 4,
+      "state": [
+        0.0,
+        1130.0,
+        0.0
+      ]
+    }
+  ],
+  "dynamic_light": true,
+  "decal_and_undo": true,
+  "restored": true,
+  "selected_decal_target": true,
+  "decal_changed_proxy_pixels": 51,
+  "sun_proxy_pixels_mean_abs_byte_difference": 8.80366018978762,
+  "standalone_test_groups_passed": 30,
+  "gpu_decoder_queries_per_shader_model": 4096,
+  "gpu_decoder_max_error": 1.78814e-07,
+  "model_version": 2,
+  "all_feature_mips_trained": true
+}

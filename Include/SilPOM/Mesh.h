@@ -67,6 +67,8 @@ public:
     bool m_useValidationGather = false;
     bool m_useLevelTwoPredictor = false;
     bool m_useLevelFourWallMaterial = false;
+    bool m_useLevelFiveProxy = false;
+    float m_levelFivePixelBudget = .75f;
     float m_reliefLodPixelBudget = 0.00f;
     float m_maxReliefDistance = 0.00f;
     float m_validationDistanceStart = 0.00f;
@@ -98,6 +100,8 @@ public:
     using BusIdType = AZ::EntityId;
     virtual AZStd::string GetStatus() const = 0;
     virtual bool IsReady() const = 0;
+    virtual AZ::Vector3 GetProxyLodState() const = 0; // far faces, candidate faces, largest selected pixel bound
+    virtual AZStd::vector<AZ::u32> GetProxyFaceOwners() const = 0;
 };
 using MeshRequestBus = AZ::EBus<MeshRequests>;
 
@@ -119,6 +123,8 @@ public:
     const MeshConfig& GetConfiguration() const { return m_configuration; }
     AZStd::string GetStatus() const override { return m_status; }
     bool IsReady() const override;
+    AZ::Vector3 GetProxyLodState() const override;
+    AZStd::vector<AZ::u32> GetProxyFaceOwners() const override;
     MeshConfig m_configuration;
 private:
     struct Generation;
@@ -128,6 +134,8 @@ private:
     void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData>) override;
     void OnAssetError(AZ::Data::Asset<AZ::Data::AssetData>) override;
     void OnRenderPipelineChanged(AZ::RPI::RenderPipeline*, AZ::RPI::SceneNotification::RenderPipelineChangeType) override;
+    void OnBeginPrepareRender() override;
+    void UpdateProxyLod();
     bool Prepare();
     void ConnectAssets();
     void Release(AZStd::unique_ptr<Generation>&);
@@ -136,6 +144,7 @@ private:
     AZ::Render::MeshFeatureProcessorInterface* m_processor = nullptr;
     AZ::Data::Asset<AZ::RPI::MaterialAsset> m_template{AZ::Data::AssetLoadBehavior::NoLoad};
     AZ::Data::Asset<LearnedMaterialAsset> m_learnedMaterial{AZ::Data::AssetLoadBehavior::NoLoad};
+    AZ::Data::Asset<LearnedMaterialAsset> m_appearance{AZ::Data::AssetLoadBehavior::NoLoad};
     AZStd::unique_ptr<Generation> m_active, m_pending;
     AZStd::string m_status = "Inactive";
     bool m_dirty = true;

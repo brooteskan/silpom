@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: MIT
 function GetMaterialPropertyDependencies()
     return {"silpomReuseDepthHit", "silpomUseDepthHeightBounds", "silpomUseNeuralSeed", "silpomUseNeuralCache",
-        "silpomTowerLod", "isTransparent", "isTintedTransparent", "silpomNeuralVisibilityOnly", "silpomLearnedMaterial"}
+        "silpomTowerLod", "isTransparent", "isTintedTransparent", "silpomNeuralVisibilityOnly", "silpomLearnedMaterial", "silpomProxyLod"}
 end
 
 function Process(context)
@@ -24,10 +24,13 @@ function Process(context)
     context:GetShaderByTag("silpom_hit_depth_lod_shell"):SetEnabled(useHit and useLod)
     context:GetShaderByTag("silpom_hit_depth_wall_backup"):SetEnabled(useHit and useLod)
     local decoded=context:GetMaterialPropertyValue_bool("silpomLearnedMaterial")
+    local proxy=context:GetMaterialPropertyValue_bool("silpomProxyLod")
     local visibilityOnly=context:GetMaterialPropertyValue_bool("silpomNeuralVisibilityOnly")
-    context:GetShaderByTag("silpom_hit_forward"):SetEnabled(useHit and not visibilityOnly and not decoded)
-    context:GetShaderByTag("silpom_hit_forward_neural_only"):SetEnabled(useHit and visibilityOnly and not decoded)
-    context:GetShaderByTag("silpom_hit_forward_learned_material"):SetEnabled(useHit and visibilityOnly and decoded)
+    context:GetShaderByTag("silpom_hit_depth_proxy"):SetEnabled(useHit and useLod and proxy)
+    context:GetShaderByTag("silpom_hit_forward_level_five"):SetEnabled(useHit and visibilityOnly and proxy)
+    context:GetShaderByTag("silpom_hit_forward"):SetEnabled(useHit and not visibilityOnly and not decoded and not proxy)
+    context:GetShaderByTag("silpom_hit_forward_neural_only"):SetEnabled(useHit and visibilityOnly and not decoded and not proxy)
+    context:GetShaderByTag("silpom_hit_forward_learned_material"):SetEnabled(useHit and visibilityOnly and decoded and not proxy)
     if useHit then
         context:GetShaderByTag("depth_customZ"):SetEnabled(false)
         context:GetShaderByTag("forward_customZ"):SetEnabled(false)

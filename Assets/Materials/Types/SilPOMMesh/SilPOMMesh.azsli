@@ -6,6 +6,7 @@ float SilPomPaintHeight();
 #endif
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_MaterialInputs.azsli>
 #include <Atom/Features/Bindless.azsli>
+#include "../../../Shaders/SilPOM/ProxySelection.azsli"
 #include "../../../Shaders/SilPOM/MeshFace.azsli"
 #include "../../../Shaders/SilPOM/HitReuse/SilPOMHitRecord.azsli"
 #if !SHADOWMAP
@@ -30,6 +31,7 @@ static float2 silpomLitUv;
 static float3x3 silpomLitRotation;
 static float3 silpomLitOriginWS;
 static bool silpomLitValid=false;
+static bool silpomLitProxy=false;
 static uint silpomPaintHeightTexture;
 float SilPomPaintHeight()
 {
@@ -52,6 +54,7 @@ static float2 silpomDepthHitUv;
 #if SILPOM_TOWER_LOD_NEAR || SILPOM_TOWER_LOD_SHELL
 float SilPomTowerLodDepth(MaterialParameters params)
 {
+    if(params.m_silpomProxyLodEnabled)return 1e20f;
     if(params.m_silpomMaxCells==SP_TOWER_LOD_SHELL) return 0;
     const uint mode=SilPomTowerUsesSmoothLod(params.m_silpomMaxCells)?SP_TOWER_LOD_4PX:params.m_silpomMaxCells;
     const float budget=2.0f*float(1u<<(SP_TOWER_LOD_2PX-mode));
@@ -219,6 +222,9 @@ VsOutput EvaluateVertexGeometry(VsInput IN, VsSystemValues SV, const MaterialPar
     }
 #endif
     SilPomMeshFace f=SilPomLoadFace(params.m_meshBufferIndex,output.faceIndex);
+#if SILPOM_TOWER_LOD_NEAR
+    if(SilPomProxySelected(params,output.faceIndex)){output.position=float4(2,2,0,1);return output;}
+#endif
     float4x4 model=GetObjectToWorldMatrix(SV),vp=GetViewProjectionMatrix(SV);
 #if SHADOWMAP
     // The coverage quad becomes one original triangle plus a degenerate one.
@@ -385,6 +391,11 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     if(SilPomTowerNoMarch(params.m_silpomMaxCells)) discard;
 #endif
     SilPomMeshFace f=SilPomLoadFace(params.m_meshBufferIndex,IN.faceIndex);
+#if SILPOM_LEVEL_FIVE
+    // The winner records its actual representation. Do not infer it again
+    // from CPU policy that may be preparing a later frame's selection.
+    silpomLitProxy=(record.z&(SP_HIT_RECORD_SHELL|SP_HIT_RECORD_WALL))==SP_HIT_RECORD_SHELL;
+#endif
     float4x4 model=GetObjectToWorldMatrix(SV);
     float2 low=min(f.uv0,min(f.uv1,f.uv2)),high=max(f.uv0,max(f.uv1,f.uv2));
     float2 span=high-low;
@@ -409,7 +420,11 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     bool failed=status!=SP_HIT;
     float2 faceUv=asfloat(record.xy);
     float3 normal=f.normal;
-    [branch] if(!failed && params.m_silpomUseHeightDerivedNormals)
+    [branch] if(!failed && params.m_silpomUseHeightDerivedNormals
+#if SILPOM_LEVEL_FIVE
+        && !silpomLitProxy
+#endif
+    )
         normal=SilPomFaceNormal(GetMaterialTexture(params.m_silpomHeightMap),p,f,faceUv,low);
     float2 tiledUv=failed?faceUv:float2((faceUv.x-low.x)*p.tileU/p.width+p.offsetU,(faceUv.y-low.y)*p.tileV/p.height+p.offsetV);
     IN.position.z=asfloat(record.z&SP_HIT_RECORD_DEPTH);
@@ -548,9 +563,15 @@ COMMON_OPTIONS_EMISSIVE()
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_SurfaceEval.azsli>
 #undef EvaluateSurface
 #endif
+#if SILPOM_LEVEL_FIVE
+#include "../../../Shaders/SilPOM/ProxyAppearance.azsli"
+#endif
 Surface EvaluateSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,const MaterialParameters params)
 {
     silpomPaintHeightTexture=params.m_silpomHeightMap;
+#if SILPOM_LEVEL_FIVE
+    if(silpomLitProxy)return SilPomEvaluateProxySurface(IN,SV,geo,params);
+#endif
 #if defined(SILPOM_LEARNED_MATERIAL)
     Surface surface=SilPomEvaluateLearnedSurface(IN,SV,geo,params);
 #else

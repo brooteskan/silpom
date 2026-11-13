@@ -40,6 +40,8 @@ function MaterialTypeSetup(context)
             context:IncludeShader("SilPOMHitForward")
             context:IncludeShader("SilPOMHitForwardNeuralOnly")
             context:IncludeShader("SilPOMHitForwardLearnedMaterial")
+            context:IncludeShader("SilPOMHitDepthProxy")
+            context:IncludeShader("SilPOMHitForwardLevelFive")
         end
         context:IncludeShader("ForwardPass_StandardLighting")
         context:IncludeShader("ForwardPass_StandardLighting_CustomZ")

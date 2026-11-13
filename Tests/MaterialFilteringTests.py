@@ -5,6 +5,7 @@ import numpy as np
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'Tools'))
 import torch
 from material_codec import sample,filtered
+from relief_appearance import feature_sample,features
 
 def bilinear(image,uv):
     h,w,_=image.shape;q=uv*np.array([w,h])-.5;i=np.floor(q).astype(int);t=q-i
@@ -18,6 +19,19 @@ def trilinear(levels,uv,lod):
     return bilinear(levels[low],uv)*(1-f)+bilinear(levels[high],uv)*f
 
 class Filtering(unittest.TestCase):
+    def test_proxy_features_clamp_atlas_borders(self):
+        rng=np.random.default_rng(17);levels=[rng.random((h,w,8)).astype(np.float32) for w,h in ((13,9),(6,4),(3,2),(1,1))]
+        uv=np.array([[-.2,.3],[1.1,1.01],[0,0],[.3,.7]],np.float32);lod=np.array([0,.7,1.8,3],np.float32)
+        def clamp_bilinear(image,u):
+            h,w,_=image.shape;q=u*np.array([w,h])-.5;i=np.floor(q).astype(int);f=q-i
+            return sum(image[np.clip(i[1]+y,0,h-1),np.clip(i[0]+x,0,w-1)]*(f[0] if x else 1-f[0])*(f[1] if y else 1-f[1]) for y in (0,1) for x in (0,1))
+        expected=[]
+        for u,l in zip(uv,lod):
+            low=int(l);high=min(len(levels)-1,low+1);f=float(l-low)
+            expected.append(clamp_bilinear(levels[low],u)*(1-f)+clamp_bilinear(levels[high],u)*f)
+        actual=feature_sample([torch.from_numpy(v) for v in levels],torch.from_numpy(uv),torch.from_numpy(lod)).numpy()
+        np.testing.assert_allclose(actual,np.stack(expected),atol=2e-6)
+
     def test_trilinear_repeat_seams_and_mip_boundaries(self):
         rng=np.random.default_rng(41);levels=[rng.random((h,w,8)).astype(np.float32) for w,h in ((13,9),(6,4),(3,2),(1,1))]
         uv=np.asarray([[-.01,.5],[.9999,1.0001],[0,0],[.3,.7]],np.float32);lod=np.asarray([0,.5,1,3],np.float32)
