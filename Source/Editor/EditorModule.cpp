@@ -154,6 +154,9 @@ public:
                     ->EnumAttribute(LightingEstimator::DirectionalField32,"32-direction neural field (experimental wall)")
                     ->EnumAttribute(LightingEstimator::AngularOccluders4,"4 neural angular occluders (experimental wall)")
                     ->EnumAttribute(LightingEstimator::AngularOccluders8,"8 neural angular occluders (experimental wall)")
+                    ->EnumAttribute(LightingEstimator::AngularEdges4,"4 occluders / angular edge width (experimental wall)")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_diffuseAccessibility,"Diffuse ambient accessibility (experimental)",
+                        "Default off. Average 32 cosine-hemisphere visibility queries for diffuse environment lighting only; specular occlusion is unchanged. Requires a field/cap model; enabling selects angular-edge four caps if needed. Compare near walls with Level 5 disabled and direct lights off first. Adds GPU work; no speedup claim.")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_neuralShadowConfidence,"Hybrid shadow confidence (higher = safer)",
                         "Historical hybrid only. Higher values use more fallback. Neural only uses calibrated binary thresholds and has no march or uncertainty fallback.")
                     ->Attribute(AZ::Edit::Attributes::Min,.9f)->Attribute(AZ::Edit::Attributes::Max,.99999f)
@@ -215,7 +218,7 @@ private:
     {
         return {c.m_useLevelFourWallMaterial,c.m_useLevelFourShared,c.m_useLevelFiveProxy,c.m_useLevelFiveDepth,
             c.m_neuralDirectionalVisibility,c.m_proxyDirectionalResponse,c.m_useDepthHeightBounds,c.m_useNeuralSeed,
-            c.UsesTrainedProfiles(),static_cast<AZ::u32>(c.m_localShadowMethod),static_cast<AZ::u32>(c.m_lightingEstimator)};
+            c.UsesTrainedProfiles(),static_cast<AZ::u32>(c.m_localShadowMethod),static_cast<AZ::u32>(c.m_lightingEstimator),c.m_diffuseAccessibility};
     }
     static void ApplyChoices(MeshConfig& c,const MeshSettingRules::Choices& choice)
     {
@@ -225,6 +228,7 @@ private:
         c.m_useDepthHeightBounds=choice.bounds;c.m_useNeuralSeed=choice.neuralDepth;
         c.m_localShadowMethod=static_cast<LocalShadowMethod>(choice.shadow);
         c.m_lightingEstimator=static_cast<LightingEstimator>(choice.lighting);
+        c.m_diffuseAccessibility=choice.diffuseAmbient;
     }
     AZ::u32 OnConfigurationChanged() override
     {

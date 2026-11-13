@@ -106,7 +106,7 @@ if(NOT COMMAND o3de_gem_setup)
             set(directional_shader ${CMAKE_CURRENT_BINARY_DIR}/directional-estimator-${profile}.dxil)
             add_custom_command(OUTPUT ${directional_shader}
                 COMMAND "${SILPOM_DXC}" -T cs_${profile} -E Main -Fo ${directional_shader} ${CMAKE_CURRENT_SOURCE_DIR}/Tests/DirectionalEstimatorGpu.hlsl
-                DEPENDS Tests/DirectionalEstimatorGpu.hlsl Assets/Shaders/SilPOM/DirectionalEstimator.azsli Assets/Shaders/SilPOM/DirectionalEstimatorWeights.azsli VERBATIM)
+                DEPENDS Tests/DirectionalEstimatorGpu.hlsl Assets/Shaders/SilPOM/DirectionalEstimator.azsli Assets/Shaders/SilPOM/DirectionalEstimatorWeights.azsli Assets/Shaders/SilPOM/AngularEdgeWeights.azsli VERBATIM)
             add_custom_target(silpom_directional_estimator_shader_${profile} DEPENDS ${directional_shader})
             add_dependencies(silpom_directional_estimator_gpu_tests silpom_directional_estimator_shader_${profile})
         endforeach()

@@ -149,6 +149,12 @@
         {"shader":"./SilPOMHitForwardSharedProxy.shader.template","azsli":"./SilPOMHitForwardSharedProxy.azsli","tag":"silpom_hit_forward_shared_proxy"},
         {"shader":"./SilPOMHitForwardSharedCompare.shader.template","azsli":"./SilPOMHitForwardSharedCompare.azsli","tag":"silpom_hit_forward_shared_compare"},
         {"shader":"./SilPOMHitForwardSharedProxyCompare.shader.template","azsli":"./SilPOMHitForwardSharedProxyCompare.azsli","tag":"silpom_hit_forward_shared_proxy_compare"},
+        {"shader":"./SilPOMHitForwardSharedAmbient.shader.template","azsli":"./SilPOMHitForwardSharedAmbient.azsli","tag":"silpom_hit_forward_shared_ambient"},
+        {"shader":"./SilPOMHitForwardSharedProxyAmbient.shader.template","azsli":"./SilPOMHitForwardSharedProxyAmbient.azsli","tag":"silpom_hit_forward_shared_proxy_ambient"},
+        {"shader":"./SilPOMHitForwardAngular.shader.template","azsli":"./SilPOMHitForwardAngular.azsli","tag":"silpom_hit_forward_angular"},
+        {"shader":"./SilPOMHitForwardAngularProxy.shader.template","azsli":"./SilPOMHitForwardAngularProxy.azsli","tag":"silpom_hit_forward_angular_proxy"},
+        {"shader":"./SilPOMHitForwardAngularAmbient.shader.template","azsli":"./SilPOMHitForwardAngularAmbient.azsli","tag":"silpom_hit_forward_angular_ambient"},
+        {"shader":"./SilPOMHitForwardAngularProxyAmbient.shader.template","azsli":"./SilPOMHitForwardAngularProxyAmbient.azsli","tag":"silpom_hit_forward_angular_proxy_ambient"},
         {"shader":"./SilPOMHitDepthLearnedProxy.shader.template","azsli":"./SilPOMHitDepthLearnedProxy.azsli","tag":"silpom_hit_depth_learned_proxy"}
     ],
     "runtime": {
@@ -220,6 +226,8 @@
             },
             {"name":"silpomSharedVisibility","type":"Bool","defaultValue":false},
             {"name":"silpomLightingComparison","type":"Bool","defaultValue":false},
+            {"name":"silpomDiffuseAccessibility","type":"Bool","defaultValue":false},
+            {"name":"silpomAngularEdges","type":"Bool","defaultValue":false},
             {"name":"silpomProxyDepth","type":"Bool","defaultValue":false},
             {
                 "name": "silpomProxyLod",

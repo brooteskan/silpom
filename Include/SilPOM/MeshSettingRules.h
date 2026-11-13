@@ -12,12 +12,14 @@ struct Choices
     bool directional=false,proxyDirectional=false;
     bool bounds=false,neuralDepth=false,trained=false;
     std::uint32_t shadow=0,lighting=0;
+    bool diffuseAmbient=false;
     bool operator==(const Choices&) const = default;
 };
 inline Choices Normalize(Choices c)
 {
     // Repair ambiguous older configurations deterministically: preserve
     // shared/comparison and proxy selections rather than the 4A-only flag.
+    if(c.diffuseAmbient&&c.lighting<2)c.lighting=5;
     if(c.lighting!=0)c.shared=true;
     if(c.proxyDepth)c.proxy=true;
     if(c.shared||c.proxy)c.material=false;
@@ -31,19 +33,20 @@ inline Choices Edit(const Choices& before,Choices after)
     // Newly edited choice wins. The Editor retains the previous accepted
     // choices, so switching either direction is unambiguous.
     if(after.material&&!before.material)
-    {after.shared=false;after.proxy=false;after.proxyDepth=false;after.lighting=0;}
+    {after.shared=false;after.proxy=false;after.proxyDepth=false;after.lighting=0;after.diffuseAmbient=false;}
     if(after.shared&&!before.shared)after.material=false;
     if(after.proxy&&!before.proxy)after.material=false;
     if(after.proxyDepth&&!before.proxyDepth){after.proxy=true;after.material=false;}
     if(!after.proxy&&before.proxy)after.proxyDepth=false;
     if(after.lighting!=before.lighting&&after.lighting!=0){after.shared=true;after.material=false;}
-    if(!after.shared&&before.shared)after.lighting=0;
+    if(!after.shared&&before.shared){after.lighting=0;after.diffuseAmbient=false;}
+    if(after.lighting!=before.lighting&&after.lighting<2)after.diffuseAmbient=false;
     // Explicitly leaving neural-only disables its dependants; explicitly
     // enabling a dependant instead selects neural-only in Normalize().
     if(after.shadow!=before.shadow&&after.shadow!=3)
     {
         after.material=false;after.shared=false;after.proxy=false;after.proxyDepth=false;
-        after.directional=false;after.proxyDirectional=false;after.lighting=0;
+        after.directional=false;after.proxyDirectional=false;after.lighting=0;after.diffuseAmbient=false;
     }
     if(after.bounds&&!before.bounds&&!after.trained)after.neuralDepth=false;
     return Normalize(after);

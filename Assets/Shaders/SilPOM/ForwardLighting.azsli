@@ -21,9 +21,31 @@ LightingData EvaluateLighting_SilPom(inout Surface surface, float4 screenPositio
     ApplyDecals_ForwardPass(tileIterator, surface);
 
     LightingData lightingData;
+#if SILPOM_DIFFUSE_ACCESSIBILITY
+    const bool useReliefAccessibility=true;
+    const real reliefAccessibility=surface.diffuseAmbientOcclusion;
+    // Atom finalizes diffuse AO over direct lighting too. Keep the new relief
+    // accessibility out of that common multiplier; external SSAO is unchanged.
+    if(useReliefAccessibility)surface.diffuseAmbientOcclusion=real(1);
+#endif
     InitializeLightingData(surface, viewPositions, lightingData);
+#if SILPOM_DIFFUSE_ACCESSIBILITY
+    surface.diffuseAmbientOcclusion=reliefAccessibility;
+#endif
     ApplyDirectLighting_ForwardPass(surface, lightingData, screenPosition, tileIterator);
+#if SILPOM_DIFFUSE_ACCESSIBILITY
+    const real3 beforeIblDiffuse=lightingData.diffuseLighting;
+#endif
     ApplyIbl_ForwardPass(surface, lightingData);
+#if SILPOM_DIFFUSE_ACCESSIBILITY
+    if(useReliefAccessibility)
+        lightingData.diffuseLighting=beforeIblDiffuse+(lightingData.diffuseLighting-beforeIblDiffuse)*reliefAccessibility;
+#endif
     FinalizeLightingData(surface, lightingData);
+#if SILPOM_DIFFUSE_ACCESSIBILITY
+    // Albedo RGB carries the diffuse-GI multiplier; alpha/specular occlusion
+    // stays on Atom's original path. This occurs after direct finalization.
+    if(useReliefAccessibility)lightingData.diffuseAmbientOcclusion*=reliefAccessibility;
+#endif
     return lightingData;
 }

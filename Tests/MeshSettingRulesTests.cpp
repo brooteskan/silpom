@@ -14,6 +14,7 @@ static void Valid(const Choices& c)
     Require(!(c.material||c.shared||c.proxy||c.directional||c.proxyDirectional)||c.shadow==3,"Neural-only dependency");
     Require(!c.trained||c.neuralDepth,"Trained profiles require neural depth");
     Require(!(c.bounds&&c.neuralDepth),"Bounds and neural depth conflict");
+    Require(!c.diffuseAmbient||(c.lighting>=2&&c.shared&&c.shadow==3),"Ambient requires a hemisphere model");
     Require(Normalize(c)==c,"Normalization must be idempotent");
 }
 int main()
@@ -22,12 +23,13 @@ int main()
     {
         unsigned transitions=0;
         constexpr bool Choices::* switches[]={&Choices::material,&Choices::shared,&Choices::proxy,&Choices::proxyDepth,
-            &Choices::directional,&Choices::proxyDirectional,&Choices::bounds,&Choices::neuralDepth};
-        for(unsigned bits=0;bits<512;++bits)for(unsigned shadow=0;shadow<4;++shadow)for(unsigned light=0;light<5;++light)
+            &Choices::directional,&Choices::proxyDirectional,&Choices::bounds,&Choices::neuralDepth,&Choices::diffuseAmbient};
+        for(unsigned bits=0;bits<1024;++bits)for(unsigned shadow=0;shadow<4;++shadow)for(unsigned light=0;light<6;++light)
         {
             Choices raw;raw.material=bits&1;raw.shared=bits&2;raw.proxy=bits&4;raw.proxyDepth=bits&8;
             raw.directional=bits&16;raw.proxyDirectional=bits&32;raw.bounds=bits&64;raw.neuralDepth=bits&128;raw.trained=bits&256;
             raw.shadow=shadow;raw.lighting=light;
+            raw.diffuseAmbient=bits&512;
             auto before=Normalize(raw);Valid(before);Require(Edit(before,before)==before,"Unrelated edit changed accepted choices");
             for(auto member:switches)
             {
@@ -46,7 +48,7 @@ int main()
                 auto after=before;after.shadow=method;auto result=Edit(before,after);Valid(result);++transitions;
                 Require(result.shadow==method,"Selecting shadow method must win");
             }
-            for(unsigned estimator=0;estimator<5;++estimator)
+            for(unsigned estimator=0;estimator<6;++estimator)
             {
                 auto after=before;after.lighting=estimator;auto result=Edit(before,after);Valid(result);++transitions;
                 Require(result.lighting==estimator,"Selecting lighting estimator must win");

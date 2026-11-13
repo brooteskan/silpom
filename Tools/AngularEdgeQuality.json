@@ -1,0 +1,49 @@
+{
+  "experimental": true,
+  "calibration_mae": 0.056565843522548676,
+  "selected_step": 11400,
+  "test_mae": 0.05686385929584503,
+  "arbitrary_angle_mae": 0.08179188519716263,
+  "subsets": {
+    "one_texel_square": {
+      "receivers": 682,
+      "mae": 0.05875787138938904,
+      "median_edge_width_degrees": 2.133120059967041
+    },
+    "filtered": {
+      "receivers": 1366,
+      "mae": 0.055918239057064056,
+      "median_edge_width_degrees": 6.161372184753418
+    }
+  },
+  "edge_width_radians": [
+    0.0017453292519943296,
+    0.13962634015954636
+  ],
+  "label_contract": {
+    "address": 0,
+    "reach": [
+      0.025,
+      0.1,
+      0.3,
+      0.0
+    ],
+    "samples": 16,
+    "scale": 0.05,
+    "schema": 1,
+    "shared": "1fff6abee2af373dbea3036a43a8475cf0cae9200e695b630c33be997d89b0c0",
+    "source": "178c3b3ed900b0c2f390af8542412979e6f26f6c5eaf4f09d08606499900ba0e",
+    "source_code": "a1d05a329c199bd067d4a55368dad76cbf124fe0dfeba9d0e6b21bef342840e2",
+    "teacher": "2c1b82ba75e3848b9aed587fb3792abade81095455a314c8cd9d8af57b04c75f"
+  },
+  "training_steps": 14000,
+  "source_sha256": "d0dda68bc8784096db88d0684f3b84bc58f12a2b2cda634b29d7b4e08cf98a8d",
+  "training_receivers": 12288,
+  "calibration_receivers": 2048,
+  "test_receivers": 2048,
+  "test_used_after_checkpoint_freeze": true,
+  "reference": "continuous FP64 cells; repeat; four reaches; receiver-footprint fraction, not uncertainty",
+  "formula": "max_k((dot(L,A)-c)/sqrt(max(1-c*c,1e-6))/sigma); sigmoid(-max)",
+  "benchmark_performed": false,
+  "weights_sha256": "f5624b452ec7e54fe31470089c0911dbb213494f7c9ffb9475dddc638cb528f0"
+}

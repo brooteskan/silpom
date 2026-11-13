@@ -1,0 +1,18 @@
+{
+  "ambient_test_receivers": 2048,
+  "ambient_quadrature": 32,
+  "ambient_target": "same 32 cosine directions, relief-top exit; isolates representation error from quadrature error",
+  "ambient_old_mae": 0.01972607895731926,
+  "ambient_new_mae": 0.017425768077373505,
+  "moving_receiver_footprints": 12,
+  "moving_angles": 722,
+  "moving_reaches": [
+    0.3,
+    0
+  ],
+  "moving_old_mae": 0.13496564328670502,
+  "moving_new_mae": 0.12527146935462952,
+  "moving_unknown_labels": 0,
+  "teacher": "continuous FP64 bilinear cells, 16 footprint samples, repeat",
+  "selection": "fixed height-stratified held-out receivers; never used to select weights"
+}

@@ -8,7 +8,10 @@ comparisons use separate forward shaders. Camera depth and nearest-hit recovery
 are independent. No saved tower settings or existing learned bundles are changed.
 
 Live choices: Current routing, Physical per-ray neural, 32-direction neural
-field, 4 neural angular occluders and 8 neural angular occluders. Comparisons
+field, 4 neural angular occluders, 8 neural angular occluders and 4 occluders
+with independent angular edge width (5). The optional diffuse ambient
+accessibility control defaults off. See Tools/AngularEdgesReadme.txt for its
+training, validation and diffuse-only lighting integration. Comparisons
 require Level 4B, neural-only mode and calibrated depth 0.5. They replace local
 direct-light visibility on the canonical wall, including the central column;
 other materials retain current routing. Light enable switches retain their

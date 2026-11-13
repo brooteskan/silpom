@@ -34,7 +34,13 @@ it automatically. Valid approved settings are unchanged. Export to Ctrl-G uses
 the accepted configuration. Raw externally authored runtime data still goes
 through the existing strict validation, rather than silently changing routes.
 
-Tests/MeshSettingRulesTests.cpp checks 174080 transitions, dependency closure,
+Diffuse ambient accessibility requires a directional representation (2-5).
+Enabling it from Current routing or Physical per-ray selects Angular edges (5)
+and its dependencies. Selecting Current/Physical, 4A, disabling 4B or explicitly
+leaving neural-only turns accessibility off. Turning accessibility off keeps
+the selected directional estimator.
+
+Tests/MeshSettingRulesTests.cpp checks 466944 transitions, dependency closure,
 idempotence, both switching directions, and preservation of valid choices.
 Tests/MeshSettingRulesEditorSmoke.py exercises actual Editor property callbacks,
 repair of existing conflicts and the exported runtime component in Ctrl-G.

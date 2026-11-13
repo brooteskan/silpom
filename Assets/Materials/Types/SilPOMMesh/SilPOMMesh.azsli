@@ -587,7 +587,15 @@ Surface EvaluateSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,cons
             SilPomAcquireDirectionalEstimator(materialDerivatives);
         }
 #endif
+#if SILPOM_SHARED_VISIBILITY && SILPOM_DIRECTIONAL_COMPARISON
+        Surface proxySurface=SilPomEvaluateProxySurface(IN,SV,geo,params);
+#if SILPOM_DIFFUSE_ACCESSIBILITY
+        proxySurface.diffuseAmbientOcclusion*=SilPomDirectionalAmbientAccessibility();
+#endif
+        return proxySurface;
+#else
         return SilPomEvaluateProxySurface(IN,SV,geo,params);
+#endif
     }
 #endif
 #if defined(SILPOM_LEARNED_MATERIAL)
@@ -595,6 +603,9 @@ Surface EvaluateSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,cons
 #if SILPOM_SHARED_VISIBILITY && SILPOM_DIRECTIONAL_COMPARISON
     if(o_silpomLightingEstimator!=SilPomLightingEstimator::CurrentRouting && o_silpomLightingEstimator!=SilPomLightingEstimator::PhysicalRayNeural)
         SilPomAcquireDirectionalEstimator(materialDerivatives);
+#if SILPOM_DIFFUSE_ACCESSIBILITY
+    surface.diffuseAmbientOcclusion*=SilPomDirectionalAmbientAccessibility();
+#endif
 #endif
 #else
     Surface surface=EvaluateSurface_StandardPBR(IN,SV,geo,params);

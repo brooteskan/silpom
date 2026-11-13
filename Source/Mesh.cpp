@@ -401,9 +401,11 @@ void MeshConfig::Reflect(AZ::ReflectContext* context)
             ->Value("NeuralOnly",LocalShadowMethod::NeuralOnly);
         sc->Enum<LightingEstimator>()->Value("CurrentRouting",LightingEstimator::CurrentRouting)
             ->Value("PhysicalRayNeural",LightingEstimator::PhysicalRayNeural)->Value("DirectionalField32",LightingEstimator::DirectionalField32)
-            ->Value("AngularOccluders4",LightingEstimator::AngularOccluders4)->Value("AngularOccluders8",LightingEstimator::AngularOccluders8);
-        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(20)->Field("Surface", &MeshConfig::m_surface)
+            ->Value("AngularOccluders4",LightingEstimator::AngularOccluders4)->Value("AngularOccluders8",LightingEstimator::AngularOccluders8)
+            ->Value("AngularEdges4",LightingEstimator::AngularEdges4);
+        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(21)->Field("Surface", &MeshConfig::m_surface)
             ->Field("LightingEstimator", &MeshConfig::m_lightingEstimator)
+            ->Field("DiffuseAccessibility", &MeshConfig::m_diffuseAccessibility)
             ->Field("Materials", &MeshConfig::m_materials)->Field("Profiles", &MeshConfig::m_profiles)
             ->Field("ReliefDepthMultiplier", &MeshConfig::m_reliefDepthMultiplier)
             ->Field("ValidationIterations", &MeshConfig::m_validationIterations)
@@ -586,8 +588,10 @@ void MeshController::OnRenderPipelineChanged(AZ::RPI::RenderPipeline* pipeline, 
 bool MeshController::Prepare()
 {
     auto& c = m_configuration;
-    if(static_cast<AZ::u32>(c.m_lightingEstimator)>4u)
+    if(static_cast<AZ::u32>(c.m_lightingEstimator)>5u)
     {m_status="Unknown lighting estimator; previous complete generation retained";return false;}
+    if(c.m_diffuseAccessibility && static_cast<AZ::u32>(c.m_lightingEstimator)<2u)
+    {m_status="Diffuse accessibility requires a directional field or angular occluder model";return false;}
     if(c.m_lightingEstimator!=LightingEstimator::CurrentRouting && c.m_localShadowMethod!=LocalShadowMethod::NeuralOnly)
     {m_status="Lighting estimator comparison requires neural-only local visibility";return false;}
     if(c.m_lightingEstimator!=LightingEstimator::CurrentRouting && !c.m_useLevelFourShared)
@@ -1057,6 +1061,7 @@ bool MeshController::Prepare()
                     // wall. Other material profiles retain their current route.
                     && Set(material,"surface.lightingEstimator",p.m_neuralModel==4u
                         ?static_cast<AZ::u32>(c.m_lightingEstimator):0u)
+                    && Set(material,"surface.diffuseAccessibility",p.m_neuralModel==4u && c.m_diffuseAccessibility)
                     && Set(material,"surface.neuralDirectionalVisibility",c.m_neuralDirectionalVisibility)
                     && Set(material,"surface.proxyDirectionalResponse",c.m_proxyDirectionalResponse)
                     && Set(material,"surface.neuralShadowConfidence",c.m_neuralShadowConfidence)

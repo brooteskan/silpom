@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: MIT
 function GetMaterialPropertyDependencies()
     return {"silpomReuseDepthHit", "silpomUseDepthHeightBounds", "silpomUseNeuralSeed", "silpomUseNeuralCache",
-        "silpomTowerLod", "isTransparent", "isTintedTransparent", "silpomNeuralVisibilityOnly", "silpomLearnedMaterial", "silpomProxyLod", "silpomSharedVisibility", "silpomProxyDepth", "silpomLightingComparison"}
+        "silpomTowerLod", "isTransparent", "isTintedTransparent", "silpomNeuralVisibilityOnly", "silpomLearnedMaterial", "silpomProxyLod", "silpomSharedVisibility", "silpomProxyDepth", "silpomLightingComparison", "silpomDiffuseAccessibility", "silpomAngularEdges"}
 end
 
 function Process(context)
@@ -29,16 +29,24 @@ function Process(context)
     local proxy=context:GetMaterialPropertyValue_bool("silpomProxyLod")
     local visibilityOnly=context:GetMaterialPropertyValue_bool("silpomNeuralVisibilityOnly")
     local comparison=context:GetMaterialPropertyValue_bool("silpomLightingComparison")
+    local ambient=context:GetMaterialPropertyValue_bool("silpomDiffuseAccessibility")
+    local angular=context:GetMaterialPropertyValue_bool("silpomAngularEdges")
     context:GetShaderByTag("silpom_hit_depth_proxy"):SetEnabled(useHit and useLod and proxy and not depth)
     context:GetShaderByTag("silpom_hit_depth_learned_proxy"):SetEnabled(useHit and useLod and proxy and depth)
     context:GetShaderByTag("silpom_hit_forward_level_five"):SetEnabled(useHit and visibilityOnly and proxy and not shared)
     context:GetShaderByTag("silpom_hit_forward_shared_proxy"):SetEnabled(useHit and visibilityOnly and proxy and shared and not comparison)
-    context:GetShaderByTag("silpom_hit_forward_shared_proxy_compare"):SetEnabled(useHit and visibilityOnly and proxy and shared and comparison)
+    context:GetShaderByTag("silpom_hit_forward_shared_proxy_compare"):SetEnabled(useHit and visibilityOnly and proxy and shared and comparison and not ambient and not angular)
+    context:GetShaderByTag("silpom_hit_forward_shared_proxy_ambient"):SetEnabled(useHit and visibilityOnly and proxy and shared and comparison and ambient and not angular)
     context:GetShaderByTag("silpom_hit_forward"):SetEnabled(useHit and not visibilityOnly and not decoded and not proxy)
     context:GetShaderByTag("silpom_hit_forward_neural_only"):SetEnabled(useHit and visibilityOnly and not decoded and not proxy)
     context:GetShaderByTag("silpom_hit_forward_learned_material"):SetEnabled(useHit and visibilityOnly and decoded and not proxy and not shared)
     context:GetShaderByTag("silpom_hit_forward_shared"):SetEnabled(useHit and visibilityOnly and decoded and not proxy and shared and not comparison)
-    context:GetShaderByTag("silpom_hit_forward_shared_compare"):SetEnabled(useHit and visibilityOnly and decoded and not proxy and shared and comparison)
+    context:GetShaderByTag("silpom_hit_forward_shared_compare"):SetEnabled(useHit and visibilityOnly and decoded and not proxy and shared and comparison and not ambient and not angular)
+    context:GetShaderByTag("silpom_hit_forward_shared_ambient"):SetEnabled(useHit and visibilityOnly and decoded and not proxy and shared and comparison and ambient and not angular)
+    context:GetShaderByTag("silpom_hit_forward_angular"):SetEnabled(useHit and visibilityOnly and decoded and not proxy and shared and angular and not ambient)
+    context:GetShaderByTag("silpom_hit_forward_angular_proxy"):SetEnabled(useHit and visibilityOnly and proxy and shared and angular and not ambient)
+    context:GetShaderByTag("silpom_hit_forward_angular_ambient"):SetEnabled(useHit and visibilityOnly and decoded and not proxy and shared and angular and ambient)
+    context:GetShaderByTag("silpom_hit_forward_angular_proxy_ambient"):SetEnabled(useHit and visibilityOnly and proxy and shared and angular and ambient)
     if useHit then
         context:GetShaderByTag("depth_customZ"):SetEnabled(false)
         context:GetShaderByTag("forward_customZ"):SetEnabled(false)

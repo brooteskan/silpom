@@ -23,7 +23,7 @@ AZ_TYPE_INFO_SPECIALIZE(SpiralLightMode, "{375431D9-B6A5-49DD-8663-268A00CF6709}
 enum class LocalShadowMethod : AZ::u32 { Baseline=0, Gather=1, Neural=2, NeuralOnly=3 };
 AZ_TYPE_INFO_SPECIALIZE(LocalShadowMethod, "{8C21E33E-53B1-45A9-9554-57656F558F10}");
 // Lighting only. Zero preserves the approved near/shared/proxy routing.
-enum class LightingEstimator : AZ::u32 { CurrentRouting=0, PhysicalRayNeural=1, DirectionalField32=2, AngularOccluders4=3, AngularOccluders8=4 };
+enum class LightingEstimator : AZ::u32 { CurrentRouting=0, PhysicalRayNeural=1, DirectionalField32=2, AngularOccluders4=3, AngularOccluders8=4, AngularEdges4=5 };
 AZ_TYPE_INFO_SPECIALIZE(LightingEstimator, "{4BDDBA90-2C99-4DD0-99A2-40F22F5D8B82}");
 struct MeshMaterialBinding
 {
@@ -84,6 +84,7 @@ public:
     AZ::u32 m_spiralLightShadowSteps = 18;
     LocalShadowMethod m_localShadowMethod = LocalShadowMethod::Baseline;
     LightingEstimator m_lightingEstimator = LightingEstimator::CurrentRouting;
+    bool m_diffuseAccessibility = false;
     bool m_neuralDirectionalVisibility = false;
     bool m_proxyDirectionalResponse = false;
     float m_neuralShadowConfidence = .995f;

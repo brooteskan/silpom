@@ -6,15 +6,17 @@ import hashlib,json,re,subprocess,sys,tempfile
 from pathlib import Path
 import numpy as np
 ROOT=Path(__file__).resolve().parents[1]
-KINDS={2:'Field',3:'Caps4',4:'Caps8'}
+KINDS={2:'Field',3:'Caps4',4:'Caps8',5:'AngularEdges'}
 
 def read_weights():
     text=(ROOT/'Assets/Shaders/SilPOM/DirectionalEstimatorWeights.azsli').read_text()
     weights={}
     for mode,name in KINDS.items():
+        source=(ROOT/'Assets/Shaders/SilPOM/AngularEdgeWeights.azsli').read_text() if mode==5 else text
+        prefix='SilPomAngularEdges' if mode==5 else 'SilPomDirectional'+name
         result=[]
         for suffix,shape in (('W0',(32,20)),('B0',(32,)),('W1',(-1,32)),('B1',(-1,))):
-            body=re.search(r'SilPomDirectional'+name+suffix+r'\[\d+\] = \{([^}]+)',text).group(1)
+            body=re.search(prefix+suffix+r'\[\d+\] = \{([^}]+)',source).group(1)
             result.append(np.array([float(v.rstrip('f')) for v in body.replace('\n','').split(',') if v.strip()],np.float32).reshape(shape))
         weights[mode]=result
     return weights
@@ -35,18 +37,38 @@ def predict(x,light,reach,mode,weights):
         a=field[row,lo,nearest];b=field[row,hi,nearest]
         value=a+(b-a)*blend
     else:
-        count=4 if mode==3 else 8
+        count=4 if mode in (3,5) else 8
         axes=raw[:,:count*3].reshape(-1,count,3)
         axes=axes/np.maximum(np.linalg.norm(axes,axis=2,keepdims=True),1e-6)
-        cosine=np.sort(sigmoid(raw[:,count*3:].reshape(-1,count,4)),axis=-1)[:,:,::-1]
+        cosine=np.sort(sigmoid(raw[:,count*3:count*7].reshape(-1,count,4)),axis=-1)[:,:,::-1]
         a=cosine[row,:,lo];b=cosine[row,:,hi]
         threshold=a+(b-a)*blend[:,None]
-        margin=(np.einsum('nkd,nd->nk',axes,light)-threshold).max(axis=1)
-        value=sigmoid(-32*margin)
+        dot=np.einsum('nkd,nd->nk',axes,light)
+        if mode==5:
+            width=np.radians(.1)+np.radians(7.9)*sigmoid(raw[:,28:32])
+            margin=((np.clip(dot,-1,1)-threshold)/np.sqrt(np.maximum(1-threshold*threshold,1e-6))/width).max(axis=1)
+            value=sigmoid(-margin)
+        else:
+            margin=(dot-threshold).max(axis=1);value=sigmoid(-32*margin)
     return np.where(light[:,2]<=0,0,value).astype(np.float32)
 
 def main():
+    # Independent circular-cap oracles in angular units. In particular, a
+    # five-degree blocker can now be opaque without broadening its radius.
+    sigma=np.radians(.25)
+    for radius in (5,10,20,30):
+        alpha=np.radians(radius);old_center=1/(1+np.exp(32*(1-np.cos(alpha))))
+        center=1/(1+np.exp(np.tan(alpha/2)/sigma))
+        assert center<.001
+        if radius==5:assert old_center>.45
+        inner=np.arccos(np.cos(alpha)+sigma*np.sin(alpha)*np.log(9))
+        outer=np.arccos(np.cos(alpha)-sigma*np.sin(alpha)*np.log(9))
+        assert abs((outer-inner)/(2*sigma*np.log(9))-1)<.01,'Angular edge width depends on cap radius'
     fixture=json.loads((ROOT/'Tests/Reference/DirectionalEstimator.json').read_text())
+    angular=json.loads((ROOT/'Tests/Reference/AngularEdges.json').read_text())
+    assert hashlib.sha256((ROOT/'Assets/Shaders/SilPOM/AngularEdgeWeights.azsli').read_bytes()).hexdigest()==angular['weights_sha256']
+    np.testing.assert_array_equal(fixture['x'],angular['x'])
+    fixture['expected']['5']=angular['expected']
     assert hashlib.sha256((ROOT/'Assets/Shaders/SilPOM/DirectionalEstimatorWeights.azsli').read_bytes()).hexdigest()==fixture['weights_sha256'],'Frozen neural weights changed'
     weights=read_weights();x=np.asarray(fixture['x'],np.float32);light=np.asarray(fixture['light'],np.float32)
     reach=np.asarray(fixture['reach'],np.float32)
@@ -59,7 +81,7 @@ def main():
             assert np.all(current<=previous+2e-6),'Reach must be monotone'
             assert np.all((current>=0)&(current<=1))
             previous=current
-    print('Three shipping neural heads match frozen Torch fixtures; reach monotonicity and hemisphere bounds passed.')
+    print('Four shipping neural heads match frozen Torch fixtures; reach monotonicity and hemisphere bounds passed.')
     if len(sys.argv)>1:
         binary=Path(sys.argv[1]);queries=[];expected=[]
         for mode in KINDS:
@@ -68,7 +90,22 @@ def main():
                     r=np.full(len(x),band,np.float32)
                     queries.append(np.column_stack((x,light,r,np.full(len(x),steps),np.full(len(x),mode))).astype(np.float32))
                     expected.append(np.ones(len(x),np.float32) if not steps else predict(x,light,r,mode,weights))
+            directions=np.asarray(fixture['directions'],np.float32)
+            ambient=predict(np.repeat(x,32,axis=0),np.tile(directions,(len(x),1)),np.zeros(len(x)*32,np.float32),mode,weights).reshape(len(x),32).mean(1)
+            queries.append(np.column_stack((x,light,np.zeros(len(x)),np.full(len(x),-1),np.full(len(x),mode))).astype(np.float32))
+            expected.append(ambient)
         with tempfile.TemporaryDirectory(prefix='silpom-directional-') as folder:
+            for radius in (5,10,20,30):
+                for offset in (-2,-1,0,1,2):
+                    for duplicates in (False,True):
+                        alpha=np.radians(radius);theta=alpha+offset*sigma
+                        light=np.array([np.sin(theta),0,np.cos(theta)],np.float32)
+                        axes=np.array([[0,0,1],[0,0,-1],[0,0,-1],[0,0,-1]],np.float32)
+                        thresholds=np.array([np.cos(alpha),.99999,.99999,.99999],np.float32)
+                        if duplicates:axes[:]=axes[0];thresholds[:]=thresholds[0]
+                        xx=np.r_[axes.ravel(),thresholds,np.full(4,sigma)].astype(np.float32)
+                        queries.append(np.r_[xx,light,0,16,-5].astype(np.float32)[None])
+                        expected.append(np.array([1/(1+np.exp((np.cos(theta)-np.cos(alpha))/np.sin(alpha)/sigma))],np.float32))
             folder=Path(folder);q=folder/'requests.f32';e=folder/'expected.f32'
             np.concatenate(queries).tofile(q);np.concatenate(expected).tofile(e)
             for sm in ('6_2','6_7'):
