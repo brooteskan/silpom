@@ -72,6 +72,8 @@
                         }
                     },
                     {"name":"learnedMaterial","type":"Bool","defaultValue":false},
+                    {"name":"neuralDirectionalVisibility","type":"Bool","defaultValue":false,"connection":{"type":"ShaderInput","name":"m_silpomNeuralDirectionalVisibility"}},
+                    {"name":"proxyDirectionalResponse","type":"Bool","defaultValue":false,"connection":{"type":"ShaderInput","name":"m_silpomProxyDirectionalResponse"}},
                     {"name":"sharedVisibility","type":"Bool","defaultValue":false},
                     {"name":"materialFeatures2","type":"Image","connection":{"type":"ShaderInput","name":"m_silpomMaterialFeatures2"}},
                     {"name":"materialUseBaseColor","type":"Bool","defaultValue":true,"connection":{"type":"ShaderInput","name":"m_silpomMaterialUseBaseColor"}},
@@ -439,6 +441,7 @@
                     {"name":"proxyLodEnabled","type":"Bool","connection":{"type":"ShaderInput","name":"m_silpomProxyLodEnabled"},"defaultValue":false},
                     {"name":"proxyDepthEnabled","type":"Bool","defaultValue":false},
                     {"name":"featureClampSampler","type":"SamplerState","defaultValue":{"m_filterMin":"Linear","m_filterMag":"Linear","m_filterMip":"Linear","m_addressU":"Clamp","m_addressV":"Clamp","m_addressW":"Clamp","m_anisotropyMax":1},"connection":{"type":"ShaderInput","name":"m_silpomFeatureClampSampler"}},
+                    {"name":"appearanceColorSampler","type":"SamplerState","defaultValue":{"m_filterMin":"Linear","m_filterMag":"Linear","m_filterMip":"Linear","m_addressU":"Clamp","m_addressV":"Clamp","m_addressW":"Clamp","m_anisotropyMax":8,"m_anisotropyEnable":1},"connection":{"type":"ShaderInput","name":"m_silpomAppearanceColorSampler"}},
                     {"name":"proxyLodBuffer","type":"UInt","connection":{"type":"ShaderInput","name":"m_silpomProxyLodBuffer"},"defaultValue":0},
                     {"name":"appearanceFeatures0","type":"Image","connection":{"type":"ShaderInput","name":"m_silpomAppearanceFeatures0"}},
                     {"name":"appearanceFeatures1","type":"Image","connection":{"type":"ShaderInput","name":"m_silpomAppearanceFeatures1"}},

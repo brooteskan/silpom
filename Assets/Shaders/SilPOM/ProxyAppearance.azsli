@@ -29,9 +29,9 @@ void SilPomAcquireAppearance(float2 uv,float4 derivatives,MaterialParameters par
     silpomAppearanceT=silpomLitFace.du/u;
     silpomAppearanceB=normalize(cross(silpomLitFace.normal,silpomAppearanceT));
 }
-float2 SilPomAppearanceLightGain(float3 light,float reach,uint steps,MaterialParameters params)
+float2 SilPomAppearanceLightGain(float3 light,float reach,bool enabled,MaterialParameters params)
 {
-    if(steps==0u)return float2(1,1);
+    [branch] if(!enabled)return float2(1,1);
     float3 direction=normalize(float3(dot(light,silpomAppearanceT),dot(light,silpomAppearanceB),dot(light,silpomLitFace.normal)));
     if(direction.z<=0.0f)return float2(0,0);
     float x[22];SP_UNROLL for(uint i=0;i<8;++i)x[i]=silpomAppearanceFeatures[i];
@@ -43,11 +43,16 @@ float2 SilPomAppearanceLightGain(float3 light,float reach,uint steps,MaterialPar
 Surface SilPomEvaluateProxySurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,MaterialParameters params)
 {
     uint width,height;PassSrg::m_silpomHitBuffer.GetDimensions(width,height);
-    float4 clipU=mul(ViewSrg::m_viewProjectionMatrix,float4(mul(silpomLitRotation,silpomLitFace.du),0));
-    float4 clipV=mul(ViewSrg::m_viewProjectionMatrix,float4(mul(silpomLitRotation,silpomLitFace.dv),0));
-    float4 derivatives=SilPomProxyUvDerivatives(clipU,clipV,IN.ndc,IN.position.w,float2(width,height));
-    SilPomAcquireAppearance(geo.uvs[0],derivatives,params);
-    float3 V=normalize(mul(transpose(silpomLitRotation),ViewSrg::m_worldPosition.xyz-geo.positionWS));
+    const float3 towardCamera=normalize(ViewSrg::m_worldPosition.xyz-geo.positionWS);
+    const float3 worldDu=mul(silpomLitRotation,silpomLitFace.du),worldDv=mul(silpomLitRotation,silpomLitFace.dv);
+    SilPomProxyQuery query=SilPomRestoreProxyQuery(geo.positionWS,towardCamera,silpomLitOriginWS,
+        worldDu,worldDv,mul(silpomLitRotation,silpomLitFace.normal),silpomLitFace.uv0);
+    float4 queryClip=mul(ViewSrg::m_viewProjectionMatrix,float4(query.position,1));
+    float4 clipU=mul(ViewSrg::m_viewProjectionMatrix,float4(worldDu,0));
+    float4 clipV=mul(ViewSrg::m_viewProjectionMatrix,float4(worldDv,0));
+    float4 derivatives=SilPomProxyUvDerivatives(clipU,clipV,IN.ndc,rcp(queryClip.w),float2(width,height));
+    SilPomAcquireAppearance(query.uv,derivatives,params);
+    float3 V=normalize(mul(transpose(silpomLitRotation),ViewSrg::m_worldPosition.xyz-query.position));
     silpomAppearanceView=float3(dot(V,silpomAppearanceT),dot(V,silpomAppearanceB),dot(V,silpomLitFace.normal));
     float x[18];SP_UNROLL for(uint i=0;i<8;++i)x[i]=silpomAppearanceFeatures[i];
     SP_UNROLL for(uint i=0;i<3;++i)x[8+i]=silpomAppearanceView[i];
@@ -59,7 +64,9 @@ Surface SilPomEvaluateProxySurface(VsOutput IN,VsSystemValues SV,PixelGeometryDa
     surface.lightingChannels=GetLightingChannelMask(SV);
     surface.normal=AdjustBackFaceNormal(mul(silpomLitRotation,silpomAppearanceT*normal.x+silpomAppearanceB*normal.y+silpomLitFace.normal*normal.z),geo.isFrontFace);
     real3 color=real3(1,1,1);
-    if(o_baseColor_useTexture)color=LinearSrgb_To_AcesCg(real3(GetMaterialTexture(params.m_baseColorMap).SampleGrad(GetMaterialTextureSampler(),geo.uvs[0],derivatives.xy,derivatives.zw).rgb));
+    // The teacher's ordinary base-color factor also uses proxy-plane UV.
+    // Resolved geo.positionWS / geo.uvs stay available to lights and decals.
+    if(o_baseColor_useTexture)color=LinearSrgb_To_AcesCg(real3(GetMaterialTexture(params.m_baseColorMap).SampleGrad(GetMaterialTextureSampler(params.m_silpomAppearanceColorSampler),query.uv,derivatives.xy,derivatives.zw).rgb));
     color=BlendBaseColor(color,real3(params.m_baseColor.rgb),real(params.m_baseColorFactor),o_baseColorTextureBlendMode,o_baseColor_useTexture);
 #if ENABLE_VERTEX_COLOR
     if(o_useVertexColor&&o_color0_isBound)color=BlendBaseColor(real3(IN.color0.rgb),color,real(params.m_vertexColorFactor),o_vertexColorBlendMode,true);

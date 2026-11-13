@@ -79,8 +79,10 @@ External directional shadows, the existing dynamic-light/IBL plumbing and
 runtime decal compositing are retained. Local appearance corrections apply
 to the existing directional-light and spiral-light hooks. Punctual/area light
 paths still use the decoded PBR normal and roughness through normal engine
-lighting. A local shadow schedule of zero bypasses the directional head and
-uses unit gain. Spiral brightness, window layout and light direction stay
+lighting. The separate Learned proxy directional response control enables
+the joint learned V*BRDF correction independently of legacy shadow steps.
+It defaults off (unit gain). Spiral response retains its own schedule.
+Spiral brightness, window layout and light direction stay
 runtime controls. Height-filtered decals may still read the source height;
 those optional decal reads are separate from removed intersection/gradient
 and Level 3 descriptor work.

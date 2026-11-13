@@ -88,7 +88,7 @@ int main(int argc,char** argv)
 
         constexpr UINT count=4096;
         std::mt19937 rng(5714);std::uniform_real_distribution<float> uniform(-1,1);
-        struct Query {float x[23];};struct Result {float value[12];};
+        struct Query {float x[23];};struct Result {float value[23];};
         std::vector<Query> queries(count);for(auto& q:queries)for(float& x:q.x)x=uniform(rng);
         queries[0].x[0]=queries[0].x[1]=0;
         std::vector<float> weights(SilPOM::DepthCodec::Weights);for(float& w:weights)w=uniform(rng)*.15f;
@@ -128,6 +128,24 @@ int main(int argc,char** argv)
                 const float e=std::abs(extra[c]-values[i].value[9+c]);maxError=std::max(maxError,e);
                 if(!std::isfinite(values[i].value[9+c])||e>4e-5f)throw std::runtime_error("4B/5B CPU/GPU mismatch");
             }
+            const auto& q=queries[i].x;
+            const double vx=q[3],vy=q[4],vz=.35+.65*std::abs(q[5]),length=std::sqrt(vx*vx+vy*vy+vz*vz);
+            const double V[]={vx/length,vy/length,vz/length},scale=.5+std::abs(q[6]);
+            const double h=.05*(extra[1]-.05),t=h*.97/V[2];
+            const double base[]={.3+2*q[0]+.4*q[1],-.2+1.7*q[1],.5};
+            const double position[]={base[0]+V[0]*t/scale,base[1]+V[1]*t/scale,base[2]+V[2]*t/scale};
+            // Independent inverse of the 2D UV metric, rather than another
+            // invocation of the runtime solve. Also exercise lateral/grazing
+            // views, nonorthogonal UV axes and uniform object scale.
+            const double deltaU=(V[0]*t-.2*h)/scale,deltaV=(V[1]*t-.1*h)/scale;
+            const double hitV=q[1]+deltaV/1.7,hitU=q[0]+(deltaU-.4*deltaV/1.7)/2;
+            const double expectedGeometry[]={q[0],q[1],position[0],position[1],position[2],
+                std::sin(q[0]*17.)+std::cos(q[1]*13.),hitU,hitV,position[2]/(position[2]+2)};
+            for(UINT c=0;c<9;++c)
+                if(!std::isfinite(values[i].value[12+c])||std::abs(expectedGeometry[c]-values[i].value[12+c])>8e-6)
+                    throw std::runtime_error("Depth/UV or frozen appearance query differs from independent plane/ridge reference");
+            if(values[i].value[21]!=1.f||std::abs(values[i].value[22]-expected[3])>4e-5f)
+                throw std::runtime_error("Unit and learned directional response comparison failed");
             const double u=queries[i].x[0],v=queries[i].x[1],epsilon=1e-4;
             // Independently intersect the projected plane at displaced screen
             // coordinates, then take a finite difference in UV.

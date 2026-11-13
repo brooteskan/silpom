@@ -14,6 +14,7 @@ LEVEL=PROJECT/'Levels/VueLiveLink/VueLiveLink.prefab'
 OUTPUT=Path(os.environ['TG_SILPOM_LEVEL_FIVE_TEST_OUTPUT']);OUTPUT.mkdir(parents=True,exist_ok=True)
 DEPTH='Relief depth multiplier';METHOD='Local shadow method';MATERIAL='Level 4A wall material (experimental)'
 SHARED='Level 4B shared material / visibility (experimental)';LEARNED_DEPTH='Level 5B bounded proxy depth (experimental)'
+NEAR_SUN='Neural directional visibility (off = cheaper)';PROXY_SUN='Learned proxy directional response (off = cheaper)';STEPS='Relief shadow steps'
 LEAVE_OPEN=os.environ.get('TG_SILPOM_LEVEL_FIVE_LEAVE_OPEN')=='1'
 BRIGHT='Spiral light master brightness';NORMAL='Height-derived normals (off = cheaper)'
 result={'passed':False,'benchmark_performed':False,'stage':'startup'}
@@ -158,6 +159,78 @@ def proxy_image_changes(first,second,hit_path):
         changed+=any(abs(av[offset+c]-bv[offset+c])>2 for c in range(3))
     return changed
 
+def attachment_data(path):
+    raw=path.read_bytes();assert raw[:4]==b'DDS ' and raw[84:88]==b'DX10'
+    width,height,format=struct.unpack_from('<I',raw,16)[0],struct.unpack_from('<I',raw,12)[0],struct.unpack_from('<I',raw,128)[0]
+    if format in (28,29,87,91):stride=4;decode=lambda data,offset:tuple(x/255 for x in data[offset:offset+4])
+    elif format==24:
+        stride=4
+        def decode(data,offset):
+            v=struct.unpack_from('<I',data,offset)[0];return ((v&1023)/1023,((v>>10)&1023)/1023,((v>>20)&1023)/1023,(v>>30)/3)
+    elif format==10:stride=8;decode=lambda data,offset:struct.unpack_from('<4e',data,offset)
+    elif format==2:stride=16;decode=lambda data,offset:struct.unpack_from('<4f',data,offset)
+    elif format==34:stride=4;decode=lambda data,offset:struct.unpack_from('<2e',data,offset)
+    elif format==35:stride=4;decode=lambda data,offset:tuple(v/65535 for v in struct.unpack_from('<2H',data,offset))
+    elif format==37:stride=4;decode=lambda data,offset:tuple(max(-1,v/32767) for v in struct.unpack_from('<2h',data,offset))
+    else:raise AssertionError('Unsupported attachment format '+str(format))
+    return raw[148:],width,height,format,stride,decode
+
+def compare_attachment(first,second,first_hit,second_hit,proxy=True):
+    a,w,h,fmt,stride,decode=attachment_data(first);b,ww,hh,ff,ss,_=attachment_data(second);assert (w,h,fmt,stride)==(ww,hh,ff,ss)
+    aa,bb=records(first_hit),records(second_hit);assert len(aa)==len(bb)==w*h
+    errors=[];changed=0
+    for i,(p,q) in enumerate(zip(aa,bb)):
+        valid=lambda v:(v[3]&3)==1 and ((v[2]&0xc0000000)==0x80000000 if proxy else bool(v[2]&0x40000000))
+        if not valid(p) or not valid(q):continue
+        x,y=decode(a,i*stride),decode(b,i*stride);delta=[abs(v-u) for v,u in zip(x,y)]
+        assert all(math.isfinite(v) for v in delta);errors.extend(delta);changed+=max(delta)>1e-5
+    assert errors,'No common visible samples for attachment comparison'
+    ordered=sorted(errors)
+    return {'samples':len(errors)//len(x),'format':fmt,'mean_abs':sum(errors)/len(errors),
+        'p99_abs':ordered[min(len(ordered)-1,int(len(ordered)*.99))],'max_abs':ordered[-1],'changed_pixels':changed}
+
+def appearance_snapshot(name):
+    general.idle_wait_frames(15)
+    capture_attachment(OUTPUT/(name+'-hit.dds'),'Hit')
+    for slot in ('AlbedoOutput','NormalOutput','SpecularF0Output'):
+        capture_attachment(OUTPUT/(name+'-'+slot+'.dds'),slot)
+
+def verify_appearance_coordinates(pose):
+    result['appearance_coordinate_motion']=[]
+    # Fixed rays at several lateral positions. Albedo, effective normal and
+    # roughness must keep the frozen 5A query convention while depth changes.
+    for i,lateral in enumerate((-.4,0,.4)):
+        view((60,lateral,12),(-1,0,0),pose)
+        set_value(LEARNED_DEPTH,False);appearance_snapshot('query-a-'+str(i))
+        set_value(LEARNED_DEPTH,True);appearance_snapshot('query-b-'+str(i))
+        a,b='query-a-'+str(i),'query-b-'+str(i);row={'lateral_metres':lateral}
+        for slot in ('AlbedoOutput','NormalOutput','SpecularF0Output'):
+            value=compare_attachment(OUTPUT/(a+'-'+slot+'.dds'),OUTPUT/(b+'-'+slot+'.dds'),OUTPUT/(a+'-hit.dds'),OUTPUT/(b+'-hit.dds'))
+            assert value['mean_abs']<.0002 and value['p99_abs']<.004,(slot,value)
+            row[slot]=value
+        result['appearance_coordinate_motion'].append(row);flush()
+
+def verify_directional_heads(pose):
+    saved_brightness=float(editor.EditorComponentAPIBus(bus.Broadcast,'GetComponentProperty',component,properties[BRIGHT]).GetValue())
+    set_value(BRIGHT,0.0);set_value(PROXY_SUN,False);set_value(NEAR_SUN,False)
+    for label,eye,proxy in ((PROXY_SUN,(60,0,12),True),(NEAR_SUN,(8,0,12),False)):
+        view(eye,(-1,0,0),pose);general.idle_wait_frames(20)
+        stem='proxy-directional' if proxy else 'shared-directional'
+        capture_attachment(OUTPUT/(stem+'-unit-hit.dds'),'Hit');capture_attachment(OUTPUT/(stem+'-unit.dds'),'DiffuseOutput')
+        set_value(label,True);general.idle_wait_frames(20)
+        capture_attachment(OUTPUT/(stem+'-learned-hit.dds'),'Hit');capture_attachment(OUTPUT/(stem+'-learned.dds'),'DiffuseOutput')
+        assert hit_signature(OUTPUT/(stem+'-unit-hit.dds'))==hit_signature(OUTPUT/(stem+'-learned-hit.dds')),'Head enable changed geometry'
+        stats=compare_attachment(OUTPUT/(stem+'-unit.dds'),OUTPUT/(stem+'-learned.dds'),OUTPUT/(stem+'-unit-hit.dds'),OUTPUT/(stem+'-learned-hit.dds'),proxy)
+        set_value(label,False);general.idle_wait_frames(20)
+        capture_attachment(OUTPUT/(stem+'-repeat-hit.dds'),'Hit');capture_attachment(OUTPUT/(stem+'-repeat.dds'),'DiffuseOutput')
+        noise=compare_attachment(OUTPUT/(stem+'-unit.dds'),OUTPUT/(stem+'-repeat.dds'),OUTPUT/(stem+'-unit-hit.dds'),OUTPUT/(stem+'-repeat-hit.dds'),proxy)
+        assert stats['changed_pixels']>=max(1,int(stats['samples']*.01)),('No substantial learned contribution',stem,stats)
+        assert stats['mean_abs']>max(1e-6,noise['mean_abs']*3),('Response is not distinguishable from unit-repeat noise',stem,stats,noise)
+        result[stem]={'learned_minus_unit':stats,'unit_repeat_noise':noise};flush();set_value(label,True)
+    assert editor.EditorComponentAPIBus(bus.Broadcast,'GetComponentProperty',component,properties[STEPS]).GetValue()==0
+    result['directional_heads_with_zero_legacy_steps']=True
+    set_value(BRIGHT,saved_brightness)
+
 def proxy_state():
     v=silpom.SilPomMeshRequestBus(bus.Event,'GetProxyLodState',tower)
     assert v.z<=.7501
@@ -189,11 +262,11 @@ def main():
     types=editor.EditorComponentAPIBus(bus.Broadcast,'FindComponentTypeIdsByEntityType',['SilPOM Mesh'],entity.EntityType().Game)
     found=editor.EditorComponentAPIBus(bus.Broadcast,'GetComponentOfType',tower,types[0]);assert found.IsSuccess();component=found.GetValue()
     available=editor.EditorComponentAPIBus(bus.Broadcast,'BuildComponentPropertyList',component)
-    for label in (DEPTH,METHOD,MATERIAL,SHARED,PROXY,LEARNED_DEPTH,BUDGET,BRIGHT,NORMAL):
+    for label in (DEPTH,METHOD,MATERIAL,SHARED,PROXY,LEARNED_DEPTH,BUDGET,BRIGHT,NORMAL,STEPS,NEAR_SUN,PROXY_SUN):
         properties[label]=next(p for p in available if p.endswith('|'+label))
         v=editor.EditorComponentAPIBus(bus.Broadcast,'GetComponentProperty',component,properties[label]);assert v.IsSuccess();originals[label]=v.GetValue()
     result['original_settings']=originals.copy();flush()
-    for label,value in ((LEARNED_DEPTH,False),(PROXY,False),(MATERIAL,False),(SHARED,False),(DEPTH,.5),(METHOD,3),(NORMAL,True),(BUDGET,.75)):
+    for label,value in ((LEARNED_DEPTH,False),(PROXY,False),(MATERIAL,False),(SHARED,False),(DEPTH,.5),(METHOD,3),(NORMAL,True),(BUDGET,.75),(STEPS,0),(NEAR_SUN,False),(PROXY_SUN,False)):
         v=editor.EditorComponentAPIBus(bus.Broadcast,'SetComponentProperty',component,properties[label],value);assert v.IsSuccess()
     ready()
     for key,value in (('ed_keepEditorActive',1),('ed_backgroundUpdatePeriod',-1),('r_displayInfo',0),('r_antiAliasing',0)):
@@ -229,6 +302,9 @@ def main():
     set_value(SHARED,True);general.idle_wait_frames(30)
     verify_proxy_capture('far-combined')
     result['combined_modes_ready']=True
+    result['stage']='appearance coordinate motion';flush();verify_appearance_coordinates(pose)
+    result['stage']='directional contribution';flush();verify_directional_heads(pose)
+    view((60,0,12),(-1,0,0),pose);general.idle_wait_frames(20)
     result['stage']='resize';flush();general.set_viewport_size(1280,800);general.update_viewport();general.idle_wait_frames(30)
     high=proxy_state();assert high[0]<=first[0],(first,high)
     result['resize']={'small':first,'large':high}

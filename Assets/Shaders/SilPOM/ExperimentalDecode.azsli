@@ -29,3 +29,16 @@ float SilPomProxyRayOffset(float heightFraction,float scale,float reference,floa
 {
     return scale*(saturate(heightFraction)-reference)*normalDirection/normalView;
 }
+struct SilPomProxyPlaneHit {float3 position;float2 uv;};
+SilPomProxyPlaneHit SilPomResolveProxyPlane(float2 uv,float3 origin,float2 uv0,float3 du,float3 dv,float3 normal,
+    float3 D,float3 V,float heightFraction,float scale,float reference,float objectScale)
+{
+    float h=scale*(saturate(heightFraction)-reference);
+    float t=SilPomProxyRayOffset(heightFraction,scale,reference,dot(normal,D),dot(normal,V));
+    float3 delta=(V*t-D*h)/objectScale;
+    float invMetric=rcp(dot(du,cross(dv,normal)));
+    SilPomProxyPlaneHit hit;
+    hit.uv=uv+float2(dot(delta,cross(dv,normal)),dot(du,cross(delta,normal)))*invMetric;
+    hit.position=origin+du*(uv.x-uv0.x)+dv*(uv.y-uv0.y)+V*(t/objectScale);
+    return hit;
+}

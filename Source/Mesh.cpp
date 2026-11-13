@@ -398,7 +398,7 @@ void MeshConfig::Reflect(AZ::ReflectContext* context)
         sc->Enum<LocalShadowMethod>()->Value("Baseline",LocalShadowMethod::Baseline)
             ->Value("Gather",LocalShadowMethod::Gather)->Value("Neural",LocalShadowMethod::Neural)
             ->Value("NeuralOnly",LocalShadowMethod::NeuralOnly);
-        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(18)->Field("Surface", &MeshConfig::m_surface)
+        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(19)->Field("Surface", &MeshConfig::m_surface)
             ->Field("Materials", &MeshConfig::m_materials)->Field("Profiles", &MeshConfig::m_profiles)
             ->Field("ReliefDepthMultiplier", &MeshConfig::m_reliefDepthMultiplier)
             ->Field("ValidationIterations", &MeshConfig::m_validationIterations)
@@ -424,6 +424,8 @@ void MeshConfig::Reflect(AZ::ReflectContext* context)
             ->Field("NeuralShadowConfidence", &MeshConfig::m_neuralShadowConfidence)
             ->Field("UseHeightDerivedNormals", &MeshConfig::m_useHeightDerivedNormals)
             ->Field("MaxCells", &MeshConfig::m_maxCells)->Field("ReliefShadowSteps", &MeshConfig::m_reliefShadowSteps)
+            ->Field("NeuralDirectionalVisibility", &MeshConfig::m_neuralDirectionalVisibility)
+            ->Field("ProxyDirectionalResponse", &MeshConfig::m_proxyDirectionalResponse)
             ->Field("SpiralLightMode", &MeshConfig::m_spiralLightMode)
             ->Field("SpiralLightBrightness", &MeshConfig::m_spiralLightBrightness)
             ->Field("SpiralLightPath", &MeshConfig::m_spiralLightPath)
@@ -666,6 +668,8 @@ bool MeshController::Prepare()
     { m_status = "Relief depth multiplier must be between 0 and 2"; return false; }
     const bool reuseDepthHits = InstallHitPasses(*scene, requiresTrainedHits);
     const bool neuralVisibilityOnly = c.m_localShadowMethod == LocalShadowMethod::NeuralOnly;
+    if((c.m_neuralDirectionalVisibility||c.m_proxyDirectionalResponse)&&!neuralVisibilityOnly)
+    {m_status="Learned directional controls require neural-only visibility; they never enable a marcher";return false;}
     if (neuralVisibilityOnly && (!requiresTrainedHits || !reuseDepthHits || std::abs(depthMultiplier-.5f)>1e-6f))
     { m_status="Neural-only visibility requires trained profiles, calibrated relief depth 0.5 and DX12 MainPipeline hit reuse";return false; }
     if (neuralVisibilityOnly && ((c.m_spiralLightShadowSteps>0 && c.m_spiralLightShadowSteps<5)
@@ -673,7 +677,7 @@ bool MeshController::Prepare()
     { m_status="Neural-only visibility requires shadow schedules of 0 (off) or 5-64; it never switches to marching";return false; }
     if (requiresTrainedHits && (!reuseDepthHits || !c.m_useNeuralSeed || c.m_maxCells != 65525 || c.m_reliefShadowSteps != 0))
     {
-        m_status = "Trained profiles require single-sample DX12 winning-hit resolve (Maximum cells 65525) and relief shadows off";
+        m_status = "Trained profiles require DX12 winning-hit resolve (Maximum cells 65525) and legacy relief steps 0; use the learned directional controls";
         return true;
     }
     if (AZ::Render::r_meshInstancingEnabled)
@@ -1029,6 +1033,8 @@ bool MeshController::Prepare()
                     && Set(material,"surface.distantValidationToleranceMultiplier",c.m_distantValidationToleranceMultiplier)
                     && Set(material,"surface.spiralLightShadowSteps",c.m_spiralLightShadowSteps)
                     && Set(material,"surface.localShadowMethod",static_cast<AZ::u32>(c.m_localShadowMethod))
+                    && Set(material,"surface.neuralDirectionalVisibility",c.m_neuralDirectionalVisibility)
+                    && Set(material,"surface.proxyDirectionalResponse",c.m_proxyDirectionalResponse)
                     && Set(material,"surface.neuralShadowConfidence",c.m_neuralShadowConfidence)
                     && Set(material,"surface.useHeightDerivedNormals",c.m_useHeightDerivedNormals)
                     && Set(material,"surface.useNeuralCache",bool(neuralCache))

@@ -1,5 +1,18 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+struct SilPomProxyQuery {float3 position;float2 uv;};
+// Restore the authored-plane query on the winning camera ray. The frozen
+// appearance model is parameterized by this plane, not by resolved hit UV.
+SilPomProxyQuery SilPomRestoreProxyQuery(float3 resolved,float3 towardCamera,float3 origin,
+    float3 du,float3 dv,float3 normal,float2 uv0)
+{
+    SilPomProxyQuery query;
+    query.position=resolved+towardCamera*(dot(origin-resolved,normal)/dot(towardCamera,normal));
+    float3 delta=query.position-origin;
+    float invMetric=rcp(dot(du,cross(dv,normal)));
+    query.uv=uv0+float2(dot(delta,cross(dv,normal)),dot(du,cross(delta,normal)))*invMetric;
+    return query;
+}
 // Analytic proxy UV Jacobian. Derivatives remain defined across a quad whose
 // lanes choose different near/proxy branches or different triangle owners.
 float4 SilPomProxyUvDerivatives(float4 clipU,float4 clipV,float2 ndc,float inverseW,float2 resolution)

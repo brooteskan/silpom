@@ -80,6 +80,8 @@ public:
     float m_distantValidationToleranceMultiplier = 1.00f;
     AZ::u32 m_spiralLightShadowSteps = 18;
     LocalShadowMethod m_localShadowMethod = LocalShadowMethod::Baseline;
+    bool m_neuralDirectionalVisibility = false;
+    bool m_proxyDirectionalResponse = false;
     float m_neuralShadowConfidence = .995f;
     bool m_useHeightDerivedNormals = true;
     SpiralLightMode m_spiralLightMode = SpiralLightMode::SelectedMaterials;

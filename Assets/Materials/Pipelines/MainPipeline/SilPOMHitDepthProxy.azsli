@@ -81,12 +81,10 @@ ProxyOutput PixelShader(ProxyVertex IN)
     float3 baseWS=mul(model,float4(origin+du*q.x+dv*q.y,1)).xyz;
     float3 V=mul(transpose(rotation),normalize(ViewSrg::m_worldPosition.xyz-baseWS));
     float heightFraction=SilPomLearnedProxyHeight(IN.uv,float4(ddx(IN.uv),ddy(IN.uv)),du,dv,N,D,V,params);
-    float height=params.m_silpomScale*(heightFraction-params.m_silpomReference);
-    float offsetRay=SilPomProxyRayOffset(heightFraction,params.m_silpomScale,params.m_silpomReference,dot(N,D),dot(N,V));
-    float3 delta=(V*offsetRay-D*height)/objectScale;
-    float invMetric=rcp(dot(du,cross(dv,N)));
-    hitUv+=float2(dot(delta,cross(dv,N)),dot(du,cross(delta,N)))*invMetric;
-    float4 clip=mul(GetViewProjectionMatrix(sv),float4(baseWS+mul(rotation,V*offsetRay),1));
+    SilPomProxyPlaneHit resolved=SilPomResolveProxyPlane(IN.uv,origin,uv.xy,du,dv,N,D,V,heightFraction,
+        params.m_silpomScale,params.m_silpomReference,objectScale);
+    hitUv=resolved.uv;
+    float4 clip=mul(GetViewProjectionMatrix(sv),mul(model,float4(resolved.position,1)));
     if(clip.w<=0.0f||clip.z<0.0f||clip.z>clip.w)discard;
     output.depth=clip.z/clip.w;
 #endif
