@@ -66,6 +66,7 @@ public:
     bool m_useR16HeightTextures = false;
     bool m_useValidationGather = false;
     bool m_useLevelTwoPredictor = false;
+    bool m_useLevelFourWallMaterial = false;
     float m_reliefLodPixelBudget = 0.00f;
     float m_maxReliefDistance = 0.00f;
     float m_validationDistanceStart = 0.00f;
@@ -134,6 +135,7 @@ private:
     AZ::Transform m_world = AZ::Transform::CreateIdentity();
     AZ::Render::MeshFeatureProcessorInterface* m_processor = nullptr;
     AZ::Data::Asset<AZ::RPI::MaterialAsset> m_template{AZ::Data::AssetLoadBehavior::NoLoad};
+    AZ::Data::Asset<LearnedMaterialAsset> m_learnedMaterial{AZ::Data::AssetLoadBehavior::NoLoad};
     AZStd::unique_ptr<Generation> m_active, m_pending;
     AZStd::string m_status = "Inactive";
     bool m_dirty = true;

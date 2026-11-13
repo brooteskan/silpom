@@ -1,0 +1,49 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#include "MaterialDecode.azsli"
+#include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_SurfaceData.azsli>
+Surface SilPomEvaluateLearnedSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,MaterialParameters params)
+{
+    float2 uv=geo.uvs[0];
+    SilPomMaterialFootprint f=SilPomMaterialFootprintFor(ddx(uv)*float2(6656,6144),ddy(uv)*float2(6656,6144));
+    float lod=clamp(f.lod-2.0f,0.0f,float(params.m_silpomMaterialFeatureMipCount-1u));
+    float4 first=0,second=0;
+    for(uint i=0;i<f.taps;++i)
+    {
+        float2 q=uv+f.axis*((float(i)+.5f)/float(f.taps)-.5f)*f.major/float2(6656,6144);
+        first+=GetMaterialTexture(params.m_silpomMaterialFeatures0).SampleLevel(GetMaterialTextureSampler(),q,lod)/float(f.taps);
+        second+=GetMaterialTexture(params.m_silpomMaterialFeatures1).SampleLevel(GetMaterialTextureSampler(),q,lod)/float(f.taps);
+    }
+    float x[12];SP_UNROLL for(uint k=0;k<4;++k){x[k]=first[k]*2-1;x[4+k]=second[k]*2-1;}
+    x[8]=clamp(log2(max(f.major,1.0f))/13.0f,0.0f,12.0f/13.0f);
+    x[9]=clamp(log2(f.minor)/13.0f,0.0f,12.0f/13.0f);
+    x[10]=f.axis.x*f.axis.x-f.axis.y*f.axis.y;x[11]=2*f.axis.x*f.axis.y;
+    float decoded[6];SilPomDecodeMaterial(x,params.m_silpomMaterialDecoderBuffer,decoded);
+    Surface surface=(Surface)0;surface.position=geo.positionWS;surface.lightingChannels=GetLightingChannelMask(SV);
+    surface.vertexNormal=geo.vertexNormal;
+    real2 normal=real2(decoded[3]*2-1,decoded[4]*2-1);
+    if(params.m_flipNormalX)normal.y=-normal.y;if(params.m_flipNormalY)normal.x=-normal.x;
+    real3x3 uvMatrix=real3x3(params.m_uvMatrixRow0.xyz,params.m_uvMatrixRow1.xyz,params.m_uvMatrixRow2.xyz);
+    surface.normal=params.m_silpomMaterialUseNormal&&AreNormalMapsEnabled()
+        ?GetWorldSpaceNormal(normal,geo.vertexNormal,geo.tangents[0],geo.bitangents[0],uvMatrix,real(params.m_normalFactor)):normalize(geo.vertexNormal);
+    surface.normal=AdjustBackFaceNormal(surface.normal,geo.isFrontFace);
+    real3 color=LinearSrgb_To_AcesCg(real3(decoded[0],decoded[1],decoded[2]));
+    color=BlendBaseColor(color,real3(params.m_baseColor.rgb),real(params.m_baseColorFactor),o_baseColorTextureBlendMode,params.m_silpomMaterialUseBaseColor);
+#if ENABLE_VERTEX_COLOR
+    if(o_useVertexColor&&o_color0_isBound)color=BlendBaseColor(real3(IN.color0.rgb),color,real(params.m_vertexColorFactor),o_vertexColorBlendMode,true);
+#endif
+    real metallic=OverrideMetallicEnabled()?GetMetallicOverride():real(params.m_metallicFactor);
+    real specular=real(params.m_specularF0Factor);
+    surface.SetAlbedoAndSpecularF0(color,specular,metallic);
+    surface.roughnessLinear=OverrideRoughnessEnabled()?GetRoughnessOverride():params.m_silpomMaterialUseRoughness
+        ?lerp(real(params.m_roughnessLowerBound),real(params.m_roughnessUpperBound),real(decoded[5])):real(params.m_roughnessFactor);
+    surface.CalculateRoughnessA();surface.alpha=real(params.m_opacityFactor);surface.opacityAffectsSpecularFactor=real(params.m_opacityAffectsSpecularFactor);
+    surface.emissiveLighting=o_emissiveEnabled?real3(params.m_emissiveColor.rgb)*real(params.m_emissiveIntensity)*lerp(real(1),surface.alpha,real(params.m_emissiveAffectedByAlpha)):real3(0,0,0);
+    surface.diffuseAmbientOcclusion=1;surface.specularOcclusion=1;
+#if ENABLE_CLEAR_COAT
+    surface.clearCoat.factor=o_clearCoat_feature_enabled&&o_clearCoat_enabled?real(params.m_clearCoatFactor):0;
+    surface.clearCoat.roughness=real(params.m_clearCoatRoughness);surface.clearCoat.normal=AdjustBackFaceNormal(geo.vertexNormal,geo.isFrontFace);
+    if(o_clearCoat_feature_enabled)ApplyClearCoatToSpecularF0(surface.specularF0,surface.clearCoat.factor);
+#endif
+    return surface;
+}

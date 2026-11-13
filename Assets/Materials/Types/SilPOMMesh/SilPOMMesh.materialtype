@@ -71,6 +71,14 @@
                             "name": "o_silpomReuseTexels"
                         }
                     },
+                    {"name":"learnedMaterial","type":"Bool","defaultValue":false},
+                    {"name":"materialUseBaseColor","type":"Bool","defaultValue":true,"connection":{"type":"ShaderInput","name":"m_silpomMaterialUseBaseColor"}},
+                    {"name":"materialUseNormal","type":"Bool","defaultValue":true,"connection":{"type":"ShaderInput","name":"m_silpomMaterialUseNormal"}},
+                    {"name":"materialUseRoughness","type":"Bool","defaultValue":true,"connection":{"type":"ShaderInput","name":"m_silpomMaterialUseRoughness"}},
+                    {"name":"materialFeatures0","type":"Image","connection":{"type":"ShaderInput","name":"m_silpomMaterialFeatures0"}},
+                    {"name":"materialFeatures1","type":"Image","connection":{"type":"ShaderInput","name":"m_silpomMaterialFeatures1"}},
+                    {"name":"materialDecoderBuffer","type":"UInt","defaultValue":0,"connection":{"type":"ShaderInput","name":"m_silpomMaterialDecoderBuffer"}},
+                    {"name":"materialFeatureMipCount","type":"UInt","defaultValue":1,"connection":{"type":"ShaderInput","name":"m_silpomMaterialFeatureMipCount"}},
                     {
                         "name": "localShadowMethod",
                         "displayName": "Local shadow method",

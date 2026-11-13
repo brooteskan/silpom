@@ -7,6 +7,7 @@
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzFramework/Asset/GenericAssetHandler.h>
+#include <SilPOM/LearnedMaterialAsset.h>
 
 namespace SilPOM
 {
@@ -57,5 +58,6 @@ public:
     void Deactivate() override;
 private:
     AZStd::unique_ptr<AzFramework::GenericAssetHandler<MeshSurfaceAsset>> m_handler;
+    AZStd::unique_ptr<AzFramework::GenericAssetHandler<LearnedMaterialAsset>> m_materialHandler;
 };
 }

@@ -541,13 +541,21 @@ COMMON_OPTIONS_NORMAL()
 COMMON_OPTIONS_CLEAR_COAT()
 COMMON_OPTIONS_OCCLUSION()
 COMMON_OPTIONS_EMISSIVE()
+#if defined(SILPOM_LEARNED_MATERIAL)
+#include "../../../Shaders/SilPOM/LearnedMaterialSurface.azsli"
+#else
 #define EvaluateSurface EvaluateSurface_SilPomFaceBase
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_SurfaceEval.azsli>
 #undef EvaluateSurface
+#endif
 Surface EvaluateSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,const MaterialParameters params)
 {
     silpomPaintHeightTexture=params.m_silpomHeightMap;
+#if defined(SILPOM_LEARNED_MATERIAL)
+    Surface surface=SilPomEvaluateLearnedSurface(IN,SV,geo,params);
+#else
     Surface surface=EvaluateSurface_StandardPBR(IN,SV,geo,params);
+#endif
     if(geo.isDisplacementClipped)
     {
         float3 diagnostic=IN.silpomDiagnostic.x==float(SP_INVALID)?float3(1,1,0):float3(1,0,1);

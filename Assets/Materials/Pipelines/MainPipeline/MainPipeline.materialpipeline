@@ -129,6 +129,11 @@
             "shader": "./SilPOMHitForwardNeuralOnly.shader.template",
             "azsli": "./SilPOMHitForwardNeuralOnly.azsli",
             "tag": "silpom_hit_forward_neural_only"
+        },
+        {
+            "shader": "./SilPOMHitForwardLearnedMaterial.shader.template",
+            "azsli": "./SilPOMHitForwardLearnedMaterial.azsli",
+            "tag": "silpom_hit_forward_learned_material"
         }
     ],
     "runtime": {
@@ -183,6 +188,7 @@
                 "type": "Bool",
                 "defaultValue": false
             },
+            {"name":"silpomLearnedMaterial","type":"Bool","defaultValue":false},
             {"name":"silpomNeuralVisibilityOnly","type":"Bool","defaultValue":false},
             {
                 "name": "silpomTowerLod",

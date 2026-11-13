@@ -1,10 +1,11 @@
 -- SPDX-License-Identifier: MIT
 function GetMaterialPropertyDependencies()
     return {"surface.scale", "surface.useHierarchy", "surface.useNeuralSeed", "surface.useNeuralCache",
-        "surface.neuralModel", "surface.maxCells", "mesh.hitFaceBase", "surface.localShadowMethod"}
+        "surface.neuralModel", "surface.maxCells", "mesh.hitFaceBase", "surface.localShadowMethod", "surface.learnedMaterial"}
 end
 
 function Process(context)
+    context:SetInternalMaterialPropertyValue_bool("silpomLearnedMaterial",context:GetMaterialPropertyValue_bool("surface.learnedMaterial"))
     context:SetInternalMaterialPropertyValue_bool("silpomNeuralVisibilityOnly",
         context:GetMaterialPropertyValue_enum("surface.localShadowMethod") == 3)
     context:SetInternalMaterialPropertyValue_bool("hasPerPixelDepth", true)

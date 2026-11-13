@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: MIT
 function GetMaterialPropertyDependencies()
     return {"silpomReuseDepthHit", "silpomUseDepthHeightBounds", "silpomUseNeuralSeed", "silpomUseNeuralCache",
-        "silpomTowerLod", "isTransparent", "isTintedTransparent", "silpomNeuralVisibilityOnly"}
+        "silpomTowerLod", "isTransparent", "isTintedTransparent", "silpomNeuralVisibilityOnly", "silpomLearnedMaterial"}
 end
 
 function Process(context)
@@ -23,9 +23,11 @@ function Process(context)
     context:GetShaderByTag("silpom_hit_depth_lod_near"):SetEnabled(useHit and useLod)
     context:GetShaderByTag("silpom_hit_depth_lod_shell"):SetEnabled(useHit and useLod)
     context:GetShaderByTag("silpom_hit_depth_wall_backup"):SetEnabled(useHit and useLod)
+    local decoded=context:GetMaterialPropertyValue_bool("silpomLearnedMaterial")
     local visibilityOnly=context:GetMaterialPropertyValue_bool("silpomNeuralVisibilityOnly")
-    context:GetShaderByTag("silpom_hit_forward"):SetEnabled(useHit and not visibilityOnly)
-    context:GetShaderByTag("silpom_hit_forward_neural_only"):SetEnabled(useHit and visibilityOnly)
+    context:GetShaderByTag("silpom_hit_forward"):SetEnabled(useHit and not visibilityOnly and not decoded)
+    context:GetShaderByTag("silpom_hit_forward_neural_only"):SetEnabled(useHit and visibilityOnly and not decoded)
+    context:GetShaderByTag("silpom_hit_forward_learned_material"):SetEnabled(useHit and visibilityOnly and decoded)
     if useHit then
         context:GetShaderByTag("depth_customZ"):SetEnabled(false)
         context:GetShaderByTag("forward_customZ"):SetEnabled(false)

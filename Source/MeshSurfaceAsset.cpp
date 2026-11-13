@@ -26,6 +26,7 @@ void MeshSurfaceAsset::Reflect(AZ::ReflectContext* context)
 void MeshAssetSystem::Reflect(AZ::ReflectContext* context)
 {
     MeshSurfaceAsset::Reflect(context);
+    LearnedMaterialAsset::Reflect(context);
     if (auto* sc = azrtti_cast<AZ::SerializeContext*>(context))
         sc->Class<MeshAssetSystem, AZ::Component>()->Version(1);
 }
@@ -34,9 +35,12 @@ void MeshAssetSystem::Activate()
     m_handler = AZStd::make_unique<AzFramework::GenericAssetHandler<MeshSurfaceAsset>>(
         "SilPOM Mesh Surface", "Graphics", "silpommesh");
     m_handler->Register();
+    m_materialHandler=AZStd::make_unique<AzFramework::GenericAssetHandler<LearnedMaterialAsset>>("SilPOM learned material","Graphics","silpommaterial");
+    m_materialHandler->Register();
 }
 void MeshAssetSystem::Deactivate()
 {
     m_handler.reset();
+    m_materialHandler.reset();
 }
 }
