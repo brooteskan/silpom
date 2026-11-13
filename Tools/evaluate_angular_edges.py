@@ -15,6 +15,47 @@ def network(outputs,path):
     model=torch.nn.Sequential(torch.nn.Linear(20,32),torch.nn.ReLU(),torch.nn.Linear(32,outputs))
     model.load_state_dict(torch.load(path,weights_only=True));return model
 
+def dense_accessibility(p,dll,q,ids,x,old,new):
+    """Separate model error from angular quadrature error, without refitting."""
+    # Fixed low/middle/high height strata, each at both footprint sizes.
+    chosen=np.array([0,1,4,5,10,11]);q=q[chosen].copy();ids=ids[chosen];x=x[chosen]
+    counts=(32,4096,8192);teacher=[];models={3:[],5:[]}
+    for count in counts:
+        directions=cosine_directions(count).astype(np.float32)
+        qq=np.repeat(q,count,axis=0);qq[:,5:8]=np.tile(directions,(len(q),1));qq[:,8]=0
+        ii=np.ascontiguousarray(np.repeat(ids,count),np.uint32);out=[]
+        for start in range(0,len(qq),8192):
+            batch=np.ascontiguousarray(qq[start:start+8192],np.float32);result=np.empty((len(batch),3),np.float32)
+            assert dll.RenderDirectionalVisibility(p.height,*p.atlas,p.scale,p.reference,0,p.packed,len(p.packed),
+                batch,np.ascontiguousarray(ii[start:start+len(batch)]),len(batch),16,result)
+            assert np.all((result[:,1]>.9999)&(result[:,2]==0)), 'Unknown dense teacher labels'
+            out.append(result[:,0])
+        teacher.append(np.concatenate(out).reshape(len(q),count).mean(1))
+        with torch.no_grad():
+            d=torch.from_numpy(directions)
+            models[3].append(values(old(x),'4',d)[:,3].mean(1).numpy())
+            models[5].append(torch.sigmoid(logits(new(x),d))[:,3].mean(1).numpy())
+        print('Dense ambient directions',count,'receivers',len(q),flush=True)
+    reference=teacher[-1]
+    rows=[]
+    for i in range(len(q)):
+        row=dict(uv=q[i,:2].tolist(),footprint=float(q[i,9]),teacher_32=float(teacher[0][i]),
+            teacher_4096=float(teacher[1][i]),teacher_8192=float(reference[i]))
+        for mode in (3,5):
+            row['model_'+str(mode)+'_32']=float(models[mode][0][i])
+            row['model_'+str(mode)+'_8192']=float(models[mode][-1][i])
+        rows.append(row)
+    return dict(direction_counts=list(counts),receiver_footprints=len(q),rows=rows,
+        support='relief-top exit, 16 spatial footprint samples, cosine-weighted hemisphere',
+        selection='fixed low/middle/high strata from the already frozen moving-light fixture; no fitting',
+        reference='8192-direction numerical teacher estimate; 4096 vs 8192 is a convergence diagnostic, not an error bound',
+        teacher_32_quadrature_mae=float(np.abs(teacher[0]-reference).mean()),
+        teacher_4096_to_8192_max=float(np.abs(teacher[1]-reference).max()),
+        old_runtime_to_dense_mae=float(np.abs(models[3][0]-reference).mean()),
+        new_runtime_to_dense_mae=float(np.abs(models[5][0]-reference).mean()),
+        new_dense_representation_mae=float(np.abs(models[5][-1]-reference).mean()),
+        new_32_quadrature_mae=float(np.abs(models[5][0]-models[5][-1]).mean()))
+
 def main():
     cli=argparse.ArgumentParser(description=__doc__)
     for name in ('project','binary','labels','model','output'):cli.add_argument(name,type=Path)
@@ -64,6 +105,11 @@ def main():
         moving_unknown_labels=int((~known).sum()),teacher='continuous FP64 bilinear cells, 16 footprint samples, repeat',
         selection='fixed height-stratified held-out receivers; never used to select weights')
     np.savez_compressed(a.output/'moving-light.npz',uv=q[:,:2],footprint=q[:,9],directions=directions,teacher=teacher,old=old_curve,new=new_curve)
+    result['dense_ambient']=dense_accessibility(p,dll,q,ids,xx,old,new)
+    result['provenance']=dict(shared_feature_generation=inputs[3],source_fingerprint=source_fingerprint(wall,mesh).hex(),
+        old_checkpoint_sha256=hashlib.sha256((a.labels/'head-4.pt').read_bytes()).hexdigest(),
+        new_checkpoint_sha256=hashlib.sha256((a.model/'head-angular-edges.pt').read_bytes()).hexdigest(),
+        teacher_binary_sha256=hashlib.sha256((a.binary/'silpom_appearance_reference.dll').read_bytes()).hexdigest())
     (a.output/'quality.json').write_text(json.dumps(result,indent=2)+'\n');print(result,flush=True)
 
 if __name__=='__main__':main()

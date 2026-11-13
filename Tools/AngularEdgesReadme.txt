@@ -83,12 +83,33 @@ geometry and light-enable controls. HDR direct, specular, albedo and normal
 attachments distinguish diffuse accessibility from double direct shadowing.
 The test never saves the level and restores temporary controls.
 It temporarily enables matching sun lighting channels and verifies quaternion
-rotation updates; the saved sun channels are not changed. The opaque pipeline
-exports diffuse accessibility through its GI albedo attachment. With the
-tower's current missing baked GI data, environment-only frames can be black:
-those frames validate the albedo routing, not visible ambient illumination.
+rotation updates; the saved sun channels are not changed. For ambient testing,
+the two interior wall bindings use a test-only inherited material enabling IBL,
+the default studio skylight is loaded at exposure zero, and probe grids are
+disabled temporarily. The opaque diffuse-GI composite must contain nonzero
+wall illumination and visibly follow accessibility on/off. All assets and
+controls are restored before the direct-light comparison. The saved tower's
+interior materials intentionally disable IBL; the fixture does not change them.
+
+The direct sweep captures old/new caps and a matched unshadowed baseline at
+37 one-degree angles. Three frozen 5x5 wall regions have known old/new output
+differences from build 03b995d. These are route regression oracles, not teacher
+ground truth. Normalized visibility curves check transition size and total
+variation only at those receivers. Generic geometry and proxies are masked out.
+Negative controls must reject black indirect illumination and old-as-new routing.
+
+Tools/AngularEdgeEvaluation.json now separates 32-direction representation
+error from dense angular integration. Six fixed receiver/footprint cases use
+32, 4096 and 8192 teacher directions. The 4096/8192 difference is a convergence
+diagnostic, not a rigorous bound. Mean teacher quadrature error is 0.01165;
+the new model's 32-to-8192 quadrature difference averages 0.00528. These selected
+cases do not establish a whole-wall integration bound; shipping N stays 32.
+
 Run Tests/Run-AngularEdgesSmoke.ps1, then Tests/AngularEdgesVisualTests.py on
-its output using a NumPy-equipped Python to verify the captured attachments.
+its output using NumPy/Pillow, with --negative-controls to exercise the known
+false positives. Tools/plot_angular_validation.py uses Matplotlib to export the
+ambient comparison, receiver curves and dense-integration figures. See
+Tools/AngularEdgeValidation.json for the recorded engine validation metrics.
 
 Do not infer visibility quality from distant proxy brightness alone: comparison
 proxies still omit the frozen joint visibility/reflectance gain and are not an

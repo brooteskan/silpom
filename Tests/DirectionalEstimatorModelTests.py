@@ -53,6 +53,15 @@ def predict(x,light,reach,mode,weights):
     return np.where(light[:,2]<=0,0,value).astype(np.float32)
 
 def main():
+    # Independent cosine-integral oracle. A narrow normal-centered hard cap
+    # blocks sin(radius)^2 of a constant-radiance diffuse hemisphere. The
+    # shipping 32-point rule misses it; a dense rule resolves its area.
+    radius=np.radians(5);exact=np.sin(radius)**2
+    for count in (32,8192):
+        z=np.sqrt(1-(np.arange(count)+.5)/count)
+        blocked=float(np.mean(z>=np.cos(radius)))
+        if count==32:assert blocked==0 and exact>.0075
+        else:assert abs(blocked-exact)<1/count
     # Independent circular-cap oracles in angular units. In particular, a
     # five-degree blocker can now be opaque without broadening its radius.
     sigma=np.radians(.25)

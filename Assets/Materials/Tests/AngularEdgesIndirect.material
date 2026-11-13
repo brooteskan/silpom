@@ -1,0 +1,9 @@
+{
+    "description": "Test-only tower wall: identical authored material with diffuse/specular IBL enabled for the ambient visual fixture.",
+    "materialType": "Materials/Types/StandardPBR.materialtype",
+    "materialTypeVersion": 5,
+    "parentMaterial": "Assets/SilPOMPlanarAB/IrishFieldstoneTowerOpenShaft/interior-lighting/shaft-wall.material",
+    "propertyValues": {
+        "general.enableIBL": true
+    }
+}
