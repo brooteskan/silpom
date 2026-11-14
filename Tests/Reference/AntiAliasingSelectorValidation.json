@@ -1,6 +1,6 @@
 {
   "passed": true,
-  "scope": "Editor comparisons; MSAA-to-gameplay limitation remains documented",
+  "scope": "Editor comparisons at bec2dc3; see MsaaGameplayValidation.json for the later gameplay correction",
   "baseline_state": [
     1,
     0,
@@ -48,5 +48,6 @@
   "known_limitations": [
     "After MSAA, select Current default, save and restart before Ctrl-G; native SkinnedMeshOutputStream0 barrier validation remains unresolved.",
     "1x and 4x currently use different coverage-repair policies."
-  ]
+  ],
+  "gameplay_followup": "MsaaGameplayValidation.json"
 }

@@ -59,6 +59,8 @@ AZ_CVAR(bool,r_silpomMsaaRawCoverage,true,nullptr,AZ::ConsoleFunctorFlags::Null,
     "Inspect unrepaired 4x sample coverage. Does not affect the approved 1x repair path.");
 AZ_CVAR(bool,r_silpomMsaaInspect,false,nullptr,AZ::ConsoleFunctorFlags::Null,
     "Enable diagnostic raw/final hit, depth and shaded-color sample atlases. Adds GPU/readback work; normally off.");
+AZ_CVAR(bool,r_silpomAaTrace,false,nullptr,AZ::ConsoleFunctorFlags::Null,
+    "Trace AA ownership, sample-count changes and pipeline transitions. Diagnostic only; normally off.");
 
 bool SupportsHitMsaa4()
 {
@@ -96,30 +98,101 @@ bool SupportsHitMsaa4()
 #endif
 }
 
+// Observe every scene during the operation, including pipelines created after it
+// starts. Idle/execute-once preview pipelines need their queued rebuild processed
+// now; waiting for their next draw leaves old draw packets against new targets.
 struct HitSampleTransition
-    : AZ::RPI::SceneNotificationBus::MultiHandler
+    : AZ::RPI::SceneNotificationBus::Router
     , AZ::TickBus::Handler
 {
-    AZStd::vector<AZStd::pair<AZ::RPI::RenderPipelinePtr,bool>> paused;
-    AZ::u64 resumeTick=0;
+    struct Pipeline
+    {
+        AZ::RPI::RenderPipelinePtr pipeline;
+        bool enabled;
+        AZ::u64 lookupTick=~AZ::u64(0);
+    };
+    AZStd::vector<Pipeline> paused;
+    bool active=false;
+    unsigned targetSamples=1;
+
+    void Pause(AZ::RPI::RenderPipeline* pipeline)
+    {
+        if(!pipeline||!pipeline->GetScene())return;
+        auto found=AZStd::find_if(paused.begin(),paused.end(),[&](const auto& p){return p.pipeline.get()==pipeline;});
+        if(found==paused.end())
+        {
+            auto owned=pipeline->GetScene()->GetRenderPipeline(pipeline->GetId());
+            if(!owned)return;
+            paused.push_back({owned,pipeline->GetRootPass()->IsEnabled()});
+            // Added pipelines may have missed SetApplicationMultisampleState.
+            if(pipeline->GetRenderSettings().m_multisampleState.m_samples!=targetSamples)
+            {
+                pipeline->GetRenderSettings().m_multisampleState=AZ::RPI::RPISystemInterface::Get()->GetApplicationMultisampleState();
+                pipeline->MarkPipelinePassChanges(AZ::RPI::PipelinePassChanges::MultisampleStateChanged);
+            }
+        }
+        pipeline->GetRootPass()->SetEnabled(false);
+    }
+    void Begin(AZ::RPI::Scene* scene,unsigned samples)
+    {
+        targetSamples=samples;
+        if(!active)
+        {
+            active=true;
+            AZ::RPI::SceneNotificationBus::Router::BusRouterConnect();
+            AZ::TickBus::Handler::BusConnect();
+        }
+        for(auto& p:paused)p.lookupTick=~AZ::u64(0);
+        if(scene)for(const auto& p:scene->GetRenderPipelines())Pause(p.get());
+        for(const auto& root:AZ::RPI::PassSystemInterface::Get()->GetRootPass()->GetChildren())
+            if(auto* owner=root->GetScene())for(const auto& p:owner->GetRenderPipelines())Pause(p.get());
+        for(const auto& p:paused)AZ::RPI::SceneRequestBus::Event(p.pipeline->GetScene()->GetId(),
+            &AZ::RPI::SceneRequest::PipelineStateLookupNeedsRebuild);
+    }
     void Resume()
     {
-        const bool resume=AZ::RPI::RPISystemInterface::Get()->GetCurrentTick()>=resumeTick;
-        for(const auto& entry:paused)
-            if(entry.first->GetScene()&&entry.first->GetRootPass()->GetParent())
-                entry.first->GetRootPass()->SetEnabled(resume&&entry.second);
-        if(resume){paused.clear();AZ::RPI::SceneNotificationBus::MultiHandler::BusDisconnect();AZ::TickBus::Handler::BusDisconnect();}
+        if(!active)return;
+        // UpdatePasses emits notifications. Copy the pointers so added/removed
+        // pipelines cannot invalidate this traversal.
+        AZStd::vector<AZ::RPI::RenderPipelinePtr> pipelines;
+        for(const auto& p:paused)pipelines.push_back(p.pipeline);
+        for(const auto& p:pipelines)if(p->GetScene())p->UpdatePasses();
+        const auto tick=AZ::RPI::RPISystemInterface::Get()->GetCurrentTick();
+        for(const auto& p:paused)
+        {
+            const auto state=p.pipeline->GetRootPass()->GetPassState();
+            if(p.pipeline->GetPipelinePassChanges()!=AZ::RPI::PipelinePassChanges::NoPassChanges
+                ||p.pipeline->GetRenderSettings().m_multisampleState.m_samples!=targetSamples
+                ||(state!=AZ::RPI::PassState::Initialized&&state!=AZ::RPI::PassState::Idle)
+                ||p.lookupTick==~AZ::u64(0)||tick<=p.lookupTick)return;
+        }
+        // The rebuilt scene lookup has crossed a simulation boundary, allowing
+        // mesh feature processors to refresh their draw packets before drawing.
+        for(const auto& p:paused)if(p.pipeline->GetScene()&&p.pipeline->GetRootPass()->GetParent())
+            p.pipeline->GetRootPass()->SetEnabled(p.enabled);
+        paused.clear();active=false;
+        AZ::RPI::SceneNotificationBus::Router::BusRouterDisconnect();
+        AZ::TickBus::Handler::BusDisconnect();
     }
     void OnTick(float,AZ::ScriptTimePoint) override { Resume(); }
+    void OnPipelineStateLookupRebuilt() override
+    {
+        const auto* scene=AZ::RPI::SceneNotificationBus::GetCurrentBusId();
+        if(scene)for(auto& p:paused)if(p.pipeline->GetScene()&&p.pipeline->GetScene()->GetId()==*scene)
+            p.lookupTick=AZ::RPI::RPISystemInterface::Get()->GetCurrentTick();
+    }
     void OnRenderPipelineChanged(AZ::RPI::RenderPipeline* pipeline,AZ::RPI::SceneNotification::RenderPipelineChangeType type) override
     {
+        if(r_silpomAaTrace&&pipeline)AZ_Printf("SilPOM AA","pipeline=%s ptr=%p root=%p event=%u paused=%zu tick=%llu\n",
+            pipeline->GetId().GetCStr(),pipeline,pipeline->GetRootPass().get(),unsigned(type),paused.size(),
+            static_cast<unsigned long long>(AZ::RPI::RPISystemInterface::Get()->GetCurrentTick()));
         if(type==AZ::RPI::SceneNotification::RenderPipelineChangeType::Removed)
         {
-            AZStd::erase_if(paused,[&](const auto& entry){return entry.first.get()==pipeline;});
-            return;
+            AZStd::erase_if(paused,[&](const auto& p){return p.pipeline.get()==pipeline;});return;
         }
-        // MSAA recreates roots. Apply the pause to the new root before drawing.
-        for(const auto& entry:paused)if(entry.first.get()==pipeline)pipeline->GetRootPass()->SetEnabled(false);
+        Pause(pipeline);
+        for(auto& p:paused)if(p.pipeline.get()==pipeline)p.lookupTick=~AZ::u64(0);
+        AZ::RPI::SceneRequestBus::Event(pipeline->GetScene()->GetId(),&AZ::RPI::SceneRequest::PipelineStateLookupNeedsRebuild);
     }
 };
 HitSampleTransition& SampleTransition()
@@ -131,9 +204,9 @@ HitSampleTransition& SampleTransition()
 unsigned UpdateHitSamplePolicy(AZ::RPI::Scene* scene)
 {
     static bool requested=false,raw=true,inspect=false;static unsigned version=0;
-    auto& transition=SampleTransition();auto& paused=transition.paused;auto& resumeTick=transition.resumeTick;
+    auto& transition=SampleTransition();
     auto* rpi=AZ::RPI::RPISystemInterface::Get();
-    if(!paused.empty())
+    if(transition.active)
     {
         // Pass attachments update before MeshFeatureProcessor has rebuilt all
         // scene draw packets. Submit no scene draws across that transition.
@@ -146,28 +219,20 @@ unsigned UpdateHitSamplePolicy(AZ::RPI::Scene* scene)
             AZ_Error("SilPOM",false,"4x MSAA requires supported render, load and sample-count capabilities; retaining 1x.");
             r_silpomMsaa4=false;
         }
+        else if(rpi->GetApplicationMultisampleState().m_samples==(r_silpomMsaa4?4:1))
+        {
+            // A renderer initialized at the desired sample count needs hit-pass
+            // policy updates, but no redundant global pipeline reconstruction.
+            requested=r_silpomMsaa4;++version;
+            if(r_silpomAaTrace)AZ_Printf("SilPOM AA","adopt existing samples=%u tick=%llu\n",requested?4u:1u,
+                static_cast<unsigned long long>(rpi->GetCurrentTick()));
+        }
         else
         {
-            // The application sample count also changes preview/editor scenes.
-            // Pause all existing pipeline roots, not only the tower's scene.
-            AZStd::set<AZ::RPI::Scene*> scenes;
-            if(scene)scenes.insert(scene);
-            for(const auto& root:AZ::RPI::PassSystemInterface::Get()->GetRootPass()->GetChildren())
-                if(auto* owner=root->GetScene())scenes.insert(owner);
-            transition.AZ::RPI::SceneNotificationBus::MultiHandler::BusDisconnect();
-            for(auto* owner:scenes)
-            {
-                for(const auto& pipeline:owner->GetRenderPipelines())
-                {
-                    const auto found=AZStd::find_if(paused.begin(),paused.end(),[&](const auto& entry){return entry.first==pipeline;});
-                    if(found==paused.end())paused.push_back({pipeline,pipeline->GetRootPass()->IsEnabled()});
-                    pipeline->GetRootPass()->SetEnabled(false);
-                }
-                transition.AZ::RPI::SceneNotificationBus::MultiHandler::BusConnect(owner->GetId());
-            }
-            resumeTick=rpi->GetCurrentTick()+3;
-            // Resume even when the last SilPOM component was just disabled.
-            if(!transition.AZ::TickBus::Handler::BusIsConnected())transition.AZ::TickBus::Handler::BusConnect();
+            if(r_silpomAaTrace)AZ_Printf("SilPOM AA","change samples=%u->%u tick=%llu\n",
+                unsigned(rpi->GetApplicationMultisampleState().m_samples),r_silpomMsaa4?4u:1u,
+                static_cast<unsigned long long>(rpi->GetCurrentTick()));
+            transition.Begin(scene,r_silpomMsaa4?4:1);
             requested=r_silpomMsaa4;++version;
             AZ::Interface<AZ::IConsole>::Get()->PerformCommand(requested?"r_multiSampleCount 4":"r_multiSampleCount 1");
         }
@@ -197,6 +262,8 @@ struct AntiAliasingOverrides
     AZStd::vector<PipelineState> pipelines;
     AZStd::vector<SceneState> scenes;
     bool originalMsaa4=false;
+    bool baselineCaptured=false,handoff=false;
+    AntiAliasing handoffMode=AntiAliasing::CurrentDefault;
     bool checkedMsaa4=false,supportsMsaa4=false;
     AZ::u64 lastTick=~AZ::u64(0);
 
@@ -206,14 +273,17 @@ struct AntiAliasingOverrides
         const bool changed=found==requests.end()?mode!=AntiAliasing::CurrentDefault:found->mode!=mode;
         if(changed)
         {
-            if(requests.empty())originalMsaa4=r_silpomMsaa4;
+            if(r_silpomAaTrace)AZ_Printf("SilPOM AA","owner=%s mode=%u->%u requests=%zu tick=%llu\n",entity.ToString().c_str(),
+                found==requests.end()?0u:unsigned(found->mode),unsigned(mode),requests.size(),
+                static_cast<unsigned long long>(AZ::RPI::RPISystemInterface::Get()->GetCurrentTick()));
+            if(!baselineCaptured){originalMsaa4=r_silpomMsaa4;baselineCaptured=true;}
             if(found!=requests.end())requests.erase(found);
             if(mode!=AntiAliasing::CurrentDefault)requests.push_back({entity,mode});
         }
         auto* rpi=AZ::RPI::RPISystemInterface::Get();
         if(requests.empty())
         {
-            if(!changed)return;
+            if(handoff||!baselineCaptured)return;
             for(const auto& state:pipelines)
                 if(auto* scene=rpi->GetScene(state.scene))
                     if(auto pipeline=scene->GetRenderPipeline(state.pipeline))
@@ -221,12 +291,12 @@ struct AntiAliasingOverrides
             for(const auto& state:scenes)
                 if(auto* scene=rpi->GetScene(state.scene))
                     if(auto* fp=scene->GetFeatureProcessor<AZ::Render::SMAAFeatureProcessorInterface>())fp->SetEnable(state.smaa);
-            pipelines.clear();scenes.clear();r_silpomMsaa4=originalMsaa4;
+            pipelines.clear();scenes.clear();r_silpomMsaa4=originalMsaa4;baselineCaptured=false;
             lastTick=~AZ::u64(0);return;
         }
         if(!changed&&lastTick==rpi->GetCurrentTick())return;
         lastTick=rpi->GetCurrentTick();
-        const auto active=requests.back().mode;
+        const auto active=handoff&&handoffMode!=AntiAliasing::CurrentDefault?handoffMode:requests.back().mode;
         const auto method=active==AntiAliasing::SMAA?AZ::RPI::AntiAliasingMode::SMAA:
             active==AntiAliasing::TAA?AZ::RPI::AntiAliasingMode::TAA:AZ::RPI::AntiAliasingMode::MSAA;
         // Reuse the capability check and guarded sample-count transition below.
@@ -774,9 +844,25 @@ void MeshController::ConnectAssets()
         queue(profile.m_neuralCache);
     }
 }
+void BeginAntiAliasingHandoff()
+{
+    auto& state=AntiAliasingState();
+    state.handoff=true;
+    state.handoffMode=state.requests.empty()?AntiAliasing::CurrentDefault:state.requests.back().mode;
+    if(r_silpomAaTrace)AZ_Printf("SilPOM AA","begin handoff mode=%u\n",unsigned(state.handoffMode));
+}
+void EndAntiAliasingHandoff()
+{
+    auto& state=AntiAliasingState();state.handoff=false;state.lastTick=~AZ::u64(0);
+    state.Update(AZ::EntityId{},AntiAliasing::CurrentDefault);
+    UpdateHitSamplePolicy(nullptr);
+    if(r_silpomAaTrace)AZ_Printf("SilPOM AA","end handoff requests=%zu\n",state.requests.size());
+}
 void MeshController::Activate(AZ::EntityId entity)
 {
     m_entity = entity; m_dirty = true;
+    // Reacquire during activation, before the editor handoff completes.
+    AntiAliasingState().Update(entity,m_configuration.m_antiAliasing);
     AZ::TransformBus::EventResult(m_world, entity, &AZ::TransformBus::Events::GetWorldTM);
     AZ::Data::AssetId materialId;
     AZ::Data::AssetCatalogRequestBus::BroadcastResult(materialId, &AZ::Data::AssetCatalogRequests::GetAssetIdByPath,

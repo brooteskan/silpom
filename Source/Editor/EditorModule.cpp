@@ -3,6 +3,8 @@
 #include "PlanarBenchmark.h"
 #include "DecalPainter.h"
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+#include <AzFramework/Spawnable/RootSpawnableInterface.h>
 #include <Atom/Feature/Utils/EditorRenderComponentAdapter.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/Utils.h>
@@ -101,11 +103,11 @@ public:
                 edit->Class<MeshConfig>("Mesh settings","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_surface,"Mesh surface","Export .fbx and .silpom.json together; select the compiled .silpommesh")
                     ->DataElement(AZ::Edit::UIHandlers::ComboBox,&MeshConfig::m_antiAliasing,"Anti-aliasing",
-                        "Compare scene AA without changing tower quality or lighting. Current default restores the settings active before comparison. SMAA and TAA use one sample. Experimental 4x MSAA costs more GPU time and uses a different coverage-repair policy. After using MSAA, select Current default, save and restart the Editor before Ctrl-G: the native skinning-buffer transition currently fails validation on that handoff. Latest explicit selection wins across meshes.")
+                        "Compare scene AA without changing tower quality or lighting. Current default restores the settings active before comparison. SMAA and TAA use one sample. Experimental 4x MSAA costs more GPU time and uses a different coverage-repair policy. The selection carries into Ctrl-G gameplay. Latest explicit selection wins across meshes.")
                     ->EnumAttribute(AntiAliasing::CurrentDefault,"Current default (unchanged)")
                     ->EnumAttribute(AntiAliasing::SMAA,"SMAA")
                     ->EnumAttribute(AntiAliasing::TAA,"TAA")
-                    ->EnumAttribute(AntiAliasing::MSAA4,"4x MSAA (editor comparison)")
+                    ->EnumAttribute(AntiAliasing::MSAA4,"4x MSAA (experimental)")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_materials,"Materials","One assignment per authored material identity")
                     ->DataElement(AZ::Edit::UIHandlers::Slider,&MeshConfig::m_reliefDepthMultiplier,"Relief depth multiplier",
                         "Scales the displacement of all trained profiles together. 0 is flat and 1 uses the authored depths.")
@@ -283,19 +285,35 @@ private:
     MeshSettingRules::Choices m_previousChoices;
     size_t m_lastSlots=0;
 };
-class EditorModule final : public Module
+class EditorModule final : public Module,private AzToolsFramework::EditorEntityContextNotificationBus::Handler,
+    private AzFramework::RootSpawnableNotificationBus::Handler
 {
 public:
     AZ_RTTI(EditorModule,"{4C784C12-E407-421E-A060-D9C669FCDB54}",Module);
     AZ_CLASS_ALLOCATOR(EditorModule,AZ::SystemAllocator);
     EditorModule()
     {
+        AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusConnect();
+        AzFramework::RootSpawnableNotificationBus::Handler::BusConnect();
         m_descriptors.push_back(EditorPatchComponent::CreateDescriptor());
         m_descriptors.push_back(PlanarBenchmark::CreateDescriptor());
         m_descriptors.push_back(EditorMeshComponent::CreateDescriptor());
         m_descriptors.push_back(CreateEditorPaintDescriptor());
         m_descriptors.push_back(DecalPainterSystem::CreateDescriptor());
     }
+    ~EditorModule() override
+    {
+        AzFramework::RootSpawnableNotificationBus::Handler::BusDisconnect();
+        AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusDisconnect();
+    }
+    void OnStartPlayInEditorBegin() override { m_startingAaHandoff=true;BeginAntiAliasingHandoff(); }
+    // OnStartPlayInEditor fires before asynchronous runtime entity activation.
+    // The spawn completion notification is the actual ownership-transfer fence.
+    void OnRootSpawnableReady(AZ::Data::Asset<AzFramework::Spawnable>,uint32_t) override
+    { if(m_startingAaHandoff){m_startingAaHandoff=false;EndAntiAliasingHandoff();} }
+    void OnStopPlayInEditorBegin() override { m_startingAaHandoff=false;BeginAntiAliasingHandoff(); }
+    void OnStopPlayInEditor() override { EndAntiAliasingHandoff(); }
+    bool m_startingAaHandoff=false;
     AZ::ComponentTypeList GetRequiredSystemComponents() const override
     {return {azrtti_typeid<PlanarBenchmark>(),azrtti_typeid<MeshAssetSystem>(),azrtti_typeid<DecalPainterSystem>()};}
 };

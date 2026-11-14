@@ -99,10 +99,9 @@ def main():
     generation=silpom.SilPomMeshRequestBus(bus.Event,'GetStatus',tower)
     select(0,baseline)
     renderer_clean()
-    # MSAA-to-game currently exposes a native skinning-buffer state error.
-    # This visual-only suite intentionally stays in the editor; it does not
-    # imply that selecting 1x again makes that game-mode handoff safe.
-    result['msaa_gameplay_limitation']='Select Current default, save and restart before Ctrl-G after using MSAA.'
+    # This suite validates editor pixels/lifecycle. Gameplay has a separate
+    # fresh-process and repeated-handoff matrix in MsaaGameplayEditorSmoke.py.
+    result['gameplay_validation']='Separate MsaaGameplayEditorSmoke.py matrix; see MsaaGameplayValidation.json.'
     assert LEVEL.read_bytes()==source
     result.update(passed=True,stage='complete',saved_level_unchanged=True)
 

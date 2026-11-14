@@ -10,9 +10,9 @@ In VueLiveLink, select **Irish Fieldstone Tower (Open Shaft)** and open its
 - **Current default (unchanged)** preserves the approved single-sample default.
 - **SMAA** enables both Atom's SMAA passes and its SMAA feature processor at 1×.
 - **TAA** enables temporal AA at 1×.
-- **4x MSAA (editor comparison)** selects the experimental four-sample renderer.
+- **4x MSAA (experimental)** selects the experimental four-sample renderer.
 
-SMAA and TAA carry into game mode. The selection changes scene AA without regenerating
+SMAA, TAA and MSAA carry into game mode. The selection changes scene AA without regenerating
 the tower or changing its estimator, lighting, recovery or quality settings.
 Returning to Current default, or disabling the component, restores the settings
 active before the comparison. Default components are passive. If several meshes
@@ -21,12 +21,19 @@ returns to the remaining selection. MSAA's sample count affects the application,
 including preview scenes, so a brief rendering pause protects sample transitions.
 Existing levels deserialize to Current default; no tower prefab needs rewriting.
 
-Use four samples for editor comparisons. **After using MSAA, select Current
-default, save and restart the Editor before Ctrl-G.** The MSAA-to-game handoff
-currently exposes a native DX12 `SkinnedMeshOutputStream0` UAV/read-state barrier
-mismatch, including when the sample count has already returned to one. Merely
-selecting a different AA option does not establish that gameplay is safe in
-that session. The selector does not claim to fix this engine limitation.
+The earlier Ctrl-G failure was a transition/lifecycle defect. Tracing confirmed
+an unnecessary 4× → 1× → 4× change as the editor released its AA request before
+runtime activation. The override now survives that transfer until the runtime
+root spawnable is ready, and survives the reverse transfer on leaving gameplay.
+It retains the original settings for a later return to Current default.
+
+Repeated gameplay also exposed a deferred preview-pipeline rebuild: an idle
+thumbnail pipeline could retain a pending MSAA change until a later preview
+request, then submit 1× draw packets against 4× attachments. The transition now
+processes queued changes on idle pipelines too. See
+[the gameplay validation report](../Tests/Reference/MsaaGameplayValidation.json)
+for the tested cases and the separate native-console control reproduction.
+The prior restart precaution is superseded for this selector workflow.
 
 Four samples add substantial GPU cost and remain an experimental coverage
 comparison. They retain the current raw/repair console choice; selecting AA does
@@ -34,6 +41,17 @@ not alter that choice or add diagnostic passes. Unsupported devices retain 1×.
 `Tests/AntiAliasingSelectorEditorSmoke.py` exercises the actual dropdown property,
 rapid transitions, disable/re-enable and exact approved 1× captures. Gameplay
 after an MSAA comparison is explicitly outside this editor visual suite.
+`Tests/MsaaGameplayEditorSmoke.py` separately exercises fresh 1×, initialized
+4×, 1× → 4× → 1×, live 4× handoff and mixed-selector history. Set
+`TG_SILPOM_GAMEPLAY_CASE` and `TG_SILPOM_ESTIMATOR_OUTPUT`; optional
+`TG_SILPOM_GAMEPLAY_REPEATS=3` repeats Ctrl-G without restarting. The `startup4`
+case also requires the launch argument
+`--regset=/O3DE/Autoexec/ConsoleCommands/r_multiSampleCount=4`.
+The `minimal` case creates a separate lit animated-raven fixture from the
+existing actor and engine template, with no SilPOM or custom terrain. It uses
+unguarded native `r_multiSampleCount` commands deliberately; this control can
+fail before gameplay with a sample-count/pipeline-state mismatch. Use the
+selector or the SilPOM sample-policy controls for guarded transitions.
 
 The visual suite does not collect timings by default. Set
 `TG_SILPOM_MSAA_TIMING=1` to add the existing 120-frame GPU captures. New visual
@@ -64,11 +82,17 @@ r_silpomMsaa4 1
 Disabling `r_silpomMsaa4` restores one sample. The native rendering device is
 checked for four-sample render/load support on the actual attachment formats
 before enabling the path. Pipeline roots pause during the sample-count
-transition, including root recreation, so old draw packets cannot be submitted
-to new attachments. The transition owns its tick handler until completion and
-drops removed pipelines; disabling the last mesh cannot leave surviving roots
-paused. The three-tick delay remains a scheduling guard rather than a general
-shader/readiness guarantee.
+transition, including root recreation. A temporary scene-bus router observes
+added pipelines in every scene, so additions after the initial snapshot are
+paused too. It processes queued pass changes even on idle preview pipelines,
+then waits for rebuilt pass state, matching samples and a scene pipeline-state
+lookup across a simulation boundary before resuming. There is no fixed
+three-tick completion timer. The transition owns its tick handler until
+completion and drops removed pipelines; disabling the last mesh cannot leave
+surviving roots paused. It adds no steady-state rendering passes or GPU work.
+`r_silpomAaTrace 1` logs AA ownership and pipeline changes for diagnosis;
+normally it is off. No guessed buffer barriers or forced resource states are
+used by this correction.
 
 Each covered sample has its own unresolved `uint4` hit record. Intersection uses
 sample-interpolated camera coordinates. The forward wrapper supplies

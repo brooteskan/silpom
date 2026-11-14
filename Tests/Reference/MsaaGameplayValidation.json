@@ -1,0 +1,164 @@
+{
+  "passed": true,
+  "date": "2026-11-13",
+  "scope": "VueLiveLink editor-to-gameplay AA transitions with native DX12 validation; not a standalone launcher or performance benchmark",
+  "implementation_base_commit": "bec2dc34ac5c4a39cc7896f0ce7895d747bab080",
+  "engine_commit": "061180bf24f1666eb30315b35da292eb14f4659c",
+  "gpu": "AMD Radeon RX 7900 XTX",
+  "cases": {
+    "baseline1-readyfix": {
+      "case": "baseline1",
+      "editor_state": [
+        1,
+        0,
+        0
+      ],
+      "runtime_state": [
+        1,
+        0,
+        0
+      ],
+      "gameplay_entries": 1,
+      "aa_tracing": false
+    },
+    "startup4-readyfix": {
+      "case": "startup4",
+      "editor_state": [
+        4,
+        0,
+        0
+      ],
+      "runtime_state": [
+        4,
+        0,
+        0
+      ],
+      "gameplay_entries": 1,
+      "aa_tracing": false
+    },
+    "roundtrip-readyfix": {
+      "case": "roundtrip",
+      "editor_state": [
+        1,
+        0,
+        0
+      ],
+      "runtime_state": [
+        1,
+        0,
+        0
+      ],
+      "gameplay_entries": 1,
+      "aa_tracing": false
+    },
+    "handoff4-readyfix": {
+      "case": "handoff4",
+      "editor_state": [
+        4,
+        0,
+        0
+      ],
+      "runtime_state": [
+        4,
+        0,
+        0
+      ],
+      "gameplay_entries": 3,
+      "aa_tracing": true
+    },
+    "history-readyfix": {
+      "case": "history",
+      "editor_state": [
+        1,
+        0,
+        0
+      ],
+      "runtime_state": [
+        1,
+        0,
+        0
+      ],
+      "gameplay_entries": 3,
+      "aa_tracing": false
+    },
+    "installed": {
+      "case": "handoff4",
+      "editor_state": [
+        4,
+        0,
+        0
+      ],
+      "runtime_state": [
+        4,
+        0,
+        0
+      ],
+      "gameplay_entries": 3,
+      "restored_default": [
+        1,
+        0,
+        0
+      ],
+      "aa_tracing": false
+    }
+  },
+  "gameplay_entries_validated": 12,
+  "approved_reference_captures_exact": 20,
+  "selector_lifecycle_passed": true,
+  "standalone_test_groups_passed": 35,
+  "benchmark_performed": false,
+  "level_sha256": "9124e6cd4ec1b601bcba0c7dc93424836483e2a2cabd56acb3fd6483596e9df8",
+  "saved_level_unchanged": true,
+  "installed_modules": {
+    "SilPOM.Editor.dll": "587498a21999fc9205105b7f2ba498bb7f22418279f9b556350aeb3c2b2511fc",
+    "SilPOM.dll": "935cab87ec20ea56822da507b7e5b56a98635935a90196535031a563997c83c4"
+  },
+  "terrain_integration": {
+    "patch_applied": true,
+    "reverse_apply_check_passed": true,
+    "independent_of_skinning_fix": true,
+    "installed_modules": {
+      "Terrain.Editor.dll": "cc99db91596e86e0bd5eb81ad0977edfaf1f1ab17cb02ca9cd4c9db5f0edf1e1",
+      "Terrain.dll": "994146f26a8c1124599ef5ee02c263d488b47b08c2bd015bb8deb816a1edfc0c"
+    }
+  },
+  "fixes": [
+    "Keep the AA baseline and desired mode across editor/runtime ownership transfer until root-spawn completion",
+    "Acquire runtime AA ownership during activation",
+    "Observe new pipelines in all scenes while a transition is active",
+    "Process queued rebuilds for idle preview pipelines before their next request",
+    "Resume after matching samples, initialized passes and a rebuilt scene lookup across a simulation boundary; no fixed completion timer",
+    "Do not rebuild the renderer when it already has the desired sample count"
+  ],
+  "reproduced_before_fix": {
+    "handoff": "4 -> 1 -> 4 within render tick 214",
+    "skinning_validation_error": 527,
+    "before_state": "0x8 UAV",
+    "actual_state": "0x40 NON_PIXEL_SHADER_RESOURCE",
+    "attachment_id": "SkinnedMeshOutputStream_E433BF48BA02429CBC09C576795D7A4F",
+    "native_resource": "000001E95A407510",
+    "rhi_buffer": "000001E95F2D9E10",
+    "command_list_id": null,
+    "trace": "MsaaGameplayFailureTrace.txt",
+    "diagnostic_limit": "Compiler scope chain and native error/stack were captured; the command-list identity and exact internal buffer-state cause were not established. The correction addresses observed lifecycle/rebuild errors without guessed barriers."
+  },
+  "native_control": {
+    "fixture": "Lit animated raven, standard sky, sun and camera; no SilPOM or custom terrain",
+    "commands": [
+      "r_multiSampleCount 4",
+      "r_multiSampleCount 1"
+    ],
+    "completed": false,
+    "failed_at": "First native 1x -> 4x change, before gameplay and before the return to 1x",
+    "validation_error": 614,
+    "pipeline_state_samples": 1,
+    "render_target_samples": 4,
+    "same_skinning_error": false
+  },
+  "limitations": [
+    "Raw/repaired 4x coverage still differs from the approved 1x repair policy and remains experimental",
+    "Unguarded native r_multiSampleCount changes bypass this coordinator and are not validated as safe",
+    "No claim of an engine-wide buffer-state fix or standalone launcher validation"
+  ],
+  "steady_state_gpu_work_added": false
+}

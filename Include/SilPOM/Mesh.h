@@ -119,6 +119,10 @@ public:
 };
 using MeshRequestBus = AZ::EBus<MeshRequests>;
 
+// Keep the viewport AA override while editor entities transfer to/from runtime.
+void BeginAntiAliasingHandoff();
+void EndAntiAliasingHandoff();
+
 class MeshController final : private AZ::TickBus::Handler, private AZ::TransformNotificationBus::Handler,
     private AZ::Data::AssetBus::MultiHandler, private MeshRequestBus::Handler, private AZ::RPI::SceneNotificationBus::Handler
 {
