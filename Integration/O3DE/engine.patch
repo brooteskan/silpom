@@ -1,0 +1,3355 @@
+diff --git a/Code/Framework/AzFramework/Platform/Windows/AzFramework/Windowing/NativeWindow_Windows.cpp b/Code/Framework/AzFramework/Platform/Windows/AzFramework/Windowing/NativeWindow_Windows.cpp
+index 39a9e7e0e6034147883f83b08252ed8f6032d587..6ac800cc9d52cfedc9bf86d6152425cf0a6b7bab 100644
+--- a/Code/Framework/AzFramework/Platform/Windows/AzFramework/Windowing/NativeWindow_Windows.cpp
++++ b/Code/Framework/AzFramework/Platform/Windows/AzFramework/Windowing/NativeWindow_Windows.cpp
+@@ -13,6 +13,7 @@
+ 
+ #include <AzCore/Module/DynamicModuleHandle.h>
+ #include <AzCore/PlatformIncl.h>
++#include <AzCore/Settings/SettingsRegistry.h>
+ #include <AzCore/std/containers/array.h>
+ #include <AzCore/std/string/conversions.h>
+ 
+@@ -45,6 +46,17 @@ namespace AzFramework
+ 
+     void DrawSplash(HWND hWnd)
+     {
++        // Custom application presentations can own startup before Atom is ready.
++        // Keep the legacy bitmap enabled by default for other launch paths.
++        bool showSplash = true;
++        if (auto registry = AZ::SettingsRegistry::Get())
++        {
++            registry->Get(showSplash, "/O3DE/AzFramework/Windowing/ShowSplash");
++        }
++        if (!showSplash)
++        {
++            return;
++        }
+         const HINSTANCE hInstance = GetModuleHandle(nullptr);
+         auto hImage = (HBITMAP)LoadImageA(hInstance, MAKEINTRESOURCEA(IDB_SPLASH1), IMAGE_BITMAP, 0, 0, 0);
+         if (hImage)
+@@ -98,7 +110,17 @@ namespace AzFramework
+             }
+         }
+ 
+-        const DWORD windowStyle = ConvertToWin32WindowStyleMask(styleMasks);
++        DWORD windowStyle = ConvertToWin32WindowStyleMask(styleMasks);
++        bool borderless = false;
++        if (auto registry = AZ::SettingsRegistry::Get())
++        {
++            registry->Get(borderless, "/O3DE/AzFramework/Windowing/Borderless");
++        }
++        if (borderless)
++        {
++            windowStyle &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);
++            windowStyle |= WS_POPUP;
++        }
+         const BOOL windowHasMenu = FALSE;
+ 
+         // Adjust the window size so that the geometry we were given is the size of the client area.
+@@ -118,10 +140,23 @@ namespace AzFramework
+         // create main window
+         AZStd::wstring titleW;
+         AZStd::to_wstring(titleW, title);
++        int positionX = geometry.m_posX, positionY = geometry.m_posY;
++        if (auto registry = AZ::SettingsRegistry::Get())
++        {
++            AZ::s64 centerX{}, centerY{};
++            if (registry->Get(centerX, "/O3DE/AzFramework/Windowing/CenterX") &&
++                registry->Get(centerY, "/O3DE/AzFramework/Windowing/CenterY"))
++            {
++                // Place the window before activation/swapchain creation so fullscreen
++                // selects the requested display without flashing on the primary one.
++                positionX = static_cast<int>(centerX - (windowRect.right - windowRect.left) / 2);
++                positionY = static_cast<int>(centerY - (windowRect.bottom - windowRect.top) / 2);
++            }
++        }
+         m_win32Handle = CreateWindowW(
+             s_defaultClassName, titleW.c_str(),
+             windowStyle,
+-            geometry.m_posX, geometry.m_posY, windowRect.right - windowRect.left, windowRect.bottom - windowRect.top,
++            positionX, positionY, windowRect.right - windowRect.left, windowRect.bottom - windowRect.top,
+             nullptr, nullptr, hInstance, nullptr);
+ 
+         if (m_win32Handle == nullptr)
+@@ -260,6 +295,11 @@ namespace AzFramework
+     LRESULT CALLBACK NativeWindowImpl_Win32::WindowCallback(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+     {
+         NativeWindowImpl_Win32* nativeWindowImpl = reinterpret_cast<NativeWindowImpl_Win32*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
++        // CreateWindow can send size/position messages before GWLP_USERDATA is attached.
++        if (!nativeWindowImpl)
++        {
++            return DefWindowProc(hWnd, message, wParam, lParam);
++        }
+ 
+         // If set to true, call DefWindowProc to ensure the default Windows behavior occurs
+         bool shouldBubbleEventUp = false;
+diff --git a/Code/Framework/AzToolsFramework/AzToolsFramework/Prefab/Instance/InstanceSerializer.cpp b/Code/Framework/AzToolsFramework/AzToolsFramework/Prefab/Instance/InstanceSerializer.cpp
+index ae650b2a5c4854dfff0d81c5d00769273857809f..6d8e9f6bd54c2041ed0e3da4b30515ea336abfd7 100644
+--- a/Code/Framework/AzToolsFramework/AzToolsFramework/Prefab/Instance/InstanceSerializer.cpp
++++ b/Code/Framework/AzToolsFramework/AzToolsFramework/Prefab/Instance/InstanceSerializer.cpp
+@@ -276,7 +276,8 @@ namespace AzToolsFramework
+ 
+                     InstanceAlias instanceAlias(instanceAliasValue.GetString(), instanceAliasValue.GetStringLength());
+ 
+-                    AZStd::unique_ptr<Instance> nestedInstance = AZStd::make_unique<Instance>();
++                    AZStd::unique_ptr<Instance> nestedInstance =
++                        AZStd::make_unique<Instance>(instance->m_entityIdInstanceRelationship);
+ 
+                     nestedInstance->m_alias = instanceAlias;
+                     nestedInstance->m_parent = instance;
+diff --git a/Code/Tools/AssetProcessor/native/utilities/assetUtils.cpp b/Code/Tools/AssetProcessor/native/utilities/assetUtils.cpp
+index 65b8c5d7728e8e888cceef817dbab6d1a2bfb240..80043ede4a10e18ad03207a5aa4cc6ebbb7c13fe 100644
+--- a/Code/Tools/AssetProcessor/native/utilities/assetUtils.cpp
++++ b/Code/Tools/AssetProcessor/native/utilities/assetUtils.cpp
+@@ -8,6 +8,7 @@
+ #include "assetUtils.h"
+ 
+ #include <AzCore/Component/ComponentApplication.h>
++#include <AzCore/std/algorithm.h>
+ #include <AzCore/Math/Sha1.h>
+ #include <AzCore/Settings/SettingsRegistry.h>
+ 
+@@ -1519,7 +1520,12 @@ namespace AssetUtilities
+             return {};
+         }
+ 
+-        if (sources.size() > 1)
++        // Rebuilding a material pipeline can retain product records with
++        // different sub-IDs for the same filename and owning source. The query
++        // returns one row per product; these rows do not imply distinct owners.
++        const auto ownerSourceId = sources.front().m_sourceID;
++        if (AZStd::any_of(sources.begin(), sources.end(), [ownerSourceId](const auto& source)
++            { return source.m_sourceID != ownerSourceId; }))
+         {
+             AZ_Error(AssetProcessor::ConsoleChannel, false, "GetTopLevelSourceForProduct found multiple sources for product %s", sourceAsset.AbsolutePath().c_str());
+             return {};
+diff --git a/Code/Tools/SceneAPI/SDKWrapper/AssImpTypeConverter.cpp b/Code/Tools/SceneAPI/SDKWrapper/AssImpTypeConverter.cpp
+index fcd108b30fa8a0847a951d5f18c84db5f253b9f2..8123a760d991eda8e8f831e06fda2f33fa2cd2e1 100644
+--- a/Code/Tools/SceneAPI/SDKWrapper/AssImpTypeConverter.cpp
++++ b/Code/Tools/SceneAPI/SDKWrapper/AssImpTypeConverter.cpp
+@@ -34,6 +34,17 @@ namespace AZ
+             return transform;
+         }
+ 
++        SceneAPI::DataTypes::MatrixType AssImpTypeConverter::ToTransform(
++            const aiVector3D& scale, const aiQuaternion& rotation, const aiVector3D& translation)
++        {
++            // Local scale acts on the rotation matrix's columns (T * R * S).
++            // Assimp's scale/rotation/position constructor scales rows (T * S * R).
++            auto transform = ToTransform(aiMatrix4x4(rotation.GetMatrix()));
++            transform.MultiplyByScale(ToVector3(scale));
++            transform.SetTranslation(ToVector3(translation));
++            return transform;
++        }
++
+         SceneAPI::DataTypes::Color AssImpTypeConverter::ToColor(const aiColor4D& color)
+         {
+             return AZ::SceneAPI::DataTypes::Color(color.r, color.g, color.b, color.a);
+diff --git a/Code/Tools/SceneAPI/SDKWrapper/AssImpTypeConverter.h b/Code/Tools/SceneAPI/SDKWrapper/AssImpTypeConverter.h
+index c7055073c7d9a08a664ad934aed1d13b08fee6a9..fd06e7b1da6ac5a532404ff3a34e3c6f42bbc61d 100644
+--- a/Code/Tools/SceneAPI/SDKWrapper/AssImpTypeConverter.h
++++ b/Code/Tools/SceneAPI/SDKWrapper/AssImpTypeConverter.h
+@@ -27,6 +27,9 @@ namespace AZ
+         {
+         public:
+             static SceneAPI::DataTypes::MatrixType ToTransform(const aiMatrix4x4& matrix);
++            //! Compose local animation channels as translation * rotation * scale.
++            static SceneAPI::DataTypes::MatrixType ToTransform(
++                const aiVector3D& scale, const aiQuaternion& rotation, const aiVector3D& translation);
+             static SceneAPI::DataTypes::Color ToColor(const aiColor4D& color);
+             static AZ::Vector3 ToVector3(const aiVector3D& vector3);
+         };
+diff --git a/Code/Tools/SceneAPI/SceneBuilder/Importers/AssImpAnimationImporter.cpp b/Code/Tools/SceneAPI/SceneBuilder/Importers/AssImpAnimationImporter.cpp
+index 4a5c9fe5c4670e2f9992ace5feee418803546f59..7a92bf6bbe37d0e2780d07e99bebb4bdd4853d95 100644
+--- a/Code/Tools/SceneAPI/SceneBuilder/Importers/AssImpAnimationImporter.cpp
++++ b/Code/Tools/SceneAPI/SceneBuilder/Importers/AssImpAnimationImporter.cpp
+@@ -587,8 +587,8 @@ namespace AZ
+                             return Events::ProcessingResult::Failure;
+                         }
+                         
+-                        aiMatrix4x4 transform(scale, rotation, position);
+-                        DataTypes::MatrixType animTransform = AssImpSDKWrapper::AssImpTypeConverter::ToTransform(transform);
++                        DataTypes::MatrixType animTransform =
++                            AssImpSDKWrapper::AssImpTypeConverter::ToTransform(scale, rotation, position);
+ 
+                         context.m_sourceSceneSystem.SwapTransformForUpAxis(animTransform);
+                         context.m_sourceSceneSystem.ConvertBoneUnit(animTransform);
+diff --git a/Gems/Atom/Asset/Shader/Code/CMakeLists.txt b/Gems/Atom/Asset/Shader/Code/CMakeLists.txt
+index 8ac565d9941307f708f0e1631bec2c25b2962145..97782247e86c51d78dccdcb3cb68d8944ffc70a7 100644
+--- a/Gems/Atom/Asset/Shader/Code/CMakeLists.txt
++++ b/Gems/Atom/Asset/Shader/Code/CMakeLists.txt
+@@ -12,6 +12,7 @@ endif()
+ 
+ o3de_pal_dir(pal_source_dir ${CMAKE_CURRENT_LIST_DIR}/Source/Platform/${PAL_PLATFORM_NAME} "${gem_restricted_path}" "${gem_path}" "${gem_parent_relative_path}")
+ set(common_source_dir ${CMAKE_CURRENT_LIST_DIR}/Source/Platform/Common)
++include(${LY_ROOT_FOLDER}/cmake/TGDX12ShaderModel.cmake)
+ 
+ include(${pal_source_dir}/PAL_${PAL_PLATFORM_NAME_LOWERCASE}.cmake) #for PAL_TRAIT_BUILD_ATOM_ASSET_SHADER_SUPPORTED
+ 
+@@ -80,6 +81,8 @@ ly_add_target(
+             Gem::Atom_RPI.Public
+ )
+ 
++tg_set_dx12_shader_model(Gem::${gem_name}.Static)
++
+ set(builder_tools_include_files)
+ foreach(enabled_platform ${LY_PAL_TOOLS_ENABLED})
+     string(TOLOWER ${enabled_platform} enabled_platform_lowercase)
+diff --git a/Gems/Atom/Asset/Shader/Code/Source/Editor/AzslShaderBuilderSystemComponent.cpp b/Gems/Atom/Asset/Shader/Code/Source/Editor/AzslShaderBuilderSystemComponent.cpp
+index 2ce289c9cdd56ef6e97d1345157a8b16eff1f9aa..f63a7318b02c61d1001e8fa1151bbaea51271a64 100644
+--- a/Gems/Atom/Asset/Shader/Code/Source/Editor/AzslShaderBuilderSystemComponent.cpp
++++ b/Gems/Atom/Asset/Shader/Code/Source/Editor/AzslShaderBuilderSystemComponent.cpp
+@@ -84,6 +84,8 @@ namespace AZ
+             AssetBuilderSDK::AssetBuilderDesc shaderAssetBuilderDescriptor;
+             shaderAssetBuilderDescriptor.m_name = "Shader Asset Builder";
+             shaderAssetBuilderDescriptor.m_version = 126; // ShaderStageFunction allocator
++            // Re-analyze sources when the target changes, including a switch back to 6.2.
++            shaderAssetBuilderDescriptor.m_analysisFingerprint = AZStd::string::format("TG.DX12.SM.%d.v1", TG_DX12_SHADER_MODEL);
+             shaderAssetBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern( AZStd::string::format("*.%s", RPI::ShaderSourceData::Extension), AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
+             shaderAssetBuilderDescriptor.m_busId = azrtti_typeid<ShaderAssetBuilder>();
+             shaderAssetBuilderDescriptor.m_createJobFunction = AZStd::bind(&ShaderAssetBuilder::CreateJobs, &m_shaderAssetBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
+@@ -109,6 +111,7 @@ namespace AZ
+                 // Both "Shader Variant Asset Builder" and "Shader Asset Builder" produce ShaderVariantAsset products. If you update
+                 // ShaderVariantAsset you will need to update BOTH version numbers, not just "Shader Variant Asset Builder".
+                 shaderVariantAssetBuilderDescriptor.m_version = 43; // ShaderStageFunction allocator
++                shaderVariantAssetBuilderDescriptor.m_analysisFingerprint = shaderAssetBuilderDescriptor.m_analysisFingerprint;
+                 shaderVariantAssetBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern(AZStd::string::format("*.%s", HashedVariantListSourceData::Extension), AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
+                 shaderVariantAssetBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern(AZStd::string::format("*.%s", HashedVariantInfoSourceData::Extension), AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
+                 shaderVariantAssetBuilderDescriptor.m_busId = azrtti_typeid<ShaderVariantAssetBuilder>();
+diff --git a/Gems/Atom/Asset/Shader/Code/Source/Editor/ShaderAssetBuilder.cpp b/Gems/Atom/Asset/Shader/Code/Source/Editor/ShaderAssetBuilder.cpp
+index bbefcdd61fee896f22336d40335f32d6c6a8ccc3..098f9998b0e7e78f32c0e246ce52889d9247ee71 100644
+--- a/Gems/Atom/Asset/Shader/Code/Source/Editor/ShaderAssetBuilder.cpp
++++ b/Gems/Atom/Asset/Shader/Code/Source/Editor/ShaderAssetBuilder.cpp
+@@ -226,6 +226,8 @@ namespace AZ
+                 jobDescriptor.m_priority = 2;
+                 jobDescriptor.m_critical = false;
+                 jobDescriptor.m_jobKey = ShaderAssetBuilderJobKey;
++                // Analysis fingerprints cause CreateJobs; this also invalidates compiled products.
++                jobDescriptor.m_additionalFingerprintInfo = AZStd::string::format("TG.DX12.SM.%d.v1", TG_DX12_SHADER_MODEL);
+                 jobDescriptor.SetPlatformIdentifier(platformInfo.m_identifier.c_str());
+                 response.m_createJobOutputs.emplace_back(AZStd::move(jobDescriptor));
+             } // for all request.m_enabledPlatforms
+@@ -450,6 +452,12 @@ namespace AZ
+                     // Run the preprocessor.
+                     PreprocessorData output;
+                     auto preprocessorArguments = AppendIncludePathsToArgumentList(buildArgsManager.GetCurrentArguments().m_preprocessorArguments, projectIncludePaths);
++                    if (shaderPlatformInterface->GetAPIName() == AZ::Name("dx12"))
++                    {
++                        // These describe compilation support, not optional runtime GPU capabilities.
++                        preprocessorArguments.emplace_back(AZStd::string::format("-DTG_DX12_SHADER_MODEL=%d", TG_DX12_SHADER_MODEL));
++                        preprocessorArguments.emplace_back(AZStd::string::format("-DTG_DX12_SHADER_MODEL_6_7=%u", TG_DX12_SHADER_MODEL == 67 ? 1u : 0u));
++                    }
+                     const bool preprocessorSuccess = PreprocessFile(prependedAzslFilePath, output, preprocessorArguments,  true);
+                     if (RHI::ReportMessages(ShaderAssetBuilderName, output.diagnostics, !preprocessorSuccess))
+                     {
+diff --git a/Gems/Atom/Asset/Shader/Code/Source/Editor/ShaderVariantAssetBuilder.cpp b/Gems/Atom/Asset/Shader/Code/Source/Editor/ShaderVariantAssetBuilder.cpp
+index 3e0ee33149750db35d92a7c34ad515c839c86deb..67ae046d4f541a3f890fe48ad910e596e59b5ec6 100644
+--- a/Gems/Atom/Asset/Shader/Code/Source/Editor/ShaderVariantAssetBuilder.cpp
++++ b/Gems/Atom/Asset/Shader/Code/Source/Editor/ShaderVariantAssetBuilder.cpp
+@@ -123,6 +123,7 @@ namespace AZ
+                 AZ_TraceContext("For platform", info.m_identifier.data());
+ 
+                 AssetBuilderSDK::JobDescriptor jobDescriptor;
++                jobDescriptor.m_additionalFingerprintInfo = AZStd::string::format("TG.DX12.SM.%d.v1", TG_DX12_SHADER_MODEL);
+ 
+                 // The ShaderVariantTreeAsset is high priority, but must be generated after the ShaderAsset 
+                 jobDescriptor.m_priority = 1;
+@@ -197,6 +198,7 @@ namespace AZ
+                 AZ_TraceContext("For platform", info.m_identifier.data());
+             
+                 AssetBuilderSDK::JobDescriptor jobDescriptor;
++                jobDescriptor.m_additionalFingerprintInfo = AZStd::string::format("TG.DX12.SM.%d.v1", TG_DX12_SHADER_MODEL);
+             
+                 // There can be tens/hundreds of thousands of shader variants. By default each shader will get
+                 // a root variant that can be used at runtime. In order to prevent the AssetProcessor from
+diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/Decals/DecalStructures.azsli b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/Decals/DecalStructures.azsli
+index b20371e9bfcdeac6758a44457be2559d251c0371..db51fd76b15514aa69a0d2b06ddf8bc0ab1ba653 100644
+--- a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/Decals/DecalStructures.azsli
++++ b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/Decals/DecalStructures.azsli
+@@ -8,7 +8,7 @@ struct Decal
+     float3 m_halfSize;
+     float m_angleAttenuation;
+     float m_normalMapOpacity;
+-    uint m_sortKeyPacked;
++    uint m_sortKeyPacked; // Sort key bits 0..7, DecalBlendMode bits 8..15.
+     uint m_textureArrayIndex;
+     uint m_textureIndex;
+     float3 m_decalColor;
+diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalComposite.azsli b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalComposite.azsli
+new file mode 100644
+index 0000000000000000000000000000000000000000..bcd4a19e3f29e2e16e123af1eb3cc2ae7cf327bd
+--- /dev/null
++++ b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalComposite.azsli
+@@ -0,0 +1,134 @@
++// Copyright (c) Contributors to the Open 3D Engine Project.
++// SPDX-License-Identifier: Apache-2.0 OR MIT
++#pragma once
++#include <Atom/Features/Bindless.azsli>
++#ifndef DECAL_PAINT_HEIGHT
++#define DECAL_PAINT_HEIGHT() -1.0f
++#endif
++
++bool PaintHeightSelected(uint flags,float height)
++{
++    const uint mask=(flags>>8)&7;
++    if(mask==7)return true; // Includes ordinary materials without a heightmap.
++    if(height<0)return false;
++    const uint band=height<1.0f/3.0f?0:(height<2.0f/3.0f?1:2);
++    return (mask&(1u<<band))!=0;
++}
++
++Decal LoadPaintDab(ByteAddressBuffer buffer, uint offset)
++{
++    uint4 a=buffer.Load4(offset), b=buffer.Load4(offset+16), c=buffer.Load4(offset+32);
++    uint4 d=buffer.Load4(offset+48), e=buffer.Load4(offset+64);
++    Decal value;
++    value.m_position=asfloat(a.xyz);value.m_opacity=asfloat(a.w);
++    value.m_quaternion=asfloat(b);value.m_halfSize=asfloat(c.xyz);value.m_angleAttenuation=asfloat(c.w);
++    value.m_normalMapOpacity=asfloat(d.x);value.m_sortKeyPacked=d.y;
++    value.m_textureArrayIndex=d.z;value.m_textureIndex=d.w;
++    value.m_decalColor=asfloat(e.xyz);value.m_decalColorFactor=asfloat(e.w);
++    return value;
++}
++
++// Alpha-only projections do not need normal-map fetches. Accumulating from
++// newest to oldest permits a bounded-error opacity early-out in dense paint.
++void SamplePaintAlpha(Decal decal, Surface surface, float3 positionDx, float3 positionDy, out float3 color, out float alpha)
++{
++    color=0;alpha=0;
++    float3x3 rotation=transpose(MatrixFromQuaternion(decal.m_quaternion));
++    float3 uvw=mul(rotation,surface.position-decal.m_position)/decal.m_halfSize;
++    if(any(uvw < -1.0)||any(uvw > 1.0))return;
++    float3 uv=float3(uvw.x*.5+.5,.5-uvw.y*.5,decal.m_textureIndex);
++    float2 decalDx=mul(rotation,positionDx).xy/decal.m_halfSize.xy*float2(.5,-.5);
++    float2 decalDy=mul(rotation,positionDy).xy/decal.m_halfSize.xy*float2(.5,-.5);
++    float4 map=0;
++    switch(decal.m_textureArrayIndex)
++    {
++        case 0:map=ViewSrg::m_decalTextureArrayDiffuse0.SampleGrad(PassSrg::LinearSampler,uv,decalDx,decalDy);break;
++        case 1:map=ViewSrg::m_decalTextureArrayDiffuse1.SampleGrad(PassSrg::LinearSampler,uv,decalDx,decalDy);break;
++        case 2:map=ViewSrg::m_decalTextureArrayDiffuse2.SampleGrad(PassSrg::LinearSampler,uv,decalDx,decalDy);break;
++        case 3:map=ViewSrg::m_decalTextureArrayDiffuse3.SampleGrad(PassSrg::LinearSampler,uv,decalDx,decalDy);break;
++        case 4:map=ViewSrg::m_decalTextureArrayDiffuse4.SampleGrad(PassSrg::LinearSampler,uv,decalDx,decalDy);break;
++    }
++    bool useTexture=true;
++    color=BlendBaseColor(real3(map.rgb),real3(decal.m_decalColor),real(decal.m_decalColorFactor),TextureBlendMode::Multiply,useTexture);
++    alpha=map.a*decal.m_opacity*GetDecalAttenuation(surface.GetVertexNormal(),rotation[2],decal.m_angleAttenuation);
++}
++
++void ApplyPaintForward(ByteAddressBuffer buffer,uint offset,inout Surface surface,float3 positionDx,float3 positionDy,
++    float height,inout uint layer,inout float3 baseColor,inout float3 baseNormal)
++{
++    const uint4 meta=buffer.Load4(offset+80);
++    if(!PaintHeightSelected(meta.x,height))return;
++    if(layer!=meta.y){layer=meta.y;baseColor=surface.albedo;baseNormal=surface.normal;}
++    Decal dab=LoadPaintDab(buffer,offset);
++    if((meta.x&1)!=0)
++    {
++        float3 ignored;float alpha;SamplePaintAlpha(dab,surface,positionDx,positionDy,ignored,alpha);
++        surface.albedo=real3(lerp(surface.albedo,baseColor,alpha));
++        surface.normal=alpha>=1?real3(baseNormal):real3(normalize(lerp(surface.normal,baseNormal,alpha)));
++    }
++    else ApplyDecalData(dab,surface,positionDx,positionDy);
++}
++
++void ApplyPaintComposite(Decal composite,inout Surface surface,float3 positionDx,float3 positionDy)
++{
++    ByteAddressBuffer buffer=Bindless::GetByteAddressBuffer(composite.m_textureArrayIndex);
++    uint4 header=buffer.Load4(0);
++    // The material hook performs exact bilinear mip-zero height lookup once per
++    // filtered batch, with the same tiling/addressing as SILPOM intersection.
++    float height=-1;
++    [branch] if((header.z&4)!=0)height=DECAL_PAINT_HEIGHT();
++    uint layer=0xFFFFFFFF;
++    float3 baseColor=0,baseNormal=0;
++    if((header.z&2)!=0)
++    {
++        [loop]
++        for(uint i=0;i<header.w;++i)ApplyPaintForward(buffer,header.y+i*96,surface,positionDx,positionDy,height,layer,baseColor,baseNormal);
++        return;
++    }
++    float3 premultiplied=0;
++    float transmittance=1;
++    float3 layerColor=0;
++    float layerAlpha=0,weight=1;
++    uint node=0;
++    [loop]
++    while(node<header.x)
++    {
++        uint offset=16+node*32;
++        uint4 low=buffer.Load4(offset), high=buffer.Load4(offset+16);
++        if(any(surface.position<asfloat(low.xyz))||any(surface.position>asfloat(high.xyz)))
++        {
++            node=low.w;continue;
++        }
++        ++node;
++        if(high.w>=header.w)continue; // Interior node.
++        const uint leafOffset=header.y+high.w*96;
++        const uint4 meta=buffer.Load4(leafOffset+80);
++        if(!PaintHeightSelected(meta.x,height))continue;
++        if((header.z&1)!=0)
++        {
++            if(layer!=meta.y)
++            {
++                premultiplied+=transmittance*layerColor;transmittance*=saturate(1-layerAlpha);
++                if(transmittance<0.00001){layerColor=0;layerAlpha=0;break;}
++                layer=meta.y;layerColor=0;layerAlpha=0;weight=1;
++            }
++            Decal dab=LoadPaintDab(buffer,leafOffset);
++            float3 color;float alpha;SamplePaintAlpha(dab,surface,positionDx,positionDy,color,alpha);
++            if((meta.x&1)==0){layerColor+=weight*alpha*color;layerAlpha+=weight*alpha;}
++            weight*=1-alpha;
++            if(transmittance*(1-layerAlpha)<0.00001)break;
++            // A full erase can make the older part of this layer irrelevant,
++            // while paint in lower layers must still remain visible.
++            if(weight<0.00001)node=meta.z;
++        }
++        else
++        {
++            ApplyPaintForward(buffer,leafOffset,surface,positionDx,positionDy,height,layer,baseColor,baseNormal);
++        }
++    }
++    if((header.z&1)!=0)
++    {
++        premultiplied+=transmittance*layerColor;transmittance*=saturate(1-layerAlpha);
++        surface.albedo=real3(premultiplied+transmittance*surface.albedo);
++    }
++}
+diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Decals.azsli b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Decals.azsli
+index 58e57af7d705a1e27662acb55731ebec37a2e3fb..72fcd00204302108bd210968182db03b63029b68 100644
+--- a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Decals.azsli
++++ b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Decals.azsli
+@@ -35,9 +35,30 @@ real GetDecalAttenuation(real3 surfNormal, real3 decalUp, real decalAngleAttenut
+     return lerp(1, dotAtten, decalAngleAttenutation);
+ }
+ 
+-void ApplyDecal(uint currDecalIndex, inout Surface surface)
++// Modes match DecalBlendMode. Operate on linear working-space surface color.
++real3 BlendDecalColor(real3 base, real3 decal, uint mode)
++{
++    if (mode == 1) // Multiply
++    {
++        return base * decal;
++    }
++    if (mode == 2) // Add (bounded base-color reflectance)
++    {
++        return saturate(base + decal);
++    }
++    if (mode == 3) // Screen
++    {
++        return 1.0 - (1.0 - base) * (1.0 - decal);
++    }
++    if (mode == 4) // Overlay, selected by the underlying surface color
++    {
++        return TextureBlend_Overlay(base, decal);
++    }
++    return decal; // Alpha, also the fallback for unknown modes
++}
++
++void ApplyDecalData(Decal decal, inout Surface surface, float3 positionDx, float3 positionDy)
+ {
+-    Decal decal = ViewSrg::m_decals[currDecalIndex];
+ 
+     real3x3 decalRot = MatrixFromQuaternion(real4(decal.m_quaternion));
+     decalRot = transpose(decalRot);
+@@ -59,6 +80,8 @@ void ApplyDecal(uint currDecalIndex, inout Surface surface)
+         decalUVW.y *= -1;
+ 
+         real3 decalUV = real3(decalUVW.xy * 0.5 + 0.5, textureIndex);
++        float2 decalDx = mul(decalRot, positionDx).xy / decal.m_halfSize.xy * float2(.5, -.5);
++        float2 decalDy = mul(decalRot, positionDy).xy / decal.m_halfSize.xy * float2(.5, -.5);
+         
+         float4 baseMap = 0;
+         float2 normalMap = 0;
+@@ -68,24 +91,24 @@ void ApplyDecal(uint currDecalIndex, inout Surface surface)
+         switch(textureArrayIndex)
+         {
+             case 0:
+-                baseMap = ViewSrg::m_decalTextureArrayDiffuse0.Sample(PassSrg::LinearSampler, decalUV);
+-                normalMap = ViewSrg::m_decalTextureArrayNormalMaps0.Sample(PassSrg::LinearSampler, decalUV).rg;
++                baseMap = ViewSrg::m_decalTextureArrayDiffuse0.SampleGrad(PassSrg::LinearSampler, decalUV, decalDx, decalDy);
++                normalMap = ViewSrg::m_decalTextureArrayNormalMaps0.SampleGrad(PassSrg::LinearSampler, decalUV, decalDx, decalDy).rg;
+             break;
+             case 1:
+-                baseMap = ViewSrg::m_decalTextureArrayDiffuse1.Sample(PassSrg::LinearSampler, decalUV);
+-                normalMap = ViewSrg::m_decalTextureArrayNormalMaps1.Sample(PassSrg::LinearSampler, decalUV).rg;
++                baseMap = ViewSrg::m_decalTextureArrayDiffuse1.SampleGrad(PassSrg::LinearSampler, decalUV, decalDx, decalDy);
++                normalMap = ViewSrg::m_decalTextureArrayNormalMaps1.SampleGrad(PassSrg::LinearSampler, decalUV, decalDx, decalDy).rg;
+             break;
+             case 2:
+-                baseMap = ViewSrg::m_decalTextureArrayDiffuse2.Sample(PassSrg::LinearSampler, decalUV);
+-                normalMap = ViewSrg::m_decalTextureArrayNormalMaps2.Sample(PassSrg::LinearSampler, decalUV).rg;
++                baseMap = ViewSrg::m_decalTextureArrayDiffuse2.SampleGrad(PassSrg::LinearSampler, decalUV, decalDx, decalDy);
++                normalMap = ViewSrg::m_decalTextureArrayNormalMaps2.SampleGrad(PassSrg::LinearSampler, decalUV, decalDx, decalDy).rg;
+             break;
+             case 3:
+-                baseMap = ViewSrg::m_decalTextureArrayDiffuse3.Sample(PassSrg::LinearSampler, decalUV);
+-                normalMap = ViewSrg::m_decalTextureArrayNormalMaps3.Sample(PassSrg::LinearSampler, decalUV).rg;
++                baseMap = ViewSrg::m_decalTextureArrayDiffuse3.SampleGrad(PassSrg::LinearSampler, decalUV, decalDx, decalDy);
++                normalMap = ViewSrg::m_decalTextureArrayNormalMaps3.SampleGrad(PassSrg::LinearSampler, decalUV, decalDx, decalDy).rg;
+             break;
+             case 4:
+-                baseMap = ViewSrg::m_decalTextureArrayDiffuse4.Sample(PassSrg::LinearSampler, decalUV);
+-                normalMap = ViewSrg::m_decalTextureArrayNormalMaps4.Sample(PassSrg::LinearSampler, decalUV).rg;
++                baseMap = ViewSrg::m_decalTextureArrayDiffuse4.SampleGrad(PassSrg::LinearSampler, decalUV, decalDx, decalDy);
++                normalMap = ViewSrg::m_decalTextureArrayNormalMaps4.SampleGrad(PassSrg::LinearSampler, decalUV, decalDx, decalDy).rg;
+             break;            
+         }
+         
+@@ -94,13 +117,31 @@ void ApplyDecal(uint currDecalIndex, inout Surface surface)
+ 
+         bool useTexture = true;
+         real3 blendedBaseColor = BlendBaseColor(real3(baseMap.rgb), real3(decal.m_decalColor), real(decal.m_decalColorFactor), TextureBlendMode::Multiply, useTexture);
+-        surface.albedo = lerp(surface.albedo, real3(blendedBaseColor.rgb), albedoOpacity);
++        const uint blendMode = (decal.m_sortKeyPacked >> 8) & 0xFF;
++        const real3 decalColor = BlendDecalColor(surface.albedo, real3(blendedBaseColor.rgb), blendMode);
++        surface.albedo = lerp(surface.albedo, decalColor, albedoOpacity);
+ 
+         const real normalOpacity = real(baseMap.a) * real(decal.m_normalMapOpacity) * decalAttenuation;
+         const real3 normalMapWS = GetWorldSpaceNormal(real2(normalMap), decalRot[2], decalRot[0], decalRot[1], 1.0);
+         surface.normal = normalize(lerp(surface.normal, normalMapWS, normalOpacity));
+     }
+ }
++
++#include <Atom/Features/PBR/DecalComposite.azsli>
++
++void ApplyDecal(uint currDecalIndex, inout Surface surface)
++{
++    Decal decal = ViewSrg::m_decals[currDecalIndex];
++    float3 positionDx=ddx(surface.position), positionDy=ddy(surface.position);
++    if (((decal.m_sortKeyPacked >> 8) & 0xFF) == 5)
++    {
++        ApplyPaintComposite(decal, surface, positionDx, positionDy);
++    }
++    else
++    {
++        ApplyDecalData(decal, surface, positionDx, positionDy);
++    }
++}
+ #else
+ void ApplyDecal(inout LightCullingTileIterator tileIterator, inout Surface surface)
+ {
+diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/DiskLight.azsli b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/DiskLight.azsli
+index cd73f6959dc7ccab3e01d098d233ee07f46e3323..936baa46c63d677c3e6934cfe52c5058899aa6f5 100644
+--- a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/DiskLight.azsli
++++ b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/DiskLight.azsli
+@@ -94,6 +94,11 @@ class DiskLightUtil_PBR
+         // Smoothly adjusts the light intensity so it reaches 0 at light.m_attenuationRadius distance
+         float radiusAttenuation = 1.0 - (m_falloff * m_falloff);
+         radiusAttenuation = radiusAttenuation * radiusAttenuation;
++        if (light.m_falloffRate != 1.0)
++        {
++            // Change distance decay independently of the outer cutoff.
++            radiusAttenuation *= pow(1.0 + m_lightDistanceSquared, 0.5 * (1.0 - light.m_falloffRate));
++        }
+ 
+         // Find the distance to the closest point on the disk
+         float distanceToPlane = dot(m_posToLight, -light.m_direction);
+diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/LightStructures.azsli b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/LightStructures.azsli
+index 24bc5925bfbd6cd15b933dcf291f78d2c55a1a63..143306d4579b36efeac92f7293e471f69d77841e 100644
+--- a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/LightStructures.azsli
++++ b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/LightStructures.azsli
+@@ -83,7 +83,7 @@ struct DiskLight
+     float m_affectsGIFactor;
+     bool m_affectsGI;
+     uint m_lightingChannelMask;
+-    float m_padding;
++    float m_falloffRate;
+ };
+ 
+ // Capsule Lights
+@@ -124,7 +124,7 @@ struct QuadLight
+     float m_affectsGIFactor;
+     bool m_affectsGI;
+     uint m_lightingChannelMask;
+-    float m_padding;
++    float m_falloffRate;
+ };
+ 
+ // Polygon Lights
+diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/QuadLight.azsli b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/QuadLight.azsli
+index e9288279cd7db0ed926adbb6156397f452fe5bac..ce40d70c1dfbb8026311196ac602ac5f876dc7b8 100644
+--- a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/QuadLight.azsli
++++ b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/QuadLight.azsli
+@@ -119,6 +119,11 @@ class QuadLightUtil_PBR
+                 // Smoothly adjusts the light intensity so it reaches 0 at light.m_attenuationRadius distance
+         float radiusAttenuation = 1.0 - (m_falloff * m_falloff);
+         radiusAttenuation = radiusAttenuation * radiusAttenuation;
++        if (light.m_falloffRate != 1.0)
++        {
++            // Change distance decay independently of the outer cutoff.
++            radiusAttenuation *= pow(1.0 + m_distanceToLight2, 0.5 * (1.0 - light.m_falloffRate));
++        }
+ 
+         float3 left = light.m_leftDir * light.m_halfWidth;
+         float3 up = light.m_upDir * light.m_halfHeight;
+diff --git a/Gems/Atom/Feature/Common/Assets/Shaders/LightCulling/LightCulling.azsl b/Gems/Atom/Feature/Common/Assets/Shaders/LightCulling/LightCulling.azsl
+index 154fa45611b916989f5abc20fca82c4ec3819580..b6924f777c73d2b42accfe9d0f6d9599b5119247 100644
+--- a/Gems/Atom/Feature/Common/Assets/Shaders/LightCulling/LightCulling.azsl
++++ b/Gems/Atom/Feature/Common/Assets/Shaders/LightCulling/LightCulling.azsl
+@@ -262,6 +262,10 @@ void CullDecals(uint groupIndex, TileLightData tileLightData, float3 aabbCenter,
+     for (uint decalIndex = groupIndex ; decalIndex < PassSrg::m_decalCount ; decalIndex += TILE_DIM_X * TILE_DIM_Y)
+     { 
+         Decal decal = PassSrg::m_decals[decalIndex];
++          if (decal.m_opacity <= 0 && decal.m_normalMapOpacity <= 0)
++          {
++              continue; // Material ownership anchors do not occupy light-list slots.
++          }
+         float3 decalPosition = WorldToView_Point(decal.m_position); 
+         
+         // just wrapping a bounding sphere around a cube for now to get a minor perf boost. i.e. the sphere radius is sqrt(x*x + y*y + z*z)
+diff --git a/Gems/Atom/Feature/Common/Code/Include/Atom/Feature/CoreLights/DirectionalLightFeatureProcessorInterface.h b/Gems/Atom/Feature/Common/Code/Include/Atom/Feature/CoreLights/DirectionalLightFeatureProcessorInterface.h
+index 767d141631fabcd2a597776254cd8558556d3d4c..2d5d0c1ad70cbf237de31b760d580b30ae78348b 100644
+--- a/Gems/Atom/Feature/Common/Code/Include/Atom/Feature/CoreLights/DirectionalLightFeatureProcessorInterface.h
++++ b/Gems/Atom/Feature/Common/Code/Include/Atom/Feature/CoreLights/DirectionalLightFeatureProcessorInterface.h
+@@ -193,6 +193,9 @@ namespace AZ
+ 
+             //! Returns the number of directional lights
+             virtual uint32_t GetLightCount() const = 0;
++
++            //! Current packed shader index, valid only until the next light removal.
++            virtual uint32_t GetShaderLightIndex(LightHandle) const { return ~uint32_t(0); }
+         };
+     } // namespace Render
+ } // namespace AZ
+diff --git a/Gems/Atom/Feature/Common/Code/Include/Atom/Feature/CoreLights/DiskLightFeatureProcessorInterface.h b/Gems/Atom/Feature/Common/Code/Include/Atom/Feature/CoreLights/DiskLightFeatureProcessorInterface.h
+index 75f66786246e4f34b2bb4f4503db2b8e8a061b18..c10124dad6934a05d2b062d4827f075051fc7e87 100644
+--- a/Gems/Atom/Feature/Common/Code/Include/Atom/Feature/CoreLights/DiskLightFeatureProcessorInterface.h
++++ b/Gems/Atom/Feature/Common/Code/Include/Atom/Feature/CoreLights/DiskLightFeatureProcessorInterface.h
+@@ -44,7 +44,7 @@ namespace AZ
+             float m_affectsGIFactor = 1.0f;
+             bool m_affectsGI = true;
+             uint32_t m_lightingChannelMask = 1;
+-            float m_padding0 = 0.0f;
++            float m_falloffRate = 1.0f;
+         };
+ 
+         //! DiskLightFeatureProcessorInterface provides an interface to acquire, release, and update a disk light. This is necessary for code outside of
+@@ -75,6 +75,7 @@ namespace AZ
+             virtual void SetDirection(LightHandle handle, const AZ::Vector3& lightDirection) = 0;
+             //! Sets the radius in meters at which the provided LightHandle will no longer have an effect.
+             virtual void SetAttenuationRadius(LightHandle handle, float attenuationRadius) = 0;
++            virtual void SetFalloffRate(LightHandle handle, float rate) = 0;
+             //! Sets the disk radius for the provided LightHandle.
+             virtual void SetDiskRadius(LightHandle handle, float radius) = 0;
+ 
+diff --git a/Gems/Atom/Feature/Common/Code/Include/Atom/Feature/CoreLights/QuadLightFeatureProcessorInterface.h b/Gems/Atom/Feature/Common/Code/Include/Atom/Feature/CoreLights/QuadLightFeatureProcessorInterface.h
+index ce0ef0b82b3531a8c4806738d90e05fb6ceb4e84..be6a61195c5069bcfece45257a0a38002954fc5a 100644
+--- a/Gems/Atom/Feature/Common/Code/Include/Atom/Feature/CoreLights/QuadLightFeatureProcessorInterface.h
++++ b/Gems/Atom/Feature/Common/Code/Include/Atom/Feature/CoreLights/QuadLightFeatureProcessorInterface.h
+@@ -49,7 +49,7 @@ namespace AZ
+             float m_affectsGIFactor = 1.0f;
+             bool m_affectsGI = true;
+             uint32_t m_lightingChannelMask = 1;
+-            float m_padding0 = 0.0f;
++            float m_falloffRate = 1.0f;
+ 
+             void SetFlag(QuadLightFlag::Flag flag, bool value)
+             {
+@@ -89,6 +89,7 @@ namespace AZ
+             virtual void SetUseFastApproximation(LightHandle handle, bool useFastApproximation) = 0;
+             //! Sets the radius in meters at which the provided LightHandle will no longer have an effect.
+             virtual void SetAttenuationRadius(LightHandle handle, float attenuationRadius) = 0;
++            virtual void SetFalloffRate(LightHandle handle, float rate) = 0;
+             //! Sets the quad radius for the provided LightHandle.
+             virtual void SetQuadDimensions(LightHandle handle, float width, float height) = 0;
+             //! Specifies if this light affects the diffuse global illumination in the scene.
+diff --git a/Gems/Atom/Feature/Common/Code/Include/Atom/Feature/Decals/DecalFeatureProcessorInterface.h b/Gems/Atom/Feature/Common/Code/Include/Atom/Feature/Decals/DecalFeatureProcessorInterface.h
+index 2a2520ca7715a4f3e7b13afb876644fc96d9a39f..7b4672c37c43d1361450bbdb65dae4fb11f1c366 100644
+--- a/Gems/Atom/Feature/Common/Code/Include/Atom/Feature/Decals/DecalFeatureProcessorInterface.h
++++ b/Gems/Atom/Feature/Common/Code/Include/Atom/Feature/Decals/DecalFeatureProcessorInterface.h
+@@ -22,6 +22,17 @@ namespace AZ
+ 
+     namespace Render
+     {
++        //! Color compositing operation applied before decal opacity. Keep values in sync with Decals.azsli.
++        enum class DecalBlendMode : uint8_t
++        {
++            Alpha = 0,
++            Multiply,
++            Add,
++            Screen,
++            Overlay,
++            Composite // Internal: bindless ordered spatial composite, not a material blend.
++        };
++
+         struct DecalData
+         {
+             AZStd::array<float, 3> m_position = {
+@@ -38,6 +49,9 @@ namespace AZ
+             float m_normalMapOpacity = 1.0f;
+             // Decals with a larger sort key appear over top of smaller sort keys.
+             uint8_t m_sortKey = 0;
++            // Reuse the sort word's padding. GPU bits 0..7 hold sort order, 8..15 hold blend mode.
++            DecalBlendMode m_blendMode = DecalBlendMode::Alpha;
++            uint16_t m_reserved = 0;
+             uint32_t m_textureArrayIndex = UnusedIndex;
+             uint32_t m_textureIndex = UnusedIndex;
+ 
+@@ -46,6 +60,9 @@ namespace AZ
+             static constexpr uint32_t UnusedIndex = std::numeric_limits< uint32_t>::max();
+         };
+ 
++        static_assert(sizeof(DecalData) == 80, "DecalData must match the GPU decal buffer layout");
++        static_assert(offsetof(DecalData, m_blendMode) == 53, "Decal blend mode must occupy GPU bits 8..15");
++
+         //! DecalFeatureProcessorInterface provides an interface to acquire, release, and update a decal. This is necessary for code outside of
+         //! the Atom features gem to communicate with the DecalTextureArrayFeatureProcessor.
+         class DecalFeatureProcessorInterface
+@@ -105,11 +122,17 @@ namespace AZ
+             //! Sets the sort key for the decal. Decals with a larger sort key appear over top of smaller sort keys.
+             virtual void SetDecalSortKey(DecalHandle handle, uint8_t sortKey) = 0;
+ 
++            //! Sets how the decal color combines with the underlying surface color.
++            virtual void SetDecalBlendMode(DecalHandle handle, DecalBlendMode blendMode) = 0;
++
+             //! Returns a GPU readable buffer containing the contiguous array of decals.
+             virtual const Data::Instance<RPI::Buffer> GetDecalBuffer() const = 0;
+ 
+             //! Returns the number of decals currently in the buffer.
+             virtual uint32_t GetDecalCount() const = 0;
++
++            //! Resolved material-array indices for compiled paint projections.
++            virtual DecalData GetDecalData(DecalHandle handle) const = 0;
+         };
+     } // namespace Render
+ } // namespace AZ
+diff --git a/Gems/Atom/Feature/Common/Code/Source/CoreLights/DirectionalLightFeatureProcessor.h b/Gems/Atom/Feature/Common/Code/Source/CoreLights/DirectionalLightFeatureProcessor.h
+index b270f1192dd83b6be3a5600c7877bbdf4743bc70..9a8e3b4e4cc6dd7ab6f4c6abe59cd0bcaf81ab80 100644
+--- a/Gems/Atom/Feature/Common/Code/Source/CoreLights/DirectionalLightFeatureProcessor.h
++++ b/Gems/Atom/Feature/Common/Code/Source/CoreLights/DirectionalLightFeatureProcessor.h
+@@ -254,6 +254,8 @@ namespace AZ
+ 
+             const Data::Instance<RPI::Buffer> GetLightBuffer() const override { return m_lightBufferHandler.GetBuffer(); }
+             uint32_t GetLightCount() const override { return m_lightBufferHandler.GetElementCount(); }
++            uint32_t GetShaderLightIndex(LightHandle handle) const override
++            { return handle.IsValid() ? m_lightData.GetRawIndex(handle.GetIndex()) : ~uint32_t(0); }
+             ShadowProperty& GetShadowProperty(LightHandle handle) { return m_shadowProperties.GetData(handle.GetIndex()); }
+ 
+         private:
+diff --git a/Gems/Atom/Feature/Common/Code/Source/CoreLights/DiskLightFeatureProcessor.cpp b/Gems/Atom/Feature/Common/Code/Source/CoreLights/DiskLightFeatureProcessor.cpp
+index 45a4342adb3c0f571eae6b5a3fcaf322b2dac9ac..af8a57bab0c88c7b1e30f00f4ff79668f0fff446 100644
+--- a/Gems/Atom/Feature/Common/Code/Source/CoreLights/DiskLightFeatureProcessor.cpp
++++ b/Gems/Atom/Feature/Common/Code/Source/CoreLights/DiskLightFeatureProcessor.cpp
+@@ -221,6 +221,13 @@ namespace AZ
+             m_deviceBufferNeedsUpdate = true;
+         }
+ 
++        void DiskLightFeatureProcessor::SetFalloffRate(LightHandle handle, float rate)
++        {
++            AZ_Assert(handle.IsValid(), "Invalid light handle");
++            m_lightData.GetData<0>(handle.GetIndex()).m_falloffRate = rate;
++            m_deviceBufferNeedsUpdate = true;
++        }
++
+         void DiskLightFeatureProcessor::SetAttenuationRadius(LightHandle handle, float attenuationRadius)
+         {
+             AZ_Assert(handle.IsValid(), "Invalid LightHandle passed to DiskLightFeatureProcessor::SetAttenuationRadius().");
+diff --git a/Gems/Atom/Feature/Common/Code/Source/CoreLights/DiskLightFeatureProcessor.h b/Gems/Atom/Feature/Common/Code/Source/CoreLights/DiskLightFeatureProcessor.h
+index 98c0692ccce54a425c80890f1761676d795c46de..ca9872310478e9cbaf0ac8ccb3324e5308b77403 100644
+--- a/Gems/Atom/Feature/Common/Code/Source/CoreLights/DiskLightFeatureProcessor.h
++++ b/Gems/Atom/Feature/Common/Code/Source/CoreLights/DiskLightFeatureProcessor.h
+@@ -49,6 +49,7 @@ namespace AZ
+             void SetPosition(LightHandle handle, const AZ::Vector3& lightPosition) override;
+             void SetDirection(LightHandle handle, const AZ::Vector3& lightDirection) override;
+             void SetAttenuationRadius(LightHandle handle, float attenuationRadius) override;
++            void SetFalloffRate(LightHandle handle, float rate) override;
+             void SetDiskRadius(LightHandle handle, float radius) override;
+             void SetConstrainToConeLight(LightHandle handle, bool useCone) override;
+             void SetConeAngles(LightHandle handle, float innerDegrees, float outerDegrees) override;
+diff --git a/Gems/Atom/Feature/Common/Code/Source/CoreLights/QuadLightFeatureProcessor.cpp b/Gems/Atom/Feature/Common/Code/Source/CoreLights/QuadLightFeatureProcessor.cpp
+index 76f8fa62135758cd1adbd5c76b5ce64573144a11..4e44c1a52cf0dccd32070369796b69d74453a176 100644
+--- a/Gems/Atom/Feature/Common/Code/Source/CoreLights/QuadLightFeatureProcessor.cpp
++++ b/Gems/Atom/Feature/Common/Code/Source/CoreLights/QuadLightFeatureProcessor.cpp
+@@ -209,6 +209,13 @@ namespace AZ
+             m_deviceBufferNeedsUpdate = true;
+         }
+ 
++        void QuadLightFeatureProcessor::SetFalloffRate(LightHandle handle, float rate)
++        {
++            AZ_Assert(handle.IsValid(), "Invalid light handle");
++            m_lightData.GetData<0>(handle.GetIndex()).m_falloffRate = rate;
++            m_deviceBufferNeedsUpdate = true;
++        }
++
+         void QuadLightFeatureProcessor::SetAttenuationRadius(LightHandle handle, float attenuationRadius)
+         {
+             AZ_Assert(handle.IsValid(), "Invalid LightHandle passed to QuadLightFeatureProcessor::SetAttenuationRadius().");
+diff --git a/Gems/Atom/Feature/Common/Code/Source/CoreLights/QuadLightFeatureProcessor.h b/Gems/Atom/Feature/Common/Code/Source/CoreLights/QuadLightFeatureProcessor.h
+index e2292134531e600edbad8b3fd53c8c826800bfb2..20a15676fb7fc8a4da7fb66571f75df46556849b 100644
+--- a/Gems/Atom/Feature/Common/Code/Source/CoreLights/QuadLightFeatureProcessor.h
++++ b/Gems/Atom/Feature/Common/Code/Source/CoreLights/QuadLightFeatureProcessor.h
+@@ -49,6 +49,7 @@ namespace AZ
+             void SetLightEmitsBothDirections(LightHandle handle, bool lightEmitsBothDirections) override;
+             void SetUseFastApproximation(LightHandle handle, bool useFastApproximation) override;
+             void SetAttenuationRadius(LightHandle handle, float attenuationRadius) override;
++            void SetFalloffRate(LightHandle handle, float rate) override;
+             void SetQuadDimensions(LightHandle handle, float width, float height) override;
+             void SetAffectsGI(LightHandle handle, bool affectsGI) override;
+             void SetAffectsGIFactor(LightHandle handle, float affectsGIFactor) override;
+diff --git a/Gems/Atom/Feature/Common/Code/Source/Decals/DecalTextureArrayFeatureProcessor.cpp b/Gems/Atom/Feature/Common/Code/Source/Decals/DecalTextureArrayFeatureProcessor.cpp
+index f9bc08c50c62cee1ea9647f8cb2902bf1621e4fa..fdf39146c1af6152de2fbb347e625a49551957d5 100644
+--- a/Gems/Atom/Feature/Common/Code/Source/Decals/DecalTextureArrayFeatureProcessor.cpp
++++ b/Gems/Atom/Feature/Common/Code/Source/Decals/DecalTextureArrayFeatureProcessor.cpp
+@@ -135,7 +135,10 @@ namespace AZ
+                 DecalLocation decalLocation;
+                 decalLocation.textureArrayIndex = m_decalData.GetData<0>(decal.GetIndex()).m_textureArrayIndex;
+                 decalLocation.textureIndex = m_decalData.GetData<0>(decal.GetIndex()).m_textureIndex;
+-                RemoveDecalFromTextureArrays(decalLocation);
++                if (m_decalData.GetData<0>(decal.GetIndex()).m_blendMode != DecalBlendMode::Composite)
++                {
++                    RemoveDecalFromTextureArrays(decalLocation);
++                }
+ 
+                 m_decalData.RemoveIndex(decal.GetIndex());
+                 m_deviceBufferNeedsUpdate = true;
+@@ -227,6 +230,11 @@ namespace AZ
+             return m_decalBufferHandler.GetElementCount();
+         }
+ 
++        DecalData DecalTextureArrayFeatureProcessor::GetDecalData(DecalHandle handle) const
++        {
++            return handle.IsValid() ? m_decalData.GetData<0>(handle.GetIndex()) : DecalData{};
++        }
++
+         void DecalTextureArrayFeatureProcessor::SetDecalPosition(const DecalHandle handle, const AZ::Vector3& position)
+         {
+             if (handle.IsValid())
+@@ -345,6 +353,19 @@ namespace AZ
+             }
+         }
+ 
++        void DecalTextureArrayFeatureProcessor::SetDecalBlendMode(DecalHandle handle, DecalBlendMode blendMode)
++        {
++            if (handle.IsValid())
++            {
++                m_decalData.GetData<0>(handle.GetIndex()).m_blendMode = blendMode;
++                m_deviceBufferNeedsUpdate = true;
++            }
++            else
++            {
++                AZ_Warning("DecalTextureArrayFeatureProcessor", false, "Invalid handle passed to SetDecalBlendMode().");
++            }
++        }
++
+         void DecalTextureArrayFeatureProcessor::SetDecalSortKey(DecalHandle handle, uint8_t sortKey)
+         {
+             if (handle.IsValid())
+@@ -637,6 +658,10 @@ namespace AZ
+             {
+                 uint32_t dataIndex = sortedDecals[i];
+                 const auto& decalData = dataVector[dataIndex];
++                if (decalData.m_opacity <= 0 && decalData.m_normalMapOpacity <= 0)
++                {
++                    continue;
++                }
+                 AZ::Obb obb = AZ::Obb::CreateFromPositionRotationAndHalfLengths(
+                     AZ::Vector3::CreateFromFloat3(decalData.m_position.data()),
+                     AZ::Quaternion::CreateFromFloat4(decalData.m_quaternion.data()),
+@@ -668,7 +693,7 @@ namespace AZ
+             if (handle.IsValid())
+             {
+                 const DecalData& decalData = m_decalData.GetData<0>(handle.GetIndex());
+-                if (decalData.m_textureArrayIndex != DecalData::UnusedIndex)
++                if (decalData.m_blendMode != DecalBlendMode::Composite && decalData.m_textureArrayIndex != DecalData::UnusedIndex)
+                 {
+                     const DecalTextureArray& textureArray = m_textureArrayList[decalData.m_textureArrayIndex].second;
+                     material = textureArray.GetMaterialAssetId(decalData.m_textureIndex);
+diff --git a/Gems/Atom/Feature/Common/Code/Source/Decals/DecalTextureArrayFeatureProcessor.h b/Gems/Atom/Feature/Common/Code/Source/Decals/DecalTextureArrayFeatureProcessor.h
+index ceb23e354805dc55b23b824fe200b587e82d8a1f..a143daaee8a5ebf694bb50a55c50a98f9e39c318 100644
+--- a/Gems/Atom/Feature/Common/Code/Source/Decals/DecalTextureArrayFeatureProcessor.h
++++ b/Gems/Atom/Feature/Common/Code/Source/Decals/DecalTextureArrayFeatureProcessor.h
+@@ -60,6 +60,7 @@ namespace AZ
+ 
+             const Data::Instance<RPI::Buffer> GetDecalBuffer() const override;
+             uint32_t GetDecalCount() const override;
++            DecalData GetDecalData(DecalHandle handle) const override;
+ 
+             //! Sets the position of the decal
+             void SetDecalPosition(const DecalHandle handle, const AZ::Vector3& position) override;
+@@ -87,6 +88,7 @@ namespace AZ
+ 
+             //! Sets the decal sort key. Decals with a larger sort key appear over top of smaller sort keys.
+             void SetDecalSortKey(const DecalHandle handle, uint8_t sortKey) override;
++            void SetDecalBlendMode(const DecalHandle handle, DecalBlendMode blendMode) override;
+ 
+             //! Sets the transform of the decal
+             //! Equivalent to calling SetDecalPosition() + SetDecalOrientation() + SetDecalHalfSize()
+diff --git a/Gems/Atom/RHI/DX12/Code/CMakeLists.txt b/Gems/Atom/RHI/DX12/Code/CMakeLists.txt
+index b4c9b738aa25b2c8229e125869c2d22ad20fbc28..08ddfa1f2e2669cece5a8b46099e3ff63a646e0e 100644
+--- a/Gems/Atom/RHI/DX12/Code/CMakeLists.txt
++++ b/Gems/Atom/RHI/DX12/Code/CMakeLists.txt
+@@ -11,6 +11,7 @@ o3de_pal_dir(pal_source_dir ${CMAKE_CURRENT_LIST_DIR}/Source/Platform/${PAL_PLAT
+ o3de_pal_dir(common_source_dir ${CMAKE_CURRENT_LIST_DIR}/Source/Platform/Common "${gem_restricted_path}" "${gem_path}" "${gem_parent_relative_path}")
+ 
+ include(${pal_source_dir}/PAL_${PAL_PLATFORM_NAME_LOWERCASE}.cmake) # PAL_TRAIT_ATOM_RHI_DX12_SUPPORTED
++include(${LY_ROOT_FOLDER}/cmake/TGDX12ShaderModel.cmake)
+ 
+ if(PAL_TRAIT_AFTERMATH_AVAILABLE)
+     set(USE_NSIGHT_AFTERMATH_DEFINE $<IF:$<CONFIG:release>,"","USE_NSIGHT_AFTERMATH">)
+@@ -142,6 +143,8 @@ ly_add_target(
+             
+ )
+ 
++tg_set_dx12_shader_model(Gem::${gem_name}.Private.Static)
++
+ ly_add_target(
+     NAME ${gem_name}.Interface STATIC
+     NAMESPACE Gem
+@@ -209,6 +212,8 @@ if(PAL_TRAIT_BUILD_HOST_TOOLS)
+                 Gem::${gem_name}.Reflect
+     )
+ 
++    tg_set_dx12_shader_model(Gem::${gem_name}.Builders.Static)
++
+     ly_add_target(
+         NAME ${gem_name}.Builders GEM_MODULE
+ 
+diff --git a/Gems/Atom/RHI/DX12/Code/Source/Platform/Windows/RHI/Device_Windows.cpp b/Gems/Atom/RHI/DX12/Code/Source/Platform/Windows/RHI/Device_Windows.cpp
+index 2ad752edeaea5f8c50dea94f75125f0dbb4af9a7..6d76054527ae3060cac2f08b2dd71cf79c958a90 100644
+--- a/Gems/Atom/RHI/DX12/Code/Source/Platform/Windows/RHI/Device_Windows.cpp
++++ b/Gems/Atom/RHI/DX12/Code/Source/Platform/Windows/RHI/Device_Windows.cpp
+@@ -18,6 +18,7 @@
+ #include <AzCore/std/string/conversions.h>
+ #include <Atom/RHI/Debug.h>
+ #include <Atom/RHI/ValidationLayer.h>
++#include <Atom/RHI/RHIUtils.h>
+ #include <Atom/RHI/FactoryManagerBus.h>
+ #include <comdef.h>
+ 
+@@ -208,7 +209,12 @@ namespace AZ
+                     EnableGPUBasedValidation();
+                 }
+ 
+-                // DRED has a perf cost on some drivers/hw so only enable it if RHI validation is enabled.
++            }
++
++            // Allow opt-in breadcrumbs without the debug layer's validation overhead.
++            if (validationMode != RHI::ValidationMode::Disabled ||
++                RHI::GetCommandLineValue("rhi-device-dred") == "enable")
++            {
+ #ifdef __ID3D12DeviceRemovedExtendedDataSettings1_INTERFACE_DEFINED__
+                 Microsoft::WRL::ComPtr<ID3D12DeviceRemovedExtendedDataSettings1> pDredSettings;
+ #else
+diff --git a/Gems/Atom/RHI/DX12/Code/Source/RHI.Builders/ShaderPlatformInterface.cpp b/Gems/Atom/RHI/DX12/Code/Source/RHI.Builders/ShaderPlatformInterface.cpp
+index a8889ceb1a63d9f3b39bc63900257f0eaf5f15a4..86442afd4e85be01e63affa4cc17870d931366fc 100644
+--- a/Gems/Atom/RHI/DX12/Code/Source/RHI.Builders/ShaderPlatformInterface.cpp
++++ b/Gems/Atom/RHI/DX12/Code/Source/RHI.Builders/ShaderPlatformInterface.cpp
+@@ -237,9 +237,7 @@ namespace AZ
+             // Shader compiler executable
+             const auto dxcRelativePath = RHI::GetDirectXShaderCompilerPath("Builders/DirectXShaderCompiler/dxc.exe");
+ 
+-            // NOTE:
+-            // Running DX12 on PC with DXIL shaders requires modern GPUs and at least Windows 10 Build 1803 or later for Shader Model 6.2
+-            // https://github.com/Microsoft/DirectXShaderCompiler/wiki/Running-Shaders
++            // The target is selected at configure time and checked by the runtime device.
+ 
+             // -Fo "Output object file"
+             AZStd::string shaderOutputFile;
+@@ -253,17 +251,17 @@ namespace AZ
+             AzFramework::StringFunc::Path::Join(tempFolder.c_str(), objectCodeOutputFile.c_str(), objectCodeOutputFile);
+             AzFramework::StringFunc::Path::ReplaceExtension(objectCodeOutputFile, "dxil.txt");
+ 
+-            // Stage profile name parameter
+-            // Note: RayTracing shaders must be compiled with version 6_3, while the rest of the stages
+-            // are compiled with version 6_2, so RayTracing cannot share the version constant.
+-            const AZStd::string shaderModelVersion = "6_2";
++            static_assert(TG_DX12_SHADER_MODEL == 62 || TG_DX12_SHADER_MODEL == 67);
++            const AZStd::string shaderModelVersion = TG_DX12_SHADER_MODEL == 67 ? "6_7" : "6_2";
++            // DXR libraries require at least SM 6.3 in the compatibility build.
++            const AZStd::string rayTracingProfile = TG_DX12_SHADER_MODEL == 67 ? "lib_6_7" : "lib_6_3";
+             const AZStd::unordered_map<RHI::ShaderHardwareStage, AZStd::string> stageToProfileName =
+             {
+                 {RHI::ShaderHardwareStage::Vertex,                 "vs_" + shaderModelVersion},
+                 {RHI::ShaderHardwareStage::Fragment,               "ps_" + shaderModelVersion},
+                 {RHI::ShaderHardwareStage::Compute,                "cs_" + shaderModelVersion},
+                 {RHI::ShaderHardwareStage::Geometry,               "gs_" + shaderModelVersion},
+-                {RHI::ShaderHardwareStage::RayTracing,             "lib_6_3"}
++                {RHI::ShaderHardwareStage::RayTracing,             rayTracingProfile}
+             };
+             auto profileIt = stageToProfileName.find(shaderStageType);
+             if (profileIt == stageToProfileName.end())
+@@ -276,6 +274,12 @@ namespace AZ
+ 
+             // Compilation parameters
+             auto dxcArguments = shaderBuildArguments.m_dxcArguments;
++            if (TG_DX12_SHADER_MODEL == 67 && shaderStageType == RHI::ShaderHardwareStage::RayTracing
++                && !RHI::ShaderBuildArguments::HasArgument(dxcArguments, "-enable-payload-qualifiers"))
++            {
++                // Keep O3DE's existing DXR payload convention at SM 6.7. Annotated libraries can opt in.
++                RHI::ShaderBuildArguments::AppendArguments(dxcArguments, { "-disable-payload-qualifiers" });
++            }
+             if (graphicsDevMode || BuildHasDebugInfo(shaderBuildArguments))
+             {
+                 RHI::ShaderBuildArguments::AppendArguments(dxcArguments, { "-Zi", "-Zss", "-Od" });
+diff --git a/Gems/Atom/RHI/DX12/Code/Source/RHI/Device.cpp b/Gems/Atom/RHI/DX12/Code/Source/RHI/Device.cpp
+index 886d0d10bf13174ea8552b38c94c618d09509881..3bd71e5a882713044661d9299073ddbbe05201d0 100644
+--- a/Gems/Atom/RHI/DX12/Code/Source/RHI/Device.cpp
++++ b/Gems/Atom/RHI/DX12/Code/Source/RHI/Device.cpp
+@@ -85,6 +85,26 @@ namespace AZ
+                 return resultCode;
+             }
+ 
++            static_assert(TG_DX12_SHADER_MODEL == 62 || TG_DX12_SHADER_MODEL == 67);
++            const auto requiredModel = TG_DX12_SHADER_MODEL == 67 ? D3D_SHADER_MODEL_6_7 : D3D_SHADER_MODEL_6_2;
++            D3D12_FEATURE_DATA_SHADER_MODEL shaderModel{requiredModel};
++            const HRESULT modelResult = GetDevice()->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &shaderModel, sizeof(shaderModel));
++            if (FAILED(modelResult) || shaderModel.HighestShaderModel < requiredModel)
++            {
++                AZ_Error("DX12", false,
++                    "This build requires Shader Model %d.%d. Update the graphics driver or rebuild the engine and shader assets with -DTG_DX12_SHADER_MODEL=6_2. "
++                    "CheckFeatureSupport returned 0x%08x; reported shader model 0x%x.",
++                    TG_DX12_SHADER_MODEL / 10, TG_DX12_SHADER_MODEL % 10,
++                    static_cast<unsigned>(modelResult), static_cast<unsigned>(shaderModel.HighestShaderModel));
++                return RHI::ResultCode::Fail;
++            }
++            D3D12_FEATURE_DATA_D3D12_OPTIONS14 textureOptions{};
++            m_advancedTextureOperationsSupported = SUCCEEDED(GetDevice()->CheckFeatureSupport(
++                D3D12_FEATURE_D3D12_OPTIONS14, &textureOptions, sizeof(textureOptions))) && textureOptions.AdvancedTextureOpsSupported;
++            AZ_Printf("DX12", "TG DX12 shader model %d.%d; advanced texture operations: %s.\n",
++                TG_DX12_SHADER_MODEL / 10, TG_DX12_SHADER_MODEL % 10,
++                m_advancedTextureOperationsSupported ? "supported" : "unavailable");
++
+ #ifdef USE_AMD_D3D12MA
+             resultCode = InitD3d12maAllocator();
+             if (resultCode != RHI::ResultCode::Success)
+diff --git a/Gems/Atom/RHI/DX12/Code/Source/RHI/Device.h b/Gems/Atom/RHI/DX12/Code/Source/RHI/Device.h
+index f8218518d8e48a68a7ebb7a2a788ea47610d0a74..e3216764189ad71f40a3003d59ea2c39252ad23c 100644
+--- a/Gems/Atom/RHI/DX12/Code/Source/RHI/Device.h
++++ b/Gems/Atom/RHI/DX12/Code/Source/RHI/Device.h
+@@ -141,6 +141,9 @@ namespace AZ
+ 
+             ID3D12DeviceX* GetDevice();
+ 
++            //! Optional SM 6.7 capability. Query this before enabling advanced texture operations.
++            bool SupportsAdvancedTextureOperations() const { return m_advancedTextureOperationsSupported; }
++
+             MemoryPageAllocator& GetConstantMemoryPageAllocator();
+ 
+             CommandQueueContext& GetCommandQueueContext();
+@@ -232,6 +235,7 @@ namespace AZ
+             AZStd::mutex m_samplerCacheMutex;
+ 
+             bool m_isAftermathInitialized = false;
++            bool m_advancedTextureOperationsSupported = false;
+ 
+             // device remover fence            
+             RHI::Ptr<ID3D12Fence> m_deviceFence;
+diff --git a/Gems/Atom/RHI/DX12/Code/Source/RHI/FrameGraphCompiler.cpp b/Gems/Atom/RHI/DX12/Code/Source/RHI/FrameGraphCompiler.cpp
+index 5c9014f28167b1251eda6c4e474ff4ad9ae179dd..d589345cf56da4bb4b67340aaea9777f988df818 100644
+--- a/Gems/Atom/RHI/DX12/Code/Source/RHI/FrameGraphCompiler.cpp
++++ b/Gems/Atom/RHI/DX12/Code/Source/RHI/FrameGraphCompiler.cpp
+@@ -330,7 +330,10 @@ namespace AZ
+                 {
+                     return D3D12_RESOURCE_STATE_DEPTH_WRITE;
+                 }
+-                break;
++                // UAV textures also need an explicit state before DiscardResource.
++                // Otherwise the debug layer assumes UAV at the discard, while the
++                // following prologue barrier still uses the previous read state.
++                [[fallthrough]];
+             }
+             case RHI::HardwareQueueClass::Compute:
+             {
+diff --git a/Gems/Atom/RPI/Code/Include/Atom/RPI.Public/Pass/RenderPass.h b/Gems/Atom/RPI/Code/Include/Atom/RPI.Public/Pass/RenderPass.h
+index bf04be55fdcf06ecf0a609f66337015d4472010a..14aae0113e9c271f52d0dbf1c0a509e0ccecbb46 100644
+--- a/Gems/Atom/RPI/Code/Include/Atom/RPI.Public/Pass/RenderPass.h
++++ b/Gems/Atom/RPI/Code/Include/Atom/RPI.Public/Pass/RenderPass.h
+@@ -95,6 +95,10 @@ namespace AZ
+             // Binds the pass's attachments to the provide SRG (this will usually be the pass's own SRG)
+             void BindPassSrg(const RHI::FrameGraphCompileContext& context, Data::Instance<ShaderResourceGroup>& shaderResourceGroup);
+ 
++            //! Validate cached attachment indices against the current SRG layout.
++            //! A named binding can be recovered after a shader layout shrinks.
++            RHI::ShaderInputImageIndex ResolveShaderInputImageIndex(PassAttachmentBinding& binding, int16_t imageIndex);
++
+             // Pass behavior overrides...
+             void InitializeInternal() override;
+             void FrameBeginInternal(FramePrepareParams params) override;
+diff --git a/Gems/Atom/RPI/Code/Source/RPI.Public/Pass/FullscreenTrianglePass.cpp b/Gems/Atom/RPI/Code/Source/RPI.Public/Pass/FullscreenTrianglePass.cpp
+index f77ee7827ceaee37ba2ffe4fa5441ca523b07346..23e4d7ae45715c0a58febe7658f59afe46f1bb7a 100644
+--- a/Gems/Atom/RPI/Code/Source/RPI.Public/Pass/FullscreenTrianglePass.cpp
++++ b/Gems/Atom/RPI/Code/Source/RPI.Public/Pass/FullscreenTrianglePass.cpp
+@@ -211,22 +211,22 @@ namespace AZ
+ 
+         void FullscreenTrianglePass::InitializeInternal()
+         {
+-            BuildRenderAttachmentConfiguration();
+-            if (m_shader->GetSupervariantIndex() != m_shader->GetAsset()->GetSupervariantIndex(GetSuperVariantName()))
++            // Asset refresh or a failed load can leave this pass without a shader.
++            if (m_shader && m_shader->GetSupervariantIndex() != m_shader->GetAsset()->GetSupervariantIndex(GetSuperVariantName()))
+             {
+                 LoadShader();
+             }
+ 
+-            RenderPass::InitializeInternal();
+-            
+-            ShaderReloadDebugTracker::ScopedSection reloadSection("{%p}->FullscreenTrianglePass::InitializeInternal", this);
+-
+             if (m_shader == nullptr)
+             {
+-                AZ_Error("PassSystem", false, "[FullscreenTrianglePass]: Shader not loaded!");
++                AZ_Error("PassSystem", false, "[FullscreenTrianglePass '%s']: Shader not loaded; pass disabled until its pipeline is rebuilt.", GetPathName().GetCStr());
++                SetEnabled(false);
+                 return;
+             }
+ 
++            BuildRenderAttachmentConfiguration();
++            RenderPass::InitializeInternal();
++            ShaderReloadDebugTracker::ScopedSection reloadSection("{%p}->FullscreenTrianglePass::InitializeInternal", this);
+             BuildDrawItem();
+         }
+ 
+diff --git a/Gems/Atom/RPI/Code/Source/RPI.Public/Pass/RenderPass.cpp b/Gems/Atom/RPI/Code/Source/RPI.Public/Pass/RenderPass.cpp
+index c652ce07f34a3ae719626dc0e6f16d9c711263ab..ff0987e91ae8a6df8c38332bd86366f78bf1584e 100644
+--- a/Gems/Atom/RPI/Code/Source/RPI.Public/Pass/RenderPass.cpp
++++ b/Gems/Atom/RPI/Code/Source/RPI.Public/Pass/RenderPass.cpp
+@@ -338,6 +338,31 @@ namespace AZ
+             frameGraph.SetGroupId(GetSubpassGroupId());
+         }
+ 
++        RHI::ShaderInputImageIndex RenderPass::ResolveShaderInputImageIndex(PassAttachmentBinding& binding, int16_t imageIndex)
++        {
++            const auto* layout = m_shaderResourceGroup->GetLayout();
++            const auto inputs = layout->GetShaderInputListForImages();
++            int16_t index = binding.m_shaderInputIndex == PassAttachmentBinding::ShaderInputAutoBind ? imageIndex : binding.m_shaderInputIndex;
++            if ((index < 0 || static_cast<size_t>(index) >= inputs.size()) && binding.m_shaderInputName != Name("AutoBind"))
++            {
++                const auto resolved = m_shaderResourceGroup->FindShaderInputImageIndex(binding.m_shaderInputName);
++                if (resolved.IsValid())
++                {
++                    index = static_cast<int16_t>(resolved.GetIndex());
++                    binding.m_shaderInputIndex = index;
++                }
++            }
++            if (index < 0 || static_cast<size_t>(index) >= inputs.size() || binding.m_shaderInputArrayIndex >= inputs[index].m_count)
++            {
++                AZ_ErrorOnce("PassSystem", false,
++                    "[Pass '%s'] attachment '%s' shader input '%s' has image index %d / array index %u outside SRG '%s' (%zu image inputs); binding skipped.",
++                    GetPathName().GetCStr(), binding.m_name.GetCStr(), binding.m_shaderInputName.GetCStr(), index,
++                    static_cast<uint32_t>(binding.m_shaderInputArrayIndex), layout->GetName().GetCStr(), inputs.size());
++                return {};
++            }
++            return RHI::ShaderInputImageIndex(static_cast<uint32_t>(index));
++        }
++
+         void RenderPass::BindAttachment(const RHI::FrameGraphCompileContext& context, PassAttachmentBinding& binding, int16_t& imageIndex, int16_t& bufferIndex)
+         {
+             PassAttachment* attachment = binding.GetAttachment().get();
+@@ -377,7 +402,11 @@ namespace AZ
+                         binding.m_scopeAttachmentUsage != RHI::ScopeAttachmentUsage::DepthStencil &&
+                         binding.m_scopeAttachmentUsage != RHI::ScopeAttachmentUsage::Resolve)
+                     {
+-                        m_shaderResourceGroup->SetImageView(RHI::ShaderInputImageIndex(inputIndex), imageView, arrayIndex);
++                        const auto resolved = ResolveShaderInputImageIndex(binding, imageIndex);
++                        if (resolved.IsValid())
++                        {
++                            m_shaderResourceGroup->SetImageView(resolved, imageView, arrayIndex);
++                        }
+                         ++imageIndex;
+                     }
+                 }
+diff --git a/Gems/Atom/RPI/Code/Tests/Pass/PassTests.cpp b/Gems/Atom/RPI/Code/Tests/Pass/PassTests.cpp
+index 578beb536f30a19c7537830214eef76fd7172983..ca1e0411762cde8e5c413a8108daaa7f79b1ca01 100644
+--- a/Gems/Atom/RPI/Code/Tests/Pass/PassTests.cpp
++++ b/Gems/Atom/RPI/Code/Tests/Pass/PassTests.cpp
+@@ -18,6 +18,9 @@
+ #include <Atom/RPI.Public/Pass/PassFilter.h>
+ #include <Atom/RPI.Public/Pass/PassSystem.h>
+ #include <Atom/RPI.Public/Pass/RasterPass.h>
++#include <Atom/RPI.Public/Pass/FullscreenTrianglePass.h>
++#include <Atom/RPI.Public/Shader/ShaderResourceGroup.h>
++#include <Common/ShaderAssetTestUtils.h>
+ 
+ #include <Atom/RPI.Public/RenderPipeline.h>
+ 
+@@ -30,6 +33,22 @@ namespace UnitTest
+     using namespace AZ;
+     using namespace RPI;
+ 
++    class MissingShaderFullscreenPass final : public FullscreenTrianglePass
++    {
++    public:
++        AZ_CLASS_ALLOCATOR(MissingShaderFullscreenPass, AZ::SystemAllocator);
++        explicit MissingShaderFullscreenPass(const PassDescriptor& descriptor) : FullscreenTrianglePass(descriptor) {}
++        void InitializeForTest() { InitializeInternal(); }
++    };
++    class BindingValidationPass final : public RasterPass
++    {
++    public:
++        AZ_CLASS_ALLOCATOR(BindingValidationPass, AZ::SystemAllocator);
++        explicit BindingValidationPass(const PassDescriptor& descriptor) : RasterPass(descriptor) {}
++        void UseSrg(Data::Instance<ShaderResourceGroup> srg) { m_shaderResourceGroup = srg; }
++        using RenderPass::ResolveShaderInputImageIndex;
++    };
++
+     // This class holds and sets up some data for the tests
+     // This is it's own class so we can delete it before the teardown phase, otherwise
+     // name dictionary fails because we have remaining names in the PassTemplates
+@@ -750,6 +769,43 @@ namespace UnitTest
+         TestParentChildSlotTypeMismatch();
+     }
+ 
++    TEST_F(PassTests, FullscreenMissingShaderDisablesPassWithoutDereferencingIt)
++    {
++        auto passTemplate = AZStd::make_shared<PassTemplate>();
++        passTemplate->m_name = Name("MissingShaderRegression");
++        AZ_TEST_START_TRACE_SUPPRESSION;
++        Ptr<MissingShaderFullscreenPass> pass = aznew MissingShaderFullscreenPass(PassDescriptor(passTemplate->m_name, passTemplate));
++        EXPECT_FALSE(pass->GetShader());
++        pass->InitializeForTest();
++        EXPECT_FALSE(pass->IsEnabled());
++        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
++    }
++
++    TEST_F(PassTests, ImageBindingsRecoverStaleNamedIndicesAndRejectOutOfRangeAutomaticIndices)
++    {
++        auto layout = RHI::ShaderResourceGroupLayout::Create();
++        layout->SetName(Name("BindingRegressionSrg")); layout->SetBindingSlot(0);
++        layout->AddShaderInput(RHI::ShaderInputImageDescriptor{Name("MyImage"), RHI::ShaderInputImageAccess::Read, RHI::ShaderInputImageType::Image2D, 1, 1, 1});
++        ASSERT_TRUE(layout->Finalize());
++        auto asset = CreateTestShaderAsset(Uuid::CreateRandom(), layout);
++        auto srg = ShaderResourceGroup::Create(asset, DefaultSupervariantIndex, layout->GetName());
++        ASSERT_TRUE(srg);
++        auto passTemplate = AZStd::make_shared<PassTemplate>(); passTemplate->m_name = Name("BindingRegression");
++        Ptr<BindingValidationPass> pass = aznew BindingValidationPass(PassDescriptor(passTemplate->m_name, passTemplate));
++        pass->UseSrg(srg);
++        PassAttachmentBinding binding;
++        binding.m_name = Name("TestAttachment"); binding.m_shaderInputName = Name("MyImage");
++        binding.m_shaderInputIndex = 8;
++        EXPECT_EQ(pass->ResolveShaderInputImageIndex(binding, 0).GetIndex(), 0);
++        EXPECT_EQ(binding.m_shaderInputIndex, 0);
++        AZ_TEST_START_TRACE_SUPPRESSION;
++        binding.m_shaderInputName = Name("AutoBind"); binding.m_shaderInputIndex = PassAttachmentBinding::ShaderInputAutoBind;
++        EXPECT_FALSE(pass->ResolveShaderInputImageIndex(binding, 1).IsValid());
++        binding.m_shaderInputName = Name("MyImage"); binding.m_shaderInputIndex = 0; binding.m_shaderInputArrayIndex = 1;
++        EXPECT_FALSE(pass->ResolveShaderInputImageIndex(binding, 0).IsValid());
++        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
++    }
++
+     TEST_F(PassTests, FactoryDefaultCreators)
+     {
+         TestFactoryDefaultCreators();
+diff --git a/Gems/AtomLyIntegration/CommonFeatures/Code/Include/AtomLyIntegration/CommonFeatures/CoreLights/AreaLightComponentConfig.h b/Gems/AtomLyIntegration/CommonFeatures/Code/Include/AtomLyIntegration/CommonFeatures/CoreLights/AreaLightComponentConfig.h
+index d650ab4764c5bb51196080ba2954ccdb173342c8..ff265ed100f73adbe2fe5ff5c3bb4b658571e5b5 100644
+--- a/Gems/AtomLyIntegration/CommonFeatures/Code/Include/AtomLyIntegration/CommonFeatures/CoreLights/AreaLightComponentConfig.h
++++ b/Gems/AtomLyIntegration/CommonFeatures/Code/Include/AtomLyIntegration/CommonFeatures/CoreLights/AreaLightComponentConfig.h
+@@ -52,6 +52,8 @@ namespace AZ
+             AZ::Color m_color = AZ::Color::CreateOne();
+             float m_intensity = 100.0f;
+             float m_attenuationRadius = 0.0f;
++            float m_falloffRate = 1.0f;
++            bool m_lockBlenderExport = false;
+             PhotometricUnit m_intensityMode = PhotometricUnit::Lumen;
+             LightAttenuationRadiusMode m_attenuationRadiusMode = LightAttenuationRadiusMode::Automatic;
+             bool m_lightEmitsBothDirections = false;
+@@ -89,6 +91,8 @@ namespace AZ
+             //! Returns true if the light type is anything other than unknown.
+             bool LightTypeIsSelected() const;
+ 
++            bool SupportsFalloffRate() const { return m_lightType == LightType::SpotDisk || m_lightType == LightType::Quad; }
++
+             //! Returns true if m_attenuationRadiusMode is set to LightAttenuationRadiusMode::Automatic
+             bool IsAttenuationRadiusModeAutomatic() const;
+ 
+diff --git a/Gems/AtomLyIntegration/CommonFeatures/Code/Include/AtomLyIntegration/CommonFeatures/CoreLights/DirectionalLightBus.h b/Gems/AtomLyIntegration/CommonFeatures/Code/Include/AtomLyIntegration/CommonFeatures/CoreLights/DirectionalLightBus.h
+index 02d70c991cd64df867c90c0c115cfe9278961482..a8e30c163cb3c1466cbea353817d418b118ef09e 100644
+--- a/Gems/AtomLyIntegration/CommonFeatures/Code/Include/AtomLyIntegration/CommonFeatures/CoreLights/DirectionalLightBus.h
++++ b/Gems/AtomLyIntegration/CommonFeatures/Code/Include/AtomLyIntegration/CommonFeatures/CoreLights/DirectionalLightBus.h
+@@ -26,6 +26,9 @@ namespace AZ
+             : public ComponentBus
+         {
+         public:
++            //! Current packed shader index; does not acquire or mutate the light.
++            virtual uint32_t GetShaderLightIndex() const { return ~uint32_t(0); }
++
+             //! Gets a directional light's color. This value is independent from its intensity.
+             //! @return directional light's color
+             virtual const Color& GetColor() const = 0;
+diff --git a/Gems/AtomLyIntegration/CommonFeatures/Code/Include/AtomLyIntegration/CommonFeatures/Decals/DecalBus.h b/Gems/AtomLyIntegration/CommonFeatures/Code/Include/AtomLyIntegration/CommonFeatures/Decals/DecalBus.h
+index 2488e0dff106e43b523d42bcd62972ab73dc5300..92f6c1b83479f545200c544027b2460a5f669340 100644
+--- a/Gems/AtomLyIntegration/CommonFeatures/Code/Include/AtomLyIntegration/CommonFeatures/Decals/DecalBus.h
++++ b/Gems/AtomLyIntegration/CommonFeatures/Code/Include/AtomLyIntegration/CommonFeatures/Decals/DecalBus.h
+@@ -31,6 +31,11 @@ namespace AZ
+             //! Sets the attenuation angle. This controls how much the angle between geometry and the decal affects decal opacity.
+             virtual void SetAttenuationAngle(float angle) = 0;
+ 
++            //! Gets the color compositing mode.
++            virtual DecalBlendMode GetBlendMode() const = 0;
++            //! Sets the color compositing mode. Normal map opacity remains independent.
++            virtual void SetBlendMode(DecalBlendMode blendMode) = 0;
++
+             //! Gets the decal opacity
+             virtual float GetOpacity() const = 0;
+ 
+@@ -91,6 +96,9 @@ namespace AZ
+             //! @param decalColorFacor This controls the decal color factor (in this case it is a multiplier) applied to the decal color
+             virtual void OnDecalColorFactorChanged([[maybe_unused]] float decalColorFacor) { }
+ 
++            //! Signals that the color compositing mode has changed.
++            virtual void OnBlendModeChanged([[maybe_unused]] DecalBlendMode blendMode) { }
++
+             //! Signals that the opacity has changed.
+             //! @param opacity The opaqueness of the decal.
+             virtual void OnOpacityChanged([[maybe_unused]] float opacity){ }
+diff --git a/Gems/AtomLyIntegration/CommonFeatures/Code/Include/AtomLyIntegration/CommonFeatures/Decals/DecalComponentConfig.h b/Gems/AtomLyIntegration/CommonFeatures/Code/Include/AtomLyIntegration/CommonFeatures/Decals/DecalComponentConfig.h
+index b2a5e3c7204f0ce4a3f6eaabdf5ef0d59cbd3d35..107e211ef7d7828a7ee17c69c7c6dfb068f73a1e 100644
+--- a/Gems/AtomLyIntegration/CommonFeatures/Code/Include/AtomLyIntegration/CommonFeatures/Decals/DecalComponentConfig.h
++++ b/Gems/AtomLyIntegration/CommonFeatures/Code/Include/AtomLyIntegration/CommonFeatures/Decals/DecalComponentConfig.h
+@@ -9,6 +9,7 @@
+ #pragma once
+ 
+ #include <AzCore/Component/Component.h>
++#include <Atom/Feature/Decals/DecalFeatureProcessorInterface.h>
+ #include <Atom/RPI.Reflect/Material/MaterialAsset.h>
+ 
+ namespace AZ
+@@ -27,6 +28,7 @@ namespace AZ
+             Data::Asset<RPI::MaterialAsset> m_materialAsset;
+             float m_attenuationAngle = 1.0f;
+             float m_opacity = 1.0f;
++            DecalBlendMode m_blendMode = DecalBlendMode::Alpha;
+             float m_normalMapOpacity = 1.0f;
+             // Decals with a larger sort key appear over top of smaller sort keys            
+             uint8_t m_sortKey = DefaultDecalSortKey;
+diff --git a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/AreaLightComponentConfig.cpp b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/AreaLightComponentConfig.cpp
+index 94124234e22926db371fbbe8fbd1d6941ce68ee2..de1e23a9dbb6133f5e756e9749ea6b8c268c8e9a 100644
+--- a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/AreaLightComponentConfig.cpp
++++ b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/AreaLightComponentConfig.cpp
+@@ -19,13 +19,15 @@ namespace AZ
+             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+             {
+                 serializeContext->Class<AreaLightComponentConfig, ComponentConfig>()
+-                    ->Version(10) // Added m_goboImageAsset
++                    ->Version(11)
+                     ->Field("LightType", &AreaLightComponentConfig::m_lightType)
+                     ->Field("Color", &AreaLightComponentConfig::m_color)
+                     ->Field("IntensityMode", &AreaLightComponentConfig::m_intensityMode)
+                     ->Field("Intensity", &AreaLightComponentConfig::m_intensity)
+                     ->Field("AttenuationRadiusMode", &AreaLightComponentConfig::m_attenuationRadiusMode)
+                     ->Field("AttenuationRadius", &AreaLightComponentConfig::m_attenuationRadius)
++                    ->Field("FalloffRate", &AreaLightComponentConfig::m_falloffRate)
++                    ->Field("LockBlenderExport", &AreaLightComponentConfig::m_lockBlenderExport)
+                     ->Field("LightEmitsBothDirections", &AreaLightComponentConfig::m_lightEmitsBothDirections)
+                     ->Field("UseFastApproximation", &AreaLightComponentConfig::m_useFastApproximation)
+                     ->Field("GoboAsset", &AreaLightComponentConfig::m_goboImageAsset)
+diff --git a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/AreaLightComponentController.cpp b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/AreaLightComponentController.cpp
+index b455e622e691e29ca5a560221ebe2595b12e2933..12991b5d8aad39e98e178575fdb436d5f9781d06 100644
+--- a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/AreaLightComponentController.cpp
++++ b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/AreaLightComponentController.cpp
+@@ -317,6 +317,7 @@ namespace AZ::Render
+         if (m_lightShapeDelegate)
+         {
+             m_lightShapeDelegate->SetAttenuationRadius(m_configuration.m_attenuationRadius);
++            m_lightShapeDelegate->SetFalloffRate(m_configuration.m_falloffRate > 0.0f ? AZStd::clamp(m_configuration.m_falloffRate, 0.25f, 8.0f) : 1.0f);
+         }
+     }
+     
+diff --git a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/DirectionalLightComponentController.cpp b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/DirectionalLightComponentController.cpp
+index c3788a76f410d18f50390eb98ea93817e469903c..67f04174a931b99374c5ca931161a8e8ff407ffc 100644
+--- a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/DirectionalLightComponentController.cpp
++++ b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/DirectionalLightComponentController.cpp
+@@ -186,6 +186,7 @@ namespace AZ
+             {
+                 ApplyConfiguration();
+             }
++            m_configurationChangedEvent.Signal();
+         }
+ 
+         const Color& DirectionalLightComponentController::GetColor() const
+@@ -195,8 +196,10 @@ namespace AZ
+ 
+         void DirectionalLightComponentController::SetColor(const Color& color)
+         {
++            const bool changed = m_configuration.m_color != color;
+             m_configuration.m_color = color;
+             ColorIntensityChanged();
++            if (changed) m_configurationChangedEvent.Signal();
+         }
+ 
+         float DirectionalLightComponentController::GetIntensity() const
+@@ -211,26 +214,32 @@ namespace AZ
+ 
+         void DirectionalLightComponentController::SetIntensityMode(PhotometricUnit unit)
+         {
++            const bool changed = m_configuration.m_intensityMode != unit;
+             m_photometricValue.ConvertToPhotometricUnit(unit);
+             m_configuration.m_intensityMode = unit;
+             m_configuration.m_intensity = m_photometricValue.GetIntensity();
+             ColorIntensityChanged();
++            if (changed) m_configurationChangedEvent.Signal();
+         }
+ 
+         void DirectionalLightComponentController::SetIntensity(float intensity, PhotometricUnit unit)
+         {
++            const bool changed = m_configuration.m_intensity != intensity || m_configuration.m_intensityMode != unit;
+             m_photometricValue.ConvertToPhotometricUnit(unit);
+             m_photometricValue.SetIntensity(intensity);
+             m_configuration.m_intensityMode = unit;
+             m_configuration.m_intensity = intensity;
+             ColorIntensityChanged();
++            if (changed) m_configurationChangedEvent.Signal();
+         }
+ 
+         void DirectionalLightComponentController::SetIntensity(float intensity)
+         {
++            const bool changed = m_configuration.m_intensity != intensity;
+             m_photometricValue.SetIntensity(intensity);
+             m_configuration.m_intensity = intensity;
+             ColorIntensityChanged();
++            if (changed) m_configurationChangedEvent.Signal();
+         }
+ 
+         float DirectionalLightComponentController::GetAngularDiameter() const
+@@ -240,11 +249,13 @@ namespace AZ
+ 
+         void DirectionalLightComponentController::SetAngularDiameter(float angularDiameter)
+         {
++            const bool changed = m_configuration.m_angularDiameter != angularDiameter;
+             m_configuration.m_angularDiameter = angularDiameter;
+             if (m_featureProcessor)
+             {
+                 m_featureProcessor->SetAngularDiameter(m_lightHandle, m_configuration.m_angularDiameter);
+             }
++            if (changed) m_configurationChangedEvent.Signal();
+         }
+ 
+         ShadowmapSize DirectionalLightComponentController::GetShadowmapSize() const
+diff --git a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/DirectionalLightComponentController.h b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/DirectionalLightComponentController.h
+index 3213eb48cae68345c0a439cc56216e026fa560ff..33b7a09f155af3e263e66979880679a890eccd04 100644
+--- a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/DirectionalLightComponentController.h
++++ b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/DirectionalLightComponentController.h
+@@ -47,6 +47,8 @@ namespace AZ
+             const DirectionalLightComponentConfig& GetConfiguration() const;
+ 
+             // DirectionalLightRequestBus::Handler overrides...
++            uint32_t GetShaderLightIndex() const override
++            { return m_featureProcessor ? m_featureProcessor->GetShaderLightIndex(m_lightHandle) : ~uint32_t(0); }
+             const Color& GetColor() const override;
+             void SetColor(const Color& color) override;
+             float GetIntensity() const override;
+diff --git a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/DiskLightDelegate.cpp b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/DiskLightDelegate.cpp
+index 82f194383621982a23fb582ef7e6dd73dc7b4808..5dd65ddd4072adf2e12206f949c028b85c254db0 100644
+--- a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/DiskLightDelegate.cpp
++++ b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/DiskLightDelegate.cpp
+@@ -21,6 +21,14 @@ namespace AZ::Render
+         InitBase(entityId);
+     }
+ 
++    void DiskLightDelegate::SetFalloffRate(float rate)
++    {
++        if (GetLightHandle().IsValid())
++        {
++            GetFeatureProcessor()->SetFalloffRate(GetLightHandle(), rate);
++        }
++    }
++
+     float DiskLightDelegate::CalculateAttenuationRadius(float lightThreshold) const
+     {
+         // Calculate the radius at which the irradiance will be equal to cutoffIntensity.
+diff --git a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/DiskLightDelegate.h b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/DiskLightDelegate.h
+index 819d882404f0a0ac18e0716669ced5e70a9dd030..adda4f13720e86e3003160e91b5b1452ac294a58 100644
+--- a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/DiskLightDelegate.h
++++ b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/DiskLightDelegate.h
+@@ -33,6 +33,7 @@ namespace AZ::Render
+         float GetSurfaceArea() const override;
+         float GetEffectiveSolidAngle() const override;
+         float CalculateAttenuationRadius(float lightThreshold) const override;
++        void SetFalloffRate(float rate) override;
+         void DrawDebugDisplay(
+             const Transform& transform,
+             const Color& color,
+diff --git a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/EditorAreaLightComponent.cpp b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/EditorAreaLightComponent.cpp
+index 75ca82740e38b989ab22c1ae7629222f5592a418..a1ed2fcad2925f59eee3cf053b7af791d90c14cd 100644
+--- a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/EditorAreaLightComponent.cpp
++++ b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/EditorAreaLightComponent.cpp
+@@ -86,6 +86,9 @@ namespace AZ
+                                 QT_TRANSLATE_NOOP("AtomLyIntegration", "Quad"))
+                             ->EnumAttribute(AreaLightComponentConfig::LightType::Polygon,
+                                 QT_TRANSLATE_NOOP("AtomLyIntegration", "Polygon"))
++                        ->DataElement(Edit::UIHandlers::CheckBox, &AreaLightComponentConfig::m_lockBlenderExport,
++                            QT_TRANSLATE_NOOP("AtomLyIntegration", "Lock Blender Export"),
++                            QT_TRANSLATE_NOOP("AtomLyIntegration", "Protect this light from the TG tower exporter."))
+                         ->DataElement(Edit::UIHandlers::Color, &AreaLightComponentConfig::m_color,
+                             QT_TRANSLATE_NOOP("AtomLyIntegration", "Color"),
+                             QT_TRANSLATE_NOOP("AtomLyIntegration", "Color of the light"))
+@@ -137,6 +140,13 @@ namespace AZ
+                             ->Attribute(Edit::Attributes::ReadOnly, &AreaLightComponentConfig::IsAttenuationRadiusModeAutomatic)
+                             ->Attribute(Edit::Attributes::Visibility, &AreaLightComponentConfig::LightTypeIsSelected)
+                         
++                        ->DataElement(Edit::UIHandlers::Slider, &AreaLightComponentConfig::m_falloffRate,
++                            QT_TRANSLATE_NOOP("AtomLyIntegration", "Falloff rate"),
++                            QT_TRANSLATE_NOOP("AtomLyIntegration", "1 preserves the normal fade. Higher values fade sooner within the same radius."))
++                            ->Attribute(Edit::Attributes::Min, 0.25f)
++                            ->Attribute(Edit::Attributes::Max, 8.0f)
++                            ->Attribute(Edit::Attributes::Visibility, &AreaLightComponentConfig::SupportsFalloffRate)
++
+                         ->DataElement(AZ::Edit::UIHandlers::Default, &AreaLightComponentConfig::m_lightingChannelConfig,
+                             QT_TRANSLATE_NOOP("AtomLyIntegration", "Lighting Channels"), "")
+                             ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::AttributesAndValues)
+diff --git a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/LightDelegateInterface.h b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/LightDelegateInterface.h
+index d5c1f0148d1e8d1e34887a2889aadff5526a834a..0933756a6c5b53176595823d1799cbc253bebcc7 100644
+--- a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/LightDelegateInterface.h
++++ b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/LightDelegateInterface.h
+@@ -48,6 +48,7 @@ namespace AZ
+             virtual float SetPhotometricUnit(PhotometricUnit unit) = 0;
+             //! Sets the maximum distance from any part of the surface of the area light at which this light will have an effect.
+             virtual void SetAttenuationRadius(float radius) = 0;
++            virtual void SetFalloffRate(float) {}
+             //! Gets the light intensity.
+             virtual const PhotometricValue& GetPhotometricValue() const = 0;
+             //! Gets the surface area of the shape.
+diff --git a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/QuadLightDelegate.cpp b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/QuadLightDelegate.cpp
+index 08f82f6b3e5fb8db3aab5f47bcae3fc838ff9796..4faae4e79378c843ded894fa104bc59c2fa723ee 100644
+--- a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/QuadLightDelegate.cpp
++++ b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/QuadLightDelegate.cpp
+@@ -35,6 +35,14 @@ namespace AZ::Render
+         }
+     }
+ 
++    void QuadLightDelegate::SetFalloffRate(float rate)
++    {
++        if (GetLightHandle().IsValid())
++        {
++            GetFeatureProcessor()->SetFalloffRate(GetLightHandle(), rate);
++        }
++    }
++
+     float QuadLightDelegate::CalculateAttenuationRadius(float lightThreshold) const
+     {
+         // Calculate the radius at which the irradiance will be equal to cutoffIntensity.
+diff --git a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/QuadLightDelegate.h b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/QuadLightDelegate.h
+index 039bf46fb53fdf5c1d04cbc8d562bb6ec88983fc..1255b7840beeda936ab0c66a138808f91e6dddd1 100644
+--- a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/QuadLightDelegate.h
++++ b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/CoreLights/QuadLightDelegate.h
+@@ -33,6 +33,7 @@ namespace AZ::Render
+         float GetSurfaceArea() const override;
+         float GetEffectiveSolidAngle() const override;
+         float CalculateAttenuationRadius(float lightThreshold) const override;
++        void SetFalloffRate(float rate) override;
+         void DrawDebugDisplay(
+             const Transform& transform,
+             const Color& color,
+diff --git a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/Decals/DecalComponentController.cpp b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/Decals/DecalComponentController.cpp
+index 6bb46c0f7e892bfb67c32da232b17d12ce51be80..320d65908cdbda0a127db55fcea7c2157da74c74 100644
+--- a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/Decals/DecalComponentController.cpp
++++ b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/Decals/DecalComponentController.cpp
+@@ -23,9 +23,10 @@ namespace AZ
+             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+             {
+                 serializeContext->Class<DecalComponentConfig, ComponentConfig>()
+-                    ->Version(2)
++                    ->Version(3)
+                     ->Field("Attenuation Angle", &DecalComponentConfig::m_attenuationAngle)
+                     ->Field("Opacity", &DecalComponentConfig::m_opacity)
++                    ->Field("BlendMode", &DecalComponentConfig::m_blendMode)
+                     ->Field("Normal Map Opacity", &DecalComponentConfig::m_normalMapOpacity)
+                     ->Field("SortKey", &DecalComponentConfig::m_sortKey)
+                     ->Field("Decal Color", &DecalComponentConfig::m_decalColor)
+@@ -48,9 +49,16 @@ namespace AZ
+ 
+             if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+             {
++                behaviorContext->Enum<static_cast<int>(DecalBlendMode::Alpha)>("DecalBlendMode_Alpha");
++                behaviorContext->Enum<static_cast<int>(DecalBlendMode::Multiply)>("DecalBlendMode_Multiply");
++                behaviorContext->Enum<static_cast<int>(DecalBlendMode::Add)>("DecalBlendMode_Add");
++                behaviorContext->Enum<static_cast<int>(DecalBlendMode::Screen)>("DecalBlendMode_Screen");
++                behaviorContext->Enum<static_cast<int>(DecalBlendMode::Overlay)>("DecalBlendMode_Overlay");
+                 behaviorContext->EBus<DecalRequestBus>("DecalRequestBus")
+                     ->Event("GetAttenuationAngle", &DecalRequestBus::Events::GetAttenuationAngle)
+                     ->Event("SetAttenuationAngle", &DecalRequestBus::Events::SetAttenuationAngle)
++                    ->Event("GetBlendMode", &DecalRequestBus::Events::GetBlendMode)
++                    ->Event("SetBlendMode", &DecalRequestBus::Events::SetBlendMode)
+                     ->Event("GetOpacity", &DecalRequestBus::Events::GetOpacity)
+                     ->Event("SetOpacity", &DecalRequestBus::Events::SetOpacity)
+                     ->Event("GetNormalMapOpacity", &DecalRequestBus::Events::GetNormalMapOpacity)
+@@ -62,6 +70,7 @@ namespace AZ
+                     ->Event("GetDecalColorFactor", &DecalRequestBus::Events::GetDecalColorFactor)
+                     ->Event("SetDecalColorFactor", &DecalRequestBus::Events::SetDecalColorFactor)
+                     ->VirtualProperty("AttenuationAngle", "GetAttenuationAngle", "SetAttenuationAngle")
++                    ->VirtualProperty("BlendMode", "GetBlendMode", "SetBlendMode")
+                     ->VirtualProperty("Opacity", "GetOpacity", "SetOpacity")
+                     ->VirtualProperty("NormalMapOpacity", "GetNormalMapOpacity", "SetNormalMapOpacity")
+                     ->VirtualProperty("SortKey", "GetSortKey", "SetSortKey")
+@@ -165,6 +174,7 @@ namespace AZ
+         {
+             AttenuationAngleChanged();
+             OpacityChanged();
++            BlendModeChanged();
+             NormalMapOpacityChanged();
+             SortKeyChanged();
+             DecalColorChanged();
+@@ -205,6 +215,26 @@ namespace AZ
+             DecalColorFactorChanged();
+         }
+ 
++        DecalBlendMode DecalComponentController::GetBlendMode() const
++        {
++            return m_configuration.m_blendMode;
++        }
++
++        void DecalComponentController::SetBlendMode(DecalBlendMode blendMode)
++        {
++            m_configuration.m_blendMode = blendMode;
++            BlendModeChanged();
++        }
++
++        void DecalComponentController::BlendModeChanged()
++        {
++            DecalNotificationBus::Event(m_entityId, &DecalNotifications::OnBlendModeChanged, m_configuration.m_blendMode);
++            if (m_featureProcessor)
++            {
++                m_featureProcessor->SetDecalBlendMode(m_handle, m_configuration.m_blendMode);
++            }
++        }
++
+         float DecalComponentController::GetOpacity() const
+         {
+             return m_configuration.m_opacity;
+diff --git a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/Decals/DecalComponentController.h b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/Decals/DecalComponentController.h
+index 3cdd6565abad545decb13889dbd808c0e5f42417..c93999946d34fa028295229bcefbbcdad6b3f1dd 100644
+--- a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/Decals/DecalComponentController.h
++++ b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/Decals/DecalComponentController.h
+@@ -54,6 +54,8 @@ namespace AZ
+             void SetDecalColor(const AZ::Vector3& color) override;
+             float GetDecalColorFactor() const override;
+             void SetDecalColorFactor(float colorFactor) override;
++            DecalBlendMode GetBlendMode() const override;
++            void SetBlendMode(DecalBlendMode blendMode) override;
+             float GetOpacity() const override;
+             void SetOpacity(float opacity) override;
+             float GetNormalMapOpacity() const override;
+@@ -68,6 +70,7 @@ namespace AZ
+             void DecalColorChanged();
+             void DecalColorFactorChanged();
+             void OpacityChanged();
++            void BlendModeChanged();
+             void NormalMapOpacityChanged();
+             void SortKeyChanged();
+             void MaterialChanged();
+diff --git a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/Decals/EditorDecalComponent.cpp b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/Decals/EditorDecalComponent.cpp
+index d6f68b294ec73bf814c7e4015815a0c5a5bfa068..e85a3c61191dc92491b6a59230dc78a6128b0db2 100644
+--- a/Gems/AtomLyIntegration/CommonFeatures/Code/Source/Decals/EditorDecalComponent.cpp
++++ b/Gems/AtomLyIntegration/CommonFeatures/Code/Source/Decals/EditorDecalComponent.cpp
+@@ -64,6 +64,15 @@ namespace AZ
+                         ->Attribute(AZ::Edit::Attributes::Min, 0.f)
+                         ->Attribute(AZ::Edit::Attributes::Max, 1.f)
+ 
++                        ->DataElement(AZ::Edit::UIHandlers::ComboBox, &DecalComponentConfig::m_blendMode,
++                            QT_TRANSLATE_NOOP("AtomLyIntegration", "Blend Mode"),
++                            QT_TRANSLATE_NOOP("AtomLyIntegration", "Combines decal color with the underlying surface before opacity is applied. Normal maps use their separate opacity."))
++                        ->EnumAttribute(DecalBlendMode::Alpha, "Alpha")
++                        ->EnumAttribute(DecalBlendMode::Multiply, "Multiply")
++                        ->EnumAttribute(DecalBlendMode::Add, "Add")
++                        ->EnumAttribute(DecalBlendMode::Screen, "Screen")
++                        ->EnumAttribute(DecalBlendMode::Overlay, "Overlay")
++
+                         ->DataElement(AZ::Edit::UIHandlers::Slider, &DecalComponentConfig::m_opacity,
+                             QT_TRANSLATE_NOOP("AtomLyIntegration", "Opacity"),
+                             QT_TRANSLATE_NOOP("AtomLyIntegration", "The opacity of the decal."))
+diff --git a/Gems/AtomLyIntegration/EMotionFXAtom/Code/Source/ActorAsset.cpp b/Gems/AtomLyIntegration/EMotionFXAtom/Code/Source/ActorAsset.cpp
+index a27ed6c93915ae2261cb0367e7c80c1d66c3d02e..faaa54ef6dc137014783af4a04984e5376ec7704 100644
+--- a/Gems/AtomLyIntegration/EMotionFXAtom/Code/Source/ActorAsset.cpp
++++ b/Gems/AtomLyIntegration/EMotionFXAtom/Code/Source/ActorAsset.cpp
+@@ -7,6 +7,7 @@
+  */
+ 
+ #include <ActorAsset.h>
++#include <LinearSkinningMatrices.h>
+ #include <AtomActorInstance.h>
+ 
+ #include <EMotionFX/Source/TransformData.h>
+@@ -328,6 +329,17 @@ namespace AZ
+             if (skinningMethod == EMotionFX::Integration::SkinningMethod::Linear)
+             {
+                 boneTransforms.resize_no_construct(numBoneTransforms * LinearSkinningFloatsPerBone);
++                const auto* skeleton = actorInstance->GetActor()->GetSkeleton();
++                const auto* pose = transforms->GetCurrentPose();
++                const auto* bindPose = actorInstance->GetActor()->GetBindPose();
++                AZStd::vector<AZ::Matrix3x4> affineMatrices;
++                if (Internal::RequiresAffineSkinning(*skeleton, *pose, *bindPose))
++                {
++                    affineMatrices.resize_no_construct(numBoneTransforms);
++                    Internal::BuildAffineSkinningMatrices(*skeleton, *pose, *bindPose, affineMatrices.data());
++                    skinningMatrices = affineMatrices.data();
++                }
++
+                 for (size_t i = 0; i < numBoneTransforms; ++i)
+                 {
+                     skinningMatrices[i].StoreToRowMajorFloat12(&boneTransforms[i * LinearSkinningFloatsPerBone]);
+diff --git a/Gems/AtomLyIntegration/EMotionFXAtom/Code/Source/LinearSkinningMatrices.h b/Gems/AtomLyIntegration/EMotionFXAtom/Code/Source/LinearSkinningMatrices.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..ff3d5551570399f6ea4b630c63723ceb2b9191c7
+--- /dev/null
++++ b/Gems/AtomLyIntegration/EMotionFXAtom/Code/Source/LinearSkinningMatrices.h
+@@ -0,0 +1,74 @@
++/*
++ * Copyright (c) Contributors to the Open 3D Engine Project.
++ * For complete copyright and license terms please see the LICENSE at the root of this distribution.
++ *
++ * SPDX-License-Identifier: Apache-2.0 OR MIT
++ *
++ */
++
++#pragma once
++
++#include <AzCore/Math/Matrix3x4.h>
++#include <EMotionFX/Source/Node.h>
++#include <EMotionFX/Source/Pose.h>
++#include <EMotionFX/Source/Skeleton.h>
++
++namespace AZ::Render::Internal
++{
++    inline bool RequiresAffineSkinning(const EMotionFX::Skeleton& skeleton,
++        const EMotionFX::Pose& pose, const EMotionFX::Pose& bindPose)
++    {
++#ifndef EMFX_SCALE_DISABLED
++        for (size_t index = 0; index < skeleton.GetNumNodes(); ++index)
++        {
++            const auto& scale = pose.GetLocalSpaceTransform(index).m_scale;
++            const auto& bindScale = bindPose.GetLocalSpaceTransform(index).m_scale;
++            if (!scale.IsClose(AZ::Vector3(scale.GetX()), 1e-5f) ||
++                !bindScale.IsClose(AZ::Vector3(bindScale.GetX()), 1e-5f))
++            {
++                return true;
++            }
++        }
++#else
++        AZ_UNUSED(skeleton);
++        AZ_UNUSED(pose);
++        AZ_UNUSED(bindPose);
++#endif
++        return false;
++    }
++
++    inline AZ::Matrix3x4 MakeAffineMatrix(const EMotionFX::Transform& transform)
++    {
++        auto matrix = AZ::Matrix3x4::CreateFromQuaternionAndTranslation(transform.m_rotation, transform.m_position);
++#ifndef EMFX_SCALE_DISABLED
++        matrix.MultiplyByScale(transform.m_scale);
++#endif
++        return matrix;
++    }
++
++    //! Preserve nonuniform scale and the shear it produces through a rotated hierarchy.
++    //! EMotionFX's model-space QST and ToAZTransform cannot represent those affine transforms.
++    inline void BuildAffineSkinningMatrices(const EMotionFX::Skeleton& skeleton,
++        const EMotionFX::Pose& pose, const EMotionFX::Pose& bindPose, AZ::Matrix3x4* matrices)
++    {
++        const auto visit = [&](const auto& self, size_t index,
++            const AZ::Matrix3x4& parentPose, const AZ::Matrix3x4& parentBind) -> void
++        {
++            const auto modelPose = parentPose * MakeAffineMatrix(pose.GetLocalSpaceTransform(index));
++            const auto modelBind = parentBind * MakeAffineMatrix(bindPose.GetLocalSpaceTransform(index));
++            matrices[index] = modelPose * modelBind.GetInverseFull();
++
++            const auto* node = skeleton.GetNode(index);
++            for (size_t child = 0; child < node->GetNumChildNodes(); ++child)
++            {
++                self(self, node->GetChildIndex(child), modelPose, modelBind);
++            }
++        };
++
++        const auto identity = AZ::Matrix3x4::CreateIdentity();
++        for (size_t root = 0; root < skeleton.GetNumRootNodes(); ++root)
++        {
++            visit(visit, skeleton.GetRootNodeIndex(root), identity, identity);
++        }
++    }
++}
+diff --git a/Gems/AtomLyIntegration/EMotionFXAtom/Code/emotionfx_atom_files.cmake b/Gems/AtomLyIntegration/EMotionFXAtom/Code/emotionfx_atom_files.cmake
+index 413984b96d28142d31c77ad7cefdb78919db6195..45f8737cff22538cea9579981b9b9d8b51a9fe49 100644
+--- a/Gems/AtomLyIntegration/EMotionFXAtom/Code/emotionfx_atom_files.cmake
++++ b/Gems/AtomLyIntegration/EMotionFXAtom/Code/emotionfx_atom_files.cmake
+@@ -9,6 +9,7 @@
+ set(FILES
+     Source/ActorAsset.cpp
+     Source/ActorAsset.h
++    Source/LinearSkinningMatrices.h
+     Source/ActorSystemComponent.cpp
+     Source/ActorSystemComponent.h
+     Source/AtomBackend.h
+diff --git a/Gems/DiffuseProbeGrid/Code/Source/Render/DiffuseProbeGrid.cpp b/Gems/DiffuseProbeGrid/Code/Source/Render/DiffuseProbeGrid.cpp
+index d604f46b44c648aec34a1aa5de2ba6a31dca8292..db39d2bff891570b3be739938af70d6dbed6211d 100644
+--- a/Gems/DiffuseProbeGrid/Code/Source/Render/DiffuseProbeGrid.cpp
++++ b/Gems/DiffuseProbeGrid/Code/Source/Render/DiffuseProbeGrid.cpp
+@@ -76,11 +76,11 @@ namespace AZ
+                 // the list index passed in from the feature processor is the index of this probe in the sorted probe list.
+                 // this is needed to render the probe volumes in order from largest to smallest
+                 RHI::DrawItemSortKey sortKey = static_cast<RHI::DrawItemSortKey>(probeIndex);
+-                if (sortKey != m_sortKey)
++                if (sortKey != m_sortKey || m_drawPacketPipelineState != m_renderData->m_pipelineState->GetRHIPipelineState())
+                 {
+                     if (m_renderData->m_pipelineState->GetRHIPipelineState())
+                     {
+-                        // the sort key changed, rebuild draw packets
++                        // The sort key or render output changed (for example MSAA). Rebuild the cached draw packet.
+                         m_sortKey = sortKey;
+ 
+                         RHI::DrawPacketBuilder drawPacketBuilder{RHI::MultiDevice::AllDevices};
+@@ -96,6 +96,7 @@ namespace AZ
+                         drawPacketBuilder.AddDrawItem(drawRequest);
+ 
+                         m_drawPacket = drawPacketBuilder.End();
++                        m_drawPacketPipelineState = m_renderData->m_pipelineState->GetRHIPipelineState();
+ 
+                         // we also need to update culling with the new draw packet
+                         UpdateCulling();
+diff --git a/Gems/DiffuseProbeGrid/Code/Source/Render/DiffuseProbeGrid.h b/Gems/DiffuseProbeGrid/Code/Source/Render/DiffuseProbeGrid.h
+index 6f8d9679daaa9579ff6b3c34279c84b3abd9357d..982ccdae193cbd8f791a8922a718fa427086fa8b 100644
+--- a/Gems/DiffuseProbeGrid/Code/Source/Render/DiffuseProbeGrid.h
++++ b/Gems/DiffuseProbeGrid/Code/Source/Render/DiffuseProbeGrid.h
+@@ -384,6 +384,7 @@ namespace AZ
+ 
+             // render draw packet
+             RHI::ConstPtr<RHI::DrawPacket> m_drawPacket;
++            RHI::ConstPtr<RHI::PipelineState> m_drawPacketPipelineState;
+ 
+             // sort key for the draw item
+             const RHI::DrawItemSortKey InvalidSortKey = static_cast<RHI::DrawItemSortKey>(-1);
+diff --git a/Gems/EMotionFX/Code/EMotionFX/Pipeline/RCExt/Motion/MotionDataBuilder.cpp b/Gems/EMotionFX/Code/EMotionFX/Pipeline/RCExt/Motion/MotionDataBuilder.cpp
+index dbe181372e1be19c87cec0eedd9193c858b9a6c8..36f6d773a024330d5cca25a1d25dfad3fedcd7dc 100644
+--- a/Gems/EMotionFX/Code/EMotionFX/Pipeline/RCExt/Motion/MotionDataBuilder.cpp
++++ b/Gems/EMotionFX/Code/EMotionFX/Pipeline/RCExt/Motion/MotionDataBuilder.cpp
+@@ -56,7 +56,7 @@ namespace EMotionFX
+             AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+             if (serializeContext)
+             {
+-                serializeContext->Class<MotionDataBuilder, AZ::SceneAPI::SceneCore::ExportingComponent>()->Version(1);
++                serializeContext->Class<MotionDataBuilder, AZ::SceneAPI::SceneCore::ExportingComponent>()->Version(2);
+             }
+         }
+ 
+@@ -188,7 +188,33 @@ namespace EMotionFX
+                 const SceneDataTypes::IGraphObject* parentNode = sceneGraph.GetNodeContent(parentNodeIndex).get();
+                 if (const SceneDataTypes::IBoneData* parentBone = azrtti_cast<const SceneDataTypes::IBoneData*>(parentNode))
+                 {
+-                    return parentBone->GetWorldTransform().GetInverseFull() * nodeTransform;
++                    const auto parentWorld = parentBone->GetWorldTransform();
++                    // Normalize basis columns before inversion: a valid tiny prop
++                    // scale can put the determinant below GetInverseFull's absolute
++                    // epsilon. Preserve shear and translation, then undo the column
++                    // scaling by scaling the inverse's rows (including translation).
++                    auto normalizedParent = parentWorld;
++                    const AZ::Vector3 scale(
++                        parentWorld.GetColumn(0).GetLength(),
++                        parentWorld.GetColumn(1).GetLength(),
++                        parentWorld.GetColumn(2).GetLength());
++                    if (scale.IsFinite() && scale.GetX() > 0.0f && scale.GetY() > 0.0f && scale.GetZ() > 0.0f)
++                    {
++                        normalizedParent.MultiplyByScale(scale.GetReciprocal());
++                        if (AZ::IsClose(normalizedParent.GetDeterminant3x3(), 0.0f, AZ::Constants::FloatEpsilon))
++                        {
++                            return parentWorld.GetInverseFull() * nodeTransform;
++                        }
++                        auto inverse = normalizedParent.GetInverseFull();
++                        for (int row = 0; row < 3; ++row)
++                        {
++                            inverse.SetRow(row, inverse.GetRow(row) / scale.GetElement(row));
++                        }
++                        return inverse * nodeTransform;
++                    }
++                    // Truly singular or non-finite inputs still produce the
++                    // original diagnostic and fallback rather than being hidden.
++                    return parentWorld.GetInverseFull() * nodeTransform;
+                 }
+             }
+ 
+diff --git a/Gems/MiniAudio/Code/CMakeLists.txt b/Gems/MiniAudio/Code/CMakeLists.txt
+index d2cf98d14806fac3729e12789a99700a101e0de6..93da9fed64d9e13386caf27e60d70b4620894537 100644
+--- a/Gems/MiniAudio/Code/CMakeLists.txt
++++ b/Gems/MiniAudio/Code/CMakeLists.txt
+@@ -169,3 +169,13 @@ if(PAL_TRAIT_BUILD_HOST_TOOLS)
+ 
+ endif()
+ 
++
++if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
++    ly_add_target(
++        NAME MiniAudio.Tests ${PAL_TRAIT_TEST_TARGET_TYPE} NAMESPACE Gem
++        FILES_CMAKE miniaudio_tests_files.cmake
++        BUILD_DEPENDENCIES PRIVATE AZ::AzTest AZ::AzCoreTestCommon
++            Gem::MiniAudio.Private.Object Gem::MiniAudio.API 3rdParty::miniaudio
++    )
++    ly_add_googletest(NAME Gem::MiniAudio.Tests LABELS REQUIRES_tiaf)
++endif()
+diff --git a/Gems/MiniAudio/Code/Include/MiniAudio/MiniAudioBus.h b/Gems/MiniAudio/Code/Include/MiniAudio/MiniAudioBus.h
+index 4ab6de7c92634af451db37d7fc9fd9e5e36fb632..b47e283ddb931cb14face7e54afc651b870e9662 100644
+--- a/Gems/MiniAudio/Code/Include/MiniAudio/MiniAudioBus.h
++++ b/Gems/MiniAudio/Code/Include/MiniAudio/MiniAudioBus.h
+@@ -13,6 +13,7 @@
+ #include <AzCore/RTTI/TypeSafeIntegral.h>
+ 
+ struct ma_engine;
++struct ma_sound;
+ 
+ namespace MiniAudio
+ {
+@@ -37,6 +38,12 @@ namespace MiniAudio
+ 
+         //! @return the number of output channels for the sound engine
+         virtual AZ::u32 GetChannelCount() const = 0;
++
++        //! Level sounds attach here; presentation sounds attach directly to the engine.
++        //! Group lifetime matches the engine. These methods are called on the owner thread.
++        virtual ma_sound* GetLevelSoundGroup() { return nullptr; }
++        virtual void SetLevelAudioEnabled(bool) {}
++        virtual bool IsLevelAudioEnabled() const { return true; }
+     };
+ 
+     class MiniAudioBusTraits
+diff --git a/Gems/MiniAudio/Code/Include/MiniAudio/MiniAudioPlaybackBus.h b/Gems/MiniAudio/Code/Include/MiniAudio/MiniAudioPlaybackBus.h
+index 8344e481366b3cb10c9ae28d178021ecaa3f3a8f..c374ffe7049e9106e3188372deab8941290384a1 100644
+--- a/Gems/MiniAudio/Code/Include/MiniAudio/MiniAudioPlaybackBus.h
++++ b/Gems/MiniAudio/Code/Include/MiniAudio/MiniAudioPlaybackBus.h
+@@ -23,6 +23,10 @@ namespace MiniAudio
+         virtual void Play() = 0;
+         virtual void Stop() = 0;
+         virtual void Pause() = 0;
++        //! True only while audio is playing, not once the clip reaches its end.
++        virtual bool IsPlaying() const = 0;
++        //! Play was requested while the sound asset is still loading.
++        virtual bool IsPlaybackPending() const = 0;
+         virtual void SetLooping(bool loop) = 0;
+         virtual bool IsLooping() const = 0;
+         virtual void SetSoundAsset(AZ::Data::Asset<SoundAsset> soundAsset) = 0;
+diff --git a/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponent.cpp b/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponent.cpp
+index 5788e2f3113d2ba03bb5022194437053a3975d35..a3ca6ebfd5adbb7fe0916b792d1472c61131e7d2 100644
+--- a/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponent.cpp
++++ b/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponent.cpp
+@@ -69,6 +69,8 @@ namespace MiniAudio
+                 ->Event("Play", &MiniAudioPlaybackRequests::Play)
+                 ->Event("Stop", &MiniAudioPlaybackRequests::Stop)
+                 ->Event("Pause", &MiniAudioPlaybackRequests::Pause)
++                ->Event("IsPlaying", &MiniAudioPlaybackRequests::IsPlaying)
++                ->Event("IsPlaybackPending", &MiniAudioPlaybackRequests::IsPlaybackPending)
+                 ->Event("SetLooping", &MiniAudioPlaybackRequests::SetLooping)
+                 ->Event("IsLooping", &MiniAudioPlaybackRequests::IsLooping)
+                 ->Event("GetSoundAsset", &MiniAudioPlaybackRequests::GetSoundAssetRef)
+diff --git a/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponentConfig.cpp b/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponentConfig.cpp
+index a0480b5e7c69779c7865bbdfc43391637948a2c0..9df10607d6811b68e523fc81c2627be7181a7323 100644
+--- a/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponentConfig.cpp
++++ b/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponentConfig.cpp
+@@ -17,7 +17,8 @@ namespace MiniAudio
+         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+         {
+             serializeContext->Class<MiniAudioPlaybackComponentConfig>()
+-                ->Version(4)
++                ->Version(5)
++                ->Field("PresentationAudio", &MiniAudioPlaybackComponentConfig::m_presentationAudio)
+                 ->Field("Autoplay", &MiniAudioPlaybackComponentConfig::m_autoplayOnActivate)
+                 ->Field("Sound", &MiniAudioPlaybackComponentConfig::m_sound)
+                 ->Field("Volume", &MiniAudioPlaybackComponentConfig::m_volume)
+diff --git a/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponentConfig.h b/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponentConfig.h
+index 646473f930e24f1f0b52576a6edecc1a1d3b1e6b..5af4bf696b1d8d4d92094cd72ce65131d169f78f 100644
+--- a/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponentConfig.h
++++ b/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponentConfig.h
+@@ -39,6 +39,7 @@ namespace MiniAudio
+         //! If true, automatically play when the entity activates, useful for
+         //! environment audio.
+         bool m_autoplayOnActivate = false;
++        bool m_presentationAudio = false;
+ 
+         //! Playback volume represented as a percentage
+         float m_volume = 100.f;
+diff --git a/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponentController.cpp b/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponentController.cpp
+index 8cb9d02d2f5c2954e053efc9340ae20ccce5d405..17d8852fc5d06fbc9d484954e25f6bcea3b61dee 100644
+--- a/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponentController.cpp
++++ b/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponentController.cpp
+@@ -85,12 +85,30 @@ namespace MiniAudio
+     {
+         if (m_sound)
+         {
+-            ma_sound_start(m_sound.get());
++            m_playPending = false;
++            const auto result = ma_sound_start(m_sound.get());
++            AZ_Warning("MiniAudio", result == MA_SUCCESS, "Cannot start sound (%d)", result);
+         }
++        else
++        {
++            // A request made during asynchronous loading must not be lost.
++            m_playPending = m_config.m_sound.GetId().IsValid() && !m_config.m_sound.IsError() && !m_loadFailed;
++        }
++    }
++
++    bool MiniAudioPlaybackComponentController::IsPlaying() const
++    {
++        return m_sound && ma_sound_is_playing(m_sound.get()) && !ma_sound_at_end(m_sound.get());
++    }
++
++    bool MiniAudioPlaybackComponentController::IsPlaybackPending() const
++    {
++        return m_playPending;
+     }
+ 
+     void MiniAudioPlaybackComponentController::Stop()
+     {
++        m_playPending = false;
+         if (m_sound)
+         {
+             ma_sound_stop(m_sound.get());
+@@ -100,10 +118,8 @@ namespace MiniAudio
+ 
+     void MiniAudioPlaybackComponentController::Pause()
+     {
+-        if (m_sound)
+-        {
+-            ma_sound_stop(m_sound.get());
+-        }
++        m_playPending = false;
++        if (m_sound) ma_sound_stop(m_sound.get());
+     }
+ 
+     float MiniAudioPlaybackComponentController::GetVolumePercentage() const
+@@ -285,19 +301,21 @@ namespace MiniAudio
+ 
+     void MiniAudioPlaybackComponentController::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
+     {
++        if (asset.GetId() != m_config.m_sound.GetId()) return;
+         AZ::Data::AssetBus::MultiHandler::BusDisconnect(asset.GetId());
+-
+-        // Re-assign the sound before attempting to load it if it was
+-        // released and the asset is now ready.
+-        // This can happen in the Editor when returning from game mode
+-        if (!m_config.m_sound.IsReady())
+-        {
+-            m_config.m_sound = asset;
+-        }
+-
++        m_config.m_sound = asset;
+         LoadSound();
+     }
+ 
++    void MiniAudioPlaybackComponentController::OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> asset)
++    {
++        if (asset.GetId() != m_config.m_sound.GetId()) return;
++        AZ::Data::AssetBus::MultiHandler::BusDisconnect(asset.GetId());
++        m_playPending = false;
++        m_loadFailed = true;
++        AZ_Warning("MiniAudio", false, "Cannot load sound asset %s", asset.GetId().ToFixedString().c_str());
++    }
++
+     void MiniAudioPlaybackComponentController::OnWorldTransformChanged(const AZ::Transform& world)
+     {
+         if (m_sound)
+@@ -317,6 +335,13 @@ namespace MiniAudio
+ 
+     void MiniAudioPlaybackComponentController::OnConfigurationUpdated()
+     {
++        m_loadFailed = false;
++        if (!m_config.m_sound.GetId().IsValid()) return;
++        if (m_config.m_sound.IsError())
++        {
++            OnAssetError(m_config.m_sound);
++            return;
++        }
+         if (m_config.m_sound.IsReady() == false)
+         {
+             AZ::Data::AssetBus::MultiHandler::BusConnect(m_config.m_sound.GetId());
+@@ -330,15 +355,20 @@ namespace MiniAudio
+ 
+     void MiniAudioPlaybackComponentController::LoadSound()
+     {
+-        if (ma_engine* engine = MiniAudioInterface::Get()->GetSoundEngine())
++        auto* api = MiniAudioInterface::Get();
++        if (ma_engine* engine = api ? api->GetSoundEngine() : nullptr)
+         {
+             if (GetConfiguration().m_sound.IsReady())
+             {
++                const bool startRequested = m_playPending || m_config.m_autoplayOnActivate;
++                UnloadSound();
++                m_loadFailed = true; // Cleared only after a sound initializes successfully.
+                 AZ::Data::AssetId::FixedString soundName = GetConfiguration().m_sound.GetId().ToFixedString();
+ 
+                 const auto& assetBuffer = GetConfiguration().m_sound->m_data;
+                 if (assetBuffer.empty())
+                 {
++                    AZ_Warning("MiniAudio", false, "Sound asset %s is empty", soundName.c_str());
+                     return;
+                 }
+ 
+@@ -346,24 +376,23 @@ namespace MiniAudio
+                     ma_engine_get_resource_manager(engine), soundName.c_str(), assetBuffer.data(), assetBuffer.size());
+                 if (result != MA_SUCCESS)
+                 {
+-                    // An error occurred.
++                    AZ_Warning("MiniAudio", false, "Cannot register sound %s (%d)", soundName.c_str(), result);
+                     return;
+                 }
+-
+-                if (m_sound)
+-                {
+-                    ma_sound_uninit(m_sound.get());
+-                    m_sound.reset();
+-                }
+-                m_sound = AZStd::make_unique<ma_sound>();
+-
++                m_registeredSound = m_config.m_sound.GetId();
++                auto sound = AZStd::make_unique<ma_sound>();
+                 const ma_uint32 flags = MA_SOUND_FLAG_DECODE;
+-                result = ma_sound_init_from_file(engine, soundName.c_str(), flags, nullptr, nullptr, m_sound.get());
++                result = ma_sound_init_from_file(engine, soundName.c_str(), flags,
++                    m_config.m_presentationAudio ? nullptr : api->GetLevelSoundGroup(), nullptr, sound.get());
+                 if (result != MA_SUCCESS)
+                 {
+-                    // An error occurred.
++                    ma_resource_manager_unregister_data(ma_engine_get_resource_manager(engine), soundName.c_str());
++                    m_registeredSound.SetInvalid();
++                    AZ_Warning("MiniAudio", false, "Cannot decode sound %s (%d)", soundName.c_str(), result);
+                     return;
+                 }
++                m_sound = AZStd::move(sound);
++                m_loadFailed = false;
+ 
+                 ma_sound_set_volume(m_sound.get(), (m_config.m_volume / 100.f));
+                 ma_sound_set_looping(m_sound.get(), m_config.m_loop);
+@@ -414,7 +443,7 @@ namespace MiniAudio
+ 
+                 // Automatically play after the sound loads if requested
+                 // This will play automatically in Editor and Game
+-                if (m_config.m_autoplayOnActivate)
++                if (startRequested)
+                 {
+                     Play();
+                 }
+@@ -424,7 +453,12 @@ namespace MiniAudio
+ 
+     void MiniAudioPlaybackComponentController::UnloadSound()
+     {
+-        if (ma_engine* engine = MiniAudioInterface::Get()->GetSoundEngine())
++        m_playPending = false;
++        m_loadFailed = false;
++        m_entityMovedHandler.Disconnect();
++        AZ::Data::AssetBus::MultiHandler::BusDisconnect();
++        auto* api = MiniAudioInterface::Get();
++        if (ma_engine* engine = api ? api->GetSoundEngine() : nullptr)
+         {
+             if (m_sound)
+             {
+@@ -432,12 +466,9 @@ namespace MiniAudio
+                 ma_sound_uninit(m_sound.get());
+                 m_sound.reset();
+             }
+-
+-            AZ::Data::AssetId soundId = GetConfiguration().m_sound.GetId();
+-            if (soundId.IsValid())
+-            {
+-                ma_resource_manager_unregister_data(ma_engine_get_resource_manager(engine), soundId.ToFixedString().c_str());
+-            }
++            if (m_registeredSound.IsValid())
++                ma_resource_manager_unregister_data(ma_engine_get_resource_manager(engine), m_registeredSound.ToFixedString().c_str());
+         }
++        m_registeredSound.SetInvalid();
+     }
+ } // namespace MiniAudio
+diff --git a/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponentController.h b/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponentController.h
+index 8b88e7532250055ce884e27de077baeecb775904..aef48d6b4fd46cbd679b2efccf9b8a164fdff92b 100644
+--- a/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponentController.h
++++ b/Gems/MiniAudio/Code/Source/Clients/MiniAudioPlaybackComponentController.h
+@@ -10,7 +10,6 @@
+ 
+ #include <AzCore/Asset/AssetCommon.h>
+ #include <AzCore/Component/Component.h>
+-#include <AzCore/Component/TickBus.h>
+ #include <AzCore/Component/TransformBus.h>
+ #include <MiniAudio/MiniAudioBus.h>
+ #include <MiniAudio/MiniAudioPlaybackBus.h>
+@@ -46,6 +45,8 @@ namespace MiniAudio
+         void Play() override;
+         void Stop() override;
+         void Pause() override;
++        bool IsPlaying() const override;
++        bool IsPlaybackPending() const override;
+         void SetVolumePercentage(float volume) override;
+         float GetVolumePercentage() const override;
+         void SetVolumeDecibels(float volumeDecibels) override;
+@@ -77,6 +78,7 @@ namespace MiniAudio
+ 
+         // MultiHandler
+         void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
++        void OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
+ 
+     private:
+         AZ::EntityComponentIdPair m_entityComponentIdPair;
+@@ -95,5 +97,8 @@ namespace MiniAudio
+         void UnloadSound();
+ 
+         AZStd::unique_ptr<ma_sound> m_sound;
++        AZ::Data::AssetId m_registeredSound;
++        bool m_playPending = false;
++        bool m_loadFailed = false;
+     };
+ } // namespace MiniAudio
+diff --git a/Gems/MiniAudio/Code/Source/Clients/MiniAudioSystemComponent.cpp b/Gems/MiniAudio/Code/Source/Clients/MiniAudioSystemComponent.cpp
+index ac1d5b17fe61542404c6310fee19deaae9c03ac4..f30cf8e06dace6f68d1f7556bcbe7e07fad9490e 100644
+--- a/Gems/MiniAudio/Code/Source/Clients/MiniAudioSystemComponent.cpp
++++ b/Gems/MiniAudio/Code/Source/Clients/MiniAudioSystemComponent.cpp
+@@ -129,6 +129,18 @@ namespace MiniAudio
+ 
+         }
+ 
++        m_levelGroup = std::make_unique<ma_sound>();
++        result = ma_sound_group_init(m_engine.get(), 0, nullptr, m_levelGroup.get());
++        if (result != MA_SUCCESS)
++        {
++            m_levelGroup.reset();
++            ma_engine_uninit(m_engine.get());
++            ma_resource_manager_uninit(m_resourceManager.get());
++            m_engine.reset(); m_resourceManager.reset();
++            AZ_Error("MiniAudio", false, "Failed to initialize level audio group, error %d", result);
++            return;
++        }
++        SetLevelAudioEnabled(m_levelAudioEnabled);
+         m_engineInitialized = true;
+ 
+         MiniAudioRequestBus::Handler::BusConnect();
+@@ -148,6 +160,8 @@ namespace MiniAudio
+ 
+         if (m_engineInitialized)
+         {
++            ma_sound_group_uninit(m_levelGroup.get());
++            m_levelGroup.reset();
+             ma_engine_uninit(m_engine.get());
+             ma_resource_manager_uninit(m_resourceManager.get());
+             m_engine.reset();
+@@ -162,6 +176,14 @@ namespace MiniAudio
+         return m_engine.get();
+     }
+ 
++    void MiniAudioSystemComponent::SetLevelAudioEnabled(bool enabled)
++    {
++        m_levelAudioEnabled = enabled;
++        if (!m_levelGroup) return;
++        if (enabled) ma_sound_group_start(m_levelGroup.get());
++        else ma_sound_group_stop(m_levelGroup.get());
++    }
++
+     void MiniAudioSystemComponent::SetGlobalVolume(float scale)
+     {
+         m_globalVolume = scale;
+diff --git a/Gems/MiniAudio/Code/Source/Clients/MiniAudioSystemComponent.h b/Gems/MiniAudio/Code/Source/Clients/MiniAudioSystemComponent.h
+index 07ea7a13f3e39f04470de6b12d3baade66907e3f..5fcfb737f01e03557ebbc3d13bf0f51d8c3e7d2d 100644
+--- a/Gems/MiniAudio/Code/Source/Clients/MiniAudioSystemComponent.h
++++ b/Gems/MiniAudio/Code/Source/Clients/MiniAudioSystemComponent.h
+@@ -51,9 +51,14 @@ namespace MiniAudio
+         float GetGlobalVolume() const override;
+         void SetGlobalVolumeInDecibels(float decibels) override;
+         AZ::u32 GetChannelCount() const override;
++        ma_sound* GetLevelSoundGroup() override { return m_levelGroup.get(); }
++        void SetLevelAudioEnabled(bool enabled) override;
++        bool IsLevelAudioEnabled() const override { return m_levelAudioEnabled; }
+ 
+     private:
+         std::unique_ptr<ma_engine> m_engine;
++        std::unique_ptr<ma_sound> m_levelGroup;
++        bool m_levelAudioEnabled{true};
+         std::unique_ptr<ma_resource_manager> m_resourceManager;
+         bool m_engineInitialized = false;
+ 
+diff --git a/Gems/MiniAudio/Code/Source/Tools/EditorMiniAudioPlaybackComponent.cpp b/Gems/MiniAudio/Code/Source/Tools/EditorMiniAudioPlaybackComponent.cpp
+index d2627e33055f9441bb0ba0e809882b16ae07d899..5c8e508731e83e9af2ddb4e40a777b52268e4066 100644
+--- a/Gems/MiniAudio/Code/Source/Tools/EditorMiniAudioPlaybackComponent.cpp
++++ b/Gems/MiniAudio/Code/Source/Tools/EditorMiniAudioPlaybackComponent.cpp
+@@ -92,6 +92,8 @@ namespace MiniAudio
+                         &MiniAudioPlaybackComponentConfig::m_autoplayOnActivate,
+                         QT_TRANSLATE_NOOP("MiniAudio", "Autoplay"),
+                         QT_TRANSLATE_NOOP("MiniAudio", "Plays the sound on activation of the component."))
++                    ->DataElement(AZ::Edit::UIHandlers::Default, &MiniAudioPlaybackComponentConfig::m_presentationAudio,
++                        "Presentation audio", "Play during titles and narration, independently of level reveal.")
+                     ->DataElement(AZ::Edit::UIHandlers::Default, &MiniAudioPlaybackComponentConfig::m_loop,
+                         QT_TRANSLATE_NOOP("MiniAudio", "Loop"),
+                         QT_TRANSLATE_NOOP("MiniAudio", "Loops the sound."))
+diff --git a/Gems/MiniAudio/Code/Tests/MiniAudioPlaybackTests.cpp b/Gems/MiniAudio/Code/Tests/MiniAudioPlaybackTests.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..af05fffab9d61b75289927de85f7a8f5e638e64e
+--- /dev/null
++++ b/Gems/MiniAudio/Code/Tests/MiniAudioPlaybackTests.cpp
+@@ -0,0 +1,168 @@
++// SPDX-License-Identifier: Apache-2.0 OR MIT
++#include "../Source/Clients/MiniAudioPlaybackComponent.h"
++#include <AzCore/Asset/AssetManager.h>
++#include <AzCore/Component/Entity.h>
++#include <AzCore/UnitTest/TestTypes.h>
++#include <AzCore/UnitTest/MockComponentApplication.h>
++#include <AzFramework/Components/TransformComponent.h>
++#include <AzTest/AzTest.h>
++#include <miniaudio.h>
++#include <cmath>
++#include <cstring>
++#include <vector>
++
++namespace MiniAudio::Tests
++{
++    class TestSound final : public SoundAsset
++    {
++    public:
++        void Status(AssetStatus value) { m_status = value; }
++    };
++    class SoundHandler final : public AZ::Data::AssetHandler
++    {
++    public:
++        AZ::Data::AssetPtr CreateAsset(const AZ::Data::AssetId&, const AZ::Data::AssetType&) override { return aznew TestSound; }
++        void DestroyAsset(AZ::Data::AssetPtr asset) override { delete asset; }
++        void GetHandledAssetTypes(AZStd::vector<AZ::Data::AssetType>& types) override { types.push_back(azrtti_typeid<SoundAsset>()); }
++        LoadResult LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>&,
++            AZStd::shared_ptr<AZ::Data::AssetDataStream>, const AZ::Data::AssetFilterCB&) override { return LoadResult::Error; }
++    };
++    class HeadlessAudio final : public MiniAudioRequests
++    {
++    public:
++        ma_engine engine{};
++        ma_sound_group level{};
++        float volume=1;
++        ma_engine* GetSoundEngine() override { return &engine; }
++        ma_sound* GetLevelSoundGroup() override { return &level; }
++        void SetGlobalVolume(float gain) override { volume=gain;ma_engine_set_volume(&engine, gain); }
++        float GetGlobalVolume() const override { return volume; }
++        void SetGlobalVolumeInDecibels(float gain) override { SetGlobalVolume(ma_volume_db_to_linear(gain)); }
++        AZ::u32 GetChannelCount() const override { return 2; }
++    };
++    class MiniAudioPlaybackTests : public UnitTest::LeakDetectionFixture
++    {
++    protected:
++        void SetUp() override
++        {
++            UnitTest::LeakDetectionFixture::SetUp();
++            AZ::Data::AssetManager::Create({});
++            AZ::Data::AssetManager::Instance().RegisterHandler(&handler, azrtti_typeid<SoundAsset>());
++            transformDescriptor.reset(AzFramework::TransformComponent::CreateDescriptor());
++            playbackDescriptor.reset(MiniAudioPlaybackComponent::CreateDescriptor());
++            auto config=ma_engine_config_init();config.noDevice=MA_TRUE;config.channels=2;config.sampleRate=48000;
++            ASSERT_EQ(ma_engine_init(&config,&audio.engine),MA_SUCCESS);
++            ASSERT_EQ(ma_sound_group_init(&audio.engine,0,nullptr,&audio.level),MA_SUCCESS);
++            MiniAudioInterface::Register(&audio);
++            ma_engine_listener_set_direction(&audio.engine,0,0,1,0);
++            ma_engine_listener_set_world_up(&audio.engine,0,0,0,1);
++        }
++        void TearDown() override
++        {
++            MiniAudioInterface::Unregister(&audio);
++            ma_sound_group_uninit(&audio.level);ma_engine_uninit(&audio.engine);
++            AZ::Data::AssetManager::Instance().DispatchEvents();
++            AZ::Data::AssetManager::Instance().UnregisterHandler(&handler);
++            AZ::Data::AssetManager::Destroy();
++            playbackDescriptor.reset();transformDescriptor.reset();
++            UnitTest::LeakDetectionFixture::TearDown();
++        }
++        AZ::Data::Asset<SoundAsset> Clip(bool ready)
++        {
++            auto asset=AZ::Data::AssetManager::Instance().CreateAsset<SoundAsset>(AZ::Data::AssetId(AZ::Uuid::CreateRandom()));
++            auto& wav=asset->m_data;wav.resize(44+48000*2);
++            auto u16=[&](size_t at,AZ::u16 v){std::memcpy(wav.data()+at,&v,2);};
++            auto u32=[&](size_t at,AZ::u32 v){std::memcpy(wav.data()+at,&v,4);};
++            std::memcpy(wav.data(),"RIFF",4);u32(4,static_cast<AZ::u32>(wav.size()-8));
++            std::memcpy(wav.data()+8,"WAVEfmt ",8);u32(16,16);u16(20,1);u16(22,1);
++            u32(24,48000);u32(28,96000);u16(32,2);u16(34,16);std::memcpy(wav.data()+36,"data",4);u32(40,96000);
++            for(size_t i=0;i<48000;++i)u16(44+i*2,static_cast<AZ::u16>(static_cast<AZ::s16>(std::sin(i*.05)*10000)));
++            static_cast<TestSound*>(asset.Get())->Status(ready?AZ::Data::AssetData::AssetStatus::Ready:AZ::Data::AssetData::AssetStatus::Loading);
++            return asset;
++        }
++        std::pair<double,double> Energy()
++        {
++            float discard[4096]{};ma_engine_read_pcm_frames(&audio.engine,discard,2048,nullptr);
++            float samples[2048]{};ma_engine_read_pcm_frames(&audio.engine,samples,1024,nullptr);
++            std::pair<double,double> result{};
++            for(size_t i=0;i<1024;++i){result.first+=samples[i*2]*samples[i*2];result.second+=samples[i*2+1]*samples[i*2+1];}
++            return result;
++        }
++        HeadlessAudio audio;
++        SoundHandler handler;
++        AZStd::unique_ptr<AZ::ComponentDescriptor> transformDescriptor,playbackDescriptor;
++    };
++
++    TEST_F(MiniAudioPlaybackTests, AutoFollowUpdatesRenderedSoundForEntityParentAndListenerMovementAndReportsEnd)
++    {
++        AZ::Entity parent("Platform"),source("Sound source");
++        testing::NiceMock<UnitTest::MockComponentApplication> app;
++        ON_CALL(app,AddEntity(testing::_)).WillByDefault(testing::Return(true));
++        ON_CALL(app,RemoveEntity(testing::_)).WillByDefault(testing::Return(true));
++        ON_CALL(app,FindEntity(testing::_)).WillByDefault([&](const AZ::EntityId& id)->AZ::Entity* {
++            return id==parent.GetId()?&parent:(id==source.GetId()?&source:nullptr);
++        });
++        MiniAudioPlaybackComponentConfig config;config.m_sound=Clip(true);
++        config.m_enableSpatialization=true;config.m_autoFollowEntity=true;
++        config.m_minimumDistance=1;config.m_maximumDistance=1000000;
++        parent.CreateComponent<AzFramework::TransformComponent>();source.CreateComponent<AzFramework::TransformComponent>();
++        source.CreateComponent<MiniAudioPlaybackComponent>(config);
++        parent.Init();parent.Activate();source.Init();source.Activate();
++        AZ::TransformBus::Event(source.GetId(),&AZ::TransformInterface::SetParent,parent.GetId());
++        AZ::TransformBus::Event(source.GetId(),&AZ::TransformInterface::SetLocalTranslation,AZ::Vector3(-2,2,0));
++        auto playing=[&]{bool value=false;MiniAudioPlaybackRequestBus::EventResult(value,source.GetId(),&MiniAudioPlaybackRequests::IsPlaying);return value;};
++        MiniAudioPlaybackRequestBus::Event(source.GetId(),&MiniAudioPlaybackRequests::Play);
++        EXPECT_TRUE(playing());
++        auto left=Energy();EXPECT_GT(left.first,left.second*2);
++        AZ::TransformBus::Event(parent.GetId(),&AZ::TransformInterface::SetWorldTranslation,AZ::Vector3(4,0,0));
++        auto right=Energy();EXPECT_GT(right.second,right.first*2);
++        ma_engine_listener_set_direction(&audio.engine,0,0,-1,0);
++        auto turned=Energy();EXPECT_GT(turned.first,turned.second*2);
++        ma_engine_listener_set_direction(&audio.engine,0,0,1,0);
++        AZ::TransformBus::Event(source.GetId(),&AZ::TransformInterface::SetWorldTranslation,AZ::Vector3(0,2,0));
++        auto near=Energy();
++        AZ::TransformBus::Event(source.GetId(),&AZ::TransformInterface::SetWorldTranslation,AZ::Vector3(0,20,0));
++        auto far=Energy();EXPECT_LT(far.first+far.second,(near.first+near.second)*.1);
++        ma_engine_listener_set_position(&audio.engine,0,0,18,0);
++        auto approached=Energy();EXPECT_GT(approached.first+approached.second,(far.first+far.second)*10);
++        float output[2048]{};
++        for(int i=0;i<50&&playing();++i)ma_engine_read_pcm_frames(&audio.engine,output,1024,nullptr);
++        EXPECT_FALSE(playing());
++        MiniAudioPlaybackRequestBus::Event(source.GetId(),&MiniAudioPlaybackRequests::Stop);
++        MiniAudioPlaybackRequestBus::Event(source.GetId(),&MiniAudioPlaybackRequests::Play);EXPECT_TRUE(playing());
++        source.Deactivate();parent.Deactivate();
++        EXPECT_FALSE(playing());
++        const auto silent=Energy();EXPECT_DOUBLE_EQ(silent.first+silent.second,0);
++    }
++
++    TEST_F(MiniAudioPlaybackTests, DeferredPlayStartsOnReadyButCancellationReplacementAndLoadFailureCannotLeaveItPending)
++    {
++        AZ::Entity source("Sound source");
++        MiniAudioPlaybackComponentConfig config;config.m_sound=Clip(false);
++        source.CreateComponent<AzFramework::TransformComponent>();source.CreateComponent<MiniAudioPlaybackComponent>(config);
++        source.Init();source.Activate();
++        auto pending=[&]{bool value=false;MiniAudioPlaybackRequestBus::EventResult(value,source.GetId(),&MiniAudioPlaybackRequests::IsPlaybackPending);return value;};
++        auto playing=[&]{bool value=false;MiniAudioPlaybackRequestBus::EventResult(value,source.GetId(),&MiniAudioPlaybackRequests::IsPlaying);return value;};
++        auto ready=[&](AZ::Data::Asset<SoundAsset> asset){static_cast<TestSound*>(asset.Get())->Status(AZ::Data::AssetData::AssetStatus::Ready);AZ::Data::AssetBus::Event(asset.GetId(),&AZ::Data::AssetEvents::OnAssetReady,asset);};
++        MiniAudioPlaybackRequestBus::Event(source.GetId(),&MiniAudioPlaybackRequests::Play);EXPECT_TRUE(pending());EXPECT_FALSE(playing());
++        ready(config.m_sound);EXPECT_FALSE(pending());EXPECT_TRUE(playing());
++        auto cancelled=Clip(false);
++        MiniAudioPlaybackRequestBus::Event(source.GetId(),&MiniAudioPlaybackRequests::SetSoundAsset,cancelled);
++        MiniAudioPlaybackRequestBus::Event(source.GetId(),&MiniAudioPlaybackRequests::Play);EXPECT_TRUE(pending());
++        MiniAudioPlaybackRequestBus::Event(source.GetId(),&MiniAudioPlaybackRequests::Stop);
++        ready(cancelled);EXPECT_FALSE(pending());EXPECT_FALSE(playing());
++        auto replaced=Clip(false),current=Clip(false);
++        MiniAudioPlaybackRequestBus::Event(source.GetId(),&MiniAudioPlaybackRequests::SetSoundAsset,replaced);
++        MiniAudioPlaybackRequestBus::Event(source.GetId(),&MiniAudioPlaybackRequests::Play);
++        MiniAudioPlaybackRequestBus::Event(source.GetId(),&MiniAudioPlaybackRequests::SetSoundAsset,current);
++        MiniAudioPlaybackRequestBus::Event(source.GetId(),&MiniAudioPlaybackRequests::Play);
++        ready(replaced);EXPECT_TRUE(pending());EXPECT_FALSE(playing());
++        static_cast<TestSound*>(current.Get())->Status(AZ::Data::AssetData::AssetStatus::Error);
++        AZ_TEST_START_TRACE_SUPPRESSION;
++        AZ::Data::AssetBus::Event(current.GetId(),&AZ::Data::AssetEvents::OnAssetError,current);
++        AZ_TEST_STOP_TRACE_SUPPRESSION_NO_COUNT;
++        EXPECT_FALSE(pending());EXPECT_FALSE(playing());
++        source.Deactivate();
++    }
++}
++AZ_UNIT_TEST_HOOK(DEFAULT_UNIT_TEST_ENV);
+diff --git a/Gems/MiniAudio/Code/miniaudio_tests_files.cmake b/Gems/MiniAudio/Code/miniaudio_tests_files.cmake
+new file mode 100644
+index 0000000000000000000000000000000000000000..172f1dd82cea65050cc494401c46e9f1c78dea8f
+--- /dev/null
++++ b/Gems/MiniAudio/Code/miniaudio_tests_files.cmake
+@@ -0,0 +1 @@
++set(FILES Tests/MiniAudioPlaybackTests.cpp)
+diff --git a/Gems/PhysX/Core/Code/Include/PhysX/CharacterControllerBus.h b/Gems/PhysX/Core/Code/Include/PhysX/CharacterControllerBus.h
+index b077b62939906e58bfbe00b169c2ff8491672e42..6662730c0a24ba99d664596202b38cb1168b6891 100644
+--- a/Gems/PhysX/Core/Code/Include/PhysX/CharacterControllerBus.h
++++ b/Gems/PhysX/Core/Code/Include/PhysX/CharacterControllerBus.h
+@@ -27,6 +27,14 @@ namespace PhysX
+         /// @param height The new height for the controller.
+         virtual void Resize(float height) = 0;
+ 
++        /// Register a dynamic platform while externally carrying this character.
++        /// Movement queries collide with it; the internal kinematic actor cannot push it.
++        /// Pass an invalid entity to restore normal interactions when dismounting.
++        virtual bool SetRidingPlatform([[maybe_unused]] AZ::EntityId platformEntity) { return false; }
++
++        /// Maximum horizontal pushing force in newtons. Zero blocks without pushing; -1 restores legacy contacts.
++        virtual bool SetPushStrength([[maybe_unused]] float newtons) { return false; }
++
+         /// Gets the height of the controller.
+         virtual float GetHeight() = 0;
+ 
+diff --git a/Gems/PhysX/Core/Code/Include/PhysX/UserDataTypes.h b/Gems/PhysX/Core/Code/Include/PhysX/UserDataTypes.h
+index 85e8b7cb5bbea421a24ee085707b56baf0779113..1a783f517e144509374dbff8bd27cf19441addc5 100644
+--- a/Gems/PhysX/Core/Code/Include/PhysX/UserDataTypes.h
++++ b/Gems/PhysX/Core/Code/Include/PhysX/UserDataTypes.h
+@@ -56,6 +56,8 @@ namespace PhysX
+         AzPhysics::SimulatedBody* GetSimulatedBody() const;
+ 
+         bool IsValid() const;
++        bool HasLimitedCharacterPush() const { return m_payload.m_limitedCharacterPush; }
++        void SetLimitedCharacterPush(bool limited) { m_payload.m_limitedCharacterPush = limited; }
+ 
+     private:
+         using PxActorUniquePtr = AZStd::unique_ptr<physx::PxActor, AZStd::function<void(physx::PxActor*)> >;
+@@ -78,6 +80,7 @@ namespace PhysX
+             Physics::RagdollNode* m_ragdollNode = nullptr;
+             AzPhysics::SimulatedBody* m_articulationLink = nullptr;
+             void* m_externalUserData = nullptr;
++            bool m_limitedCharacterPush = false;
+         };
+ 
+         Payload m_payload;
+diff --git a/Gems/PhysX/Core/Code/Source/Common/PhysXSceneQueryHelpers.cpp b/Gems/PhysX/Core/Code/Source/Common/PhysXSceneQueryHelpers.cpp
+index 528255397e9a7c80afcb36d2f0a37d6e6f754362..4e3e742cb7b38bf9450eb78c03cc7f61b7d6bd9c 100644
+--- a/Gems/PhysX/Core/Code/Source/Common/PhysXSceneQueryHelpers.cpp
++++ b/Gems/PhysX/Core/Code/Source/Common/PhysXSceneQueryHelpers.cpp
+@@ -89,11 +89,15 @@ namespace PhysX
+ #if (PX_PHYSICS_VERSION_MAJOR == 5)
+                 PHYSX_SCENE_READ_LOCK(pxActorShape.actor->getScene());
+                 physx::PxBaseMaterial* pxBaseMaterial = pxActorShape.shape->getMaterialFromInternalFaceIndex(pxHit.faceIndex);
+-                AZ_Assert(pxBaseMaterial->getConcreteType() == physx::PxConcreteType::eMATERIAL, "");
+-                if (const auto* physicsMaterial = Utils::GetUserData(static_cast<physx::PxMaterial*>(pxBaseMaterial));
+-                    physicsMaterial != nullptr)
++                // Material lookup can fail even though the geometry query produced a hit.
++                // Keep the geometric hit (used by editor selection) without a material flag.
++                if (pxBaseMaterial != nullptr && pxBaseMaterial->getConcreteType() == physx::PxConcreteType::eMATERIAL)
+                 {
+-                    hit.m_physicsMaterialId = physicsMaterial->GetId();
++                    if (const auto* physicsMaterial = Utils::GetUserData(static_cast<physx::PxMaterial*>(pxBaseMaterial));
++                        physicsMaterial != nullptr)
++                    {
++                        hit.m_physicsMaterialId = physicsMaterial->GetId();
++                    }
+                 }
+ #else
+                 PHYSX_SCENE_READ_LOCK(pxHit.actor->getScene());
+diff --git a/Gems/PhysX/Core/Code/Source/PhysXCharacters/API/CharacterController.cpp b/Gems/PhysX/Core/Code/Source/PhysXCharacters/API/CharacterController.cpp
+index 4535f9bcb81350860f0128872d7a222638dcf7a7..d268f2ae58d6a013d5f57b09483ad9cf9bb8ecef 100644
+--- a/Gems/PhysX/Core/Code/Source/PhysXCharacters/API/CharacterController.cpp
++++ b/Gems/PhysX/Core/Code/Source/PhysXCharacters/API/CharacterController.cpp
+@@ -10,6 +10,7 @@
+ #include <AzCore/std/smart_ptr/make_shared.h>
+ #include <AzFramework/Physics/CollisionBus.h>
+ #include <AzFramework/Physics/PhysicsScene.h>
++#include <AzFramework/Physics/Components/SimulatedBodyComponentBus.h>
+ #include <AzFramework/Physics/Shape.h>
+ #include <AzFramework/Physics/SystemBus.h>
+ #include <AzFramework/Physics/Configuration/RigidBodyConfiguration.h>
+@@ -243,7 +244,36 @@ namespace PhysX
+         if (m_callbackManager)
+         {
+             m_callbackManager->SetControllerFilter(CollisionLayerBasedControllerFilter);
+-            m_callbackManager->SetObjectPreFilter(CollisionLayerBasedObjectPreFilter);
++            m_callbackManager->SetOnShapeHit([this](const physx::PxControllerShapeHit& hit)
++            {
++                auto* body = hit.actor ? hit.actor->is<physx::PxRigidDynamic>() : nullptr;
++                if (body && body != m_ridingPlatformActor && hit.shape
++                    && !hit.shape->getFlags().isSet(physx::PxShapeFlag::eTRIGGER_SHAPE))
++                {
++                    m_push.Hit(*body, physx::PxVec3(float(hit.worldPos.x), float(hit.worldPos.y), float(hit.worldPos.z)), hit.worldNormal);
++                }
++            });
++            m_callbackManager->SetObjectPreFilter(
++                [this](const physx::PxFilterData& filterData, const physx::PxShape* shape,
++                    const physx::PxRigidActor* actor, physx::PxHitFlags& flags)
++                {
++                    if (m_push.Enabled() && shape->getFlags().isSet(physx::PxShapeFlag::eTRIGGER_SHAPE))
++                        return physx::PxQueryHitType::eNONE;
++                    if (actor == m_ridingPlatformActor || m_push.Enabled())
++                    {
++                        return Utils::Collision::ShouldCollide(filterData, shape->getSimulationFilterData())
++                            ? physx::PxQueryHitType::eBLOCK : physx::PxQueryHitType::eNONE;
++                    }
++                    return CollisionLayerBasedObjectPreFilter(filterData, shape, actor, flags);
++                });
++            m_callbackManager->SetObjectRidingBehavior(
++                [this](const physx::PxShape&, const physx::PxActor& actor)
++                {
++                    // Transport is supplied by the caller, exactly once, after simulation.
++                    return &actor == m_ridingPlatformActor
++                        ? physx::PxControllerBehaviorFlags(physx::PxControllerBehaviorFlag::eCCT_USER_DEFINED_RIDE)
++                        : physx::PxControllerBehaviorFlags(0);
++                });
+         }
+ 
+         m_orientation = AZ::Quaternion::CreateIdentity();
+@@ -301,6 +331,7 @@ namespace PhysX
+     {
+         m_actorUserData = PhysX::ActorData(m_pxController->getActor());
+         m_actorUserData.SetCharacter(this);
++        m_actorUserData.SetLimitedCharacterPush(m_push.Enabled());
+         m_actorUserData.SetEntityId(characterConfig.m_entityId);
+     }
+ 
+@@ -326,6 +357,11 @@ namespace PhysX
+                 return;
+             }
+             m_shadowBody = azdynamic_cast<AzPhysics::RigidBody*>(sceneInterface->GetSimulatedBodyFromHandle(m_sceneOwner, m_shadowBodyHandle));
++            if (m_shadowBody)
++            {
++                if (auto* data = Utils::GetUserData(static_cast<physx::PxActor*>(m_shadowBody->GetNativePointer())))
++                    data->SetLimitedCharacterPush(m_push.Enabled());
++            }
+         }
+     }
+ 
+@@ -357,6 +393,7 @@ namespace PhysX
+             return;
+         }
+ 
++        SetRidingPlatform(AZ::EntityId());
+         DestroyShadowBody();
+         RemoveControllerFromScene();
+ 
+@@ -405,6 +442,7 @@ namespace PhysX
+ 
+     CharacterController::~CharacterController()
+     {
++        SetRidingPlatform(AZ::EntityId());
+         DestroyShadowBody();
+         m_shape = nullptr; //shape has to go before m_pxController
+ 
+@@ -417,6 +455,101 @@ namespace PhysX
+         m_pxController = nullptr;
+     }
+ 
++    bool CharacterController::SetRidingPlatform(AZ::EntityId platformEntity)
++    {
++        auto* sceneInterface = AZ::Interface<AzPhysics::SceneInterface>::Get();
++        if (!sceneInterface || !m_pxController)
++        {
++            return false;
++        }
++        AzPhysics::SimulatedBody* platform = nullptr;
++        if (platformEntity.IsValid())
++        {
++            AzPhysics::SimulatedBodyComponentRequestsBus::EventResult(platform, platformEntity,
++                &AzPhysics::SimulatedBodyComponentRequests::GetSimulatedBody);
++        }
++        const bool valid = platform && platform->m_sceneOwner == m_sceneOwner &&
++            platform->GetNativeType() == NativeTypeIdentifiers::RigidBody && platform->m_simulating;
++        const auto handle = valid ? platform->m_bodyHandle : AzPhysics::InvalidSimulatedBodyHandle;
++        auto* actor = valid ? static_cast<physx::PxRigidActor*>(platform->GetNativePointer()) : nullptr;
++        if (m_ridingPlatform == handle && m_ridingPlatformActor == actor)
++        {
++            return !platformEntity.IsValid() || valid;
++        }
++
++        auto* previousActor = m_ridingPlatformActor;
++        m_ridingPlatformRemovedHandler.Disconnect();
++        if (m_ridingPlatform != AzPhysics::InvalidSimulatedBodyHandle)
++        {
++            sceneInterface->UnsuppressCollisionEvents(m_sceneOwner, m_bodyHandle, m_ridingPlatform);
++            if (m_shadowBody)
++            {
++                sceneInterface->UnsuppressCollisionEvents(m_sceneOwner, m_shadowBodyHandle, m_ridingPlatform);
++            }
++        }
++        m_ridingPlatform = handle;
++        m_ridingPlatformActor = actor;
++        if (valid)
++        {
++            sceneInterface->SuppressCollisionEvents(m_sceneOwner, m_bodyHandle, handle);
++            if (m_shadowBody)
++            {
++                sceneInterface->SuppressCollisionEvents(m_sceneOwner, m_shadowBodyHandle, handle);
++            }
++            m_ridingPlatformRemovedHandler = AzPhysics::SceneEvents::OnSimulationBodyRemoved::Handler(
++                [this](AzPhysics::SceneHandle, AzPhysics::SimulatedBodyHandle removed)
++                {
++                    if (removed == m_ridingPlatform || removed == m_bodyHandle)
++                    {
++                        SetRidingPlatform(AZ::EntityId());
++                    }
++                });
++            sceneInterface->RegisterSimulationBodyRemovedHandler(m_sceneOwner, m_ridingPlatformRemovedHandler);
++        }
++        if (auto* scene = m_pxController->getScene())
++        {
++            PHYSX_SCENE_WRITE_LOCK(scene);
++            m_pxController->invalidateCache(); // The object filter's behavior changed.
++            // Re-evaluate both sides: resetting only the kinematic controller
++            // leaves a sleeping dynamic platform's suppressed contacts dormant.
++            if (previousActor && previousActor->getScene() == scene)
++            {
++                scene->resetFiltering(*previousActor);
++            }
++            if (actor && actor != previousActor && actor->getScene() == scene)
++            {
++                scene->resetFiltering(*actor);
++            }
++            scene->resetFiltering(*m_pxController->getActor());
++            if (m_shadowBody)
++            {
++                scene->resetFiltering(*static_cast<physx::PxRigidActor*>(m_shadowBody->GetNativePointer()));
++            }
++        }
++        return !platformEntity.IsValid() || valid;
++    }
++
++    bool CharacterController::SetPushStrength(float newtons)
++    {
++        const bool wasEnabled = m_push.Enabled();
++        if (!m_push.SetStrength(newtons)) return false;
++        if (wasEnabled == m_push.Enabled()) return true;
++        m_actorUserData.SetLimitedCharacterPush(m_push.Enabled());
++        if (auto* scene = m_pxController->getScene())
++        {
++            PHYSX_SCENE_WRITE_LOCK(scene);
++            m_pxController->invalidateCache();
++            scene->resetFiltering(*m_pxController->getActor());
++            if (m_shadowBody)
++            {
++                auto* shadow = static_cast<physx::PxActor*>(m_shadowBody->GetNativePointer());
++                if (auto* data = Utils::GetUserData(shadow)) data->SetLimitedCharacterPush(m_push.Enabled());
++                scene->resetFiltering(*shadow);
++            }
++        }
++        return true;
++    }
++
+     // Physics::Character
+     AZ::Vector3 CharacterController::GetBasePosition() const
+     {
+@@ -438,7 +571,25 @@ namespace PhysX
+         }
+ 
+         PHYSX_SCENE_WRITE_LOCK(m_pxController->getScene());
++        const AZ::Vector3 previousPosition = PxMathConvertExtended(m_pxController->getFootPosition());
+         m_pxController->setFootPosition(PxMathConvertExtended(position));
++        auto* actor = m_pxController->getActor();
++        physx::PxTransform target;
++        if (actor->getKinematicTarget(target))
++        {
++            const auto current = actor->getGlobalPose();
++            if ((current.p - target.p).magnitudeSquared() > 0.0f || physx::PxAbs(current.q.dot(target.q)) < 0.999999f)
++            {
++                // Keep the SDK-computed position and up-axis orientation. This
++                // prevents teleport distance becoming a solver contact velocity.
++                actor->setGlobalPose(target);
++            }
++        }
++        if (!position.IsClose(previousPosition, 1e-5f))
++        {
++            // A teleported character must not keep riding its previous contact.
++            m_pxController->invalidateCache();
++        }
+         if (m_shadowBody)
+         {
+             m_shadowBody->SetTransform(GetTransform());
+@@ -660,7 +811,9 @@ namespace PhysX
+             const AZ::Vector3 oldPosition = GetBasePosition();
+             {
+                 PHYSX_SCENE_WRITE_LOCK(m_pxController->getScene());
++                m_push.Begin(PxMathConvert(requestedMovement), deltaTime);
+                 m_pxController->move(PxMathConvert(requestedMovement), m_minimumMovementDistance, deltaTime, m_pxControllerFilters);
++                m_push.Apply();
+                 if (m_shadowBody)
+                 {
+                     m_shadowBody->SetKinematicTarget(GetTransform());
+diff --git a/Gems/PhysX/Core/Code/Source/PhysXCharacters/API/CharacterController.h b/Gems/PhysX/Core/Code/Source/PhysXCharacters/API/CharacterController.h
+index 6dba9a747e8fa2213c4ab11dced42c0c79ba5674..3b05781c132364c26b0b3e09323f28024656c0f1 100644
+--- a/Gems/PhysX/Core/Code/Source/PhysXCharacters/API/CharacterController.h
++++ b/Gems/PhysX/Core/Code/Source/PhysXCharacters/API/CharacterController.h
+@@ -10,10 +10,12 @@
+ #include <AzFramework/Physics/Character.h>
+ #include <PhysX/UserDataTypes.h>
+ #include <PxPhysicsAPI.h>
++#include <PhysXCharacters/API/CharacterPush.h>
+ 
+ #include <AzFramework/Physics/Collision/CollisionGroups.h>
+ #include <AzFramework/Physics/Collision/CollisionLayers.h>
+ #include <AzFramework/Physics/Common/PhysicsTypes.h>
++#include <AzFramework/Physics/Common/PhysicsEvents.h>
+ 
+ namespace PhysX
+ {
+@@ -181,6 +183,7 @@ namespace PhysX
+ 
+         CharacterControllerCallbackManager* GetCallbackManager();
+         void SetFilterFlags(physx::PxQueryFlags filterFlags);
++        bool SetRidingPlatform(AZ::EntityId platformEntity);
+ 
+         // Physics::Character
+         AZ::Vector3 GetBasePosition() const override;
+@@ -223,6 +226,7 @@ namespace PhysX
+ 
+         // CharacterController specific
+         void Resize(float height);
++        bool SetPushStrength(float newtons);
+         float GetHeight() const;
+         void SetHeight(float height);
+         float GetRadius() const;
+@@ -243,6 +247,7 @@ namespace PhysX
+         void RemoveControllerFromScene();
+         void UpdateFilterLayerAndGroup(AzPhysics::CollisionLayer collisionLayer, AzPhysics::CollisionGroup collisionGroup);
+ 
++        CharacterPush m_push;
+         physx::PxController* m_pxController = nullptr; ///< The underlying PhysX controller.
+         float m_minimumMovementDistance = 0.0f; ///< To avoid jittering, the controller will not attempt to move distances below this.
+         AZ::Vector3 m_requestedVelocityForTick = AZ::Vector3::CreateZero(); ///< Used to accumulate velocity requests which last for a tick.
+@@ -261,6 +266,9 @@ namespace PhysX
+         AZStd::unique_ptr<CharacterControllerCallbackManager>
+             m_callbackManager; ///< Manages callbacks for collision filtering, collision notifications, and handling riding on objects.
+         AZ::Quaternion m_orientation; ///< The orientation of the character.
++        AzPhysics::SimulatedBodyHandle m_ridingPlatform = AzPhysics::InvalidSimulatedBodyHandle;
++        physx::PxRigidActor* m_ridingPlatformActor = nullptr;
++        AzPhysics::SceneEvents::OnSimulationBodyRemoved::Handler m_ridingPlatformRemovedHandler;
+     };
+ 
+     //! Example implementation of controller-controller filtering callback.
+diff --git a/Gems/PhysX/Core/Code/Source/PhysXCharacters/API/CharacterPush.h b/Gems/PhysX/Core/Code/Source/PhysXCharacters/API/CharacterPush.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..ebfd04e2eb4ff60b741cf18684def11b7f6043e9
+--- /dev/null
++++ b/Gems/PhysX/Core/Code/Source/PhysXCharacters/API/CharacterPush.h
+@@ -0,0 +1,70 @@
++#pragma once
++#include <PxPhysicsAPI.h>
++#include <algorithm>
++#include <cmath>
++#include <vector>
++
++namespace PhysX
++{
++// One force budget per character move, shared across bodies and compound shapes.
++// The controller resolves its movement against the body; this is the only push.
++class CharacterPush
++{
++    struct Contact
++    {
++        physx::PxRigidDynamic* body;
++        physx::PxVec3 point, direction;
++        float alignment;
++    };
++    std::vector<Contact> m_contacts;
++    physx::PxVec3 m_direction{0};
++    float m_strength = -1, m_dt = 0;
++public:
++    bool SetStrength(float newtons)
++    {
++        if (!std::isfinite(newtons) || newtons < -1 || (newtons < 0 && newtons != -1)) return false;
++        m_strength = newtons;
++        return true;
++    }
++    bool Enabled() const { return m_strength >= 0; }
++    void Begin(const physx::PxVec3& movement, float dt)
++    {
++        m_contacts.clear();
++        m_dt = std::isfinite(dt) && dt > 0 ? dt : 0;
++        m_direction = physx::PxVec3(movement.x, movement.y, 0);
++        if (!m_direction.isFinite() || m_direction.magnitudeSquared() < 1.e-12f) m_direction = physx::PxVec3(0);
++        else m_direction.normalize();
++    }
++    void Hit(physx::PxRigidDynamic& body, const physx::PxVec3& point, const physx::PxVec3& normal)
++    {
++        if (!Enabled() || m_strength == 0 || m_dt == 0 || !point.isFinite() || !normal.isFinite()
++            || body.getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC)
++            || std::abs(normal.z) >= .5f) return;
++        physx::PxVec3 direction(-normal.x, -normal.y, 0);
++        if (direction.normalize() < 1.e-6f) return;
++        const float alignment = std::clamp(m_direction.dot(direction), 0.f, 1.f);
++        if (alignment <= 0) return;
++        const Contact contact{&body, point, direction, alignment};
++        for (auto& previous : m_contacts)
++        {
++            if (previous.body != &body) continue;
++            if (alignment > previous.alignment) previous = contact;
++            return;
++        }
++        m_contacts.push_back(contact);
++    }
++    void Apply()
++    {
++        float total = 0;
++        for (const auto& contact : m_contacts) total += contact.alignment;
++        const float budget = std::max(m_strength, 0.f) * m_dt / std::max(total, 1.f);
++        for (const auto& contact : m_contacts)
++        {
++            const auto impulse = contact.direction * (budget * contact.alignment);
++            if (impulse.magnitudeSquared() > 0)
++                physx::PxRigidBodyExt::addForceAtPos(*contact.body, impulse, contact.point, physx::PxForceMode::eIMPULSE);
++        }
++        m_contacts.clear();
++    }
++};
++}
+diff --git a/Gems/PhysX/Core/Code/Source/PhysXCharacters/Components/CharacterControllerComponent.cpp b/Gems/PhysX/Core/Code/Source/PhysXCharacters/Components/CharacterControllerComponent.cpp
+index 1b5696de820dac431f7cd4a19553bc146316a43d..a874100ee91f5b7e5a3974c78d279268fb22eff2 100644
+--- a/Gems/PhysX/Core/Code/Source/PhysXCharacters/Components/CharacterControllerComponent.cpp
++++ b/Gems/PhysX/Core/Code/Source/PhysXCharacters/Components/CharacterControllerComponent.cpp
+@@ -46,6 +46,8 @@ namespace PhysX
+                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::RuntimeOwn)
+                 ->Attribute(AZ::Edit::Attributes::Category, "PhysX")
+                 ->Event("Resize", &CharacterControllerRequests::Resize)
++                ->Event("SetRidingPlatform", &CharacterControllerRequests::SetRidingPlatform)
++                ->Event("SetPushStrength", &CharacterControllerRequests::SetPushStrength)
+                 ->Event("GetHeight", &CharacterControllerRequests::GetHeight, "Get Height")
+                 ->Event("SetHeight", &CharacterControllerRequests::SetHeight, "Set Height")
+                 ->Event("GetRadius", &CharacterControllerRequests::GetRadius, "Get Radius")
+@@ -58,6 +60,18 @@ namespace PhysX
+         }
+     }
+ 
++    bool CharacterControllerComponent::SetPushStrength(float newtons)
++    {
++        auto* controller = GetController();
++        return controller && controller->SetPushStrength(newtons);
++    }
++
++    bool CharacterControllerComponent::SetRidingPlatform(AZ::EntityId platformEntity)
++    {
++        auto* controller = GetController();
++        return controller && controller->SetRidingPlatform(platformEntity);
++    }
++
+     CharacterControllerComponent::CharacterControllerComponent() = default;
+ 
+     CharacterControllerComponent::CharacterControllerComponent(AZStd::unique_ptr<Physics::CharacterConfiguration> characterConfig,
+diff --git a/Gems/PhysX/Core/Code/Source/PhysXCharacters/Components/CharacterControllerComponent.h b/Gems/PhysX/Core/Code/Source/PhysXCharacters/Components/CharacterControllerComponent.h
+index 084cb773be4308faa1bdd84dae113275840487d0..9cb537e2bbad9c9d203d48c7c2aeba17fa82483f 100644
+--- a/Gems/PhysX/Core/Code/Source/PhysXCharacters/Components/CharacterControllerComponent.h
++++ b/Gems/PhysX/Core/Code/Source/PhysXCharacters/Components/CharacterControllerComponent.h
+@@ -116,6 +116,8 @@ namespace PhysX
+ 
+         // CharacterControllerRequestBus
+         void Resize(float height) override;
++        bool SetRidingPlatform(AZ::EntityId platformEntity) override;
++        bool SetPushStrength(float newtons) override;
+         float GetHeight() override;
+         void SetHeight(float height) override;
+         float GetRadius() override;
+diff --git a/Gems/PhysX/Core/Code/Source/PhysXCharacters/Components/CharacterGameplayComponent.cpp b/Gems/PhysX/Core/Code/Source/PhysXCharacters/Components/CharacterGameplayComponent.cpp
+index cb72da55a8fd08415755d59097e00bed8b4480e3..3a4e4b539135fac5402fa9275a984195eafbc8c6 100644
+--- a/Gems/PhysX/Core/Code/Source/PhysXCharacters/Components/CharacterGameplayComponent.cpp
++++ b/Gems/PhysX/Core/Code/Source/PhysXCharacters/Components/CharacterGameplayComponent.cpp
+@@ -7,6 +7,11 @@
+  */
+ 
+ #include <PhysXCharacters/Components/CharacterGameplayComponent.h>
++#include <AzFramework/Physics/Shape.h>
++#include <PhysX/MathConversion.h>
++#include <PhysX/NativeTypeIdentifiers.h>
++#include <PhysXCharacters/Components/CharacterGroundSupport.h>
++#include <extensions/PxShapeExt.h>
+ #include <AzFramework/Physics/CharacterBus.h>
+ #include <AzFramework/Physics/Common/PhysicsSimulatedBody.h>
+ #include <AzFramework/Translation/TranslationDef.h>
+@@ -124,9 +129,13 @@ namespace PhysX
+             return true;
+         }
+ 
+-        // use an overlap query to see if there's any geometry immediately below the character's foot position
++        // Find walkable support at the feet without counting wall contact.
+         if (auto* scene = character->GetScene())
+         {
++            if (m_groundDetectionBoxHeight <= 0.0f)
++            {
++                return false;
++            }
+             // use a box shape for the overlap, even if the character geometry is a capsule, to avoid difficulties with
+             // the curved base of the capsule
+             AZ::Vector3 footBoxDimensions(0.0f, 0.0f, m_groundDetectionBoxHeight);
+@@ -144,19 +153,42 @@ namespace PhysX
+ 
+             AZ::Transform footBoxTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
+                 AZ::Quaternion::CreateShortestArc(AZ::Vector3::CreateAxisZ(), character->GetUpDirection()), character->GetBasePosition());
+-            AzPhysics::OverlapRequest overlapRequest =
+-                AzPhysics::OverlapRequestHelpers::CreateBoxOverlapRequest(footBoxDimensions, footBoxTransform);
+-            overlapRequest.m_collisionGroup = character->GetCollisionGroup();
+-            overlapRequest.m_maxResults = 2;
+-            AZ::EntityId entityId = GetEntityId();
+-            AzPhysics::SceneQueryHits sceneQueryHits = scene->QueryScene(&overlapRequest);
+-            return AZStd::any_of(
+-                sceneQueryHits.m_hits.begin(),
+-                sceneQueryHits.m_hits.end(),
+-                [&entityId](const AzPhysics::SceneQueryHit& hit)
++            const physx::PxBoxGeometry footBox(PxMathConvert(footBoxDimensions * 0.5f));
++            const physx::PxTransform footPose = PxMathConvert(footBoxTransform);
++            const physx::PxVec3 up = pxController->getUpDirection();
++            const float minNormalDot = AZ::GetMax(pxController->getSlopeLimit(), 1e-4f);
++            const AZ::EntityId entityId = GetEntityId();
++            AzPhysics::OverlapRequest overlapRequest = AzPhysics::OverlapRequestHelpers::CreateBoxOverlapRequest(
++                footBoxDimensions, footBoxTransform,
++                [&](const AzPhysics::SimulatedBody* body, const Physics::Shape* shape)
+                 {
+-                    return hit.m_entityId != entityId;
++                    if (!shape || body->GetEntityId() == entityId)
++                    {
++                        return false;
++                    }
++                    const auto* pxShape = static_cast<const physx::PxShape*>(shape->GetNativePointer());
++                    if (!pxShape || pxShape->getFlags().isSet(physx::PxShapeFlag::eTRIGGER_SHAPE))
++                    {
++                        return false;
++                    }
++                    const auto* actor = pxShape->getActor();
++                    if (!actor)
++                    {
++                        // Shared shapes do not expose their actor through PxShape.
++                        const AZ::Crc32 nativeType = body->GetNativeType();
++                        if (nativeType == NativeTypeIdentifiers::RigidBody || nativeType == NativeTypeIdentifiers::RigidBodyStatic
++                            || nativeType == NativeTypeIdentifiers::ArticulationLink)
++                        {
++                            actor = static_cast<const physx::PxRigidActor*>(body->GetNativePointer());
++                        }
++                    }
++                    return actor && HasWalkableGroundSupport(
++                        footBox, footPose, pxShape->getGeometry(), physx::PxShapeExt::getGlobalPose(*pxShape, *actor),
++                        up, minNormalDot);
+                 });
++            overlapRequest.m_collisionGroup = character->GetCollisionGroup();
++            overlapRequest.m_maxResults = 1;
++            return !scene->QueryScene(&overlapRequest).m_hits.empty();
+         }
+ 
+         return true;
+diff --git a/Gems/PhysX/Core/Code/Source/PhysXCharacters/Components/CharacterGroundSupport.h b/Gems/PhysX/Core/Code/Source/PhysXCharacters/Components/CharacterGroundSupport.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..eefe2067f81988fa8a7f1796af6f9106f9908f5b
+--- /dev/null
++++ b/Gems/PhysX/Core/Code/Source/PhysXCharacters/Components/CharacterGroundSupport.h
+@@ -0,0 +1,62 @@
++// SPDX-License-Identifier: MIT
++#pragma once
++
++#include <extensions/PxTriangleMeshExt.h>
++#include <geometry/PxBoxGeometry.h>
++#include <geometry/PxGeometryQuery.h>
++#include <geometry/PxHeightFieldGeometry.h>
++#include <geometry/PxMeshQuery.h>
++#include <geometry/PxTriangle.h>
++#include <geometry/PxTriangleMeshGeometry.h>
++
++namespace PhysX
++{
++    inline bool HasWalkableGroundSupport(
++        const physx::PxBoxGeometry& footBox, const physx::PxTransform& footPose,
++        const physx::PxGeometry& geometry, const physx::PxTransform& shapePose,
++        const physx::PxVec3& up, float minNormalDot)
++    {
++        // A single collider can contain both a tread and a wall. Check the
++        // actual overlapping triangles, since a shape overlap has no normal.
++        const auto meshSupportsFoot = [&](const auto& mesh)
++        {
++            physx::PxMeshOverlapUtil overlap;
++            const physx::PxU32 count = overlap.findOverlap(footBox, footPose, mesh, shapePose);
++            for (physx::PxU32 i = 0; i < count; ++i)
++            {
++                physx::PxTriangle triangle;
++                physx::PxMeshQuery::getTriangle(mesh, shapePose, overlap.getResults()[i], triangle);
++                physx::PxVec3 normal;
++                triangle.normal(normal);
++                if (normal.dot(up) >= minNormalDot)
++                {
++                    return true;
++                }
++            }
++            return false;
++        };
++
++        switch (geometry.getType())
++        {
++        case physx::PxGeometryType::eTRIANGLEMESH:
++            return meshSupportsFoot(static_cast<const physx::PxTriangleMeshGeometry&>(geometry));
++        case physx::PxGeometryType::eHEIGHTFIELD:
++            return meshSupportsFoot(static_cast<const physx::PxHeightFieldGeometry&>(geometry));
++        default:
++            break;
++        }
++
++        // Sweep a thin slice through the same foot box. Request a separation
++        // normal for initial overlap, where a default sweep normal points up
++        // even if the slice started against a vertical side.
++        const float sliceHalfHeight = physx::PxMin(0.001f, 0.5f * footBox.halfExtents.z);
++        const float halfTravel = footBox.halfExtents.z - sliceHalfHeight;
++        const physx::PxBoxGeometry slice(footBox.halfExtents.x, footBox.halfExtents.y, sliceHalfHeight);
++        const physx::PxTransform start(footPose.p + halfTravel * up, footPose.q);
++        physx::PxGeomSweepHit hit;
++        return physx::PxGeometryQuery::sweep(
++                   -up, 2.0f * halfTravel, slice, start, geometry, shapePose, hit,
++                   physx::PxHitFlag::eNORMAL | physx::PxHitFlag::eMTD)
++            && hit.normal.dot(up) >= minNormalDot;
++    }
++}
+diff --git a/Gems/PhysX/Core/Code/Source/Scene/PhysXSceneSimulationFilterCallback.cpp b/Gems/PhysX/Core/Code/Source/Scene/PhysXSceneSimulationFilterCallback.cpp
+index e103913cdf2a877fd84a0753ab2276dc0a4bb33d..7214694a151ac432623fc0795a5dca6f6fd6f1e0 100644
+--- a/Gems/PhysX/Core/Code/Source/Scene/PhysXSceneSimulationFilterCallback.cpp
++++ b/Gems/PhysX/Core/Code/Source/Scene/PhysXSceneSimulationFilterCallback.cpp
+@@ -10,6 +10,10 @@
+ 
+ #include <AzFramework/Physics/Common/PhysicsSimulatedBody.h>
+ #include <PhysX/NativeTypeIdentifiers.h>
++#include <characterkinematic/PxController.h>
++#include <PxRigidDynamic.h>
++#include <PhysX/Utils.h>
++#include <PhysX/UserDataTypes.h>
+ 
+ namespace PhysX
+ {
+@@ -19,6 +23,11 @@ namespace PhysX
+         const physx::PxActor* GetPxActor(const AzPhysics::SimulatedBody* simBody)
+         {
+             const AZ::Crc32& nativeType = simBody->GetNativeType();
++            if (nativeType == NativeTypeIdentifiers::CharacterController)
++            {
++                auto* controller = static_cast<physx::PxController*>(simBody->GetNativePointer());
++                return controller ? controller->getActor() : nullptr;
++            }
+             if (nativeType != NativeTypeIdentifiers::RigidBody &&
+                 nativeType != NativeTypeIdentifiers::RigidBodyStatic)
+             {
+@@ -104,6 +113,22 @@ namespace PhysX
+             return physx::PxFilterFlag::eSUPPRESS;
+         }
+ 
++        // Retain detection and trigger notifications, but let the character's
++        // explicit force budget own dynamic-body response, including shadow shapes.
++        const auto limited = [](const physx::PxActor* actor)
++        {
++            const auto* data = Utils::GetUserData(actor);
++            return data && data->HasLimitedCharacterPush();
++        };
++        const auto dynamic = [](const physx::PxActor* actor)
++        {
++            const auto* body = actor->is<physx::PxRigidDynamic>();
++            return body && !body->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC);
++        };
++        if ((limited(actor0) && dynamic(actor1)) || (limited(actor1) && dynamic(actor0)))
++        {
++            pairFlags.clear(physx::PxPairFlag::eSOLVE_CONTACT);
++        }
+         return physx::PxFilterFlag::eDEFAULT;
+     }
+ 
+diff --git a/Gems/PhysX/Core/Code/Tests/CharacterControllerTests.cpp b/Gems/PhysX/Core/Code/Tests/CharacterControllerTests.cpp
+index 1fce54f422db30fc7c06e7c7e3f4c9fed4036a0b..73fff8a3cb0fcc08d31638a118546df05b7d5d49 100644
+--- a/Gems/PhysX/Core/Code/Tests/CharacterControllerTests.cpp
++++ b/Gems/PhysX/Core/Code/Tests/CharacterControllerTests.cpp
+@@ -7,6 +7,8 @@
+  */
+ 
+ #include <AzFramework/Physics/PhysicsScene.h>
++#include <AzFramework/Physics/RigidBodyBus.h>
++#include <AzFramework/Physics/Components/SimulatedBodyComponentBus.h>
+ 
+ #include <PhysXCharacters/API/CharacterController.h>
+ #include <PhysXCharacters/API/CharacterUtils.h>
+@@ -138,6 +140,144 @@ namespace PhysX
+         float m_timeStep = AzPhysics::SystemConfiguration::DefaultFixedTimestep;
+     };
+ 
++    TEST_F(PhysXDefaultWorldTest, CharacterController_RegisteredDynamicPlatform_BlocksQueriesWithoutKickingPlatform)
++    {
++        ControllerTestBasis basis(m_testSceneHandle, Physics::ShapeType::Capsule,
++            AZ::Transform::CreateTranslation(AZ::Vector3(0.0f, 0.0f, -20.0f)));
++        auto platform = TestUtils::CreateBoxEntity(m_testSceneHandle,
++            AZ::Vector3(0.0f, 0.0f, 0.5f), AZ::Vector3(4.0f, 4.0f, 1.0f));
++        Physics::RigidBodyRequestBus::Event(platform->GetId(), &Physics::RigidBodyRequests::SetGravityEnabled, false);
++        auto* controller = static_cast<CharacterController*>(basis.m_controller);
++        bool registered = false;
++        CharacterControllerRequestBus::EventResult(registered, basis.m_controllerEntity->GetId(),
++            &CharacterControllerRequests::SetRidingPlatform, platform->GetId());
++        ASSERT_TRUE(registered);
++
++        // Movement queries must support the capsule on the dynamic box.
++        controller->SetBasePosition(AZ::Vector3(0.0f, 0.0f, 2.0f));
++        basis.Update(AZ::Vector3(0.0f, 0.0f, -2.0f), 90);
++        EXPECT_NEAR(controller->GetBasePosition().GetZ(), 1.0f, 0.03f);
++
++        // A scripted placement inside the carrier must not make the internal
++        // kinematic actor inject an impulse or force the carrier out of place.
++        controller->SetBasePosition(AZ::Vector3(0.0f, 0.0f, 0.5f));
++        basis.Update(AZ::Vector3::CreateZero(), 5);
++        AZ::Vector3 velocity = AZ::Vector3::CreateZero();
++        Physics::RigidBodyRequestBus::EventResult(velocity, platform->GetId(), &Physics::RigidBodyRequests::GetLinearVelocity);
++        EXPECT_LT(velocity.GetLength(), 1e-3f);
++        AzPhysics::SimulatedBody* platformBody = nullptr;
++        AzPhysics::SimulatedBodyComponentRequestsBus::EventResult(platformBody, platform->GetId(),
++            &AzPhysics::SimulatedBodyComponentRequests::GetSimulatedBody);
++        ASSERT_NE(platformBody, nullptr);
++        auto* boxActor = static_cast<physx::PxRigidDynamic*>(platformBody->GetNativePointer());
++        auto* characterActor = static_cast<physx::PxController*>(controller->GetNativePointer())->getActor();
++        physx::PxShape* boxShape = nullptr;
++        physx::PxShape* characterShape = nullptr;
++        ASSERT_EQ(boxActor->getShapes(&boxShape, 1), 1u);
++        ASSERT_EQ(characterActor->getShapes(&characterShape, 1), 1u);
++        const auto penetrationDepth = [&]()
++        {
++            physx::PxVec3 direction;
++            float depth = 0.0f;
++            const bool overlap = physx::PxGeometryQuery::computePenetration(direction, depth,
++                boxShape->getGeometry(), boxActor->getGlobalPose() * boxShape->getLocalPose(),
++                characterShape->getGeometry(), characterActor->getGlobalPose() * characterShape->getLocalPose());
++            return overlap ? depth : 0.0f;
++        };
++        EXPECT_GT(penetrationDepth(), 0.1f);
++
++        // Dismounting must restore contact and resolve the existing overlap.
++        // Check geometry: positional correction can leave zero final velocity.
++        ASSERT_TRUE(controller->SetRidingPlatform(AZ::EntityId()));
++        basis.Update(AZ::Vector3::CreateZero(), 5);
++        EXPECT_LE(penetrationDepth(), 0.002f);
++
++        // Removal while registered must clear the pair before native actor reuse.
++        ASSERT_TRUE(controller->SetRidingPlatform(platform->GetId()));
++        platform.reset();
++        basis.Update(AZ::Vector3::CreateZero());
++        EXPECT_TRUE(controller->SetRidingPlatform(AZ::EntityId()));
++    }
++
++    TEST_F(PhysXDefaultWorldTest, CharacterController_TeleportOutOfDynamicOverlap_DoesNotLaunchBody)
++    {
++        ControllerTestBasis basis(m_testSceneHandle, Physics::ShapeType::Capsule,
++            AZ::Transform::CreateTranslation(AZ::Vector3(0.0f, 0.0f, -20.0f)));
++        basis.Update(AZ::Vector3::CreateZero());
++        auto box = TestUtils::CreateBoxEntity(m_testSceneHandle,
++            AZ::Vector3(0.0f, 0.0f, 0.5f), AZ::Vector3(4.0f, 4.0f, 1.0f));
++        Physics::RigidBodyRequestBus::Event(box->GetId(), &Physics::RigidBodyRequests::SetGravityEnabled, false);
++        AzPhysics::SimulatedBody* boxBody = nullptr;
++        AzPhysics::SimulatedBodyComponentRequestsBus::EventResult(boxBody, box->GetId(),
++            &AzPhysics::SimulatedBodyComponentRequests::GetSimulatedBody);
++        ASSERT_NE(boxBody, nullptr);
++        auto* boxActor = static_cast<physx::PxRigidDynamic*>(boxBody->GetNativePointer());
++        boxActor->setRigidBodyFlag(physx::PxRigidBodyFlag::eENABLE_CCD, true);
++        boxActor->setRigidBodyFlag(physx::PxRigidBodyFlag::eENABLE_SPECULATIVE_CCD, true);
++        boxActor->setMaxDepenetrationVelocity(2.0f);
++        boxActor->setSolverIterationCounts(8, 4);
++
++        // Both logical and physical character positions must jump immediately.
++        // A delayed kinematic proxy would sweep out of this overlap at 300 m/s.
++        basis.m_controller->SetBasePosition(AZ::Vector3(5.0f, 0.0f, 0.0f));
++        auto* proxy = static_cast<physx::PxController*>(basis.m_controller->GetNativePointer())->getActor();
++        EXPECT_NEAR(proxy->getGlobalPose().p.x, 5.0f, 1e-4f);
++        basis.Update(AZ::Vector3::CreateZero());
++        EXPECT_LT(boxActor->getLinearVelocity().magnitude(), 1e-3f);
++        EXPECT_NEAR(boxActor->getGlobalPose().p.x, 0.0f, 1e-3f);
++    }
++
++    TEST_F(PhysXDefaultWorldTest, CharacterController_ZeroPushStrength_BlocksWithoutMovingDynamicBody)
++    {
++        ControllerTestBasis basis(m_testSceneHandle, Physics::ShapeType::Capsule,
++            AZ::Transform::CreateTranslation(AZ::Vector3(0, 0, -20)));
++        auto box = TestUtils::CreateBoxEntity(m_testSceneHandle, AZ::Vector3(2, 0, .5f), AZ::Vector3(1, 4, 4));
++        Physics::RigidBodyRequestBus::Event(box->GetId(), &Physics::RigidBodyRequests::SetGravityEnabled, false);
++        bool applied = false;
++        CharacterControllerRequestBus::EventResult(applied, basis.m_controllerEntity->GetId(),
++            &CharacterControllerRequests::SetPushStrength, 0.f);
++        ASSERT_TRUE(applied);
++        basis.Update(AZ::Vector3(3, 0, 0), 240);
++        EXPECT_LT(basis.m_controller->GetBasePosition().GetX(), 1.4f);
++        AZ::Vector3 velocity;
++        Physics::RigidBodyRequestBus::EventResult(velocity, box->GetId(), &Physics::RigidBodyRequests::GetLinearVelocity);
++        EXPECT_LT(velocity.GetLength(), 1.e-3f);
++    }
++
++    TEST_F(PhysXDefaultWorldTest, CharacterController_LimitedPushStrength_CapsMomentumAndKeepsMass)
++    {
++        ControllerTestBasis basis(m_testSceneHandle, Physics::ShapeType::Capsule,
++            AZ::Transform::CreateTranslation(AZ::Vector3(0, 0, -20)));
++        auto box = TestUtils::CreateBoxEntity(m_testSceneHandle, AZ::Vector3(2, 0, .5f), AZ::Vector3(1, 4, 4));
++        Physics::RigidBodyRequestBus::Event(box->GetId(), &Physics::RigidBodyRequests::SetGravityEnabled, false);
++        Physics::RigidBodyRequestBus::Event(box->GetId(), &Physics::RigidBodyRequests::SetMass, 650.f);
++        auto* controller = static_cast<CharacterController*>(basis.m_controller);
++        ASSERT_TRUE(controller->SetPushStrength(150));
++        basis.Update(AZ::Vector3(3, 0, 0), 240);
++        AZ::Vector3 velocity;
++        Physics::RigidBodyRequestBus::EventResult(velocity, box->GetId(), &Physics::RigidBodyRequests::GetLinearVelocity);
++        EXPECT_GT(velocity.GetX(), .01f);
++        EXPECT_LE(velocity.GetLength() * 650, 150 * 240 * basis.m_timeStep + .1f);
++        EXPECT_NEAR(velocity.GetZ(), 0, 1.e-3f);
++        EXPECT_FALSE(controller->SetPushStrength(-2));
++    }
++
++    TEST_F(PhysXDefaultWorldTest, CharacterController_LimitedPushStrength_RespectsProtectedPlatform)
++    {
++        ControllerTestBasis basis(m_testSceneHandle, Physics::ShapeType::Capsule,
++            AZ::Transform::CreateTranslation(AZ::Vector3(0, 0, -20)));
++        auto box = TestUtils::CreateBoxEntity(m_testSceneHandle, AZ::Vector3(2, 0, .5f), AZ::Vector3(1, 4, 4));
++        Physics::RigidBodyRequestBus::Event(box->GetId(), &Physics::RigidBodyRequests::SetGravityEnabled, false);
++        auto* controller = static_cast<CharacterController*>(basis.m_controller);
++        ASSERT_TRUE(controller->SetPushStrength(150));
++        ASSERT_TRUE(controller->SetRidingPlatform(box->GetId()));
++        basis.Update(AZ::Vector3(3, 0, 0), 240);
++        AZ::Vector3 velocity;
++        Physics::RigidBodyRequestBus::EventResult(velocity, box->GetId(), &Physics::RigidBodyRequests::GetLinearVelocity);
++        EXPECT_LT(velocity.GetLength(), 1.e-3f);
++        EXPECT_LT(basis.m_controller->GetBasePosition().GetX(), 1.4f);
++    }
++
+     Physics::ShapeType controllerShapeTypes[] = { Physics::ShapeType::Capsule, Physics::ShapeType::Box };
+ 
+     TEST_F(PhysXDefaultWorldTest, CharacterControllerWhenRotationSetReturnsCorrectRotation)
+diff --git a/Gems/PhysX/Core/Code/Tests/CharacterGameplayControllerTests.cpp b/Gems/PhysX/Core/Code/Tests/CharacterGameplayControllerTests.cpp
+index 38dfb93e9fab69cb45aaf83e952d89a3bf1d2dd5..6d5208cec4c8909c0493c0f09d79062eecc69b86 100644
+--- a/Gems/PhysX/Core/Code/Tests/CharacterGameplayControllerTests.cpp
++++ b/Gems/PhysX/Core/Code/Tests/CharacterGameplayControllerTests.cpp
+@@ -231,6 +231,19 @@ namespace PhysX
+         EXPECT_TRUE(groundDetected);
+     }
+ 
++    TEST_F(PhysXDefaultWorldTest, CharacterGameplayController_MeshWallDoesNotProvideGroundSupport)
++    {
++        GameplayTestBasis basis(m_testSceneHandle);
++        const auto mesh = TestUtils::AddStaticTriangleMeshCubeToScene(m_testSceneHandle, 0.5f);
++        ASSERT_NE(mesh, AzPhysics::InvalidSimulatedBodyHandle);
++
++        // Both foot probes touch the same collider. Only the second is at the top.
++        basis.m_controller->SetBasePosition(AZ::Vector3(0.6f, 0.0f, 0.0f));
++        EXPECT_FALSE(basis.m_gameplayController->IsOnGround());
++        basis.m_controller->SetBasePosition(AZ::Vector3(0.45f, 0.0f, 0.501f));
++        EXPECT_TRUE(basis.m_gameplayController->IsOnGround());
++    }
++
+     using PhysXDefaultWorldTestWithParamFixture = PhysXDefaultWorldTestWithParam<int>;
+ 
+     //! Test that verifies that an entity with a gameplay controller is falling under gravity as expected.
+diff --git a/Gems/Prefab/PrefabBuilder/PrefabBuilderComponent.cpp b/Gems/Prefab/PrefabBuilder/PrefabBuilderComponent.cpp
+index eb508e113849f2d8cba7dc704e3886ea4316a4ab..1d01690ef4a3049dea780c28a5e8c990a1b727e6 100644
+--- a/Gems/Prefab/PrefabBuilder/PrefabBuilderComponent.cpp
++++ b/Gems/Prefab/PrefabBuilder/PrefabBuilderComponent.cpp
+@@ -13,7 +13,7 @@ namespace AZ::Prefab
+ {
+     // This allows the component's serialization version, and the builder version, to remain in sync.
+     // Not strictly required, but it's useful to modify one when the other is modified, to keep data synchronized.
+-    const int PrefabBuilderComponentVersion = 1;
++    const int PrefabBuilderComponentVersion = 2;
+ 
+     void PrefabBuilderComponent::Reflect(AZ::ReflectContext* context)
+     {
+diff --git a/Gems/SkyAtmosphere/Code/Source/Clients/SkyAtmosphereModule.cpp b/Gems/SkyAtmosphere/Code/Source/Clients/SkyAtmosphereModule.cpp
+index a680069977b1ec72674b3d10c6b9a7af260d7ec3..6c21dfde97ea32601f4d52ca4d221f2449c90bbf 100644
+--- a/Gems/SkyAtmosphere/Code/Source/Clients/SkyAtmosphereModule.cpp
++++ b/Gems/SkyAtmosphere/Code/Source/Clients/SkyAtmosphereModule.cpp
+@@ -27,7 +27,8 @@ namespace SkyAtmosphere
+         {
+             m_descriptors.insert(m_descriptors.end(),
+                 {
+-                    SkyAtmosphereSystemComponent::CreateDescriptor(),
++                    // The base module already owns the system descriptor. Adding it
++                    // again would release the same singleton twice during shutdown.
+                     SkyAtmosphereComponent::CreateDescriptor(),
+                 });
+         }
+diff --git a/cmake/TGDX12ShaderModel.cmake b/cmake/TGDX12ShaderModel.cmake
+new file mode 100644
+index 0000000000000000000000000000000000000000..d4eacad4d7b62891abf63529e334f1d5ac4809a0
+--- /dev/null
++++ b/cmake/TGDX12ShaderModel.cmake
+@@ -0,0 +1,19 @@
++# SPDX-License-Identifier: Apache-2.0 OR MIT
++include_guard(GLOBAL)
++
++# TG selects 6_7 before loading the engine. Other projects retain stock 6_2.
++set(TG_DX12_SHADER_MODEL "6_2" CACHE STRING "DX12 shader target: 6_2 or 6_7")
++set_property(CACHE TG_DX12_SHADER_MODEL PROPERTY STRINGS 6_2 6_7)
++if(NOT TG_DX12_SHADER_MODEL MATCHES "^6_[27]$")
++    message(FATAL_ERROR "TG_DX12_SHADER_MODEL must be 6_2 or 6_7")
++endif()
++message(STATUS "TG DX12 shader model: ${TG_DX12_SHADER_MODEL}")
++
++function(tg_set_dx12_shader_model target)
++    get_target_property(actual_target "${target}" ALIASED_TARGET)
++    if(NOT actual_target)
++        set(actual_target "${target}")
++    endif()
++    string(REPLACE "_" "" shader_model_number "${TG_DX12_SHADER_MODEL}")
++    target_compile_definitions("${actual_target}" PRIVATE TG_DX12_SHADER_MODEL=${shader_model_number})
++endfunction()
+diff --git a/engine.json b/engine.json
+index 8772f15ca5f09c9825abc3c665e0411e0c18f4df..418b9b28c270c82f4edec3971adb56477e7d650e 100644
+--- a/engine.json
++++ b/engine.json
+@@ -107,9 +107,7 @@
+         "PrefabBuilder",
+         "SceneProcessing"
+     ],
+-    "projects": [
+-        "AutomatedTesting"
+-    ],
++    "projects": [],
+     "templates": [
+         "Templates/GameplayGem",
+         "Templates/AssetGem",
