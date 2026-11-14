@@ -1,0 +1,2210 @@
+{
+    "ContainerEntity": {
+        "Id": "Entity_[1146574390643]",
+        "Name": "SilPOMTowerBenchmark",
+        "Components": {
+            "Component_[10641544592923449938]": {
+                "$type": "EditorInspectorComponent",
+                "Id": 10641544592923449938
+            },
+            "Component_[12039882709170782873]": {
+                "$type": "EditorOnlyEntityComponent",
+                "Id": 12039882709170782873
+            },
+            "Component_[12265484671603697631]": {
+                "$type": "EditorPendingCompositionComponent",
+                "Id": 12265484671603697631
+            },
+            "Component_[14126657869720434043]": {
+                "$type": "EditorEntitySortComponent",
+                "Id": 14126657869720434043,
+                "Child Entity Order": [
+                    "Entity_[1155164325235]",
+                    "Entity_[1159459292531]",
+                    "Entity_[1163754259827]",
+                    "Entity_[1180934129011]",
+                    "Entity_[9105700000001]",
+                    "Entity_[9105700000002]",
+                    "Entity_[9105700000003]",
+                    "Entity_[9105700000100]",
+                    "Entity_[9105700000101]",
+                    "Instance_[87432111000000]/ContainerEntity"
+                ]
+            },
+            "Component_[15230859088967841193]": {
+                "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                "Id": 15230859088967841193,
+                "Parent Entity": ""
+            },
+            "Component_[16239496886950819870]": {
+                "$type": "EditorDisabledCompositionComponent",
+                "Id": 16239496886950819870
+            },
+            "Component_[5688118765544765547]": {
+                "$type": "EditorEntityIconComponent",
+                "Id": 5688118765544765547
+            },
+            "Component_[7247035804068349658]": {
+                "$type": "EditorPrefabComponent",
+                "Id": 7247035804068349658
+            },
+            "Component_[9307224322037797205]": {
+                "$type": "EditorLockComponent",
+                "Id": 9307224322037797205
+            },
+            "Component_[9562516168917670048]": {
+                "$type": "EditorVisibilityComponent",
+                "Id": 9562516168917670048
+            }
+        }
+    },
+    "Entities": {
+        "Entity_[1155164325235]": {
+            "Id": "Entity_[1155164325235]",
+            "Name": "Sun",
+            "Components": {
+                "Component_[13620450453324765907]": {
+                    "$type": "EditorLockComponent",
+                    "Id": 13620450453324765907
+                },
+                "Component_[2134313378593666258]": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 2134313378593666258
+                },
+                "Component_[234010807770404186]": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 234010807770404186
+                },
+                "Component_[2970359110423865725]": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 2970359110423865725
+                },
+                "Component_[3722854130373041803]": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 3722854130373041803
+                },
+                "Component_[5992533738676323195]": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 5992533738676323195
+                },
+                "Component_[7378860763541895402]": {
+                    "$type": "AZ::Render::EditorDirectionalLightComponent",
+                    "Id": 7378860763541895402,
+                    "Controller": {
+                        "Configuration": {
+                            "Intensity": 1.0,
+                            "CameraEntityId": "",
+                            "ShadowFilterMethod": 1
+                        }
+                    }
+                },
+                "Component_[7892834440890947578]": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 7892834440890947578,
+                    "Parent Entity": "Entity_[1146574390643]",
+                    "Transform Data": {
+                        "Translate": [
+                            0,
+                            0,
+                            30
+                        ],
+                        "Rotate": [
+                            -60,
+                            0,
+                            -35
+                        ],
+                        "Scale": 1
+                    }
+                },
+                "Component_[8599729549570828259]": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 8599729549570828259
+                },
+                "Component_[952797371922080273]": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 952797371922080273
+                }
+            }
+        },
+        "Entity_[1159459292531]": {
+            "Id": "Entity_[1159459292531]",
+            "Name": "Ground",
+            "Components": {
+                "Component_[12260880513256986252]": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 12260880513256986252
+                },
+                "Component_[13711420870643673468]": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 13711420870643673468
+                },
+                "Component_[138002849734991713]": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 138002849734991713
+                },
+                "Component_[16578565737331764849]": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 16578565737331764849,
+                    "Parent Entity": "Entity_[1146574390643]",
+                    "Transform Data": {
+                        "Translate": [
+                            0,
+                            0,
+                            -0.03
+                        ],
+                        "Rotate": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "Scale": 0.125
+                    }
+                },
+                "Component_[16919232076966545697]": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 16919232076966545697
+                },
+                "Component_[4228479570410194639]": {
+                    "$type": "EditorStaticRigidBodyComponent",
+                    "Id": 4228479570410194639
+                },
+                "Component_[5182430712893438093]": {
+                    "$type": "EditorMaterialComponent",
+                    "Id": 5182430712893438093
+                },
+                "Component_[5245524694917323904]": {
+                    "$type": "EditorColliderComponent",
+                    "Id": 5245524694917323904,
+                    "ColliderConfiguration": {
+                        "Position": [
+                            0.0,
+                            0.0,
+                            -0.5
+                        ],
+                        "MaterialSlots": {
+                            "Slots": [
+                                {
+                                    "Name": "Entire object"
+                                }
+                            ]
+                        }
+                    },
+                    "ShapeConfiguration": {
+                        "ShapeType": 1,
+                        "Box": {
+                            "Configuration": [
+                                512.0,
+                                512.0,
+                                1.0
+                            ]
+                        }
+                    },
+                    "DebugDrawSettings": {
+                        "LocallyEnabled": false
+                    }
+                },
+                "Component_[5675108321710651991]": {
+                    "$type": "AZ::Render::EditorMeshComponent",
+                    "Id": 5675108321710651991,
+                    "Controller": {
+                        "Configuration": {
+                            "ModelAsset": {
+                                "assetId": {
+                                    "guid": "{81CF732F-5CEE-5073-8ECB-AC51655FCEBC}",
+                                    "subId": 277889906
+                                },
+                                "assetHint": "objects/groundplane/groundplane_512x512m.azmodel"
+                            }
+                        }
+                    }
+                },
+                "Component_[5681893399601237518]": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 5681893399601237518
+                },
+                "Component_[592692962543397545]": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 592692962543397545
+                },
+                "Component_[7090012899106946164]": {
+                    "$type": "EditorLockComponent",
+                    "Id": 7090012899106946164
+                },
+                "Component_[9410832619875640998]": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 9410832619875640998
+                }
+            }
+        },
+        "Entity_[1163754259827]": {
+            "Id": "Entity_[1163754259827]",
+            "Name": "Camera | Exterior (Fly Camera)",
+            "Components": {
+                "Component_[11895140916889160460]": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 11895140916889160460
+                },
+                "Component_[16880285896855930892]": {
+                    "$type": "{CA11DA46-29FF-4083-B5F6-E02C3A8C3A3D} EditorCameraComponent",
+                    "Id": 16880285896855930892,
+                    "Controller": {
+                        "Configuration": {
+                            "Field of View": 55.0,
+                            "EditorEntityId": 8929576024571800510
+                        }
+                    }
+                },
+                "Component_[17187464423780271193]": {
+                    "$type": "EditorLockComponent",
+                    "Id": 17187464423780271193
+                },
+                "Component_[17495696818315413311]": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 17495696818315413311
+                },
+                "Component_[18086214374043522055]": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 18086214374043522055,
+                    "Parent Entity": "Entity_[1146574390643]",
+                    "Transform Data": {
+                        "Translate": [
+                            20.903980640452335,
+                            -27.87197418726978,
+                            13.386217296123505
+                        ],
+                        "Rotate": [
+                            0.0,
+                            0.0,
+                            36.86989764584402
+                        ],
+                        "Scale": 1
+                    }
+                },
+                "Component_[2654521436129313160]": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 2654521436129313160
+                },
+                "Component_[5265045084611556958]": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 5265045084611556958
+                },
+                "Component_[7169798125182238623]": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 7169798125182238623
+                },
+                "Component_[7255796294953281766]": {
+                    "$type": "GenericComponentWrapper",
+                    "Id": 7255796294953281766,
+                    "m_template": {
+                        "$type": "FlyCameraInputComponent"
+                    }
+                },
+                "Component_[8866210352157164042]": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 8866210352157164042
+                },
+                "Component_[9129253381063760879]": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 9129253381063760879
+                }
+            }
+        },
+        "Entity_[1180934129011]": {
+            "Id": "Entity_[1180934129011]",
+            "Name": "Sky and Environment | Daylight IBL",
+            "Components": {
+                "Component_[11231930600558681245]": {
+                    "$type": "AZ::Render::EditorHDRiSkyboxComponent",
+                    "Id": 11231930600558681245,
+                    "Controller": {
+                        "Configuration": {
+                            "CubemapAsset": {
+                                "assetId": {
+                                    "guid": "{215E47FD-D181-5832-B1AB-91673ABF6399}",
+                                    "subId": 1000
+                                },
+                                "assetHint": "lightingpresets/highcontrast/goegap_4k_skyboxcm.exr.streamingimage"
+                            }
+                        }
+                    }
+                },
+                "Component_[1428633914413949476]": {
+                    "$type": "EditorLockComponent",
+                    "Id": 1428633914413949476
+                },
+                "Component_[14936200426671614999]": {
+                    "$type": "AZ::Render::EditorImageBasedLightComponent",
+                    "Id": 14936200426671614999,
+                    "Controller": {
+                        "Configuration": {
+                            "diffuseImageAsset": {
+                                "assetId": {
+                                    "guid": "{3FD09945-D0F2-55C8-B9AF-B2FD421FE3BE}",
+                                    "subId": 3000
+                                },
+                                "assetHint": "lightingpresets/highcontrast/goegap_4k_iblglobalcm_ibldiffuse.exr.streamingimage"
+                            },
+                            "specularImageAsset": {
+                                "assetId": {
+                                    "guid": "{3FD09945-D0F2-55C8-B9AF-B2FD421FE3BE}",
+                                    "subId": 2000
+                                },
+                                "assetHint": "lightingpresets/highcontrast/goegap_4k_iblglobalcm_iblspecular.exr.streamingimage"
+                            }
+                        }
+                    }
+                },
+                "Component_[14994774102579326069]": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 14994774102579326069
+                },
+                "Component_[15417479889044493340]": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 15417479889044493340
+                },
+                "Component_[15826613364991382688]": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 15826613364991382688
+                },
+                "Component_[1665003113283562343]": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 1665003113283562343
+                },
+                "Component_[3704934735944502280]": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 3704934735944502280
+                },
+                "Component_[5698542331457326479]": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 5698542331457326479
+                },
+                "Component_[6644513399057217122]": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 6644513399057217122,
+                    "Parent Entity": "Entity_[1146574390643]",
+                    "Transform Data": {
+                        "Translate": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "Rotate": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "Scale": 1
+                    }
+                },
+                "Component_[931091830724002070]": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 931091830724002070
+                }
+            }
+        },
+        "Entity_[9105700000001]": {
+            "Id": "Entity_[9105700000001]",
+            "Name": "Camera | lower-glancing",
+            "Components": {
+                "Component_[11895140916889160460]": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 11895140916889160460
+                },
+                "Component_[16880285896855930892]": {
+                    "$type": "{CA11DA46-29FF-4083-B5F6-E02C3A8C3A3D} EditorCameraComponent",
+                    "Id": 16880285896855930892,
+                    "Controller": {
+                        "Configuration": {
+                            "Field of View": 55.0,
+                            "EditorEntityId": 8929576024571800510
+                        }
+                    }
+                },
+                "Component_[17187464423780271193]": {
+                    "$type": "EditorLockComponent",
+                    "Id": 17187464423780271193
+                },
+                "Component_[17495696818315413311]": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 17495696818315413311
+                },
+                "Component_[18086214374043522055]": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 18086214374043522055,
+                    "Parent Entity": "Entity_[1146574390643]",
+                    "Transform Data": {
+                        "Translate": [
+                            0.4706393281618754,
+                            -1.3846306800842285,
+                            9.975862579345703
+                        ],
+                        "Rotate": [
+                            9.090276920822323,
+                            0.0,
+                            -19.45792387038199
+                        ],
+                        "Scale": 1
+                    }
+                },
+                "Component_[2654521436129313160]": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 2654521436129313160
+                },
+                "Component_[5265045084611556958]": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 5265045084611556958
+                },
+                "Component_[7169798125182238623]": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 7169798125182238623
+                },
+                "Component_[8866210352157164042]": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 8866210352157164042
+                },
+                "Component_[9129253381063760879]": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 9129253381063760879,
+                    "IsEditorOnly": true
+                }
+            }
+        },
+        "Entity_[9105700000002]": {
+            "Id": "Entity_[9105700000002]",
+            "Name": "Camera | lower-facing",
+            "Components": {
+                "Component_[11895140916889160460]": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 11895140916889160460
+                },
+                "Component_[16880285896855930892]": {
+                    "$type": "{CA11DA46-29FF-4083-B5F6-E02C3A8C3A3D} EditorCameraComponent",
+                    "Id": 16880285896855930892,
+                    "Controller": {
+                        "Configuration": {
+                            "Field of View": 55.0,
+                            "EditorEntityId": 8929576024571800510
+                        }
+                    }
+                },
+                "Component_[17187464423780271193]": {
+                    "$type": "EditorLockComponent",
+                    "Id": 17187464423780271193
+                },
+                "Component_[17495696818315413311]": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 17495696818315413311
+                },
+                "Component_[18086214374043522055]": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 18086214374043522055,
+                    "Parent Entity": "Entity_[1146574390643]",
+                    "Transform Data": {
+                        "Translate": [
+                            0.4706393281618754,
+                            -1.3846306800842285,
+                            9.975862579345703
+                        ],
+                        "Rotate": [
+                            -2.2906100426385296,
+                            0.0,
+                            -161.22697816865855
+                        ],
+                        "Scale": 1
+                    }
+                },
+                "Component_[2654521436129313160]": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 2654521436129313160
+                },
+                "Component_[5265045084611556958]": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 5265045084611556958
+                },
+                "Component_[7169798125182238623]": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 7169798125182238623
+                },
+                "Component_[8866210352157164042]": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 8866210352157164042
+                },
+                "Component_[9129253381063760879]": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 9129253381063760879,
+                    "IsEditorOnly": true
+                }
+            }
+        },
+        "Entity_[9105700000003]": {
+            "Id": "Entity_[9105700000003]",
+            "Name": "Camera | upper-glancing",
+            "Components": {
+                "Component_[11895140916889160460]": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 11895140916889160460
+                },
+                "Component_[16880285896855930892]": {
+                    "$type": "{CA11DA46-29FF-4083-B5F6-E02C3A8C3A3D} EditorCameraComponent",
+                    "Id": 16880285896855930892,
+                    "Controller": {
+                        "Configuration": {
+                            "Field of View": 55.0,
+                            "EditorEntityId": 8929576024571800510
+                        }
+                    }
+                },
+                "Component_[17187464423780271193]": {
+                    "$type": "EditorLockComponent",
+                    "Id": 17187464423780271193
+                },
+                "Component_[17495696818315413311]": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 17495696818315413311
+                },
+                "Component_[18086214374043522055]": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 18086214374043522055,
+                    "Parent Entity": "Entity_[1146574390643]",
+                    "Transform Data": {
+                        "Translate": [
+                            1.0041461785634358,
+                            -1.0697278380393982,
+                            18.18247866312663
+                        ],
+                        "Rotate": [
+                            9.090276920822323,
+                            0.0,
+                            5.103876269243813
+                        ],
+                        "Scale": 1
+                    }
+                },
+                "Component_[2654521436129313160]": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 2654521436129313160
+                },
+                "Component_[5265045084611556958]": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 5265045084611556958
+                },
+                "Component_[7169798125182238623]": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 7169798125182238623
+                },
+                "Component_[8866210352157164042]": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 8866210352157164042
+                },
+                "Component_[9129253381063760879]": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 9129253381063760879,
+                    "IsEditorOnly": true
+                }
+            }
+        },
+        "Entity_[9105700000100]": {
+            "Id": "Entity_[9105700000100]",
+            "Name": "Comparison Fill | lower",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 4413571162175081000
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 4413571162175081001
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 4413571162175081002
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 4413571162175081003
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 4413571162175081004
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 4413571162175081005
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 4413571162175081006
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 4413571162175081007
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 4413571162175081008,
+                    "Parent Entity": "Entity_[1146574390643]",
+                    "Transform Data": {
+                        "Translate": [
+                            0.4706393281618754,
+                            -1.3846306800842285,
+                            9.975862579345703
+                        ],
+                        "Rotate": [
+                            90,
+                            0,
+                            -161.22697816865855
+                        ],
+                        "Scale": 1
+                    }
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Id": 4413571162175081009,
+                    "Controller": {
+                        "Configuration": {
+                            "LightType": 4,
+                            "Color": [
+                                1.0,
+                                0.94,
+                                0.85,
+                                1.0
+                            ],
+                            "Intensity": 30.0,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 4.0,
+                            "EnableShutters": false,
+                            "InnerShutterAngleDegrees": 24.0,
+                            "OuterShutterAngleDegrees": 55.0,
+                            "Enable Shadow": false,
+                            "Shadowmap Max Size": "Size256",
+                            "Shadow Filter Method": 1,
+                            "Filtering Sample Count": 24,
+                            "LightEmitsBothDirections": true,
+                            "Affects GI": false,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    true,
+                                    true,
+                                    true,
+                                    true,
+                                    true
+                                ]
+                            },
+                            "UseFastApproximation": true
+                        }
+                    }
+                },
+                "EditorQuadShapeComponent": {
+                    "$type": "{E8E60770-40E9-426F-B134-3964BF8BDD84} LmbrCentral::EditorQuadShapeComponent",
+                    "Id": 4413571162175081010,
+                    "Visible": false,
+                    "QuadShape": {
+                        "Configuration": {
+                            "Width": 0.239604,
+                            "Height": 1.419679
+                        }
+                    }
+                }
+            }
+        },
+        "Entity_[9105700000101]": {
+            "Id": "Entity_[9105700000101]",
+            "Name": "Comparison Fill | upper",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 4413571162175081000
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 4413571162175081001
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 4413571162175081002
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 4413571162175081003
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 4413571162175081004
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 4413571162175081005
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 4413571162175081006
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 4413571162175081007
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 4413571162175081008,
+                    "Parent Entity": "Entity_[1146574390643]",
+                    "Transform Data": {
+                        "Translate": [
+                            1.0041461785634358,
+                            -1.0697278380393982,
+                            18.18247866312663
+                        ],
+                        "Rotate": [
+                            90,
+                            0,
+                            -136.8112481783966
+                        ],
+                        "Scale": 1
+                    }
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Id": 4413571162175081009,
+                    "Controller": {
+                        "Configuration": {
+                            "LightType": 4,
+                            "Color": [
+                                1.0,
+                                0.94,
+                                0.85,
+                                1.0
+                            ],
+                            "Intensity": 30.0,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 4.0,
+                            "EnableShutters": false,
+                            "InnerShutterAngleDegrees": 24.0,
+                            "OuterShutterAngleDegrees": 55.0,
+                            "Enable Shadow": false,
+                            "Shadowmap Max Size": "Size256",
+                            "Shadow Filter Method": 1,
+                            "Filtering Sample Count": 24,
+                            "LightEmitsBothDirections": true,
+                            "Affects GI": false,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    true,
+                                    true,
+                                    true,
+                                    true,
+                                    true
+                                ]
+                            },
+                            "UseFastApproximation": true
+                        }
+                    }
+                },
+                "EditorQuadShapeComponent": {
+                    "$type": "{E8E60770-40E9-426F-B134-3964BF8BDD84} LmbrCentral::EditorQuadShapeComponent",
+                    "Id": 4413571162175081010,
+                    "Visible": false,
+                    "QuadShape": {
+                        "Configuration": {
+                            "Width": 0.239604,
+                            "Height": 1.419679
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "Instances": {
+        "Instance_[87432111000000]": {
+            "Source": "Assets/SilPOMPlanarAB/IrishFieldstoneTowerOpenShaft/IrishFieldstoneTowerOpenShaft.prefab",
+            "Patches": [
+                {
+                    "op": "replace",
+                    "path": "/ContainerEntity/Components/TransformComponent/Parent Entity",
+                    "value": "../Entity_[1146574390643]"
+                },
+                {
+                    "op": "replace",
+                    "path": "/ContainerEntity/Components/TransformComponent/Transform Data/Translate/0",
+                    "value": 593.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/ContainerEntity/Components/TransformComponent/Transform Data/Translate/1",
+                    "value": 849.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/ContainerEntity/Components/TransformComponent/Transform Data/Translate/2",
+                    "value": -0.015
+                },
+                {
+                    "op": "replace",
+                    "path": "/ContainerEntity/Components/TransformComponent/Transform Data/Rotate/2",
+                    "value": -138.44604497387715
+                },
+                {
+                    "op": "remove",
+                    "path": "/ContainerEntity/Components/TransformComponent/Transform Data/Scale"
+                },
+                {
+                    "op": "remove",
+                    "path": "/ContainerEntity/Components/TransformComponent/Transform Data/Locked"
+                },
+                {
+                    "op": "remove",
+                    "path": "/ContainerEntity/Components/TransformComponent/Transform Data/UniformScale"
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/UpperRoofLining/Components/EditorDisabledCompositionComponent",
+                    "value": {
+                        "$type": "EditorDisabledCompositionComponent",
+                        "Id": 714950691706104248,
+                        "DisabledComponents": []
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/UpperRoofLining/Components/EditorEntityIconComponent",
+                    "value": {
+                        "$type": "EditorEntityIconComponent",
+                        "Id": 14884731970957264862,
+                        "EntityIconAssetId": {
+                            "guid": "{00000000-0000-0000-0000-000000000000}",
+                            "subId": 0
+                        }
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/UpperRoofLining/Components/EditorEntitySortComponent",
+                    "value": {
+                        "$type": "EditorEntitySortComponent",
+                        "Id": 14522818832586377910,
+                        "Child Entity Order": []
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/UpperRoofLining/Components/EditorInspectorComponent",
+                    "value": {
+                        "$type": "EditorInspectorComponent",
+                        "Id": 4547395253068562549,
+                        "ComponentOrderEntryArray": []
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/UpperRoofLining/Components/EditorLockComponent",
+                    "value": {
+                        "$type": "EditorLockComponent",
+                        "Id": 1611640681495407652,
+                        "Locked": false
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/UpperRoofLining/Components/EditorOnlyEntityComponent",
+                    "value": {
+                        "$type": "EditorOnlyEntityComponent",
+                        "Id": 3754787192447863186,
+                        "IsEditorOnly": false
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/UpperRoofLining/Components/EditorPendingCompositionComponent",
+                    "value": {
+                        "$type": "EditorPendingCompositionComponent",
+                        "Id": 15661714211530425476,
+                        "PendingComponents": []
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/UpperRoofLining/Components/EditorVisibilityComponent",
+                    "value": {
+                        "$type": "EditorVisibilityComponent",
+                        "Id": 18240304937691858876,
+                        "VisibilityFlag": true
+                    }
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/EntranceStairFill"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/SETrialDaylight"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/SETrialFillA"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/UpperEastWindowTrimFill"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/UpperNorthWindowTrimFill"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/UpperShaftFill"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/UpperSouthWindowTrimFill"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/UpperWestWindowTrimFill"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperWestWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/Intensity",
+                    "value": 10.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperWestWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/AttenuationRadius",
+                    "value": 3.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperWestWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/FalloffRate",
+                    "value": 6.372499942779541
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperWestWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/LockBlenderExport",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperWestWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/UseFastApproximation",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperWestWindowDaylight/Components/EditorQuadShapeComponent/ShapeColor/1",
+                    "value": 0.9399999976158142
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperWestWindowDaylight/Components/EditorQuadShapeComponent/ShapeColor/2",
+                    "value": 0.8500000238418579
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperWestWindowDaylight/Components/EditorQuadShapeComponent/ShapeColor/3",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperWestWindowDaylight/Components/TransformComponent/Transform Data/Translate/0",
+                    "value": -1.792724609375
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperWestWindowDaylight/Components/TransformComponent/Transform Data/Translate/1",
+                    "value": -0.0001220703125
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperWestWindowDaylight/Components/TransformComponent/Transform Data/Translate/2",
+                    "value": 20.86503219604492
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperWestWindowDaylight/Components/TransformComponent/Transform Data/Rotate/0",
+                    "value": 89.99994659423828
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperWestWindowDaylight/Components/TransformComponent/Transform Data/Rotate/1",
+                    "value": 89.99994659423828
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDiffuseProbeGrid/Components/AZ::Render::EditorDiffuseProbeGridComponent/Controller/Configuration/AmbientMultiplier",
+                    "value": 3.299999952316284
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDiffuseProbeGrid/Components/AZ::Render::EditorDiffuseProbeGridComponent/Controller/Configuration/ViewBias",
+                    "value": 0.25999999046325684
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDiffuseProbeGrid/Components/AZ::Render::EditorDiffuseProbeGridComponent/ambientMultiplier",
+                    "value": 3.299999952316284
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDiffuseProbeGrid/Components/AZ::Render::EditorDiffuseProbeGridComponent/viewBias",
+                    "value": 0.25999999046325684
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDiffuseProbeGrid/Components/TransformComponent/Transform Data/Translate/0",
+                    "value": -0.00018310546875
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDiffuseProbeGrid/Components/TransformComponent/Transform Data/Translate/1",
+                    "value": -2.76214599609375
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDiffuseProbeGrid/Components/TransformComponent/Transform Data/Translate/2",
+                    "value": 21.64454460144043
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/Color/0",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/Color/1",
+                    "value": 0.9170367121696472
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/Color/2",
+                    "value": 0.8222171068191528
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/Intensity",
+                    "value": 20.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/AttenuationRadius",
+                    "value": 3.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/FalloffRate",
+                    "value": 2.3424999713897705
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/LockBlenderExport",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/UseFastApproximation",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDaylight/Components/EditorQuadShapeComponent/ShapeColor/1",
+                    "value": 0.9170367121696472
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDaylight/Components/EditorQuadShapeComponent/ShapeColor/2",
+                    "value": 0.8222171068191528
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDaylight/Components/EditorQuadShapeComponent/ShapeColor/3",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDaylight/Components/EditorQuadShapeComponent/QuadShape/Configuration/Height",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDaylight/Components/TransformComponent/Transform Data/Translate/0",
+                    "value": 0.001953125
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDaylight/Components/TransformComponent/Transform Data/Translate/1",
+                    "value": -1.777740478515625
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDaylight/Components/TransformComponent/Transform Data/Translate/2",
+                    "value": 21.72699737548828
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDaylight/Components/TransformComponent/Transform Data/Rotate/0",
+                    "value": -89.99999237060547
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDaylight/Components/TransformComponent/Transform Data/Rotate/1",
+                    "value": 1.2074183359800372e-06
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperSouthWindowDaylight/Components/TransformComponent/Transform Data/Rotate/2",
+                    "value": -180.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperEastWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/Color/0",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperEastWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/Color/1",
+                    "value": 0.8944380879402161
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperEastWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/Color/2",
+                    "value": 0.7466697096824646
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperEastWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/Intensity",
+                    "value": 20.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperEastWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/AttenuationRadius",
+                    "value": 3.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperEastWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/FalloffRate",
+                    "value": 3.737499952316284
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperEastWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/LockBlenderExport",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperEastWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/UseFastApproximation",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperEastWindowDaylight/Components/EditorQuadShapeComponent/ShapeColor/1",
+                    "value": 0.8944380879402161
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperEastWindowDaylight/Components/EditorQuadShapeComponent/ShapeColor/2",
+                    "value": 0.7466697096824646
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperEastWindowDaylight/Components/EditorQuadShapeComponent/ShapeColor/3",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperEastWindowDaylight/Components/EditorQuadShapeComponent/QuadShape/Configuration/Height",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperEastWindowDaylight/Components/TransformComponent/Transform Data/Translate/0",
+                    "value": 1.7943115234375
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperEastWindowDaylight/Components/TransformComponent/Transform Data/Translate/1",
+                    "value": -0.000396728515625
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperEastWindowDaylight/Components/TransformComponent/Transform Data/Translate/2",
+                    "value": 21.65252685546875
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperEastWindowDaylight/Components/TransformComponent/Transform Data/Rotate/0",
+                    "value": -92.72782135009766
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperEastWindowDaylight/Components/TransformComponent/Transform Data/Rotate/1",
+                    "value": -88.79493713378906
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperEastWindowDaylight/Components/TransformComponent/Transform Data/Rotate/2",
+                    "value": 177.63302612304688
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperNorthWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/Color/0",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperNorthWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/Color/1",
+                    "value": 0.9840695858001708
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperNorthWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/Color/2",
+                    "value": 0.808896005153656
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperNorthWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/Intensity",
+                    "value": 10.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperNorthWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/AttenuationRadius",
+                    "value": 6.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperNorthWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/FalloffRate",
+                    "value": 4.590000152587891
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperNorthWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/LockBlenderExport",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperNorthWindowDaylight/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/UseFastApproximation",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperNorthWindowDaylight/Components/EditorQuadShapeComponent/ShapeColor/1",
+                    "value": 0.9840695858001708
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperNorthWindowDaylight/Components/EditorQuadShapeComponent/ShapeColor/2",
+                    "value": 0.808896005153656
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperNorthWindowDaylight/Components/EditorQuadShapeComponent/ShapeColor/3",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperNorthWindowDaylight/Components/TransformComponent/Transform Data/Translate/0",
+                    "value": -0.0050048828125
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperNorthWindowDaylight/Components/TransformComponent/Transform Data/Translate/1",
+                    "value": 1.785552978515625
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperNorthWindowDaylight/Components/TransformComponent/Transform Data/Translate/2",
+                    "value": 19.887895584106445
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperNorthWindowDaylight/Components/TransformComponent/Transform Data/Rotate/0",
+                    "value": 89.99999237060547
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperNorthWindowDaylight/Components/TransformComponent/Transform Data/Rotate/1",
+                    "value": -1.2074183359800372e-06
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/UpperNorthWindowDaylight/Components/TransformComponent/Transform Data/Rotate/2",
+                    "value": -180.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/StairSoutheastWindowDiffuseProbeGrid/Components/AZ::Render::EditorDiffuseProbeGridComponent/Controller/Configuration/AmbientMultiplier",
+                    "value": 4.199999809265137
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/StairSoutheastWindowDiffuseProbeGrid/Components/AZ::Render::EditorDiffuseProbeGridComponent/Controller/Configuration/ViewBias",
+                    "value": 0.18000000715255737
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/StairSoutheastWindowDiffuseProbeGrid/Components/AZ::Render::EditorDiffuseProbeGridComponent/ambientMultiplier",
+                    "value": 4.199999809265137
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/StairSoutheastWindowDiffuseProbeGrid/Components/AZ::Render::EditorDiffuseProbeGridComponent/viewBias",
+                    "value": 0.18000000715255737
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_ce3c56e02ac456499dd7a6103ba67cc1/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/Intensity",
+                    "value": 3.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_ce3c56e02ac456499dd7a6103ba67cc1/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/AttenuationRadius",
+                    "value": 7.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_ce3c56e02ac456499dd7a6103ba67cc1/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/FalloffRate",
+                    "value": 2.3424999713897705
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_ce3c56e02ac456499dd7a6103ba67cc1/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/LockBlenderExport",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_ce3c56e02ac456499dd7a6103ba67cc1/Components/EditorQuadShapeComponent/ShapeColor/2",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_ce3c56e02ac456499dd7a6103ba67cc1/Components/EditorQuadShapeComponent/ShapeColor/3",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_ce3c56e02ac456499dd7a6103ba67cc1/Components/TransformComponent/Transform Data/Translate/0",
+                    "value": 1.195068359375
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_ce3c56e02ac456499dd7a6103ba67cc1/Components/TransformComponent/Transform Data/Translate/1",
+                    "value": -1.2216796875
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_ce3c56e02ac456499dd7a6103ba67cc1/Components/TransformComponent/Transform Data/Translate/2",
+                    "value": 10.234416007995604
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_ce3c56e02ac456499dd7a6103ba67cc1/Components/TransformComponent/Transform Data/Rotate/0",
+                    "value": -89.05728149414062
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_ce3c56e02ac456499dd7a6103ba67cc1/Components/TransformComponent/Transform Data/Rotate/1",
+                    "value": -46.5151252746582
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_ce3c56e02ac456499dd7a6103ba67cc1/Components/TransformComponent/Transform Data/Rotate/2",
+                    "value": 1.773875713348389
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_e2fc23c99c1657a395568c90a5a67d61/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/Intensity",
+                    "value": 3.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_e2fc23c99c1657a395568c90a5a67d61/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/AttenuationRadius",
+                    "value": 7.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_e2fc23c99c1657a395568c90a5a67d61/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/FalloffRate",
+                    "value": 0.8700000047683716
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_e2fc23c99c1657a395568c90a5a67d61/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/LockBlenderExport",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_e2fc23c99c1657a395568c90a5a67d61/Components/EditorQuadShapeComponent/ShapeColor/2",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_e2fc23c99c1657a395568c90a5a67d61/Components/EditorQuadShapeComponent/ShapeColor/3",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_e2fc23c99c1657a395568c90a5a67d61/Components/EditorQuadShapeComponent/QuadShape/Configuration/Height",
+                    "value": 0.25
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_e2fc23c99c1657a395568c90a5a67d61/Components/TransformComponent/Transform Data/Translate/0",
+                    "value": -0.061279296875
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_e2fc23c99c1657a395568c90a5a67d61/Components/TransformComponent/Transform Data/Translate/1",
+                    "value": -4.343505859375
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_e2fc23c99c1657a395568c90a5a67d61/Components/TransformComponent/Transform Data/Translate/2",
+                    "value": 5.295584678649902
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_e2fc23c99c1657a395568c90a5a67d61/Components/TransformComponent/Transform Data/Rotate/0",
+                    "value": -90.00004577636719
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_e2fc23c99c1657a395568c90a5a67d61/Components/TransformComponent/Transform Data/Rotate/1",
+                    "value": 8.14221953748806e-13
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_e2fc23c99c1657a395568c90a5a67d61/Components/TransformComponent/Transform Data/Rotate/2",
+                    "value": 180.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_dd1920a807fd5f168909852eae2e0af0/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/Intensity",
+                    "value": 3.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_dd1920a807fd5f168909852eae2e0af0/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/AttenuationRadius",
+                    "value": 7.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_dd1920a807fd5f168909852eae2e0af0/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/LockBlenderExport",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_dd1920a807fd5f168909852eae2e0af0/Components/EditorQuadShapeComponent/ShapeColor/2",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_dd1920a807fd5f168909852eae2e0af0/Components/EditorQuadShapeComponent/ShapeColor/3",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_296829b720e3562aaa6b45feadd5050f/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/Intensity",
+                    "value": 3.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_296829b720e3562aaa6b45feadd5050f/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/AttenuationRadius",
+                    "value": 6.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_296829b720e3562aaa6b45feadd5050f/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/FalloffRate",
+                    "value": 3.505000114440918
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_296829b720e3562aaa6b45feadd5050f/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/LockBlenderExport",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_296829b720e3562aaa6b45feadd5050f/Components/EditorQuadShapeComponent/ShapeColor/2",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_296829b720e3562aaa6b45feadd5050f/Components/EditorQuadShapeComponent/ShapeColor/3",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_296829b720e3562aaa6b45feadd5050f/Components/TransformComponent/Transform Data/Translate/0",
+                    "value": -1.20501708984375
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_296829b720e3562aaa6b45feadd5050f/Components/TransformComponent/Transform Data/Translate/1",
+                    "value": 1.269287109375
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_296829b720e3562aaa6b45feadd5050f/Components/TransformComponent/Transform Data/Translate/2",
+                    "value": 16.24602508544922
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_296829b720e3562aaa6b45feadd5050f/Components/TransformComponent/Transform Data/Rotate/0",
+                    "value": 89.06340026855469
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_296829b720e3562aaa6b45feadd5050f/Components/TransformComponent/Transform Data/Rotate/1",
+                    "value": 46.157901763916016
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_296829b720e3562aaa6b45feadd5050f/Components/TransformComponent/Transform Data/Rotate/2",
+                    "value": -178.23458862304688
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_f77cc8dbe87557e8ba4099121240915a/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/AttenuationRadius",
+                    "value": 20.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_f77cc8dbe87557e8ba4099121240915a/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/FalloffRate",
+                    "value": 0.9474999904632568
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_f77cc8dbe87557e8ba4099121240915a/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/LockBlenderExport",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_f77cc8dbe87557e8ba4099121240915a/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/LightEmitsBothDirections",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_f77cc8dbe87557e8ba4099121240915a/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/UseFastApproximation",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_f77cc8dbe87557e8ba4099121240915a/Components/EditorQuadShapeComponent/ShapeColor/2",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_f77cc8dbe87557e8ba4099121240915a/Components/EditorQuadShapeComponent/ShapeColor/3",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_f77cc8dbe87557e8ba4099121240915a/Components/TransformComponent/Transform Data/Translate/0",
+                    "value": 0.298828125
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_f77cc8dbe87557e8ba4099121240915a/Components/TransformComponent/Transform Data/Translate/1",
+                    "value": -2.17401123046875
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_f77cc8dbe87557e8ba4099121240915a/Components/TransformComponent/Transform Data/Translate/2",
+                    "value": 5.192794322967529
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_f77cc8dbe87557e8ba4099121240915a/Components/TransformComponent/Transform Data/Rotate/0",
+                    "value": -90.00059509277344
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_f77cc8dbe87557e8ba4099121240915a/Components/TransformComponent/Transform Data/Rotate/1",
+                    "value": -5.6285176277160645
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_f77cc8dbe87557e8ba4099121240915a/Components/TransformComponent/Transform Data/Rotate/2",
+                    "value": -179.99923706054688
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_425a8a813ca45fb2a85520f695b077e1/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/Intensity",
+                    "value": 16.000003814697266
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_425a8a813ca45fb2a85520f695b077e1/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/AttenuationRadius",
+                    "value": 6.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_425a8a813ca45fb2a85520f695b077e1/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/FalloffRate",
+                    "value": 1.024999976158142
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_425a8a813ca45fb2a85520f695b077e1/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/LockBlenderExport",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_425a8a813ca45fb2a85520f695b077e1/Components/AZ::Render::EditorAreaLightComponent/Controller/Configuration/LightEmitsBothDirections",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_425a8a813ca45fb2a85520f695b077e1/Components/EditorQuadShapeComponent/ShapeColor/2",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_425a8a813ca45fb2a85520f695b077e1/Components/EditorQuadShapeComponent/ShapeColor/3",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_425a8a813ca45fb2a85520f695b077e1/Components/EditorQuadShapeComponent/QuadShape/Configuration/Width",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_425a8a813ca45fb2a85520f695b077e1/Components/EditorQuadShapeComponent/QuadShape/Configuration/Height",
+                    "value": 1.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_425a8a813ca45fb2a85520f695b077e1/Components/TransformComponent/Transform Data/Translate/0",
+                    "value": -0.0740966796875
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_425a8a813ca45fb2a85520f695b077e1/Components/TransformComponent/Transform Data/Translate/1",
+                    "value": -0.051483154296875
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_425a8a813ca45fb2a85520f695b077e1/Components/TransformComponent/Transform Data/Translate/2",
+                    "value": 24.851953506469727
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_425a8a813ca45fb2a85520f695b077e1/Components/TransformComponent/Transform Data/Rotate/0",
+                    "value": -4.62886905670166
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_425a8a813ca45fb2a85520f695b077e1/Components/TransformComponent/Transform Data/Rotate/1",
+                    "value": 0.7747264504432678
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/BlenderLight_425a8a813ca45fb2a85520f695b077e1/Components/TransformComponent/Transform Data/Rotate/2",
+                    "value": 90.06266784667969
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/0",
+                    "value": "UpperSouthWindowDaylight"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/1",
+                    "value": "UpperEastWindowDaylight"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/2",
+                    "value": "UpperWestWindowDaylight"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/3",
+                    "value": "UpperRoofLining"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/4",
+                    "value": "UpperNorthWindowDaylight"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/5",
+                    "value": "BlenderLight_ce3c56e02ac456499dd7a6103ba67cc1"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/6",
+                    "value": "BlenderLight_dd1920a807fd5f168909852eae2e0af0"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/7",
+                    "value": "BlenderLight_296829b720e3562aaa6b45feadd5050f"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/8",
+                    "value": "BlenderLight_e2fc23c99c1657a395568c90a5a67d61"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/9",
+                    "value": "EntranceDiffuseProbeGrid"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/10",
+                    "value": "EntranceGiRayProxy"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/11",
+                    "value": "UpperEastWindowDiffuseProbeGrid"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/12",
+                    "value": "StairNortheastWindowDiffuseProbeGrid"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/13",
+                    "value": "UpperNorthWindowDiffuseProbeGrid"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/14",
+                    "value": "StairNorthwestWindowDiffuseProbeGrid"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/15",
+                    "value": "UpperWestWindowDiffuseProbeGrid"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/16",
+                    "value": "UpperSouthWindowDiffuseProbeGrid"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/17",
+                    "value": "StairSoutheastWindowDiffuseProbeGrid"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/18",
+                    "value": "BlenderLight_f77cc8dbe87557e8ba4099121240915a"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/19",
+                    "value": "BlenderLight_425a8a813ca45fb2a85520f695b077e1"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/27"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/26"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/25"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/24"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/23"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/22"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/21"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order/20"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshColliderComponent/ColliderConfiguration/MaterialSlots/Slots/0/Name",
+                    "value": "Lakebed ground | windblown sand [welded]"
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshColliderComponent/ColliderConfiguration/MaterialSlots/Slots/1",
+                    "value": {
+                        "Name": "Lightened Rock001 | jagged door blocks [welded]",
+                        "MaterialAsset": {
+                            "assetId": {
+                                "guid": "{00000000-0000-0000-0000-000000000000}",
+                                "subId": 0
+                            },
+                            "loadBehavior": "QueueLoad",
+                            "assetHint": ""
+                        }
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshColliderComponent/ColliderConfiguration/MaterialSlots/Slots/2",
+                    "value": {
+                        "Name": "Irish Fieldstone | Continuous cylindrical atlas [welded]",
+                        "MaterialAsset": {
+                            "assetId": {
+                                "guid": "{00000000-0000-0000-0000-000000000000}",
+                                "subId": 0
+                            },
+                            "loadBehavior": "QueueLoad",
+                            "assetHint": ""
+                        }
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshColliderComponent/ColliderConfiguration/MaterialSlots/Slots/3",
+                    "value": {
+                        "Name": "Tower | interior fieldstone",
+                        "MaterialAsset": {
+                            "assetId": {
+                                "guid": "{00000000-0000-0000-0000-000000000000}",
+                                "subId": 0
+                            },
+                            "loadBehavior": "QueueLoad",
+                            "assetHint": ""
+                        }
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshColliderComponent/ColliderConfiguration/MaterialSlots/Slots/4",
+                    "value": {
+                        "Name": "Irish Fieldstone | Arched doorway reveal [welded]",
+                        "MaterialAsset": {
+                            "assetId": {
+                                "guid": "{00000000-0000-0000-0000-000000000000}",
+                                "subId": 0
+                            },
+                            "loadBehavior": "QueueLoad",
+                            "assetHint": ""
+                        }
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshColliderComponent/ColliderConfiguration/MaterialSlots/Slots/5",
+                    "value": {
+                        "Name": "Tower | plain shell rims [welded]",
+                        "MaterialAsset": {
+                            "assetId": {
+                                "guid": "{00000000-0000-0000-0000-000000000000}",
+                                "subId": 0
+                            },
+                            "loadBehavior": "QueueLoad",
+                            "assetHint": ""
+                        }
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshColliderComponent/ColliderConfiguration/MaterialSlots/Slots/6",
+                    "value": {
+                        "Name": "Irish Fieldstone | rounded window lining [welded]",
+                        "MaterialAsset": {
+                            "assetId": {
+                                "guid": "{00000000-0000-0000-0000-000000000000}",
+                                "subId": 0
+                            },
+                            "loadBehavior": "QueueLoad",
+                            "assetHint": ""
+                        }
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshColliderComponent/ColliderConfiguration/MaterialSlots/Slots/7",
+                    "value": {
+                        "Name": "Tower | stair and floor stone [welded]",
+                        "MaterialAsset": {
+                            "assetId": {
+                                "guid": "{00000000-0000-0000-0000-000000000000}",
+                                "subId": 0
+                            },
+                            "loadBehavior": "QueueLoad",
+                            "assetHint": ""
+                        }
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshColliderComponent/ColliderConfiguration/MaterialSlots/Slots/8",
+                    "value": {
+                        "Name": "Sabazios - timeworn bronze and green patina [welded]",
+                        "MaterialAsset": {
+                            "assetId": {
+                                "guid": "{00000000-0000-0000-0000-000000000000}",
+                                "subId": 0
+                            },
+                            "loadBehavior": "QueueLoad",
+                            "assetHint": ""
+                        }
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshColliderComponent/ColliderConfiguration/MaterialSlots/Slots/9",
+                    "value": {
+                        "Name": "Wind-worn volcanic basalt [welded]",
+                        "MaterialAsset": {
+                            "assetId": {
+                                "guid": "{00000000-0000-0000-0000-000000000000}",
+                                "subId": 0
+                            },
+                            "loadBehavior": "QueueLoad",
+                            "assetHint": ""
+                        }
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshColliderComponent/ColliderConfiguration/MaterialSlots/Slots/10",
+                    "value": {
+                        "Name": "Basalt | exposed stair cuts [welded]",
+                        "MaterialAsset": {
+                            "assetId": {
+                                "guid": "{00000000-0000-0000-0000-000000000000}",
+                                "subId": 0
+                            },
+                            "loadBehavior": "QueueLoad",
+                            "assetHint": ""
+                        }
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshColliderComponent/ColliderConfiguration/MaterialSlots/Slots/11",
+                    "value": {
+                        "Name": "Tower Door | recessed lime mortar [welded]",
+                        "MaterialAsset": {
+                            "assetId": {
+                                "guid": "{00000000-0000-0000-0000-000000000000}",
+                                "subId": 0
+                            },
+                            "loadBehavior": "QueueLoad",
+                            "assetHint": ""
+                        }
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshColliderComponent/ColliderConfiguration/MaterialSlots/Slots/12",
+                    "value": {
+                        "Name": "Tower stairs | baked Rock001 and sculpt relief [welded]",
+                        "MaterialAsset": {
+                            "assetId": {
+                                "guid": "{00000000-0000-0000-0000-000000000000}",
+                                "subId": 0
+                            },
+                            "loadBehavior": "QueueLoad",
+                            "assetHint": ""
+                        }
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshColliderComponent/ColliderConfiguration/MaterialSlots/Slots/13",
+                    "value": {
+                        "Name": "Tower entrance ramp | Rock001",
+                        "MaterialAsset": {
+                            "assetId": {
+                                "guid": "{00000000-0000-0000-0000-000000000000}",
+                                "subId": 0
+                            },
+                            "loadBehavior": "QueueLoad",
+                            "assetHint": ""
+                        }
+                    }
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/LightingEstimator",
+                    "value": "AngularEdges4"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/DiffuseAccessibility",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/ReliefDepthMultiplier",
+                    "value": 0.5
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/ValidationIterations",
+                    "value": 4
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/ValidationRetryCap",
+                    "value": 2
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/ValidationToleranceMultiplier",
+                    "value": 5.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/UseR16HeightTextures",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/UseValidationGather",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/UseLevelTwoPredictor",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/UseLevelFourShared",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/UseLevelFiveProxy",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/UseLevelFiveDepth",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/DistantValidationIterations",
+                    "value": 2
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/DistantValidationToleranceMultiplier",
+                    "value": 5.0
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/SpiralLightShadowSteps",
+                    "value": 9
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/LocalShadowMethod",
+                    "value": "NeuralOnly"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/UseHeightDerivedNormals",
+                    "value": false
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/NeuralDirectionalVisibility",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/ProxyDirectionalResponse",
+                    "value": true
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/SpiralLightMode",
+                    "value": "AllSilPomSurfaces"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorMeshComponent/Controller/Configuration/SpiralLightPeakLux",
+                    "value": 0.5
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/UpperEastWindowDiffuseProbeGrid"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/StairNortheastWindowDiffuseProbeGrid"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/UpperNorthWindowDiffuseProbeGrid"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/StairNorthwestWindowDiffuseProbeGrid"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/UpperWestWindowDiffuseProbeGrid"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/UpperSouthWindowDiffuseProbeGrid"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/StairSoutheastWindowDiffuseProbeGrid"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/EntranceDiffuseProbeGrid"
+                },
+                {
+                    "op": "remove",
+                    "path": "/Entities/EntranceGiRayProxy"
+                },
+                {
+                    "op": "replace",
+                    "path": "/Entities/TowerMesh/Components/EditorEntitySortComponent/Child Entity Order",
+                    "value": [
+                        "BlenderLight_f77cc8dbe87557e8ba4099121240915a",
+                        "BlenderLight_425a8a813ca45fb2a85520f695b077e1",
+                        "BlenderLight_ce3c56e02ac456499dd7a6103ba67cc1",
+                        "BlenderLight_dd1920a807fd5f168909852eae2e0af0",
+                        "BlenderLight_296829b720e3562aaa6b45feadd5050f",
+                        "BlenderLight_e2fc23c99c1657a395568c90a5a67d61",
+                        "UpperNorthWindowDaylight",
+                        "UpperRoofLining",
+                        "UpperWestWindowDaylight",
+                        "UpperSouthWindowDaylight",
+                        "UpperEastWindowDaylight"
+                    ]
+                },
+                {
+                    "op": "replace",
+                    "path": "/ContainerEntity/Components/TransformComponent/Transform Data",
+                    "value": {
+                        "Translate": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "Rotate": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "Scale": 1
+                    }
+                }
+            ]
+        }
+    }
+}

@@ -1,0 +1,47 @@
+{
+  "passed": true,
+  "scene_sha256": "a0894326d0eb68b7328949b1f1829a8021b7293ce16a567e0c2ea8c9148f6e7b",
+  "width": 1280,
+  "height": 720,
+  "samples": 1,
+  "gameplay_visible": true,
+  "saved_tower_controls": {
+    "Anti-aliasing": 0,
+    "Lighting estimator": 5,
+    "Level 2 predictor (experimental)": true,
+    "Gather validation (may be cheaper)": true,
+    "R16 height textures (less GPU memory)": true
+  },
+  "vue_live_link_unchanged": true,
+  "target_5700g_performance_measured": false,
+  "captures": {
+    "exterior": {
+      "rgba_sha256": "663b52b2877f5cf59bc64274126b76050962d8b5b69f303c3afa146084c30473",
+      "mean_rgb": 96.551,
+      "contrast": 53.816
+    },
+    "lower-facing": {
+      "rgba_sha256": "50b881764ba357b46a4546f7aed10830d9989c068707d531940b71d10e44b3d3",
+      "mean_rgb": 108.131,
+      "contrast": 41.527,
+      "valid_hit_samples": 921599
+    },
+    "lower-glancing": {
+      "rgba_sha256": "0d9a3a3a114ff2c1ff2bdfe8a6e9d0568f4c953a86cc46cfaeff96fefe9db6f0",
+      "mean_rgb": 89.732,
+      "contrast": 66.931,
+      "valid_hit_samples": 911204
+    },
+    "upper-glancing": {
+      "rgba_sha256": "f43a0aacfd8e07dc0ec8270fb76484fb88a735f55763ce4b255a3d6d2e303e20",
+      "mean_rgb": 88.758,
+      "contrast": 64.143,
+      "valid_hit_samples": 903187
+    },
+    "gameplay": {
+      "rgba_sha256": "91af80b6e8e59409ec33610d415fafe92cf1df223891ba47f8b7fd07d2d7b213",
+      "mean_rgb": 89.106,
+      "contrast": 51.438
+    }
+  }
+}

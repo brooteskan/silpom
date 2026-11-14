@@ -1,0 +1,602 @@
+{
+  "schema": 1,
+  "name": "SilPOMTowerBenchmark",
+  "scene_sha256": "a0894326d0eb68b7328949b1f1829a8021b7293ce16a567e0c2ea8c9148f6e7b",
+  "source_level_sha256": "9124e6cd4ec1b601bcba0c7dc93424836483e2a2cabd56acb3fd6483596e9df8",
+  "source_tower_prefab": "Assets/SilPOMPlanarAB/IrishFieldstoneTowerOpenShaft/IrishFieldstoneTowerOpenShaft.prefab",
+  "tower_configuration": {
+    "Surface": {
+      "assetId": {
+        "guid": "{9FF7CCF9-EC76-557E-936F-9C60D6031777}",
+        "subId": 1
+      },
+      "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/tower-open-shaft-no-landings-silpom.fbx.silpommesh",
+      "loadBehavior": "QueueLoad"
+    },
+    "Materials": [
+      {
+        "MaterialIdentity": "54172e30-0a57-516c-ab8d-715a16f23f30",
+        "Material": {
+          "assetId": {
+            "guid": "{BDF7197B-92C6-50DA-91EF-7F638CBC4D1A}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/doorway-trim-daylight.azmaterial"
+        },
+        "LightingChannelMask": 0
+      },
+      {
+        "MaterialIdentity": "b612644c-b3f4-5ae8-aeeb-6449c880a78d",
+        "Material": {
+          "assetId": {
+            "guid": "{0C7B28C7-6B6C-5061-8882-1450440282C8}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/doorway-mortar-daylight.azmaterial"
+        },
+        "LightingChannelMask": 0
+      },
+      {
+        "MaterialIdentity": "7f0d5dab-2f0b-52aa-89df-fcb668627073",
+        "Material": {
+          "assetId": {
+            "guid": "{BDF7197B-92C6-50DA-91EF-7F638CBC4D1A}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/doorway-trim-daylight.azmaterial"
+        }
+      },
+      {
+        "MaterialIdentity": "af808a3a-9893-5330-98fc-aa6abb103b72",
+        "Material": {
+          "assetId": {
+            "guid": "{0C7B28C7-6B6C-5061-8882-1450440282C8}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/doorway-mortar-daylight.azmaterial"
+        }
+      },
+      {
+        "MaterialIdentity": "00249d42-34d8-46ad-abdf-255e20162ee6",
+        "Material": {
+          "assetId": {
+            "guid": "{A6188A6F-9484-5740-9E85-621CDBF71A5C}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetowerwelded/plain-shell-rims.azmaterial"
+        }
+      },
+      {
+        "MaterialIdentity": "0fd9b688-137f-4fc8-ae02-30197df83fa5",
+        "Material": {
+          "assetId": {
+            "guid": "{46FA048F-DEE6-5655-BD1C-6A86C7B4157B}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/welded-doorway/trim-blocks/trim-blocks.azmaterial"
+        }
+      },
+      {
+        "MaterialIdentity": "17cd37ed-074d-4fe9-9694-a01a91f0964c",
+        "Material": {
+          "assetId": {
+            "guid": "{F5CAFA41-115A-54FC-B21C-FA774F00B87C}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/welded-doorway/sabazios-roof/sabazios-roof.azmaterial"
+        }
+      },
+      {
+        "MaterialIdentity": "1a3247b7-5448-4de6-828a-70c7078dfa20",
+        "Material": {
+          "assetId": {
+            "guid": "{D489452B-7072-5D5E-92B1-533DA63B027C}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/weathered-basalt.azmaterial"
+        }
+      },
+      {
+        "MaterialIdentity": "1ef364c4-fb63-4354-b6a2-a9b271dc5305",
+        "Material": {
+          "assetId": {
+            "guid": "{C9D22743-3B47-5AA7-A6F3-B4D3E6AB9AC3}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/basalt-stair-cuts.azmaterial"
+        }
+      },
+      {
+        "MaterialIdentity": "20f1c97d-27d2-4fb6-9057-6e124f68eb13",
+        "Material": {
+          "assetId": {
+            "guid": "{D48CAFD7-EC14-50A7-900E-92A20E2B9463}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/window-reveal-daylight-shade-1.azmaterial"
+        },
+        "LightingChannelMask": 0
+      },
+      {
+        "MaterialIdentity": "4113a472-c51f-49f1-8c7c-4132f3320429",
+        "DisableEnvironmentLighting": true,
+        "Material": {
+          "assetId": {
+            "guid": "{0939D885-9C73-5FEC-8F44-B3E455DF4C86}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/landing.azmaterial"
+        },
+        "LightingChannelMask": 8
+      },
+      {
+        "MaterialIdentity": "416d8baf-5e6c-4216-a0bd-34cb9467e892",
+        "Material": {
+          "assetId": {
+            "guid": "{23961A33-86EB-5EE6-AD82-49F43255E389}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetowerwelded/wall/wall.azmaterial"
+        }
+      },
+      {
+        "MaterialIdentity": "56c0b21f-e7a4-44ae-b46c-71b43d6e58ee",
+        "Material": {
+          "assetId": {
+            "guid": "{6DD17A7C-82EB-5CC1-BB1F-E811F64CF324}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetowerwelded/door-mortar.azmaterial"
+        }
+      },
+      {
+        "MaterialIdentity": "5dc863e0-4f7b-41f6-bcec-7873d7feceeb",
+        "Material": {
+          "assetId": {
+            "guid": "{4861D182-19EA-53CA-8BC1-1D6F18764497}",
+            "subId": 0
+          },
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/shaft-stairs.azmaterial",
+          "loadBehavior": "QueueLoad"
+        },
+        "LightingChannelMask": 8,
+        "DisableEnvironmentLighting": true,
+        "ReceiveSpiralLight": true
+      },
+      {
+        "MaterialIdentity": "69295b02-77ba-4bdc-8d8a-252462f26137",
+        "Material": {
+          "assetId": {
+            "guid": "{4552E675-6EE7-50BC-A12C-B8DF942E9B26}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/welded-doorway/terrain-skirt/towerterrainskirtblend.azmaterial"
+        }
+      },
+      {
+        "MaterialIdentity": "71e9e1cb-88ac-4572-ac23-d02b56559ffb",
+        "LightingChannelMask": 1,
+        "Material": {
+          "assetId": {
+            "guid": "{0053CC81-D1D5-560D-867B-95A3CBE24ECF}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/welded-doorway/reveal/reveal.azmaterial"
+        }
+      },
+      {
+        "MaterialIdentity": "9dfd82d3-27da-4abf-9b17-cb3c0a5665f4",
+        "Material": {
+          "assetId": {
+            "guid": "{83F9FAFC-DF0F-548A-BF8E-827CC4C999AF}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetowerwelded/stair-and-floor-stone.azmaterial"
+        },
+        "LightingChannelMask": 0,
+        "DisableEnvironmentLighting": true
+      },
+      {
+        "MaterialIdentity": "77e91a6f-c5d9-55bd-a78c-ac8f8c90d41c",
+        "Material": {
+          "assetId": {
+            "guid": "{02FF170D-D1F1-5C0A-9DAA-2DCB7F44519D}",
+            "subId": 0
+          },
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/shaft-wall.azmaterial",
+          "loadBehavior": "QueueLoad"
+        },
+        "LightingChannelMask": 8,
+        "DisableEnvironmentLighting": true,
+        "ReceiveSpiralLight": false
+      },
+      {
+        "MaterialIdentity": "74675e2c-aa17-52de-aeb7-3ca495c127e9",
+        "Material": {
+          "assetId": {
+            "guid": "{9E24389A-8738-5D32-807D-4E4F311BAA45}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/window-inner-trim-daylight.azmaterial"
+        },
+        "LightingChannelMask": 8,
+        "DisableEnvironmentLighting": true,
+        "ReceiveSpiralLight": false
+      },
+      {
+        "MaterialIdentity": "7001ff0e-4e23-58c3-b7c7-416106b62f8c",
+        "Material": {
+          "assetId": {
+            "guid": "{E0B22694-9DD9-51F7-B789-E616553AF5F5}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/window-reveal-daylight-sun-1.azmaterial"
+        },
+        "LightingChannelMask": 1
+      },
+      {
+        "MaterialIdentity": "b6e54c00-5ee2-5065-9183-a4e95e9bed9a",
+        "Material": {
+          "assetId": {
+            "guid": "{4861D182-19EA-53CA-8BC1-1D6F18764497}",
+            "subId": 0
+          },
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/shaft-stairs.azmaterial",
+          "loadBehavior": "QueueLoad"
+        },
+        "LightingChannelMask": 8,
+        "DisableEnvironmentLighting": true,
+        "ReceiveSpiralLight": true
+      },
+      {
+        "MaterialIdentity": "d5b0d43c-79f3-5387-ac24-3ae7c050ee30",
+        "Material": {
+          "assetId": {
+            "guid": "{02FF170D-D1F1-5C0A-9DAA-2DCB7F44519D}",
+            "subId": 0
+          },
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/shaft-wall.azmaterial",
+          "loadBehavior": "QueueLoad"
+        },
+        "LightingChannelMask": 8,
+        "DisableEnvironmentLighting": true,
+        "ReceiveSpiralLight": false
+      },
+      {
+        "MaterialIdentity": "53c41085-e0d9-5e48-84ce-c452a2622614",
+        "Material": {
+          "assetId": {
+            "guid": "{0C7B28C7-6B6C-5061-8882-1450440282C8}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/doorway-mortar-daylight.azmaterial"
+        },
+        "LightingChannelMask": 8,
+        "DisableEnvironmentLighting": false
+      },
+      {
+        "MaterialIdentity": "d2411952-15c1-55f7-b8b9-632fe5111539",
+        "Material": {
+          "assetId": {
+            "guid": "{8C2A4C3A-25E6-5AE1-BA19-B3686DB86D3B}",
+            "subId": 0
+          },
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/shaft-stair-back.azmaterial",
+          "loadBehavior": "QueueLoad"
+        },
+        "LightingChannelMask": 8,
+        "DisableEnvironmentLighting": true
+      },
+      {
+        "MaterialIdentity": "dc682c9c-955b-5c40-84ef-2f5466be7318",
+        "Material": {
+          "assetId": {
+            "guid": "{8C2A4C3A-25E6-5AE1-BA19-B3686DB86D3B}",
+            "subId": 0
+          },
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/shaft-stair-back.azmaterial",
+          "loadBehavior": "QueueLoad"
+        },
+        "LightingChannelMask": 8,
+        "DisableEnvironmentLighting": true
+      },
+      {
+        "MaterialIdentity": "4e0cad7b-f461-5459-85d3-2f186ff774d9",
+        "Material": {
+          "assetId": {
+            "guid": "{07E8EB91-71FC-54F7-85F9-43098A6EDCB3}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/window-outer-trim-daylight.azmaterial"
+        },
+        "LightingChannelMask": 0
+      },
+      {
+        "MaterialIdentity": "b7485ef0-b1a1-5cbb-903b-5d104356081e",
+        "Material": {
+          "assetId": {
+            "guid": "{07E8EB91-71FC-54F7-85F9-43098A6EDCB3}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/window-outer-trim-daylight.azmaterial"
+        },
+        "LightingChannelMask": 1
+      },
+      {
+        "MaterialIdentity": "f7e3adbc-0b50-5d79-9118-5e93e22956c6",
+        "Material": {
+          "assetId": {
+            "guid": "{0C7B28C7-6B6C-5061-8882-1450440282C8}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/doorway-mortar-daylight.azmaterial"
+        },
+        "LightingChannelMask": 0
+      },
+      {
+        "MaterialIdentity": "338f294c-334f-5129-8d98-77feed1d1eb7",
+        "Material": {
+          "assetId": {
+            "guid": "{0C7B28C7-6B6C-5061-8882-1450440282C8}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/doorway-mortar-daylight.azmaterial"
+        },
+        "LightingChannelMask": 1
+      },
+      {
+        "MaterialIdentity": "8d2063b4-9c75-5b03-805b-13950cb4b06b",
+        "Material": {
+          "assetId": {
+            "guid": "{26FCF9AF-C550-5E3D-ACCB-22BE79760CF6}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/window-reveal-daylight-shade-2.azmaterial"
+        },
+        "LightingChannelMask": 0
+      },
+      {
+        "MaterialIdentity": "d01c80e2-2902-5a93-a0d0-13b3a28dea0a",
+        "Material": {
+          "assetId": {
+            "guid": "{B90C1429-A537-53FF-A94C-2FB5B7C77608}",
+            "subId": 0
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/window-reveal-daylight-shade-3.azmaterial"
+        },
+        "LightingChannelMask": 0
+      }
+    ],
+    "Profiles": [
+      {
+        "ProfileId": 1,
+        "NeuralModel": 4,
+        "Height": {
+          "assetId": {
+            "guid": "{74D7052F-B0CF-528D-A83E-065F36BB017B}",
+            "subId": 1000
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetowerwelded/wall/height.png.streamingimage"
+        },
+        "ScaleMetres": 0.1,
+        "Reference": 0.05,
+        "AddressMode": 0
+      },
+      {
+        "ProfileId": 2,
+        "UseBaseMesh": true,
+        "NeuralModel": 5,
+        "Height": {
+          "assetId": {
+            "guid": "{29EF2473-C0BC-5EE1-83E6-EF32A9FDF1C3}",
+            "subId": 1000
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/sculpted-stair-silpom/height.png.streamingimage"
+        },
+        "ScaleMetres": 0.19,
+        "Reference": 0.5000076295109483,
+        "AddressMode": 1
+      },
+      {
+        "ProfileId": 3,
+        "NeuralModel": 6,
+        "Height": {
+          "assetId": {
+            "guid": "{EF08B089-5C88-58D6-8909-70ABD1045CFF}",
+            "subId": 1000
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/welded-doorway/trim-blocks/height.png.streamingimage"
+        },
+        "ScaleMetres": 0.052,
+        "Reference": 0.5000076295109483,
+        "AddressMode": 1
+      },
+      {
+        "ProfileId": 4,
+        "NeuralModel": 7,
+        "Height": {
+          "assetId": {
+            "guid": "{6E430F78-EEBE-532C-BBE9-DCF71562FD90}",
+            "subId": 1000
+          },
+          "loadBehavior": "QueueLoad",
+          "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/welded-doorway/reveal/height.png.streamingimage"
+        },
+        "ScaleMetres": 0.1,
+        "Reference": 0.05,
+        "AddressMode": 1
+      }
+    ],
+    "ReliefDepthMultiplier": 0.5,
+    "MaxCells": 65525,
+    "ReliefShadowSteps": 0,
+    "SpiralLightPath": [
+      1.302481,
+      -0.963297,
+      9.994835,
+      4.01
+    ],
+    "SpiralLightPeakLux": 0.5,
+    "SpiralLightEnd": [
+      24.0,
+      2.0
+    ],
+    "SpiralLightWindows": [
+      [
+        -0.45,
+        1.05
+      ],
+      [
+        1.22635,
+        1.42
+      ],
+      [
+        1.47635,
+        1.46
+      ],
+      [
+        2.35135,
+        1.5
+      ],
+      [
+        2.60135,
+        1.55
+      ],
+      [
+        2.85135,
+        1.59
+      ],
+      [
+        3.10135,
+        1.63
+      ]
+    ],
+    "UseNeuralSeed": true,
+    "LightingEstimator": "AngularEdges4",
+    "DiffuseAccessibility": true,
+    "ValidationIterations": 4,
+    "ValidationRetryCap": 2,
+    "ValidationToleranceMultiplier": 5.0,
+    "UseR16HeightTextures": true,
+    "UseValidationGather": true,
+    "UseLevelTwoPredictor": true,
+    "UseLevelFourShared": true,
+    "UseLevelFiveProxy": true,
+    "UseLevelFiveDepth": true,
+    "DistantValidationIterations": 2,
+    "DistantValidationToleranceMultiplier": 5.0,
+    "SpiralLightShadowSteps": 9,
+    "LocalShadowMethod": "NeuralOnly",
+    "UseHeightDerivedNormals": false,
+    "NeuralDirectionalVisibility": true,
+    "ProxyDirectionalResponse": true,
+    "SpiralLightMode": "AllSilPomSurfaces"
+  },
+  "tower_configuration_sha256": "0584f1064982f7229d13ca9c426eb847cb655d31390895b8ce5e2d90ae1714ee",
+  "anti_aliasing": "CurrentDefault",
+  "views": {
+    "exterior": {
+      "position": [
+        20.903980640452335,
+        -27.87197418726978,
+        13.386217296123505
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        36.86989764584402
+      ]
+    },
+    "lower-glancing": {
+      "position": [
+        0.4706393281618754,
+        -1.3846306800842285,
+        9.975862579345703
+      ],
+      "rotation": [
+        9.090276920822323,
+        0.0,
+        -19.45792387038199
+      ]
+    },
+    "lower-facing": {
+      "position": [
+        0.4706393281618754,
+        -1.3846306800842285,
+        9.975862579345703
+      ],
+      "rotation": [
+        -2.2906100426385296,
+        0.0,
+        -161.22697816865855
+      ]
+    },
+    "upper-glancing": {
+      "position": [
+        1.0041461785634358,
+        -1.0697278380393982,
+        18.18247866312663
+      ],
+      "rotation": [
+        9.090276920822323,
+        0.0,
+        5.103876269243813
+      ]
+    }
+  },
+  "removed_from_benchmark_only": [
+    "Tower | East upper window Diffuse Probe Grid",
+    "Tower | Northeast stair window Diffuse Probe Grid",
+    "Tower | North upper window Diffuse Probe Grid",
+    "Tower | Northwest stair window Diffuse Probe Grid",
+    "Tower | West upper window Diffuse Probe Grid",
+    "Tower | South upper window Diffuse Probe Grid",
+    "Tower | Southeast stair window Diffuse Probe Grid",
+    "Tower | Entrance Diffuse Probe Grid",
+    "Tower | Entrance GI Ray-Tracing Proxy"
+  ],
+  "required_source_trees": [
+    "Assets/SilPOMPlanarAB/IrishFieldstoneTowerOpenShaft",
+    "Assets/SilPOMPlanarAB/IrishFieldstoneTowerWelded",
+    "Assets/SilPOMLearned"
+  ],
+  "lighting": [
+    "Sun",
+    "Sky and Environment | Daylight IBL",
+    "Comparison Fill | lower",
+    "Comparison Fill | upper"
+  ],
+  "recommended_capture_resolution": [
+    1280,
+    720
+  ],
+  "target_system": "Ryzen 7 5700G"
+}
