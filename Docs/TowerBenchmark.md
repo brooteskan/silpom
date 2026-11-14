@@ -27,8 +27,8 @@ Pull Diversion **main**, including `Assets/SilPOMLearned` and the tower source
 assets. Restore the Git gem revisions recorded in
 `TGProject/scripts/GitDependencies.json` and build the SilPOM modules for that
 PC's existing O3DE build. Allow Asset Processor to finish before opening the
-scene. Use a shader target supported by the target GPU and driver; TG's build
-scripts support the existing SM6.2 compatibility option where needed.
+scene. Use an engine build and shader target supported by the target GPU and
+driver; the scene itself does not select or upgrade the engine's shader target.
 
 GitHub contains the frozen scene, configuration manifest and installer in the
 SilPOM repository; the large tower textures, meshes and learned source assets
