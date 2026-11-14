@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+// Historical hybrid/reference path. Not included in the neural-only shader.
+#include "VisibilityInputs.azsli"
+float SilPomMarchLocalShadow(SP_TEX texture,SilPomPatch p,float2 uv,float2 low,
+    SilPomLocalShadowRay ray,bool skipProbes)
+{
+    uint b=(ray.count+2u)/3u,c=(2u*ray.count+2u)/3u;
+    for(uint i=1;i<=ray.count;++i)
+    {
+        float t=SilPomLocalShadowTime(ray,i);
+        float height=ray.start+ray.hRate*t+ray.bias;
+        if(ray.hRate>0 && height>=ray.top) return 1;
+        if(skipProbes && (i==1u||i==b||i==c||i==ray.count)) continue;
+        if(SilPomShadowHeight(texture,p,float2(uv.x+ray.uRate*t,uv.y+ray.vRate*t),low)>height) return 0;
+    }
+    return 1;
+}
+float SilPomLearnedReliefVisibility(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,
+    float2 uv,float2 low,float3 toLight,uint steps,float maxDistance,uint model,bool neural,float confidence)
+{
+    SilPomLocalShadowRay ray;float immediate;
+    if(!SilPomPrepareLocalShadow(texture,p,f,uv,low,toLight,steps,maxDistance,false,ray,immediate))
+    { SILPOM_SHADOW_STAT(1);return immediate; }
+    if(!neural || ray.count<=4u || model<4u || model>7u || p.scale<=0)
+    { SILPOM_SHADOW_STAT(6);return SilPomMarchLocalShadow(texture,p,uv,low,ray,false); }
+    // Avoid extrapolating beyond the descriptor's trained travel/rise domain.
+    float travelU=ray.uRate*ray.reach*p.textureWidth*p.tileU/p.width;
+    float travelV=ray.vRate*ray.reach*p.textureHeight*p.tileV/p.height;
+    if(max(abs(travelU),abs(travelV))>256.0f || abs(ray.hRate*ray.reach/p.scale)>2.0f)
+    { SILPOM_SHADOW_STAT(6);return SilPomMarchLocalShadow(texture,p,uv,low,ray,false); }
+    float feature[10];
+    if(!SilPomVisibilityFeatures(texture,p,uv,low,ray,feature)) return 0;
+    float visible=SilPomVisibilityProbability(feature,model);
+    if(visible>=confidence) { SILPOM_SHADOW_STAT(3);return 1; }
+    if(visible<=1.0f-confidence) { SILPOM_SHADOW_STAT(4);return 0; }
+    SILPOM_SHADOW_STAT(5);
+    return SilPomMarchLocalShadow(texture,p,uv,low,ray,true);
+}

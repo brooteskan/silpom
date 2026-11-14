@@ -1,0 +1,128 @@
+{
+  "ambient_test_receivers": 2048,
+  "ambient_quadrature": 32,
+  "ambient_target": "same 32 cosine directions, relief-top exit; isolates representation error from quadrature error",
+  "ambient_old_mae": 0.01972607895731926,
+  "ambient_new_mae": 0.017425768077373505,
+  "moving_receiver_footprints": 12,
+  "moving_angles": 722,
+  "moving_reaches": [
+    0.3,
+    0
+  ],
+  "moving_old_mae": 0.13496564328670502,
+  "moving_new_mae": 0.12527146935462952,
+  "moving_unknown_labels": 0,
+  "teacher": "continuous FP64 bilinear cells, 16 footprint samples, repeat",
+  "selection": "fixed height-stratified held-out receivers; never used to select weights",
+  "dense_ambient": {
+    "direction_counts": [
+      32,
+      4096,
+      8192
+    ],
+    "receiver_footprints": 6,
+    "rows": [
+      {
+        "uv": [
+          0.4759501516819,
+          0.07214268296957016
+        ],
+        "footprint": 1.0,
+        "teacher_32": 0.71875,
+        "teacher_4096": 0.693145751953125,
+        "teacher_8192": 0.693145751953125,
+        "model_3_32": 0.7331695556640625,
+        "model_3_8192": 0.700527548789978,
+        "model_5_32": 0.6911821961402893,
+        "model_5_8192": 0.6902356147766113
+      },
+      {
+        "uv": [
+          0.4759501516819,
+          0.07214268296957016
+        ],
+        "footprint": 16.0,
+        "teacher_32": 0.685546875,
+        "teacher_4096": 0.6959991455078125,
+        "teacher_8192": 0.6960525512695312,
+        "model_3_32": 0.8208469748497009,
+        "model_3_8192": 0.8109400868415833,
+        "model_5_32": 0.8175389766693115,
+        "model_5_8192": 0.8249679803848267
+      },
+      {
+        "uv": [
+          0.36657682061195374,
+          0.7166411280632019
+        ],
+        "footprint": 1.0,
+        "teacher_32": 0.96875,
+        "teacher_4096": 0.9853973388671875,
+        "teacher_8192": 0.9852981567382812,
+        "model_3_32": 0.977410614490509,
+        "model_3_8192": 0.9817488789558411,
+        "model_5_32": 0.9700934290885925,
+        "model_5_8192": 0.9801098108291626
+      },
+      {
+        "uv": [
+          0.36657682061195374,
+          0.7166411280632019
+        ],
+        "footprint": 16.0,
+        "teacher_32": 0.97265625,
+        "teacher_4096": 0.98480224609375,
+        "teacher_8192": 0.9847488403320312,
+        "model_3_32": 0.9773654937744141,
+        "model_3_8192": 0.9700864553451538,
+        "model_5_32": 0.9605391621589661,
+        "model_5_8192": 0.9667246341705322
+      },
+      {
+        "uv": [
+          0.07792016118764877,
+          0.6033212542533875
+        ],
+        "footprint": 1.0,
+        "teacher_32": 1.0,
+        "teacher_4096": 0.995849609375,
+        "teacher_8192": 0.995819091796875,
+        "model_3_32": 0.9969661831855774,
+        "model_3_8192": 0.995335578918457,
+        "model_5_32": 0.9966198205947876,
+        "model_5_8192": 0.993648886680603
+      },
+      {
+        "uv": [
+          0.07792016118764877,
+          0.6033212542533875
+        ],
+        "footprint": 16.0,
+        "teacher_32": 0.984375,
+        "teacher_4096": 0.98541259765625,
+        "teacher_8192": 0.9853286743164062,
+        "model_3_32": 0.96943598985672,
+        "model_3_8192": 0.9730783700942993,
+        "model_5_32": 0.9777686595916748,
+        "model_5_8192": 0.9736113548278809
+      }
+    ],
+    "support": "relief-top exit, 16 spatial footprint samples, cosine-weighted hemisphere",
+    "selection": "fixed low/middle/high strata from the already frozen moving-light fixture; no fitting",
+    "reference": "8192-direction numerical teacher estimate; 4096 vs 8192 is a convergence diagnostic, not an error bound",
+    "teacher_32_quadrature_mae": 0.011647542007267475,
+    "teacher_4096_to_8192_max": 9.918212890625e-05,
+    "old_runtime_to_dense_mae": 0.03285481408238411,
+    "new_runtime_to_dense_mae": 0.02853752113878727,
+    "new_dense_representation_mae": 0.028154274448752403,
+    "new_32_quadrature_mae": 0.0052842795848846436
+  },
+  "provenance": {
+    "shared_feature_generation": "1fff6abee2af373dbea3036a43a8475cf0cae9200e695b630c33be997d89b0c0",
+    "source_fingerprint": "178c3b3ed900b0c2f390af8542412979e6f26f6c5eaf4f09d08606499900ba0e",
+    "old_checkpoint_sha256": "f88aeb1d280d1c7ee59685115e40b86b2e65fb26c9799df78ba75449d4801c34",
+    "new_checkpoint_sha256": "4958ba00554f25141aa4e9580bcf8264fd45c203ee0a61f2e4c7fc86717331fa",
+    "teacher_binary_sha256": "2c1b82ba75e3848b9aed587fb3792abade81095455a314c8cd9d8af57b04c75f"
+  }
+}

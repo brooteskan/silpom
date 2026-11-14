@@ -21,6 +21,8 @@ public:
     float m_tileU=1, m_tileV=1, m_offsetU=0, m_offsetV=0;
     AZ::u32 m_maxCells=4096, m_addressMode=0, m_debug=0;
     bool m_reuseTexels=false;
+    bool m_overrideReliefFade=false;
+    float m_reliefFadeStart=4.0f, m_reliefFadeEnd=14.0f;
 };
 class PatchRequests : public AZ::EBusTraits
 {

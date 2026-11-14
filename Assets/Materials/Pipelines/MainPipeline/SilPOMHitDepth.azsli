@@ -1,0 +1,219 @@
+/*
+ * Copyright (c) Contributors to the Open 3D Engine Project.
+ * For complete copyright and license terms please see the LICENSE at the root of this distribution.
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ *
+ */
+#pragma once
+#define SILPOM_HIT_DEPTH 1
+// Application-owned; follows Atom's actual sample count. Default preserves
+// center SV_Position depth exactly on the established 1x route.
+option bool o_silpomSampleFrequency=false;
+#include <Atom/Features/SrgSemantics.azsli>
+
+#define MATERIALPIPELINE_SHADER_HAS_GEOMETRIC_PIXEL_STAGE 1
+#define PIPELINE_HAS_PASS_SRG 0
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+#ifdef MATERIAL_TYPE_DEFINES_AZSLI_FILE_PATH
+#include MATERIAL_TYPE_DEFINES_AZSLI_FILE_PATH
+#endif
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+#include <viewsrg_all.srgi>
+#include <scenesrg_all.srgi>
+#include <Atom/Features/Pipeline/Forward/ForwardPassVertexData.azsli>
+#include <Atom/Features/Pipeline/Forward/ForwardPassPipelineCallbacks.azsli>
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+#include MATERIAL_TYPE_AZSLI_FILE_PATH
+#include "../../../Shaders/SilPOM/HitReuse/SilPOMHitRecord.azsli"
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+struct PsOutput
+{
+    // Implicit hits are behind their constant raster bound. A shell plane's
+    // sample depth can be nearer than its pixel-center raster depth, so its
+    // MSAA variant must not promise the conservative pixel-center constraint.
+#if SILPOM_MSAA_PLANE_DEPTH
+    precise float m_depth : SV_Depth;
+#else
+    precise float m_depth : SV_DepthLessEqual;
+#endif
+    uint4 m_hit : SV_Target0;
+};
+
+#if SILPOM_TOWER_LOD_SHELL
+struct SilPomShellVertex
+{
+    float4 position : SV_Position;
+    sample float2 uv : TEXCOORD0;
+    nointerpolation uint face : TEXCOORD1;
+    noperspective sample float rasterDepth : TEXCOORD2;
+};
+
+SilPomShellVertex VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
+{
+    SilPomShellVertex output=(SilPomShellVertex)0;
+    output.position=float4(2,2,0,1);
+    VsSystemValues sv;
+    sv.m_instanceId=instanceId;
+    const MaterialParameters params=GetMaterialParameters();
+#if SILPOM_WALL_BACKUP_SHELL
+    if(SilPomProxySelected(params,uint(round(IN.position.z))))return output;
+#else
+    if(params.m_silpomProxyLodEnabled)return output;
+#endif
+#if SILPOM_WALL_BACKUP_SHELL
+    // The opening trim and doorway reveal need the same inset coverage
+    // when a neural hit is missed along a triangle edge.
+    const uint model=params.m_silpomNeuralModel;
+    const bool isOpeningSurface=model==6u || model==7u;
+    if((!SilPomIsTowerWallModel(model) && !isOpeningSurface)
+        || params.m_silpomMaxCells!=SP_TOWER_LOD_4PX_RESOLVE)
+        return output;
+#endif
+    const SilPomMeshFace face=SilPomLoadFace(params.m_meshBufferIndex,uint(round(IN.position.z)));
+    const float4x4 localToWorld=GetObjectToWorldMatrix(sv);
+    const float4x4 localToClip=mul(GetViewProjectionMatrix(sv),localToWorld);
+    const float cutoff=SilPomTowerLodDepth(params);
+#if SILPOM_WALL_BACKUP_SHELL
+    const float3 toCamera=ViewSrg::m_worldPosition.xyz-mul(localToWorld,float4(face.origin,1)).xyz;
+    if(dot(mul((float3x3)localToWorld,face.normal),toCamera)<=0.0f)
+        return output;
+
+    // Use the bottom of the same displacement volume as the neural pass.
+    // The shared corner directions keep the inset continuous at welded edges.
+    const float height=min(0.0f,min(-params.m_silpomScale*params.m_silpomReference,
+        params.m_silpomScale*(1.0f-params.m_silpomReference)));
+    const float3 directions[3]={face.d0,face.d1,face.d2};
+#else
+    const float limit=cutoff>0 ? cutoff-SilPomTowerLodOverlap(params) : -1e20f;
+#endif
+    const float2 uv[3]={face.uv0,face.uv1,face.uv2};
+    float4 corners[3];
+    for(uint i=0;i<3;++i)
+    {
+        const float2 offset=uv[i]-face.uv0;
+        float3 vertex=face.origin+face.du*offset.x+face.dv*offset.y;
+#if SILPOM_WALL_BACKUP_SHELL
+        vertex+=directions[i]*height;
+#endif
+        corners[i]=mul(localToClip,float4(vertex,1));
+    }
+    // A single plane clips the authored triangle to at most four vertices.
+    float4 poly[4];
+    float2 polyUv[4];
+    uint count=0;
+    for(uint i=0;i<3;++i)
+    {
+        const uint previous=(i+2)%3;
+#if SILPOM_WALL_BACKUP_SHELL
+        const float a=cutoff-corners[previous].w;
+        const float b=cutoff-corners[i].w;
+#else
+        const float a=corners[previous].w-limit;
+        const float b=corners[i].w-limit;
+#endif
+        if((a<0)!=(b<0))
+        {
+            const float t=a/(a-b);
+            poly[count]=lerp(corners[previous],corners[i],t);
+            polyUv[count++]=lerp(uv[previous],uv[i],t);
+        }
+        if(b>=0)
+        {
+            poly[count]=corners[i];
+            polyUv[count++]=uv[i];
+        }
+    }
+    if(count<3) return output;
+    // The existing proxy indices are (0,1,2), (2,1,3).
+    const uint corner=IN.position.y>0 ? (IN.position.x>0 ? 2u : count-1u) : uint(IN.position.x>0);
+    output.position=poly[corner];
+    output.rasterDepth=output.position.z/output.position.w;
+    output.uv=polyUv[corner];
+    output.face=params.m_silpomHitFaceBase+uint(round(IN.position.z));
+    if(SilPomIsTowerWallModel(params.m_silpomNeuralModel)) output.face|=SP_HIT_RECORD_WALL;
+    return output;
+}
+
+uint4 ShellHit(SilPomShellVertex IN)
+{
+    // SV_Position.z is center-interpolated. Preserve its established 1x
+    // result; the sample-interpolated plane depth is required for MSAA.
+    if(o_silpomSampleFrequency)IN.position.z=IN.rasterDepth;
+    const uint flags=SP_HIT_RECORD_SHELL|(IN.face&SP_HIT_RECORD_WALL);
+    return uint4(asuint(IN.uv),asuint(IN.position.z)|flags,(IN.face<<2)|SP_HIT);
+}
+
+#if SILPOM_WALL_BACKUP_SHELL
+uint4 PixelShader(SilPomShellVertex IN) : SV_Target0
+{
+    // Raster depth can be tested before shading. A strict comparison keeps
+    // hits already published at the same depth by either earlier fill path.
+    return ShellHit(IN);
+}
+#else
+PsOutput PixelShader(SilPomShellVertex IN,uint sampleIndex:SV_SampleIndex)
+{
+    PsOutput output;
+    output.m_depth=o_silpomSampleFrequency?IN.rasterDepth:IN.position.z;
+    // The reverse clip depth is nonnegative. Flag shell winners for the capture.
+    output.m_hit=ShellHit(IN);
+    return output;
+}
+#endif
+#else
+float SilPomNearestFaceDepth(SilPomMeshFace face, VsSystemValues systemValues, const MaterialParameters params)
+{
+    float3 low, high;
+    SilPomFaceBounds(face, params.m_silpomScale, params.m_silpomReference, low, high);
+
+    // Include the expanded AABB used by the ray test, so fallback depths are
+    // bounded too. The projection is reverse Z, so the nearest depth is largest.
+    const float3 extent = (high - low) * .5f + 2e-5f;
+    const float4x4 localToClip = mul(GetViewProjectionMatrix(systemValues), GetObjectToWorldMatrix(systemValues));
+    const float4 center = mul(localToClip, float4((high + low) * .5f, 1.0f));
+    const float minW = center.w - dot(abs(localToClip[3].xyz), extent);
+    const float maxZ = center.z + dot(abs(localToClip[2].xyz), extent);
+    return minW > 1e-6f ? saturate(maxZ / minW + 1e-5f) : 1.0f;
+}
+
+VsOutput VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
+{
+    VsSystemValues SV;
+    SV.m_instanceId = instanceId;
+    const MaterialParameters params = GetMaterialParameters();
+    VsOutput OUT = EvaluateVertexGeometry(IN, SV, params);
+    const SilPomMeshFace face = SilPomLoadFace(params.m_meshBufferIndex, OUT.faceIndex);
+    OUT.position.z = SilPomNearestFaceDepth(face, SV, params);
+    OUT.m_instanceId = instanceId;
+    return OUT;
+}
+
+PsOutput PixelShader(VsOutput IN, bool isFrontFace : SV_IsFrontFace,uint sampleIndex:SV_SampleIndex)
+{
+    // ------- Reconstruct the Instance-Id --------
+    VsSystemValues SV;
+    SV.m_instanceId = IN.m_instanceId;
+
+    const MaterialParameters params = GetMaterialParameters();
+    PixelGeometryData geoData = EvaluatePixelGeometry(IN, SV, isFrontFace, params);
+
+    // Pixel clipping can be done here
+    EvaluateSurface(IN, SV, geoData, params);
+
+    PsOutput OUT;
+    OUT.m_depth = IN.position.z;
+    const uint flags = SilPomIsTowerWallModel(params.m_silpomNeuralModel) ? SP_HIT_RECORD_WALL : 0u;
+    OUT.m_hit = uint4(asuint(silpomDepthHitUv), asuint(IN.position.z)|flags,
+        ((params.m_silpomHitFaceBase + IN.faceIndex) << 2) | uint(IN.silpomDiagnostic.x));
+
+    return OUT;
+}
+#endif

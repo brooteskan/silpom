@@ -1,0 +1,32 @@
+Observed before the final fix. Engine revision: 061180bf24f1666eb30315b35da292eb14f4659c
+
+Ownership/sample-count trace (single failing Ctrl-G):
+(SilPOM AA) - owner=[6727862696593181354] mode=0->3 requests=0 tick=94
+(SilPOM AA) - change samples=1->4 tick=94
+(SilPOM AA) - owner=[6727862696593181354] mode=3->0 requests=1 tick=214
+(SilPOM AA) - change samples=4->1 tick=214
+(SilPOM AA) - owner=[776553106803] mode=0->3 requests=0 tick=214
+(SilPOM AA) - change samples=1->4 tick=214
+
+Separate diagnostic reproduction: last compiled skinning-buffer scope chain.
+These are compiler declarations, not a complete GPU command-list transcript.
+<21:16:55> (SkinBarrier) - id=SkinnedMeshOutputStream_E433BF48BA02429CBC09C576795D7A4F resource=000001E95A407510 buffer=000001E95F2D9E10 beforeScope=Root0 afterScope=Root.MainPipeline_0.MorphTargetPass states=0>8 queues=0>0 items=1>15
+<21:16:55> (SkinBarrier) - id=SkinnedMeshOutputStream_E433BF48BA02429CBC09C576795D7A4F resource=000001E95A407510 buffer=000001E95F2D9E10 beforeScope=Root.MainPipeline_0.MorphTargetPass afterScope=Root.MainPipeline_0.SkinningPass states=8>8 queues=0>0 items=15>13
+<21:16:55> (SkinBarrier) - id=SkinnedMeshOutputStream_E433BF48BA02429CBC09C576795D7A4F resource=000001E95A407510 buffer=000001E95F2D9E10 beforeScope=Root.MainPipeline_0.SkinningPass afterScope=Root.MainPipeline_0.DepthPrePass.DepthPass states=8>3 queues=0>0 items=13>139
+<21:16:55> (SkinBarrier) - id=SkinnedMeshOutputStream_E433BF48BA02429CBC09C576795D7A4F resource=000001E95A407510 buffer=000001E95F2D9E10 beforeScope=Root.MainPipeline_0.DepthPrePass.DepthPass afterScope=Root.MainPipeline_0.MotionVectorPass.MeshMotionVectorPass states=3>3 queues=0>0 items=139>8
+<21:16:55> (SkinBarrier) - id=SkinnedMeshOutputStream_E433BF48BA02429CBC09C576795D7A4F resource=000001E95A407510 buffer=000001E95F2D9E10 beforeScope=Root.MainPipeline_0.MotionVectorPass.MeshMotionVectorPass afterScope=Root.MainPipeline_0.LightCullingPass.DepthTransparentMinPass states=3>3 queues=0>0 items=8>0
+<21:16:55> (SkinBarrier) - id=SkinnedMeshOutputStream_E433BF48BA02429CBC09C576795D7A4F resource=000001E95A407510 buffer=000001E95F2D9E10 beforeScope=Root.MainPipeline_0.LightCullingPass.DepthTransparentMinPass afterScope=Root.MainPipeline_0.LightCullingPass.DepthTransparentMaxPass states=3>3 queues=0>0 items=0>0
+<21:16:55> (SkinBarrier) - id=SkinnedMeshOutputStream_E433BF48BA02429CBC09C576795D7A4F resource=000001E95A407510 buffer=000001E95F2D9E10 beforeScope=Root.MainPipeline_0.LightCullingPass.DepthTransparentMaxPass afterScope=Root.MainPipeline_0.Shadows.Cascades.0 states=3>3 queues=0>0 items=0>57
+<21:16:55> (SkinBarrier) - id=SkinnedMeshOutputStream_E433BF48BA02429CBC09C576795D7A4F resource=000001E95A407510 buffer=000001E95F2D9E10 beforeScope=Root.MainPipeline_0.Shadows.Cascades.0 afterScope=Root.MainPipeline_0.Shadows.Cascades.1 states=3>3 queues=0>0 items=57>18
+<21:16:55> (SkinBarrier) - id=SkinnedMeshOutputStream_E433BF48BA02429CBC09C576795D7A4F resource=000001E95A407510 buffer=000001E95F2D9E10 beforeScope=Root.MainPipeline_0.Shadows.Cascades.1 afterScope=Root.MainPipeline_0.Shadows.Cascades.2 states=3>3 queues=0>0 items=18>44
+<21:16:55> (SkinBarrier) - id=SkinnedMeshOutputStream_E433BF48BA02429CBC09C576795D7A4F resource=000001E95A407510 buffer=000001E95F2D9E10 beforeScope=Root.MainPipeline_0.Shadows.Cascades.2 afterScope=Root.MainPipeline_0.Shadows.Cascades.3 states=3>3 queues=0>0 items=44>120
+
+Native failure:
+D3D12 ERROR: ID3D12CommandList::ResourceBarrier: Before state (0x8: D3D12_RESOURCE_STATE_UNORDERED_ACCESS) of resource (0x000001E95A407510:'SkinnedMeshOutputStream0') (subresource: 0) specified by transition barrier does not match with the current resource state (0x40: D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE) (assumed at first use) [ RESOURCE_MANIPULATION ERROR #527: RESOURCE_BARRIER_BEFORE_AFTER_MISMATCH]
+Scope::Begin -> CommandListBase::FlushBarriers. Native command-list identity was not captured.
+
+Repeated gameplay after ownership-only correction (before idle-pipeline correction):
+D3D12 ERROR: ID3D12CommandList::DrawIndexedInstanced: The render target sample desc in slot 0 does not match that specified by the current pipeline state.(pipeline state = count 1 quality 0, render target view = count 4 quality 0, ID3D12Resource* = 0x0000020518E76E20:'Root.PreviewRendererSystemComponent Preview Pipeline.Pipeline.OpaquePass.Forward.DiffuseImage') [ EXECUTION ERROR #614: RENDER_TARGET_SAMPLE_DESC_MISMATCH_PIPELINE_STATE]
+
+Actor-only native-console control:
+D3D12 ERROR: ID3D12CommandList::DrawIndexedInstanced: The render target sample desc in slot 0 does not match that specified by the current pipeline state.(pipeline state = count 1 quality 0, render target view = count 4 quality 0, ID3D12Resource* = 0x00000194D16E07B0:'Root.MainPipeline_0.OpaquePass.Forward.DiffuseImage') [ EXECUTION ERROR #614: RENDER_TARGET_SAMPLE_DESC_MISMATCH_PIPELINE_STATE]

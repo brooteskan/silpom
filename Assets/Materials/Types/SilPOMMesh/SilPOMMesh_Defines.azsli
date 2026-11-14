@@ -5,7 +5,10 @@
 // Compiled as separate material variants so the frozen traversal comparison
 // does not pay for a dynamic branch in the measured inner loop.
 option bool o_silpomReuseTexels = true;
-option bool o_silpomUseHierarchy = true;
+option bool o_silpomValidationGather = false;
+option bool o_silpomLevelTwo = false;
+option enum class SilPomLocalShadowMethod {Baseline, Gather, Neural, NeuralOnly} o_silpomLocalShadowMethod = SilPomLocalShadowMethod::Baseline;
+option enum class SilPomLightingEstimator {CurrentRouting, PhysicalRayNeural, DirectionalField32, AngularOccluders4, AngularOccluders8, AngularEdges4} o_silpomLightingEstimator = SilPomLightingEstimator::CurrentRouting;
 
 // Sample interpolation makes the intersection ray agree with MSAA depth samples.
 #define VsOutput VsOutput_SilPom

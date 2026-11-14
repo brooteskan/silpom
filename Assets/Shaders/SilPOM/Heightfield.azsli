@@ -41,11 +41,27 @@ struct SilPomHit
     float3 position;
     float2 uv;
     float3 normal;
+#if SILPOM_HIT_DEPTH
+    float2 faceUv;
+#endif
 };
 
 int SilPomAddress(int i, int size, uint mode)
 {
-    return mode == 0 ? ((i % size) + size) % size : min(max(i, 0), size - 1);
+    if (mode != 0) { return min(max(i, 0), size - 1); }
+    // Power-of-two repeat is exact for negative coordinates too. Avoid two
+    // runtime integer remainders for every axis of every height texel load.
+    if ((size & (size - 1)) == 0) { return int(uint(i) & uint(size - 1)); }
+#if SILPOM_MSAA_FAST_ADDRESSING
+    // The tower's 6656x6144 atlas is not power-of-two. Most validator taps
+    // already lie inside it; wrapped taps need only one signed remainder.
+    // Keep the approved 1x specialization below unchanged.
+    if (uint(i) < uint(size)) { return i; }
+    const int remainder=i%size;
+    return remainder<0?remainder+size:remainder;
+#else
+    return ((i % size) + size) % size;
+#endif
 }
 float SilPomTexel(SP_TEX texture, SilPomPatch p, int x, int y)
 {
@@ -112,7 +128,14 @@ bool SilPomRoot(float a, float b, float c, SP_REF(float) root)
 // the two texels shared with the next cell resident in registers. Grazing rays
 // visit long cell runs, so this removes roughly half of their height loads
 // without introducing an approximate surface or auxiliary hit buffer.
-SilPomHit SilPomIntersectMode(SP_TEX texture, SilPomPatch p, SilPomRay ray, bool reuseTexels)
+#if SILPOM_MESH_DEPTH_BOUNDS
+bool SilPomRangeOverlaps(float2 heightRange, SilPomPatch p, SilPomRay ray, float t, float dt);
+#endif
+SilPomHit SilPomIntersectMode(SP_TEX texture, SilPomPatch p, SilPomRay ray, bool reuseTexels
+#if SILPOM_MESH_DEPTH_BOUNDS
+    ,SP_BOUND_TEX bounds,bool useBounds
+#endif
+)
 {
     SilPomHit hit = SP_ZERO(SilPomHit);
     if (p.width <= 0.0f || p.height <= 0.0f || p.textureWidth == 0 || p.textureHeight == 0
@@ -131,6 +154,13 @@ SilPomHit SilPomIntersectMode(SP_TEX texture, SilPomPatch p, SilPomRay ray, bool
     if (qdx < 0.0f && qx == float(ix)) { --ix; }
     if (qdy < 0.0f && qy == float(iy)) { --iy; }
     float t = begin;
+#if SILPOM_MESH_DEPTH_BOUNDS
+    // The mesh builds a compact level of 4x4-cell bounds from the sampled height image.
+    const int blockMaxX = int((p.textureWidth + 3) >> 2) - 1;
+    const int blockMaxY = int((p.textureHeight + 3) >> 2) - 1;
+    int lastBlockX = 0x7fffffff, lastBlockY = 0x7fffffff;
+    uint skippedCells = 0;
+#endif
     float h00 = SilPomTexel(texture, p, ix, iy);
     float h10 = SilPomTexel(texture, p, ix + 1, iy);
     float h01 = SilPomTexel(texture, p, ix, iy + 1);
@@ -138,6 +168,56 @@ SilPomHit SilPomIntersectMode(SP_TEX texture, SilPomPatch p, SilPomRay ray, bool
     for (uint cell = 0; cell < p.maxCells; ++cell)
     {
         hit.cells = cell + 1;
+#if SILPOM_MESH_DEPTH_BOUNDS
+        hit.cells += skippedCells;
+        if (hit.cells > p.maxCells)
+        {
+            hit.cells = p.maxCells;
+            break;
+        }
+        const int blockX = ix >> 2, blockY = iy >> 2;
+        if (useBounds && (blockX != lastBlockX || blockY != lastBlockY))
+        {
+            lastBlockX = blockX; lastBlockY = blockY;
+            const float edgeX = float((blockX + (qdx > 0.0f ? 1 : 0)) * 4);
+            const float edgeY = float((blockY + (qdy > 0.0f ? 1 : 0)) * 4);
+            const float tx = qdx == 0.0f ? 1e30f : (edgeX - qx) / qdx;
+            const float ty = qdy == 0.0f ? 1e30f : (edgeY - qy) / qdy;
+            const float skip = max(0.0f, min(end - t, min(tx, ty)));
+            // Outside a clamped atlas, every sampled tap is on its border.
+            // The edge block encloses those taps, including partial blocks.
+            const int rangeX = p.addressMode == 0 ? blockX & blockMaxX : clamp(blockX, 0, blockMaxX);
+            const int rangeY = p.addressMode == 0 ? blockY & blockMaxY : clamp(blockY, 0, blockMaxY);
+            const float2 range = SP_FETCH_BOUND(bounds, rangeX, rangeY);
+            if (!SilPomRangeOverlaps(range, p, ray, t, skip))
+            {
+                const bool reachesEnd = skip >= end - t;
+                const float nextQx = !reachesEnd && tx <= ty ? edgeX : qx + qdx * skip;
+                const float nextQy = !reachesEnd && ty <= tx ? edgeY : qy + qdy * skip;
+                int nextX = int(floor(nextQx)), nextY = int(floor(nextQy));
+                if (qdx < 0.0f && nextQx == float(nextX)) --nextX;
+                if (qdy < 0.0f && nextQy == float(nextY)) --nextY;
+                // Counting both axes at a corner can overcount a cell, never undercount one.
+                const uint visits = uint(abs(nextX - ix) + abs(nextY - iy)) + uint(reachesEnd);
+                if (visits > 0 && visits <= p.maxCells - hit.cells + 1)
+                {
+                    if (reachesEnd)
+                    {
+                        hit.cells += visits - 1;
+                        return hit;
+                    }
+                    skippedCells += visits - 1;
+                    qx = nextQx; qy = nextQy; t += skip;
+                    ix = nextX; iy = nextY;
+                    h00 = SilPomTexel(texture, p, ix, iy);
+                    h10 = SilPomTexel(texture, p, ix + 1, iy);
+                    h01 = SilPomTexel(texture, p, ix, iy + 1);
+                    h11 = SilPomTexel(texture, p, ix + 1, iy + 1);
+                    continue;
+                }
+            }
+        }
+#endif
         float dx = qdx == 0.0f ? 1e30f : (float(ix + (qdx > 0.0f ? 1 : 0)) - qx) / qdx;
         float dy = qdy == 0.0f ? 1e30f : (float(iy + (qdy > 0.0f ? 1 : 0)) - qy) / qdy;
         float dt = max(0.0f, min(end - t, min(dx, dy)));
@@ -264,6 +344,13 @@ SilPomHit SilPomIntersectMode(SP_TEX texture, SilPomPatch p, SilPomRay ray, bool
     hit.status = SP_EXHAUSTED;
     return hit;
 }
+
+#if SILPOM_MESH_DEPTH_BOUNDS
+SilPomHit SilPomIntersectMode(SP_TEX texture, SilPomPatch p, SilPomRay ray, bool reuseTexels)
+{
+    return SilPomIntersectMode(texture, p, ray, reuseTexels, texture, false);
+}
+#endif
 
 SilPomHit SilPomIntersect(SP_TEX texture, SilPomPatch p, SilPomRay ray)
 {
@@ -420,7 +507,8 @@ SilPomHit SilPomIntersectHierarchy(SP_TEX texture, SP_BOUND_TEX bounds, SilPomPa
 // Coarse hierarchy descent is deliberately kept separate above for profiling:
 // broad relief ranges overlap too often in the representative workload, while
 // one RG bounds load replaces four R height loads for every rejected leaf.
-SilPomHit SilPomIntersectBounds(SP_TEX texture, SP_BOUND_TEX bounds, SilPomPatch p, SilPomRay ray)
+SilPomHit SilPomIntersectBounds(SP_TEX texture, SP_BOUND_TEX bounds, SilPomPatch p, SilPomRay ray,
+    bool skipCoarseBlocks = false)
 {
     if(p.addressMode!=0 || p.textureWidth!=p.textureHeight || p.textureWidth==0
         || (p.textureWidth&(p.textureWidth-1))!=0)
@@ -438,6 +526,10 @@ SilPomHit SilPomIntersectBounds(SP_TEX texture, SP_BOUND_TEX bounds, SilPomPatch
     // Short/front-facing rays benefit from the original four resident loads;
     // the separate RG lookup amortizes only on longer oblique traversals.
     if(maximumVisited<=64) return SilPomIntersect(texture,p,ray);
+    // Only skip blocks when the full ray fits the configured cell budget.
+    bool useCoarseBounds = skipCoarseBlocks && p.textureWidth >= 16 && maximumVisited <= p.maxCells;
+    int coarseSize = int(p.textureWidth >> 4);
+    int coarseOffset = int(SilPomBoundsOffset(p.textureHeight, 4));
     float3 pos=ray.origin+ray.direction*begin;
     float qx=(pos.x/p.width+.5f)*p.tileU*float(p.textureWidth)+p.offsetU*float(p.textureWidth)-.5f;
     float qy=(pos.y/p.height+.5f)*p.tileV*float(p.textureHeight)+p.offsetV*float(p.textureHeight)-.5f;
@@ -445,9 +537,42 @@ SilPomHit SilPomIntersectBounds(SP_TEX texture, SP_BOUND_TEX bounds, SilPomPatch
     if(qdx<0.0f && qx==float(ix)) --ix;
     if(qdy<0.0f && qy==float(iy)) --iy;
     float t=begin;
+    int lastBlockX = 0, lastBlockY = 0;
+    bool checkedBlock = false;
     for(uint cell=0;cell<p.maxCells;++cell)
     {
         hit.cells=cell+1;
+        if (useCoarseBounds)
+        {
+            int blockX = ix >> 4, blockY = iy >> 4;
+            if (!checkedBlock || blockX != lastBlockX || blockY != lastBlockY)
+            {
+                checkedBlock = true;
+                lastBlockX = blockX;
+                lastBlockY = blockY;
+                int edgeX = (blockX + (qdx > 0.0f ? 1 : 0)) * 16;
+                int edgeY = (blockY + (qdy > 0.0f ? 1 : 0)) * 16;
+                float tx = qdx == 0.0f ? 1e30f : (float(edgeX) - qx) / qdx;
+                float ty = qdy == 0.0f ? 1e30f : (float(edgeY) - qy) / qdy;
+                float skip = max(0.0f, min(end-t, min(tx, ty)));
+                float2 blockRange = SP_FETCH_BOUND(bounds, blockX & (coarseSize-1),
+                    coarseOffset + (blockY & (coarseSize-1)));
+                if (!SilPomRangeOverlaps(blockRange, p, ray, t, skip))
+                {
+                    if (skip >= end-t) return hit;
+                    qx += qdx*skip;
+                    qy += qdy*skip;
+                    t += skip;
+                    if (tx <= ty) qx = float(edgeX);
+                    if (ty <= tx) qy = float(edgeY);
+                    ix = int(floor(qx));
+                    iy = int(floor(qy));
+                    if (qdx < 0.0f && qx == float(ix)) --ix;
+                    if (qdy < 0.0f && qy == float(iy)) --iy;
+                    continue;
+                }
+            }
+        }
         float dx=qdx==0.0f?1e30f:(float(ix+(qdx>0.0f?1:0))-qx)/qdx;
         float dy=qdy==0.0f?1e30f:(float(iy+(qdy>0.0f?1:0))-qy)/qdy;
         float dt=max(0.0f,min(end-t,min(dx,dy)));

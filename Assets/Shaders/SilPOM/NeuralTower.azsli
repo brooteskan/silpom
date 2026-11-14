@@ -1,0 +1,94 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#if SILPOM_HIT_NEURAL_CACHE
+#include "NeuralTowerCacheLayout.azsli"
+
+bool SilPomReadTowerNeuralCache(Texture2D cache, float2 entry, float2 delta, out float prediction)
+{
+    prediction=0;
+    const float2 tile=floor(entry/512.0f);
+    if(any(tile<0) || any(tile>=float2(13,12)) || any(abs(delta)>18.0f)) return false;
+
+    const float2 local=entry-tile*512.0f;
+    const float2 exit=local-delta;
+    // Angular neighbors and spatial filtering must stay on this authored tile.
+    if(any(min(local,exit)<12.0f) || any(max(local,exit)>500.0f)) return false;
+    const uint2 tileIndex=uint2(tile);
+    const uint2 row=TowerNeuralTileRows[tileIndex.y];
+    const uint expert=((tileIndex.x<10 ? row.x : row.y) >> (3*(tileIndex.x%10))) & 7u;
+
+    const float2 angle=(delta+18.0f)/6.0f;
+    const uint2 cell=min(uint2(angle),uint2(5,5));
+    const float2 blend=angle-float2(cell);
+    const uint block=expert*36+cell.y*6+cell.x;
+    const float2 uv=(float2(block%24,block/24)*128+local*(127.0f/512.0f)+.5f)/float2(3072,1536);
+    // The four channels hold the four neighboring angles at the same UV.
+    const float4 seeds=cache.SampleLevel(GetMaterialTextureSampler(),uv,0);
+    prediction=lerp(lerp(seeds.x,seeds.y,blend.x),lerp(seeds.z,seeds.w,blend.x),blend.y);
+    return true;
+}
+#else
+#include "NeuralTowerWeights.azsli"
+#endif
+
+SilPomHit SilPomTryTowerNeural(Texture2D texture, SilPomPatch p, SilPomMeshFace face,
+    SilPomRay ray, SilPomRay search, float2 low
+#if SILPOM_HIT_NEURAL_CACHE
+    ,Texture2D cache
+#endif
+)
+{
+    SilPomHit hit=(SilPomHit)0;
+    const float incidence=min(-dot(face.normal,ray.direction),
+        min(-dot(face.d0,ray.direction),min(-dot(face.d1,ray.direction),-dot(face.d2,ray.direction))));
+    // Grazing rays and hits near triangle edges retain the full search.
+    if(incidence<.30f) return hit;
+    SilPomRay seed=search;
+    const float3 direction=(face.d0+face.d1+face.d2)*(1.0f/3.0f);
+    if(!SilPomMakeSeedRay(face,direction,ray,seed) || seed.direction.z>=-.01f) return hit;
+
+    const float2 size=float2(p.textureWidth,p.textureHeight);
+    const float2 tiling=float2(p.tileU,p.tileV)/float2(p.width,p.height);
+    const float2 offset=float2(p.offsetU,p.offsetV);
+    float prediction;
+#if SILPOM_HIT_NEURAL_CACHE
+    const float top=(p.scale*(1.0f-p.reference)-seed.origin.z)/seed.direction.z;
+    const float2 entry=((seed.origin.xy+seed.direction.xy*top-low)*tiling+offset)*size;
+    const float2 delta=seed.direction.xy*(p.scale/seed.direction.z)*tiling*size;
+    if(!SilPomReadTowerNeuralCache(cache,entry,delta,prediction)) return hit;
+#else
+    const float2 inset=.5f/size;
+    const float2 slopes=clamp(seed.direction.xy*(p.scale/(16*seed.direction.z))*tiling*size,-2.0f,2.0f);
+    float4 heights;
+    [unroll] for(uint i=0;i<4;++i)
+    {
+        const float level=(float(i)+.5f)*.25f;
+        const float t=(p.scale*(level-p.reference)-seed.origin.z)/seed.direction.z;
+        const float2 uv=(seed.origin.xy+seed.direction.xy*t-low)*tiling+offset;
+        heights[i]=texture.SampleLevel(GetMaterialTextureSampler(),clamp(uv,inset,1-inset),0).r;
+    }
+    const float4 features=2*heights-1;
+    prediction=(heights.y+heights.z)*.5f+TowerNeuralOutputBias;
+    [unroll] for(uint i=0;i<8;++i)
+    {
+        const float unit=dot(features,TowerNeuralHeightWeights[i])+dot(slopes,TowerNeuralSlopeWeights[i])+TowerNeuralBias[i];
+        prediction+=max(unit,0.0f)*TowerNeuralOutput[i];
+    }
+#endif
+    const float predictedT=(p.scale*(saturate(prediction)-p.reference)-seed.origin.z)/seed.direction.z;
+    if(predictedT<search.tMin || predictedT>search.tMax) return hit;
+    float t=predictedT;
+    float2 uv=seed.origin.xy+seed.direction.xy*t;
+    float3 weights=SilPomFaceWeights(face,uv);
+    if(min(weights.x,min(weights.y,weights.z))<.015f) return hit;
+    if(SilPomRefineFace(texture,p,face,ray,low,uv,t,5)!=SP_HIT) return hit;
+    weights=SilPomFaceWeights(face,uv);
+    if(min(weights.x,min(weights.y,weights.z))<.015f || abs(t-predictedT)*incidence>.004f) return hit;
+
+    hit.status=SP_HIT;
+    hit.t=t;
+    hit.position=ray.origin+ray.direction*t;
+    hit.faceUv=uv;
+    hit.uv=(uv-low)*tiling+offset;
+    return hit;
+}

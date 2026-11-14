@@ -1,0 +1,9 @@
+{
+    "$import": {
+        "filename": "NeuralStoneWall.materialtype",
+        "patch": {
+            "description": "Dual-cache stone wall with four scalar height reads from a single-mip linear R16F image in the height-bounds slot.",
+            "materialShaderCode": "NeuralStoneWallR16F.azsli"
+        }
+    }
+}

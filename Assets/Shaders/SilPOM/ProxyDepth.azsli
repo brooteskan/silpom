@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+// No height texture, predictor, refinement or coverage inference.
+#include "MaterialDecode.azsli"
+#include "ExperimentalDecode.azsli"
+float SilPomLearnedProxyHeight(float2 uv,float4 derivatives,float3 du,float3 dv,float3 normal,float3 D,float3 V,MaterialParameters params)
+{
+    SilPomMaterialFootprint f=SilPomMaterialFootprintFor(derivatives.xy*float2(6656,6144),derivatives.zw*float2(6656,6144));
+    float lod=clamp(f.lod-3.0f,0.0f,float(params.m_silpomAppearanceFeatureMipCount-1u));
+    float4 first=0,second=0;
+    [loop] for(uint i=0;i<f.taps;++i)
+    {
+        float2 q=uv+f.axis*((float(i)+.5f)/float(f.taps)-.5f)*f.major/float2(6656,6144);
+        first+=GetMaterialTexture(params.m_silpomAppearanceFeatures0).SampleLevel(GetMaterialTextureSampler(params.m_silpomFeatureClampSampler),q,lod)/float(f.taps);
+        second+=GetMaterialTexture(params.m_silpomAppearanceFeatures1).SampleLevel(GetMaterialTextureSampler(params.m_silpomFeatureClampSampler),q,lod)/float(f.taps);
+    }
+    float x[23];SP_UNROLL for(uint k=0;k<4;++k){x[k]=first[k]*2-1;x[4+k]=second[k]*2-1;}
+    float u=length(du),v=length(dv);float3 T=du/u,B=normalize(cross(normal,T));
+    x[8]=dot(V,T);x[9]=dot(V,B);x[10]=dot(V,normal);
+    x[11]=clamp(log2(max(f.major,1.0f))/13.0f,0.0f,12.0f/13.0f);x[12]=clamp(log2(f.minor)/13.0f,0.0f,12.0f/13.0f);
+    x[13]=f.axis.x*f.axis.x-f.axis.y*f.axis.y;x[14]=2*f.axis.x*f.axis.y;
+    x[15]=log2(u)/16.0f;x[16]=log2(v)/16.0f;x[17]=dot(du,dv)/(u*v);
+    x[18]=dot(D,T);x[19]=dot(D,B);x[20]=dot(D,normal);x[21]=uv.x*2-1;x[22]=uv.y*2-1;
+    return SilPomDecodeProxyDepth(x,params.m_silpomAppearanceDecoderBuffer);
+}

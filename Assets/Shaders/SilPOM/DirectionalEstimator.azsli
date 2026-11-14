@@ -1,0 +1,218 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#include "DirectionalEstimatorWeights.azsli"
+#if SILPOM_ANGULAR_EDGES_ONLY || defined(SILPOM_DIRECTIONAL_STANDALONE)
+#define SP_ANGULAR_EDGES_AVAILABLE 1
+#include "AngularEdgeWeights.azsli"
+#endif
+#if SILPOM_ANGULAR_EDGES_ONLY
+// A separate shader binds only this trained model. Keep its compiler/registry
+// footprint out of all pre-existing comparison choices.
+#define o_silpomLightingEstimator SilPomLightingEstimator::AngularEdges4
+#endif
+// Separate lighting-only shader option: CurrentRouting never executes these
+// heads. The shared material encoding and camera intersection are frozen.
+static float silpomDirectionalHidden[32];
+static float3 silpomDirectionalAxes[8];
+static float4 silpomDirectionalCosines[8];
+static float silpomAngularInverseWidth[4];
+static const float3 SilPomDirectionalSamples[32] = {
+    float3(1.250000000e-01f,0.000000000e+00f,9.921567416e-01f),
+    float3(-1.596450451e-01f,1.462479387e-01f,9.762812095e-01f),
+    float3(2.443623293e-02f,-2.784382706e-01f,9.601432185e-01f),
+    float3(2.012222393e-01f,2.624587785e-01f,9.437293044e-01f),
+    float3(-3.692675570e-01f,-6.531823139e-02f,9.270248109e-01f),
+    float3(3.498024660e-01f,-2.225156956e-01f,9.100137362e-01f),
+    float3(-1.170020791e-01f,4.352419023e-01f,8.926785536e-01f),
+    float3(-2.231356539e-01f,-4.296341234e-01f,8.750000000e-01f),
+    float3(4.841151151e-01f,1.767980636e-01f,8.569568251e-01f),
+    float3(-5.036411085e-01f,2.078957282e-01f,8.385254916e-01f),
+    float3(2.427882944e-01f,-5.188244829e-01f,8.196798155e-01f),
+    float3(1.794143739e-01f,5.720012958e-01f,8.003905297e-01f),
+    float3(-5.407570061e-01f,-3.133797383e-01f,7.806247498e-01f),
+    float3(6.343695234e-01f,-1.394643602e-01f,7.603453163e-01f),
+    float3(-3.871458452e-01f,5.506751262e-01f,7.395099729e-01f),
+    float3(-8.943965486e-02f,-6.901996437e-01f,7.180703308e-01f),
+    float3(5.490717571e-01f,4.627582582e-01f,6.959705454e-01f),
+    float3(-7.388784713e-01f,3.055494453e-02f,6.731456009e-01f),
+    float3(5.389551252e-01f,-5.363323345e-01f,6.495190528e-01f),
+    float3(-3.605818593e-02f,7.797915152e-01f,6.250000000e-01f),
+    float3(-5.128175319e-01f,-6.145267927e-01f,5.994789404e-01f),
+    float3(8.123595934e-01f,1.093018343e-01f,5.728219619e-01f),
+    float3(-6.883106405e-01f,4.789086157e-01f,5.448623679e-01f),
+    float3(1.880860573e-01f,-8.360613823e-01f,5.153882032e-01f),
+    float3(4.350332656e-01f,7.591910549e-01f,4.841229183e-01f),
+    float3(-8.504484103e-01f,-2.713162386e-01f,4.506939094e-01f),
+    float3(8.261024011e-01f,-3.816802626e-01f,4.145780988e-01f),
+    float3(-3.578882017e-01f,8.551555619e-01f,3.750000000e-01f),
+    float3(-3.194073343e-01f,-8.880337577e-01f,3.307189139e-01f),
+    float3(8.499086354e-01f,4.466881591e-01f,2.795084972e-01f),
+    float3(-9.440346462e-01f,2.488445031e-01f,2.165063509e-01f),
+    float3(5.365958083e-01f,-8.345297709e-01f,1.250000000e-01f),
+};
+float SilPomDirectionalLogistic(float z) {return rcp(1.0f+exp(-clamp(z,-32.0f,32.0f)));}
+uint SilPomDirectionalCapCount()
+{
+    return o_silpomLightingEstimator==SilPomLightingEstimator::AngularOccluders8?8u:4u;
+}
+float SilPomDirectionalOutput(uint index)
+{
+    float z=0;
+    if(o_silpomLightingEstimator==SilPomLightingEstimator::DirectionalField32)
+    {
+        z=SilPomDirectionalFieldB1[index];
+        [loop] for(uint j=0;j<32u;++j)z+=silpomDirectionalHidden[j]*SilPomDirectionalFieldW1[index*32u+j];
+    }
+    else if(o_silpomLightingEstimator==SilPomLightingEstimator::AngularOccluders4)
+    {
+        z=SilPomDirectionalCaps4B1[index];
+        [loop] for(uint j=0;j<32u;++j)z+=silpomDirectionalHidden[j]*SilPomDirectionalCaps4W1[index*32u+j];
+    }
+#if SP_ANGULAR_EDGES_AVAILABLE
+    else if(o_silpomLightingEstimator==SilPomLightingEstimator::AngularEdges4)
+    {
+        z=SilPomAngularEdgesB1[index];
+        [loop] for(uint j=0;j<32u;++j)z+=silpomDirectionalHidden[j]*SilPomAngularEdgesW1[index*32u+j];
+    }
+#endif
+    else
+    {
+        z=SilPomDirectionalCaps8B1[index];
+        [loop] for(uint j=0;j<32u;++j)z+=silpomDirectionalHidden[j]*SilPomDirectionalCaps8W1[index*32u+j];
+    }
+    return z;
+}
+float4 SilPomDirectionalSortDescending(float4 c)
+{
+    float2 a=float2(max(c.x,c.y),min(c.x,c.y)),b=float2(max(c.z,c.w),min(c.z,c.w));
+    float high=max(a.x,b.x),low=min(a.y,b.y);
+    float left=min(a.x,b.x),right=max(a.y,b.y);
+    return float4(high,max(left,right),min(left,right),low);
+}
+void SilPomDecodeDirectionalReceiver(float x[20])
+{
+    [loop] for(uint j=0;j<32u;++j)
+    {
+        float z;
+        if(o_silpomLightingEstimator==SilPomLightingEstimator::DirectionalField32)
+        {z=SilPomDirectionalFieldB0[j];[loop] for(uint k=0;k<20u;++k)z+=x[k]*SilPomDirectionalFieldW0[j*20u+k];}
+        else if(o_silpomLightingEstimator==SilPomLightingEstimator::AngularOccluders4)
+        {z=SilPomDirectionalCaps4B0[j];[loop] for(uint k=0;k<20u;++k)z+=x[k]*SilPomDirectionalCaps4W0[j*20u+k];}
+#if SP_ANGULAR_EDGES_AVAILABLE
+        else if(o_silpomLightingEstimator==SilPomLightingEstimator::AngularEdges4)
+        {z=SilPomAngularEdgesB0[j];[loop] for(uint k=0;k<20u;++k)z+=x[k]*SilPomAngularEdgesW0[j*20u+k];}
+#endif
+        else
+        {z=SilPomDirectionalCaps8B0[j];[loop] for(uint k=0;k<20u;++k)z+=x[k]*SilPomDirectionalCaps8W0[j*20u+k];}
+        silpomDirectionalHidden[j]=max(z,0.0f);
+    }
+    if(o_silpomLightingEstimator!=SilPomLightingEstimator::DirectionalField32)
+    {
+        const uint count=SilPomDirectionalCapCount();
+        [loop] for(uint k=0;k<count;++k)
+        {
+            float3 a=float3(SilPomDirectionalOutput(k*3u),SilPomDirectionalOutput(k*3u+1u),SilPomDirectionalOutput(k*3u+2u));
+            silpomDirectionalAxes[k]=a/max(length(a),1e-6f);
+            uint b=count*3u+k*4u;
+            silpomDirectionalCosines[k]=SilPomDirectionalSortDescending(float4(
+                SilPomDirectionalLogistic(SilPomDirectionalOutput(b)),SilPomDirectionalLogistic(SilPomDirectionalOutput(b+1u)),
+                SilPomDirectionalLogistic(SilPomDirectionalOutput(b+2u)),SilPomDirectionalLogistic(SilPomDirectionalOutput(b+3u))));
+#if SP_ANGULAR_EDGES_AVAILABLE
+            if(o_silpomLightingEstimator==SilPomLightingEstimator::AngularEdges4)
+                silpomAngularInverseWidth[k]=rcp(0.00174532925199433f+0.137881010907552f*SilPomDirectionalLogistic(SilPomDirectionalOutput(28u+k)));
+#endif
+        }
+    }
+}
+#ifndef SILPOM_DIRECTIONAL_STANDALONE
+void SilPomAcquireDirectionalEstimator(float4 derivatives)
+{
+    float x[20];
+    [loop] for(uint i=0;i<8u;++i)x[i]=silpomSharedState[i];
+    float u=length(silpomLitFace.du),v=length(silpomLitFace.dv);
+    float3 T=silpomLitFace.du/u,B=normalize(cross(silpomLitFace.normal,T));
+    float3 D=SilPomFaceDirection(silpomLitFace,silpomLitUv);
+    x[8]=log2(u)/16.0f;x[9]=log2(v)/16.0f;x[10]=dot(silpomLitFace.du,silpomLitFace.dv)/(u*v);
+    x[11]=dot(D,T);x[12]=dot(D,B);x[13]=dot(D,silpomLitFace.normal);
+    x[14]=silpomLitUv.x*2-1;x[15]=silpomLitUv.y*2-1;
+    SilPomMaterialFootprint f=SilPomMaterialFootprintFor(derivatives.xy*float2(6656,6144),derivatives.zw*float2(6656,6144));
+    x[16]=clamp(log2(max(f.major,1.0f))/13.0f,0.0f,12.0f/13.0f);
+    x[17]=clamp(log2(f.minor)/13.0f,0.0f,12.0f/13.0f);
+    x[18]=f.axis.x*f.axis.x-f.axis.y*f.axis.y;x[19]=2*f.axis.x*f.axis.y;
+    SilPomDecodeDirectionalReceiver(x);
+}
+#endif
+float SilPomDirectionalFrameVisibility(float3 L,uint steps,float reach)
+{
+    if(steps==0u)return 1;
+    if(L.z<=0.0f)return 0;
+    // The tower queries 0 (relief-top exit) and .30 m. Interpolation between
+    // finite trained bands remains an experimental monotone approximation.
+    uint lo=3u,hi=3u;float blend=0;
+    if(reach>0.0f)
+    {
+        lo=reach<=.1f?0u:1u;hi=lo+1u;
+        blend=saturate((reach-(lo==0u?.025f:.1f))/(lo==0u?.075f:.2f));
+    }
+    if(o_silpomLightingEstimator==SilPomLightingEstimator::DirectionalField32)
+    {
+        float largest=-2;uint nearest=0;
+        [loop] for(uint i=0;i<32u;++i){float d=dot(L,SilPomDirectionalSamples[i]);if(d>largest){largest=d;nearest=i;}}
+        float lower=1,upper=1;
+        [loop] for(uint band=0;band<=hi;++band)
+        {
+            float value=SilPomDirectionalLogistic(SilPomDirectionalOutput(band*32u+nearest));
+            upper=min(upper,value);if(band<=lo)lower=min(lower,value);
+        }
+        return lerp(lower,upper,blend);
+    }
+    const uint count=SilPomDirectionalCapCount();
+    float margin=-2.0f;
+#if SP_ANGULAR_EDGES_AVAILABLE
+    if(o_silpomLightingEstimator==SilPomLightingEstimator::AngularEdges4)margin=-1e20f;
+#endif
+    [loop] for(uint k=0;k<count;++k)
+    {
+        float threshold=lerp(silpomDirectionalCosines[k][lo],silpomDirectionalCosines[k][hi],blend);
+        float capMargin=dot(L,silpomDirectionalAxes[k])-threshold;
+#if SP_ANGULAR_EDGES_AVAILABLE
+        if(o_silpomLightingEstimator==SilPomLightingEstimator::AngularEdges4)
+        {
+            // First-order angular boundary distance; softness is separately
+            // decoded in radians, rather than implicitly set by cap radius.
+            capMargin=(clamp(dot(L,silpomDirectionalAxes[k]),-1.0f,1.0f)-threshold)
+                *rsqrt(max(1.0f-threshold*threshold,1e-6f))*silpomAngularInverseWidth[k];
+        }
+#endif
+        margin=max(margin,capMargin);
+    }
+    // Smooth maximum UNION margin: overlaps cannot darken a direction twice.
+#if SP_ANGULAR_EDGES_AVAILABLE
+    if(o_silpomLightingEstimator==SilPomLightingEstimator::AngularEdges4)return SilPomDirectionalLogistic(-margin);
+#endif
+    return SilPomDirectionalLogistic(-32.0f*margin);
+}
+float SilPomDirectionalVisibility(float3 light,uint steps,float reach)
+{
+    float3 T=normalize(silpomLitFace.du),B=normalize(cross(silpomLitFace.normal,T));
+    float3 L=normalize(float3(dot(light,T),dot(light,B),dot(light,silpomLitFace.normal)));
+    return SilPomDirectionalFrameVisibility(L,steps,reach);
+}
+float SilPomDirectionalAmbientAccessibility()
+{
+    // Canonical samples are cosine weighted in the anchored base frame.
+    // This is diffuse accessibility, not a specular occlusion estimate or an
+    // environment-map-weighted radiance integral. No additional height probes.
+    float total=0;
+    [loop] for(uint i=0;i<32u;++i)
+    {
+        if(o_silpomLightingEstimator==SilPomLightingEstimator::DirectionalField32)
+        {
+            float visible=1;
+            [loop] for(uint band=0;band<4u;++band)visible=min(visible,SilPomDirectionalLogistic(SilPomDirectionalOutput(band*32u+i)));
+            total+=visible;
+        }
+        else total+=SilPomDirectionalFrameVisibility(SilPomDirectionalSamples[i],16u,0.0f);
+    }
+    return total/32.0f;
+}

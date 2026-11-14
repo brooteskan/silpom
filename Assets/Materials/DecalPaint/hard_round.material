@@ -1,0 +1,8 @@
+{
+    "materialType": "@gemroot:Atom_Feature_Common@/Assets/Materials/Types/StandardPBR.materialtype",
+    "materialTypeVersion": 5,
+    "propertyValues": {
+        "baseColor.textureMap": "hard_round.png",
+        "normal.textureMap": "@gemroot:Atom_Feature_Common@/Assets/Textures/Default/default_normal.tif"
+    }
+}

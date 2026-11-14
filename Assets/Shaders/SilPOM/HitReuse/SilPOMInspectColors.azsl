@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: MIT
+#include <Atom/Features/SrgSemantics.azsli>
+#include <Atom/Features/PostProcessing/FullscreenVertex.azsli>
+ShaderResourceGroup PassSrg : SRG_PerPass
+{
+    Texture2DMS<float4> m_diffuse;
+    Texture2DMS<float4> m_specular;
+}
+struct Output {float4 diffuse:SV_Target0;float4 specular:SV_Target1;};
+Output MainPS(VSOutput IN)
+{
+    int2 p=int2(IN.m_position.xy);uint w,h,samples;PassSrg::m_diffuse.GetDimensions(w,h,samples);
+    uint sampleIndex=min(uint(p.x)%4u,samples-1u);p.x/=4;
+    Output OUT;OUT.diffuse=PassSrg::m_diffuse.Load(p,sampleIndex);OUT.specular=PassSrg::m_specular.Load(p,sampleIndex);return OUT;
+}

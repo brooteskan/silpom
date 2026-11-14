@@ -1,0 +1,290 @@
+{
+  "shared": {
+    "kind": "shared",
+    "train_queries": 16379,
+    "validation": {
+      "count": 4096,
+      "mse": 0.023607857525348663,
+      "mae": 0.08719456195831299,
+      "p95_absolute_error": 0.3357793390750885,
+      "subsets": {
+        "grazing_view": {
+          "count": 956,
+          "mse": 0.02661432884633541,
+          "mae": 0.09208115935325623,
+          "p95_absolute_error": 0.3593800216913223
+        },
+        "grazing_light": {
+          "count": 737,
+          "mse": 0.06040048971772194,
+          "mae": 0.19137507677078247,
+          "p95_absolute_error": 0.48948109149932845
+        },
+        "large_footprint": {
+          "count": 1216,
+          "mse": 0.01077481359243393,
+          "mae": 0.06339167803525925,
+          "p95_absolute_error": 0.22839413583278656
+        },
+        "long_finite_reach": {
+          "count": 1009,
+          "mse": 0.02054150402545929,
+          "mae": 0.08383621275424957,
+          "p95_absolute_error": 0.3056845605373379
+        },
+        "unbounded_reach": {
+          "count": 1012,
+          "mse": 0.028294164687395096,
+          "mae": 0.0940423384308815,
+          "p95_absolute_error": 0.3540868967771527
+        },
+        "material_or_exterior_boundary": {
+          "count": 819,
+          "mse": 0.02897065132856369,
+          "mae": 0.1055503711104393,
+          "p95_absolute_error": 0.365896195173263
+        }
+      },
+      "unit_visibility_mse": 0.09534072875976562
+    },
+    "test": {
+      "count": 4095,
+      "mse": 0.024315139278769493,
+      "mae": 0.08616528660058975,
+      "p95_absolute_error": 0.36099095940589887,
+      "subsets": {
+        "grazing_view": {
+          "count": 966,
+          "mse": 0.021396443247795105,
+          "mae": 0.07857225090265274,
+          "p95_absolute_error": 0.3538624346256256
+        },
+        "grazing_light": {
+          "count": 700,
+          "mse": 0.06338045001029968,
+          "mae": 0.19493351876735687,
+          "p95_absolute_error": 0.5135619461536406
+        },
+        "large_footprint": {
+          "count": 1249,
+          "mse": 0.010159528814256191,
+          "mae": 0.06016019359230995,
+          "p95_absolute_error": 0.23251010179519616
+        },
+        "long_finite_reach": {
+          "count": 1022,
+          "mse": 0.02256159298121929,
+          "mae": 0.08428987115621567,
+          "p95_absolute_error": 0.33860709071159345
+        },
+        "unbounded_reach": {
+          "count": 1015,
+          "mse": 0.025987619534134865,
+          "mae": 0.0895347148180008,
+          "p95_absolute_error": 0.39372256696224206
+        },
+        "material_or_exterior_boundary": {
+          "count": 818,
+          "mse": 0.029338497668504715,
+          "mae": 0.09865444898605347,
+          "p95_absolute_error": 0.41191873550415037
+        }
+      },
+      "unit_visibility_mse": 0.08812958002090454
+    },
+    "samples_per_pixel": 16,
+    "steps": 3500,
+    "selection_metric": "validation MSE only",
+    "selected_step": 3499,
+    "validation_constant_mse": 0.07074595987796783,
+    "test_evaluated_after_freeze": true,
+    "partition_seeds": {
+      "train": 18551,
+      "validation": 19391,
+      "test": 74053
+    },
+    "frozen_input_bundle_sha256": "e71c8ee1af40afad37aa860d6217fc187d04b94153bc8f950b8fbdeb6efb2708",
+    "frozen_input_source_sha256": "48099da143d557ecb5c85fed79b254bd74cfab98ce6108375678f599801ace99",
+    "reference_renderer_sha256": "f58f4f5a1c7ce59253a8d56dba387d564903afaade6303df73dec912b96e3452",
+    "reference_contract_sha256": "d00c94b1d817e29c1564c58d32043ae0082e4f47227f75c05de42f15689ee3cc",
+    "training_mip_participation": [
+      3779,
+      2537,
+      2628,
+      2639,
+      2625,
+      2564,
+      2533,
+      2595,
+      2599,
+      2545,
+      2215
+    ],
+    "frozen_original_features_and_decoder": true,
+    "coverage_predicted": false,
+    "bytes": 40896760,
+    "sha256": "1fff6abee2af373dbea3036a43a8475cf0cae9200e695b630c33be997d89b0c0",
+    "source_sha256": "178c3b3ed900b0c2f390af8542412979e6f26f6c5eaf4f09d08606499900ba0e",
+    "benchmark_performed": false,
+    "reference": "filtered local detailed heightfield; source UV metric and affine center D frozen per query"
+  },
+  "depth": {
+    "kind": "depth",
+    "train_queries": 16382,
+    "validation": {
+      "count": 4096,
+      "mse": 0.00739029236137867,
+      "mae": 0.061190564185380936,
+      "p95_absolute_error": 0.16374757513403893,
+      "subsets": {
+        "grazing_view": {
+          "count": 956,
+          "mse": 0.01004127599298954,
+          "mae": 0.06860825419425964,
+          "p95_absolute_error": 0.19455403089523315
+        },
+        "grazing_light": {
+          "count": 737,
+          "mse": 0.007705623749643564,
+          "mae": 0.06029483675956726,
+          "p95_absolute_error": 0.15609669685363767
+        },
+        "large_footprint": {
+          "count": 1216,
+          "mse": 0.004614443983882666,
+          "mae": 0.05403570085763931,
+          "p95_absolute_error": 0.13612273707985878
+        },
+        "long_finite_reach": {
+          "count": 1009,
+          "mse": 0.00694979727268219,
+          "mae": 0.059586819261312485,
+          "p95_absolute_error": 0.153665491938591
+        },
+        "unbounded_reach": {
+          "count": 1012,
+          "mse": 0.008732616901397705,
+          "mae": 0.06351074576377869,
+          "p95_absolute_error": 0.1791549913585186
+        },
+        "material_or_exterior_boundary": {
+          "count": 819,
+          "mse": 0.00941404514014721,
+          "mae": 0.06667060405015945,
+          "p95_absolute_error": 0.17702226042747496
+        }
+      },
+      "height_mae_metres": 0.003059528209269047,
+      "ray_depth_mae_metres": 0.005007442086935043,
+      "ray_depth_p95_metres": 0.014726313995197415,
+      "authored_plane_ray_depth_mae_metres": 0.015576552599668503,
+      "resolved_uv_mae_source_texels": 2.059055520106437,
+      "resolved_uv_p95_source_texels": 6.516237205274024
+    },
+    "test": {
+      "count": 4096,
+      "mse": 0.0070947883650660515,
+      "mae": 0.061379194259643555,
+      "p95_absolute_error": 0.1621391735970974,
+      "subsets": {
+        "grazing_view": {
+          "count": 966,
+          "mse": 0.010259680449962616,
+          "mae": 0.0722866803407669,
+          "p95_absolute_error": 0.19217480346560478
+        },
+        "grazing_light": {
+          "count": 701,
+          "mse": 0.0068293078802526,
+          "mae": 0.06214629486203194,
+          "p95_absolute_error": 0.1646091341972351
+        },
+        "large_footprint": {
+          "count": 1250,
+          "mse": 0.004597293678671122,
+          "mae": 0.0542425736784935,
+          "p95_absolute_error": 0.12983870655298232
+        },
+        "long_finite_reach": {
+          "count": 1022,
+          "mse": 0.007155393250286579,
+          "mae": 0.062249068170785904,
+          "p95_absolute_error": 0.15957317128777493
+        },
+        "unbounded_reach": {
+          "count": 1016,
+          "mse": 0.0073774722404778,
+          "mae": 0.06095731630921364,
+          "p95_absolute_error": 0.16219116374850273
+        },
+        "material_or_exterior_boundary": {
+          "count": 819,
+          "mse": 0.008255253545939922,
+          "mae": 0.06574398279190063,
+          "p95_absolute_error": 0.17088251113891598
+        }
+      },
+      "height_mae_metres": 0.003068959712982178,
+      "ray_depth_mae_metres": 0.005053970497101545,
+      "ray_depth_p95_metres": 0.014424800407141447,
+      "authored_plane_ray_depth_mae_metres": 0.0156559981405735,
+      "resolved_uv_mae_source_texels": 2.2816850810029914,
+      "resolved_uv_p95_source_texels": 6.819140912026732
+    },
+    "samples_per_pixel": 16,
+    "steps": 3500,
+    "selection_metric": "validation MSE only",
+    "selected_step": 3400,
+    "validation_constant_mse": 0.016321346163749695,
+    "test_evaluated_after_freeze": true,
+    "partition_seeds": {
+      "train": 18551,
+      "validation": 19391,
+      "test": 74053
+    },
+    "frozen_input_bundle_sha256": "0687c0a7274ccd8313f9dae5d0dc8524c020cc648e57d6facdeba3d3021affae",
+    "frozen_input_source_sha256": "178c3b3ed900b0c2f390af8542412979e6f26f6c5eaf4f09d08606499900ba0e",
+    "reference_renderer_sha256": "f58f4f5a1c7ce59253a8d56dba387d564903afaade6303df73dec912b96e3452",
+    "reference_contract_sha256": "d00c94b1d817e29c1564c58d32043ae0082e4f47227f75c05de42f15689ee3cc",
+    "training_mip_participation": [
+      5079,
+      2628,
+      2639,
+      2628,
+      2567,
+      2533,
+      2594,
+      2597,
+      2545,
+      2217
+    ],
+    "frozen_original_features_and_decoder": true,
+    "coverage_predicted": false,
+    "bytes": 6820396,
+    "sha256": "961ade5a58f3e0c03f24d3706c243039f969c850d32402612850b9c41c9177ce",
+    "source_sha256": "178c3b3ed900b0c2f390af8542412979e6f26f6c5eaf4f09d08606499900ba0e",
+    "benchmark_performed": false,
+    "reference": "filtered local detailed heightfield; source UV metric and affine center D frozen per query"
+  },
+  "previous_candidate_validation": {
+    "commit": "56a80d9",
+    "partition_role": "checkpoint-selection validation; not an untouched final test",
+    "shared_visibility_mae": 0.08012226969003677,
+    "depth_height_mae_metres": 0.003015626408159733
+  },
+  "gpu_conformance": {
+    "inputs_per_model_per_profile": 4096,
+    "shader_models": [
+      "6.2",
+      "6.7"
+    ],
+    "max_output_difference": 3.57628e-07,
+    "depth_uv_reference": true,
+    "oblique_proxy_query_roundtrip": true,
+    "benchmark_performed": false
+  },
+  "frozen_byte_audit": {
+    "material_features_and_weights_identical": true,
+    "appearance_features_and_weights_identical": true
+  }
+}

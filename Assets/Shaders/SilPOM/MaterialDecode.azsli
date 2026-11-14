@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+struct SilPomMaterialFootprint {float major,minor,lod;float2 axis;uint taps;};
+SilPomMaterialFootprint SilPomMaterialFootprintFor(float2 dx,float2 dy)
+{
+    float a=dx.x*dx.x+dy.x*dy.x,b=dx.x*dx.y+dy.x*dy.y,c=dx.y*dx.y+dy.y*dy.y;
+    float d=sqrt(max(0.0f,(a-c)*(a-c)+4*b*b));float largest=(a+c+d)*.5f;
+    SilPomMaterialFootprint f;f.major=sqrt(max(largest,1e-12f));
+    f.minor=max(1.0f,max(sqrt(max(0.0f,(a+c-d)*.5f)),f.major/8.0f));
+    // Select the stable eigenvector form near an axis-aligned footprint.
+    float2 direction=a>=c?float2(largest-c,b):float2(b,largest-a);
+    f.axis=dot(direction,direction)>1e-24f?normalize(direction):float2(1,0);
+    f.lod=clamp(log2(f.minor),0.0f,12.0f);f.taps=uint(clamp(ceil(f.major/f.minor),1.0f,8.0f));return f;
+}
+#ifndef SILPOM_MATERIAL_WEIGHT
+#define SILPOM_MATERIAL_WEIGHT(i) asfloat(Bindless::GetByteAddressBuffer(bufferIndex).Load((i)*4u))
+#endif
+void SilPomDecodeMaterial(float x[12],uint bufferIndex,SP_OUT float value[6])
+{
+    SP_UNROLL for(uint c=0;c<6;++c)value[c]=SILPOM_MATERIAL_WEIGHT(304u+c);
+    SP_UNROLL for(uint j=0;j<16;++j)
+    {
+        float z=SILPOM_MATERIAL_WEIGHT(192u+j);
+        SP_UNROLL for(uint k=0;k<12;++k)z+=x[k]*SILPOM_MATERIAL_WEIGHT(j*12u+k);
+        z=max(z,0.0f);
+        SP_UNROLL for(uint c=0;c<6;++c)value[c]+=z*SILPOM_MATERIAL_WEIGHT(208u+j*6u+c);
+    }
+    SP_UNROLL for(uint c=0;c<6;++c)value[c]=saturate(value[c]);
+}

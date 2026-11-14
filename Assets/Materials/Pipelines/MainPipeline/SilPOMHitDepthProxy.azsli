@@ -1,0 +1,98 @@
+// SPDX-License-Identifier: MIT
+// Authored proxy rasterization only. No intersection/predictor includes.
+option bool o_silpomSampleFrequency=false;
+#include <Atom/Features/SrgSemantics.azsli>
+#define MATERIALPIPELINE_SHADER_HAS_GEOMETRIC_PIXEL_STAGE 1
+#define PIPELINE_HAS_PASS_SRG 0
+#ifdef MATERIAL_TYPE_DEFINES_AZSLI_FILE_PATH
+#include MATERIAL_TYPE_DEFINES_AZSLI_FILE_PATH
+#endif
+#include <viewsrg_all.srgi>
+#include <scenesrg_all.srgi>
+#include <Atom/Features/Pipeline/Forward/ForwardPassVertexData.azsli>
+#include <Atom/Features/Pipeline/Forward/ForwardPassPipelineCallbacks.azsli>
+#include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_MaterialInputs.azsli>
+#include <Atom/Features/Bindless.azsli>
+#include "../../../Shaders/SilPOM/ProxySelection.azsli"
+#include "../../../Shaders/SilPOM/HitReuse/SilPOMHitRecord.azsli"
+#if SILPOM_PROXY_DEPTH
+#define SP_UNROLL [unroll]
+#define SP_OUT out
+#include "../../../Shaders/SilPOM/ProxyDepth.azsli"
+#endif
+struct ProxyVertex
+{
+    float4 position:SV_Position;
+    sample float2 uv:TEXCOORD0;
+    nointerpolation uint face:TEXCOORD1;
+    noperspective sample float rasterDepth:TEXCOORD3;
+#if SILPOM_PROXY_DEPTH
+    nointerpolation uint instance:TEXCOORD2;
+#endif
+};
+ProxyVertex VertexShader(VsInput IN,uint instanceId:SV_InstanceID)
+{
+    ProxyVertex output=(ProxyVertex)0;output.position=float4(2,2,0,1);
+    MaterialParameters params=GetMaterialParameters();uint face=uint(round(IN.position.z));
+    if(!SilPomProxySelected(params,face))return output;
+    uint offset=face*144u;
+    float3 origin=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset)).xyz;
+    float3 du=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+16u)).xyz;
+    float3 dv=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+32u)).xyz;
+    float4 u=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+64u));
+    float2 last=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+80u)).xy;
+    output.uv=IN.position.y>0?last:(IN.position.x>0?u.zw:u.xy);
+    float3 position=origin+du*(output.uv.x-u.x)+dv*(output.uv.y-u.y);
+    VsSystemValues sv;sv.m_instanceId=instanceId;
+    output.position=mul(GetViewProjectionMatrix(sv),mul(GetObjectToWorldMatrix(sv),float4(position,1)));
+    output.rasterDepth=output.position.z/output.position.w;
+    output.face=params.m_silpomHitFaceBase+face;
+#if SILPOM_PROXY_DEPTH
+    output.instance=instanceId;
+#endif
+    return output;
+}
+#if SILPOM_PROXY_DEPTH || SILPOM_MSAA_PLANE_DEPTH
+struct ProxyOutput {precise float depth:SV_Depth;uint4 hit:SV_Target0;};
+#else
+struct ProxyOutput {precise float depth:SV_DepthLessEqual;uint4 hit:SV_Target0;};
+#endif
+ProxyOutput PixelShader(ProxyVertex IN,uint sampleIndex:SV_SampleIndex)
+{
+    ProxyOutput output;output.depth=o_silpomSampleFrequency?IN.rasterDepth:IN.position.z;
+    float2 hitUv=IN.uv;
+#if SILPOM_PROXY_DEPTH
+    // Sample features and infer once. Coverage is the original triangle.
+    MaterialParameters params=GetMaterialParameters();uint offset=(IN.face-params.m_silpomHitFaceBase)*144u;
+    float3 origin=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset)).xyz;
+    float3 du=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+16u)).xyz;
+    float3 dv=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+32u)).xyz;
+    float3 N=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+48u)).xyz;
+    float4 uv=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+64u));
+    float2 uv2=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+80u)).xy;
+    float3 d0=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+96u)).xyz;
+    float3 d1=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+112u)).xyz;
+    float3 d2=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+128u)).xyz;
+    float2 a=uv.zw-uv.xy,b=uv2-uv.xy,q=IN.uv-uv.xy;
+    float invArea=rcp(a.x*b.y-a.y*b.x);
+    float2 bary=float2(q.x*b.y-q.y*b.x,a.x*q.y-a.y*q.x)*invArea;
+    float3 D=d0+(d1-d0)*bary.x+(d2-d0)*bary.y;
+    VsSystemValues sv;sv.m_instanceId=IN.instance;
+    float4x4 model=GetObjectToWorldMatrix(sv);
+    float objectScale=length(mul((float3x3)model,float3(1,0,0)));
+    float3x3 rotation=(float3x3)model/objectScale;
+    float3 baseWS=mul(model,float4(origin+du*q.x+dv*q.y,1)).xyz;
+    float3 V=mul(transpose(rotation),normalize(ViewSrg::m_worldPosition.xyz-baseWS));
+    float heightFraction=SilPomLearnedProxyHeight(IN.uv,float4(ddx(IN.uv),ddy(IN.uv)),du,dv,N,D,V,params);
+    SilPomProxyPlaneHit resolved=SilPomResolveProxyPlane(IN.uv,origin,uv.xy,du,dv,N,D,V,heightFraction,
+        params.m_silpomScale,params.m_silpomReference,objectScale);
+    hitUv=resolved.uv;
+    float4 clip=mul(GetViewProjectionMatrix(sv),mul(model,float4(resolved.position,1)));
+    if(clip.w<=0.0f||clip.z<0.0f||clip.z>clip.w)discard;
+    output.depth=clip.z/clip.w;
+#endif
+    // Exclude raster proxies from the neural-wall hole-fill donors: authored
+    // coverage must never be grown or reconstructed from neighboring hits.
+    output.hit=uint4(asuint(hitUv),asuint(output.depth)|SP_HIT_RECORD_SHELL,(IN.face<<2)|1u);
+    return output;
+}

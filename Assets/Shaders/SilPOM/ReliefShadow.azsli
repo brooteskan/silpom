@@ -4,8 +4,9 @@
 // direction at the visible point, then march the light ray through its height
 // texture. Continue the texture over triangle edges to avoid triangulation
 // seams. This is not a trace against other faces or arbitrary curved surfaces.
+#if !defined(SILPOM_NEURAL_VISIBILITY_ONLY)
 float SilPomReliefVisibility(SP_TEX texture, SilPomPatch p, SilPomMeshFace f,
-    float2 uv, float2 low, float3 toLight, uint steps)
+    float2 uv, float2 low, float3 toLight, uint steps, float maxDistance=0.0f)
 {
     if(steps==0 || abs(p.scale)<1e-8f) return 1;
     float3 D=SilPomFaceDirection(f,uv);
@@ -20,11 +21,22 @@ float SilPomReliefVisibility(SP_TEX texture, SilPomPatch p, SilPomMeshFace f,
     float start=SilPomFaceHeight(texture,p,uv,low).x;
     float top=max(-p.scale*p.reference,p.scale*(1-p.reference));
     float bias=max(1e-5f,abs(p.scale)*.002f);
-    // At most one texel per step; early exit once above the relief envelope.
-    // A finite local radius keeps grazing lights from tracing entire meshes.
-    for(uint i=1;i<=min(steps,64u);++i)
+    const uint count=min(steps,64u);
+    float step=1.0f/texelRate;
+    float extra=0.0f;
+    if(maxDistance>0.0f)
     {
-        float t=float(i)/texelRate;
+        // Spread samples over a physical distance, with more near the receiver.
+        // Avoid spending the sample budget beyond the top of the relief.
+        float reach=hRate>0.0f ? min(maxDistance,(top-start-bias)/hRate) : maxDistance;
+        if(reach<=0.0f) return 1;
+        step=min(step,reach/float(count));
+        extra=max(0.0f,reach-step*float(count));
+    }
+    for(uint i=1;i<=count;++i)
+    {
+        float fraction=float(i)/float(count);
+        float t=float(i)*step+extra*fraction*fraction;
         float rayHeight=start+hRate*t+bias;
         if(hRate>0 && rayHeight>=top) return 1;
         float2 sampleUv=float2(uv.x+uRate*t,uv.y+vRate*t);
@@ -33,6 +45,7 @@ float SilPomReliefVisibility(SP_TEX texture, SilPomPatch p, SilPomMeshFace f,
     return 1;
 }
 
+#endif
 // Sample the external shadow above the flat proxy, along the light ray.
 // Otherwise the proxy would incorrectly shadow every recessed visible point.
 float SilPomFlatReceiverAdvance(float signedHeight,float lightNormalDot,float bias)

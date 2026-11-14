@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+
+// Reverse-Z depth is in [0,1], leaving the top two float bits available.
+static const uint SP_HIT_RECORD_SHELL = 0x80000000u;
+static const uint SP_HIT_RECORD_WALL = 0x40000000u;
+static const uint SP_HIT_RECORD_DEPTH = 0x3fffffffu;

@@ -1,0 +1,189 @@
+{
+  "description": "Approved nearest-hit visual reference, 2026-11-13. Image pixels and hit records are exact; hit ownership IDs are normalized away.",
+  "level_sha256": "410639e80e004bd130b2a1a98a0b60fe1e940db2c9dc7e9e66d306cd71dce053",
+  "viewport": [
+    1280,
+    720
+  ],
+  "approved_source_sha256": "7630e6cdb5f0f2a1f9358df27c3d1313c1e18e532a0fe1f230e680b4015e3768",
+  "captures": {
+    "lower-facing.png": {
+      "kind": "rgba",
+      "sha256": "11c0ebabe3ecc3a31c65e3fff7df690c24c30d08a5856f3fca1e9e720d455029"
+    },
+    "lower-glancing-motion-0.png": {
+      "kind": "rgba",
+      "sha256": "73b52b0d2e28d1643cf4fb6428c03ace6d10d0ebf76b443941df08c35417e365"
+    },
+    "lower-glancing-motion-1.png": {
+      "kind": "rgba",
+      "sha256": "1ba15d30c0395c2baa8d2046d2516f5c7c0a59821964070eba01ecdb5103f88a"
+    },
+    "lower-glancing-motion-2.png": {
+      "kind": "rgba",
+      "sha256": "1ff2b968e30bb41bf0ebe9368b79cd77aa03f415d78ba8528b34ab0c77b6fe70"
+    },
+    "lower-glancing-motion-3.png": {
+      "kind": "rgba",
+      "sha256": "87dc65d2ed1d2a816b71ba6e9cab6851d60112a4a9e4fc40e3a9df99f7c7b8f5"
+    },
+    "lower-glancing-motion-4.png": {
+      "kind": "rgba",
+      "sha256": "c2c6745567fef5b81337d441fad08cbbd6c5719ff039b86d81e1eae2ccd1db06"
+    },
+    "lower-glancing.png": {
+      "kind": "rgba",
+      "sha256": "73b52b0d2e28d1643cf4fb6428c03ace6d10d0ebf76b443941df08c35417e365"
+    },
+    "upper-glancing-motion-0.png": {
+      "kind": "rgba",
+      "sha256": "0898d673fcceca197d2a5ab725440cf8cc24be78bab44519d61deb6625bc1ecb"
+    },
+    "upper-glancing-motion-1.png": {
+      "kind": "rgba",
+      "sha256": "160a05c3a7c47314ac59ab6a65b3529d870b3c89ad6f510f4a8a8979fcbe6a32"
+    },
+    "upper-glancing-motion-2.png": {
+      "kind": "rgba",
+      "sha256": "66c1b57732df5698428bf233ddc0cc21f58f60ec4dee255b0d2855c7c45b5bf9"
+    },
+    "upper-glancing-motion-3.png": {
+      "kind": "rgba",
+      "sha256": "429aa73e510f0a5ac10d438de01f913a78ec91c711edde78d7873e4f58f1d122"
+    },
+    "upper-glancing-motion-4.png": {
+      "kind": "rgba",
+      "sha256": "d8cd4a729ede2418300b64d7093381d407d33dddd88ed640c4b1a170f1370419"
+    },
+    "upper-glancing.png": {
+      "kind": "rgba",
+      "sha256": "0898d673fcceca197d2a5ab725440cf8cc24be78bab44519d61deb6625bc1ecb"
+    },
+    "lower-facing-hit.dds": {
+      "kind": "hit",
+      "sha256": "af1d0ff751f2f9dbae76948ccc395d547418fb7e2bc9e5df1bc1883313e6ffe9"
+    },
+    "lower-glancing-hit.dds": {
+      "kind": "hit",
+      "sha256": "c77abbb8774cbc59f75e0ae7e3d6fd41475169501c9a905e1cea5d5de2077d16"
+    },
+    "lower-glancing-motion-1-hit.dds": {
+      "kind": "hit",
+      "sha256": "a463721847ce8947f4d2716f32f64b222774bf8422dfb4c7bb64b740f3d0b33d"
+    },
+    "lower-glancing-motion-4-hit.dds": {
+      "kind": "hit",
+      "sha256": "bd7c304fb7a6146c9d0ba22d3dc30abce5513cb57293909cbc315cb788ca2013"
+    },
+    "upper-glancing-hit.dds": {
+      "kind": "hit",
+      "sha256": "d19aee33e2ae6febed37fa92914738202c5e7f170467f6a4935a150ff5d2ba01"
+    },
+    "upper-glancing-motion-1-hit.dds": {
+      "kind": "hit",
+      "sha256": "78fb942dc8bfa51f6c5534c8ead22cf84237170f6d4defd5db5d6d04b453aec1"
+    },
+    "upper-glancing-motion-4-hit.dds": {
+      "kind": "hit",
+      "sha256": "694252320e41e76ccc7c95be3a09b9c4e2d896165011d82284fa3b115aac91f8"
+    }
+  },
+  "cameras": {
+    "lower-glancing": {
+      "position": [
+        591.7293456086396,
+        849.7239757697325,
+        9.960862579345703
+      ],
+      "rotation": [
+        9.090276920822323,
+        0.0,
+        -157.90396884425914
+      ]
+    },
+    "lower-facing": {
+      "position": [
+        591.7293456086396,
+        849.7239757697325,
+        9.960862579345703
+      ],
+      "rotation": [
+        -2.2906100426385296,
+        0.0,
+        60.326976857464274
+      ]
+    },
+    "upper-glancing": {
+      "position": [
+        591.5389886185815,
+        849.1344356305653,
+        18.16747866312663
+      ],
+      "rotation": [
+        9.090276920822323,
+        0.0,
+        -133.34216870463337
+      ]
+    }
+  },
+  "tower_quality_controls": {
+    "Controller|Configuration|Spiral light": 2,
+    "Controller|Configuration|Validation retry cap (lower = cheaper)": 2,
+    "Controller|Configuration|Local shadow method": 3,
+    "Controller|Configuration|Materials|[5]|Receive spiral light": false,
+    "Controller|Configuration|Validation distance fade end (0 = off)": 0.0,
+    "Controller|Configuration|Level 5B bounded proxy depth (experimental)": true,
+    "Controller|Configuration|Height-derived normals (off = cheaper)": false,
+    "Controller|Configuration|Relief shadow steps": 0,
+    "Controller|Configuration|Materials|[15]|Receive spiral light": false,
+    "Controller|Configuration|Level 5A learned relief LOD (experimental)": true,
+    "Controller|Configuration|Relief LOD pixel budget (higher = cheaper)": 0.0,
+    "Controller|Configuration|Materials|[10]|Receive spiral light": false,
+    "Controller|Configuration|Level 5A error budget (higher = more proxies)": 0.75,
+    "Controller|Configuration|Materials|[9]|Receive spiral light": false,
+    "Controller|Configuration|Distant validation tolerance (higher may be cheaper)": 5.0,
+    "Controller|Configuration|Materials|[23]|Receive spiral light": false,
+    "Controller|Configuration|Materials|[14]|Receive spiral light": false,
+    "Controller|Configuration|Validation distance fade start": 0.0,
+    "Controller|Configuration|Materials|[24]|Receive spiral light": false,
+    "Controller|Configuration|Level 4A wall material (experimental)": false,
+    "Controller|Configuration|Spiral light peak lux": 0.5,
+    "Controller|Configuration|Spiral-light shadow samples (lower = cheaper)": 9,
+    "Controller|Configuration|Hybrid shadow confidence (higher = safer)": 0.9950000047683716,
+    "Controller|Configuration|Materials|[28]|Receive spiral light": false,
+    "Controller|Configuration|Level 2 predictor (experimental)": true,
+    "Controller|Configuration|Spiral light master brightness": 0.20000000298023224,
+    "Controller|Configuration|Level 4B shared material / visibility (experimental)": true,
+    "Controller|Configuration|Materials|[3]|Receive spiral light": false,
+    "Controller|Configuration|Materials|[17]|Receive spiral light": false,
+    "Controller|Configuration|Materials|[29]|Receive spiral light": false,
+    "Controller|Configuration|Materials|[20]|Receive spiral light": true,
+    "Controller|Configuration|Relief depth multiplier": 0.5,
+    "Controller|Configuration|Materials|[1]|Receive spiral light": false,
+    "Controller|Configuration|Materials|[2]|Receive spiral light": false,
+    "Controller|Configuration|R16 height textures (less GPU memory)": false,
+    "Controller|Configuration|Materials|[26]|Receive spiral light": false,
+    "Controller|Configuration|Materials|[21]|Receive spiral light": false,
+    "Controller|Configuration|Materials|[25]|Receive spiral light": false,
+    "Controller|Configuration|Materials|[6]|Receive spiral light": false,
+    "Controller|Configuration|Materials|[19]|Receive spiral light": false,
+    "Controller|Configuration|Maximum relief distance (closer = cheaper)": 0.0,
+    "Controller|Configuration|Materials|[30]|Receive spiral light": false,
+    "Controller|Configuration|Distant validation iterations (lower = cheaper)": 2,
+    "Controller|Configuration|Distant validation retry cap (lower = cheaper)": 1,
+    "Controller|Configuration|Validation tolerance (higher may be cheaper)": 5.0,
+    "Controller|Configuration|Materials|[16]|Receive spiral light": false,
+    "Controller|Configuration|Materials|[8]|Receive spiral light": false,
+    "Controller|Configuration|Materials|[12]|Receive spiral light": false,
+    "Controller|Configuration|Gather validation (may be cheaper)": false,
+    "Controller|Configuration|Materials|[7]|Receive spiral light": false,
+    "Controller|Configuration|Materials|[4]|Receive spiral light": false,
+    "Controller|Configuration|Materials|[22]|Receive spiral light": false,
+    "Controller|Configuration|Materials|[27]|Receive spiral light": false,
+    "Controller|Configuration|Materials|[0]|Receive spiral light": false,
+    "Controller|Configuration|Materials|[18]|Receive spiral light": false,
+    "Controller|Configuration|Validation iterations (lower = cheaper)": 4,
+    "Controller|Configuration|Materials|[11]|Receive spiral light": false,
+    "Controller|Configuration|Materials|[13]|Receive spiral light": true
+  }
+}

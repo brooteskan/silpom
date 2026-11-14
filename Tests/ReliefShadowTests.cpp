@@ -35,6 +35,20 @@ int main()
     Check(SilPomReliefVisibility(texture,p,f,uv,low,light,16)==0,"Signed displacement must preserve equivalent ridge");
     texture.pixels.assign(256,.4f);
     Check(SilPomReliefVisibility(texture,p,f,uv,low,light,16)==1,"Constant height must not self-shadow");
+
+    Texture stone{256,16,std::vector<float>(256*16,0)};
+    for(int y=0;y<16;++y)
+        for(int x=100;x<115;++x)
+            stone.pixels[y*256+x]=1;
+    p.textureWidth=256;
+    p.scale=.03f;
+    const auto grazing=normalize(float3{1,0,.12f});
+    Check(SilPomReliefVisibility(stone,p,f,uv,low,grazing,18)==1,"Texel-limited trace cannot reach the stone");
+    Check(SilPomReliefVisibility(stone,p,f,uv,low,grazing,18,.24f)==0,"Physical reach must catch the stone");
+    Check(SilPomReliefVisibility(stone,p,f,uv,low,grazing,18,.10f)==1,"Physical reach must remain bounded");
+    Check(SilPomReliefVisibility(stone,p,f,uv,low,{-grazing.x,0,grazing.z},18,.24f)==1,
+        "The same receiver must be lit from the other direction");
+
     Check(std::abs(SilPomFlatReceiverAdvance(-.1f,.5f,.001f)-.202f)<1e-6f,"Recessed receiver must advance to base plane along light");
     Check(SilPomFlatReceiverAdvance(.1f,.5f,.001f)==0,"Raised receiver must not move");
     Check(SilPomFlatReceiverAdvance(-.1f,0,.001f)==0,"Parallel light must remain finite");

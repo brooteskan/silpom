@@ -71,6 +71,60 @@
                             "name": "o_silpomReuseTexels"
                         }
                     },
+                    {"name":"learnedMaterial","type":"Bool","defaultValue":false},
+                    {"name":"lightingEstimator","displayName":"Lighting estimator","type":"Enum","enumValues":["CurrentRouting","PhysicalRayNeural","DirectionalField32","AngularOccluders4","AngularOccluders8","AngularEdges4"],"defaultValue":"CurrentRouting","connection":{"type":"ShaderOption","name":"o_silpomLightingEstimator"}},
+                    {"name":"diffuseAccessibility","displayName":"Diffuse ambient accessibility","type":"Bool","defaultValue":false},
+                    {"name":"neuralDirectionalVisibility","type":"Bool","defaultValue":false,"connection":{"type":"ShaderInput","name":"m_silpomNeuralDirectionalVisibility"}},
+                    {"name":"proxyDirectionalResponse","type":"Bool","defaultValue":false,"connection":{"type":"ShaderInput","name":"m_silpomProxyDirectionalResponse"}},
+                    {"name":"sharedVisibility","type":"Bool","defaultValue":false},
+                    {"name":"materialFeatures2","type":"Image","connection":{"type":"ShaderInput","name":"m_silpomMaterialFeatures2"}},
+                    {"name":"materialUseBaseColor","type":"Bool","defaultValue":true,"connection":{"type":"ShaderInput","name":"m_silpomMaterialUseBaseColor"}},
+                    {"name":"materialUseNormal","type":"Bool","defaultValue":true,"connection":{"type":"ShaderInput","name":"m_silpomMaterialUseNormal"}},
+                    {"name":"materialUseRoughness","type":"Bool","defaultValue":true,"connection":{"type":"ShaderInput","name":"m_silpomMaterialUseRoughness"}},
+                    {"name":"materialFeatures0","type":"Image","connection":{"type":"ShaderInput","name":"m_silpomMaterialFeatures0"}},
+                    {"name":"materialFeatures1","type":"Image","connection":{"type":"ShaderInput","name":"m_silpomMaterialFeatures1"}},
+                    {"name":"materialDecoderBuffer","type":"UInt","defaultValue":0,"connection":{"type":"ShaderInput","name":"m_silpomMaterialDecoderBuffer"}},
+                    {"name":"materialFeatureMipCount","type":"UInt","defaultValue":1,"connection":{"type":"ShaderInput","name":"m_silpomMaterialFeatureMipCount"}},
+                    {
+                        "name": "localShadowMethod",
+                        "displayName": "Local shadow method",
+                        "description": "Baseline/Gather march, historical hybrid, or separately compiled neural-only binary visibility with at most four probes and no local march.",
+                        "type": "Enum",
+                        "enumValues": ["Baseline", "Gather", "Neural", "NeuralOnly"],
+                        "defaultValue": "Baseline",
+                        "connection": {"type": "ShaderOption", "name": "o_silpomLocalShadowMethod"}
+                    },
+                    {
+                        "name": "neuralShadowConfidence",
+                        "displayName": "Neural shadow confidence (higher = safer)",
+                        "type": "Float",
+                        "defaultValue": 0.995,
+                        "min": 0.9,
+                        "max": 0.99999,
+                        "connection": {"type": "ShaderInput", "name": "m_silpomNeuralShadowConfidence"}
+                    },
+                    {
+                        "name": "levelTwoPredictor",
+                        "displayName": "Level 2 predictor (experimental)",
+                        "description": "Eight probes, two learned candidate seeds, nearest validated hit. Uses the validation/retry controls. Off is the Level 1 baseline.",
+                        "type": "Bool",
+                        "defaultValue": false,
+                        "connection": {
+                            "type": "ShaderOption",
+                            "name": "o_silpomLevelTwo"
+                        }
+                    },
+                    {
+                        "name": "validationGather",
+                        "displayName": "Gather validation (may be cheaper)",
+                        "description": "Fetch interior validation quads with GatherRed; preserve four-load addressing at borders. Off is the comparison baseline.",
+                        "type": "Bool",
+                        "defaultValue": false,
+                        "connection": {
+                            "type": "ShaderOption",
+                            "name": "o_silpomValidationGather"
+                        }
+                    },
                     {
                         "name": "heightBounds",
                         "displayName": "Conservative height bounds",
@@ -86,11 +140,193 @@
                         "displayName": "Use conservative bounds",
                         "description": "Use precomputed conservative cell bounds for long traversals; exact height samples and roots remain authoritative.",
                         "type": "Bool",
+                        "defaultValue": false
+                    },
+                    {
+                        "name": "useNeuralSeed",
+                        "displayName": "Use neural depth seed",
+                        "description": "Predict an interior hit seed with the trained tower model and refine against the source height image.",
+                        "type": "Bool",
+                        "defaultValue": false
+                    },
+                    {
+                        "name": "neuralModel",
+                        "displayName": "Trained displacement model",
+                        "type": "UInt",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomNeuralModel"
+                        }
+                    },
+                    {
+                        "name": "validationIterations",
+                        "displayName": "Validation iterations (lower = cheaper)",
+                        "description": "Maximum iterations per no-march solve. Baseline 6; try 4. Lower values can increase fallback coverage.",
+                        "type": "UInt",
+                        "defaultValue": 6,
+                        "min": 1,
+                        "max": 16,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomValidationIterations"
+                        }
+                    },
+                    {
+                        "name": "validationRetryCap",
+                        "displayName": "Validation retry cap (lower = cheaper)",
+                        "description": "Retries after the first no-march solve. Baseline 4; walls retain their one-retry limit. Try 1; 0 disables retries.",
+                        "type": "UInt",
+                        "defaultValue": 4,
+                        "min": 0,
+                        "max": 4,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomValidationRetryCap"
+                        }
+                    },
+                    {
+                        "name": "validationToleranceMultiplier",
+                        "displayName": "Validation tolerance (higher may be cheaper)",
+                        "description": "No-march convergence tolerance multiplier. Baseline 1. Higher values may finish sooner but reduce hit accuracy.",
+                        "type": "Float",
+                        "defaultValue": 1,
+                        "min": 0.01,
+                        "max": 100,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomValidationToleranceMultiplier"
+                        }
+                    },
+                    {
+                        "name": "reliefLodPixelBudget",
+                        "displayName": "Relief LOD pixel budget (higher = cheaper)",
+                        "description": "0 preserves the current mode (4 pixels for the tower). Higher values switch to ordinary geometry sooner. Uses the existing 656-line reference.",
+                        "type": "Float",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomReliefLodPixelBudget"
+                        },
+                        "min": 0,
+                        "max": 64
+                    },
+                    {
+                        "name": "maxReliefDistance",
+                        "displayName": "Maximum relief distance (closer = cheaper)",
+                        "description": "0 uses automatic LOD only. Positive values cap the near relief draw at this view depth in metres, including the transition overlap. LOD modes only.",
+                        "type": "Float",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomMaxReliefDistance"
+                        },
+                        "min": 0,
+                        "max": 100000
+                    },
+                    {
+                        "name": "validationDistanceStart",
+                        "displayName": "Validation distance fade start",
+                        "description": "Camera distance to the face origin in metres where validation begins transitioning toward distant settings.",
+                        "type": "Float",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomValidationDistanceStart"
+                        },
+                        "min": 0,
+                        "max": 100000
+                    },
+                    {
+                        "name": "validationDistanceEnd",
+                        "displayName": "Validation distance fade end (0 = off)",
+                        "description": "0 disables distance-based validation. Otherwise must exceed fade start; distant settings apply fully beyond this camera distance.",
+                        "type": "Float",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomValidationDistanceEnd"
+                        },
+                        "min": 0,
+                        "max": 100000
+                    },
+                    {
+                        "name": "distantValidationIterations",
+                        "displayName": "Distant validation iterations (lower = cheaper)",
+                        "description": "Maximum solve iterations beyond fade end. Interpolated from the normal validation limit between start and end.",
+                        "type": "UInt",
+                        "defaultValue": 4,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomDistantValidationIterations"
+                        },
+                        "min": 1,
+                        "max": 16
+                    },
+                    {
+                        "name": "distantValidationRetryCap",
+                        "displayName": "Distant validation retry cap (lower = cheaper)",
+                        "description": "Retry cap beyond fade end. 0 disables retries; existing wall and confidence limits still apply.",
+                        "type": "UInt",
+                        "defaultValue": 1,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomDistantValidationRetryCap"
+                        },
+                        "min": 0,
+                        "max": 4
+                    },
+                    {
+                        "name": "distantValidationToleranceMultiplier",
+                        "displayName": "Distant validation tolerance (higher may be cheaper)",
+                        "description": "Convergence tolerance multiplier beyond fade end. Higher values can finish sooner but accept less accurate hits.",
+                        "type": "Float",
+                        "defaultValue": 1,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomDistantValidationToleranceMultiplier"
+                        },
+                        "min": 0.01,
+                        "max": 100
+                    },
+                    {
+                        "name": "spiralLightShadowSteps",
+                        "displayName": "Spiral-light shadow samples (lower = cheaper)",
+                        "description": "Samples per spiral-light shadow ray. 0 disables these local shadows while retaining the light. Only affects materials receiving spiral light.",
+                        "type": "UInt",
+                        "defaultValue": 18,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomSpiralLightShadowSteps"
+                        },
+                        "min": 0,
+                        "max": 64
+                    },
+                    {
+                        "name": "useHeightDerivedNormals",
+                        "displayName": "Height-derived normals (off = cheaper)",
+                        "description": "Calculate lighting normals from the displacement height gradient. Off uses the face normal and retains the material normal map. Does not disable intersection validation.",
+                        "type": "Bool",
                         "defaultValue": true,
                         "connection": {
-                            "type": "ShaderOption",
-                            "name": "o_silpomUseHierarchy"
+                            "type": "ShaderInput",
+                            "name": "m_silpomUseHeightDerivedNormals"
                         }
+                    },
+                    {
+                        "name": "neuralCache",
+                        "displayName": "Baked neural hit cache",
+                        "type": "Image",
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomNeuralCache"
+                        }
+                    },
+                    {
+                        "name": "useNeuralCache",
+                        "displayName": "Use baked neural hit cache",
+                        "type": "Bool",
+                        "defaultValue": false
                     },
                     {
                         "name": "width",
@@ -203,6 +439,78 @@
                             "type": "ShaderInput",
                             "name": "m_silpomDebug"
                         }
+                    },
+                    {"name":"proxyLodEnabled","type":"Bool","connection":{"type":"ShaderInput","name":"m_silpomProxyLodEnabled"},"defaultValue":false},
+                    {"name":"proxyDepthEnabled","type":"Bool","defaultValue":false},
+                    {"name":"featureClampSampler","type":"SamplerState","defaultValue":{"m_filterMin":"Linear","m_filterMag":"Linear","m_filterMip":"Linear","m_addressU":"Clamp","m_addressV":"Clamp","m_addressW":"Clamp","m_anisotropyMax":1},"connection":{"type":"ShaderInput","name":"m_silpomFeatureClampSampler"}},
+                    {"name":"appearanceColorSampler","type":"SamplerState","defaultValue":{"m_filterMin":"Linear","m_filterMag":"Linear","m_filterMip":"Linear","m_addressU":"Clamp","m_addressV":"Clamp","m_addressW":"Clamp","m_anisotropyMax":8,"m_anisotropyEnable":1},"connection":{"type":"ShaderInput","name":"m_silpomAppearanceColorSampler"}},
+                    {"name":"proxyLodBuffer","type":"UInt","connection":{"type":"ShaderInput","name":"m_silpomProxyLodBuffer"},"defaultValue":0},
+                    {"name":"appearanceFeatures0","type":"Image","connection":{"type":"ShaderInput","name":"m_silpomAppearanceFeatures0"}},
+                    {"name":"appearanceFeatures1","type":"Image","connection":{"type":"ShaderInput","name":"m_silpomAppearanceFeatures1"}},
+                    {"name":"appearanceDecoderBuffer","type":"UInt","connection":{"type":"ShaderInput","name":"m_silpomAppearanceDecoderBuffer"},"defaultValue":0},
+                    {"name":"appearanceFeatureMipCount","type":"UInt","connection":{"type":"ShaderInput","name":"m_silpomAppearanceFeatureMipCount"},"defaultValue":1}
+                ]
+            },
+            {
+                "name": "spiralLight",
+                "properties": [
+                    {
+                        "name": "brightness",
+                        "displayName": "Spiral light master brightness",
+                        "description": "Linear multiplier for all spiral windows. 0 mutes them; 1 preserves authored lux values.",
+                        "type": "Float",
+                        "defaultValue": 1.0,
+                        "min": 0.0,
+                        "max": 100.0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomSpiralLightBrightness"
+                        }
+                    },
+                    {
+                        "name": "path",
+                        "type": "Vector4",
+                        "defaultValue": [0, 0, 0, 0],
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomSpiralLightPath"
+                        }
+                    },
+                    {
+                        "name": "peakLux",
+                        "type": "Float",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomSpiralLightPeakLux"
+                        }
+                    },
+                    {
+                        "name": "end",
+                        "type": "Vector2",
+                        "defaultValue": [0, 0],
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomSpiralLightEnd"
+                        }
+                    },
+                    {
+                        "name": "windowCount",
+                        "type": "UInt",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomSpiralWindowCount"
+                        }
+                    },
+                    {
+                        "name": "windowBuffer",
+                        "type": "UInt",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomSpiralWindowBuffer"
+                        }
                     }
                 ]
             },
@@ -217,19 +525,28 @@
                             "type": "ShaderInput",
                             "name": "m_meshBufferIndex"
                         }
+                    },
+                    {
+                        "name": "hitFaceBase",
+                        "type": "UInt",
+                        "defaultValue": 0,
+                        "connection": {
+                            "type": "ShaderInput",
+                            "name": "m_silpomHitFaceBase"
+                        }
                     }
                 ]
             }
         ]
     },
-    "lightingModel": "Standard",
+    "lightingModel": "SilPOMMesh",
     "materialShaderDefines": "SilPOMMesh_Defines.azsli",
     "materialShaderCode": "SilPOMMesh.azsli",
     "functors": [
         {
             "type": "Lua",
             "args": {
-                "file": "Materials/Types/SilPOM/SilPOM_State.lua"
+                "file": "Materials/Types/SilPOMMesh/SilPOMMesh_State.lua"
             }
         }
     ],

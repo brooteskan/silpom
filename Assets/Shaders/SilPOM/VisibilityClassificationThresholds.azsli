@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+// Physical reach v2; independent calibration partition.
+static const float VisibilityWallThreshold = 5.432716012e-01f;
+static const float VisibilityStairsThreshold = 4.498572946e-01f;
+static const float VisibilityTrimThreshold = 5.367653370e-01f;
+static const float VisibilityRevealThreshold = 5.469126701e-01f;

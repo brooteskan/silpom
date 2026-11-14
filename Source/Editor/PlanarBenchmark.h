@@ -16,6 +16,8 @@ public:
     static constexpr AZ::EBusHandlerPolicy HandlerPolicy=AZ::EBusHandlerPolicy::Single;
     virtual bool CreateReference(AZ::EntityId patch,const AZStd::string& material,AZ::u32 cells,float width,float height)=0;
     virtual bool IsReady() const=0;
+    virtual bool GetSmaaEnabled(AZ::EntityId entity) const=0;
+    virtual bool SetSmaaEnabled(AZ::EntityId entity,bool enabled)=0;
     virtual void SetReferenceVisible(bool visible)=0;
     virtual void SetOverlay(const AZStd::string& text)=0;
     virtual bool BeginCapture(AZ::u32 samples)=0;
@@ -36,6 +38,8 @@ public:
 private:
     bool CreateReference(AZ::EntityId,const AZStd::string&,AZ::u32,float,float) override;
     bool IsReady() const override;
+    bool GetSmaaEnabled(AZ::EntityId) const override;
+    bool SetSmaaEnabled(AZ::EntityId,bool) override;
     void SetReferenceVisible(bool) override;
     void SetOverlay(const AZStd::string& text) override {m_overlay=text;}
     bool BeginCapture(AZ::u32) override;

@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+struct SilPomProxyQuery {float3 position;float2 uv;};
+// Restore the authored-plane query on the winning camera ray. The frozen
+// appearance model is parameterized by this plane, not by resolved hit UV.
+SilPomProxyQuery SilPomRestoreProxyQuery(float3 resolved,float3 towardCamera,float3 origin,
+    float3 du,float3 dv,float3 normal,float2 uv0)
+{
+    SilPomProxyQuery query;
+    query.position=resolved+towardCamera*(dot(origin-resolved,normal)/dot(towardCamera,normal));
+    float3 delta=query.position-origin;
+    float invMetric=rcp(dot(du,cross(dv,normal)));
+    query.uv=uv0+float2(dot(delta,cross(dv,normal)),dot(du,cross(delta,normal)))*invMetric;
+    return query;
+}
+// Analytic proxy UV Jacobian. Derivatives remain defined across a quad whose
+// lanes choose different near/proxy branches or different triangle owners.
+float4 SilPomProxyUvDerivatives(float4 clipU,float4 clipV,float2 ndc,float inverseW,float2 resolution)
+{
+    float2 a=(clipU.xy-ndc*clipU.w)*inverseW,b=(clipV.xy-ndc*clipV.w)*inverseW;
+    float determinant=a.x*b.y-a.y*b.x;
+    float inverse=sign(determinant)/max(abs(determinant),1e-20f);
+    return float4(float2(b.y,-a.y)*(2.0f/max(resolution.x,1.0f))*inverse,
+        float2(-b.x,a.x)*(-2.0f/max(resolution.y,1.0f))*inverse);
+}
+// Two small heads share spatial features. Neither head acquires height probes.
+#ifndef SILPOM_APPEARANCE_WEIGHT
+#define SILPOM_APPEARANCE_WEIGHT(i) asfloat(Bindless::GetByteAddressBuffer(bufferIndex).Load((i)*4u))
+#endif
+void SilPomDecodeAppearanceSurface(float x[18],uint bufferIndex,SP_OUT float value[3])
+{
+    SP_UNROLL for(uint c=0;c<3;++c)value[c]=SILPOM_APPEARANCE_WEIGHT(352u+c);
+    SP_UNROLL for(uint j=0;j<16;++j)
+    {
+        float z=SILPOM_APPEARANCE_WEIGHT(288u+j);
+        SP_UNROLL for(uint k=0;k<18;++k)z+=x[k]*SILPOM_APPEARANCE_WEIGHT(j*18u+k);
+        z=max(z,0.0f);SP_UNROLL for(uint c=0;c<3;++c)value[c]+=z*SILPOM_APPEARANCE_WEIGHT(304u+j*3u+c);
+    }
+    SP_UNROLL for(uint c=0;c<3;++c)value[c]=rcp(1.0f+exp(-clamp(value[c],-16.0f,16.0f)));
+}
+void SilPomDecodeAppearanceLight(float x[22],uint bufferIndex,SP_OUT float value[2])
+{
+    SP_UNROLL for(uint c=0;c<2;++c)value[c]=SILPOM_APPEARANCE_WEIGHT(755u+c);
+    SP_UNROLL for(uint j=0;j<16;++j)
+    {
+        float z=SILPOM_APPEARANCE_WEIGHT(707u+j);
+        SP_UNROLL for(uint k=0;k<22;++k)z+=x[k]*SILPOM_APPEARANCE_WEIGHT(355u+j*22u+k);
+        z=max(z,0.0f);SP_UNROLL for(uint c=0;c<2;++c)value[c]+=z*SILPOM_APPEARANCE_WEIGHT(723u+j*2u+c);
+    }
+    SP_UNROLL for(uint c=0;c<2;++c)value[c]=2.0f*rcp(1.0f+exp(-clamp(value[c],-16.0f,16.0f)));
+}

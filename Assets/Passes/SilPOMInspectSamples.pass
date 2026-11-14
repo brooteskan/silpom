@@ -1,0 +1,112 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "SilPOMInspectSamplesTemplate",
+            "PassClass": "FullScreenTriangle",
+            "Slots": [
+                {
+                    "Name": "Hit",
+                    "ShaderInputName": "m_hits",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader"
+                },
+                {
+                    "Name": "Depth",
+                    "ShaderInputName": "m_depth",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ImageViewDesc": {
+                        "AspectFlags": [
+                            "Depth"
+                        ]
+                    }
+                },
+                {
+                    "Name": "Records",
+                    "SlotType": "Output",
+                    "ScopeAttachmentUsage": "RenderTarget"
+                },
+                {
+                    "Name": "SampleDepth",
+                    "SlotType": "Output",
+                    "ScopeAttachmentUsage": "RenderTarget"
+                }
+            ],
+            "Connections": [
+                {
+                    "LocalSlot": "Hit",
+                    "AttachmentRef": {
+                        "Pass": "SilPOMHitDepth",
+                        "Attachment": "Hit"
+                    }
+                },
+                {
+                    "LocalSlot": "Depth",
+                    "AttachmentRef": {
+                        "Pass": "SilPOMHitDepth",
+                        "Attachment": "Depth"
+                    }
+                },
+                {
+                    "LocalSlot": "Records",
+                    "AttachmentRef": {
+                        "Pass": "This",
+                        "Attachment": "RecordsImage"
+                    }
+                },
+                {
+                    "LocalSlot": "SampleDepth",
+                    "AttachmentRef": {
+                        "Pass": "This",
+                        "Attachment": "SampleDepthImage"
+                    }
+                }
+            ],
+            "ImageAttachments": [
+                {
+                    "Name": "RecordsImage",
+                    "SizeSource": {
+                        "Source": {
+                            "Pass": "This",
+                            "Attachment": "Hit"
+                        },
+                        "Multipliers": {
+                            "WidthMultiplier": 4,
+                            "HeightMultiplier": 1
+                        }
+                    },
+                    "ImageDescriptor": {
+                        "Format": "R32G32B32A32_UINT",
+                        "SharedQueueMask": "Graphics"
+                    }
+                },
+                {
+                    "Name": "SampleDepthImage",
+                    "SizeSource": {
+                        "Source": {
+                            "Pass": "This",
+                            "Attachment": "Hit"
+                        },
+                        "Multipliers": {
+                            "WidthMultiplier": 4,
+                            "HeightMultiplier": 1
+                        }
+                    },
+                    "ImageDescriptor": {
+                        "Format": "R32_FLOAT",
+                        "SharedQueueMask": "Graphics"
+                    }
+                }
+            ],
+            "PassData": {
+                "$type": "FullscreenTrianglePassData",
+                "ShaderAsset": {
+                    "FilePath": "Shaders/SilPOM/HitReuse/SilPOMInspectSamples.shader"
+                }
+            }
+        }
+    }
+}

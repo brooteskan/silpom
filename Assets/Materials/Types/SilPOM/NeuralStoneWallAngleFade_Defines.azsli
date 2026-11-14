@@ -1,0 +1,4 @@
+#pragma once
+#include "SilPOM_Defines.azsli"
+
+#define SILPOM_ANGLE_FADE 1

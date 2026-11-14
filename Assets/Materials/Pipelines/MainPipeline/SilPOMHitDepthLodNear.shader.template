@@ -1,0 +1,38 @@
+{
+    "Source": "",
+    "DepthStencilState": {
+        "Depth": {
+            "Enable": true,
+            "CompareFunc": "GreaterEqual"
+        }
+    },
+    "ProgramSettings": {
+        "EntryPoints": [
+            {
+                "name": "VertexShader",
+                "type": "Vertex"
+            },
+            {
+                "name": "PixelShader",
+                "type": "Fragment"
+            }
+        ]
+    },
+    "DrawList": "silpomHitDepth",
+    "Supervariants": [
+        {
+            "Name": "",
+            "AddBuildArguments": {
+                "preprocessor": ["-DSILPOM_MSAA_FAST_ADDRESSING=1"]
+            }
+        },
+        {
+            "Name": "NoMSAA",
+            "AddBuildArguments": {
+                "azslc": [
+                    "--no-ms"
+                ]
+            }
+        }
+    ]
+}

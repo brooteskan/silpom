@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+// Gather only an interior 2x2 footprint. Border quads use the original integer
+// addressing so repeat seams, clamp and one-texel dimensions remain exact.
+float3 SilPomGatherFaceHeight(SP_TEX texture, SilPomPatch p, float2 uv, float2 low)
+{
+    float u=(uv.x-low.x)*p.tileU/p.width+p.offsetU;
+    float v=(uv.y-low.y)*p.tileV/p.height+p.offsetV;
+    float x=u*p.textureWidth-.5f,y=v*p.textureHeight-.5f;
+    int ix=int(floor(x)),iy=int(floor(y)); float fx=x-floor(x),fy=y-floor(y);
+    int ax=SilPomAddress(ix,int(p.textureWidth),p.addressMode);
+    int ay=SilPomAddress(iy,int(p.textureHeight),p.addressMode);
+    float h00,h10,h01,h11;
+    if(ax+1<int(p.textureWidth) && ay+1<int(p.textureHeight)
+        && (p.addressMode==0 || (ix>=0 && iy>=0)))
+    {
+        // Target the centre of the quad, away from Gather's subtexel rounding
+        // boundaries. Keep interpolation and Newton arithmetic in FP32.
+        float4 quad=texture.GatherRed(GetMaterialTextureSampler(),
+            (float2(ax,ay)+1.0f)/float2(p.textureWidth,p.textureHeight));
+        h00=quad.w; h10=quad.z; h01=quad.x; h11=quad.y;
+    }
+    else
+    {
+        h00=SilPomTexel(texture,p,ix,iy); h10=SilPomTexel(texture,p,ix+1,iy);
+        h01=SilPomTexel(texture,p,ix,iy+1); h11=SilPomTexel(texture,p,ix+1,iy+1);
+    }
+    float a=h00,b=h10-a,c=h01-a,d=h11-a-b-c;
+    return float3(p.scale*(a+b*fx+c*fy+d*fx*fy-p.reference),
+        p.scale*(b+d*fy)*p.textureWidth*p.tileU/p.width,
+        p.scale*(c+d*fx)*p.textureHeight*p.tileV/p.height);
+}

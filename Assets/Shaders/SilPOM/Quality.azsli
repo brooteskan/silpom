@@ -1,0 +1,48 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+
+float SilPomSpiralTurnBlend(float phase)
+{
+    const float x=min(1.0f,max(0.0f,phase));
+    return x*x*(3.0f-2.0f*x);
+}
+
+float SilPomSpiralWindowLux(float turn,float windowTurn,float peakLux)
+{
+    return max(0.0f,peakLux)*(1.0f-SilPomSpiralTurnBlend(abs(turn-windowTurn)));
+}
+
+float SilPomSpiralLightGain(float height,float endHeight,float fadeDistance,float brightness)
+{
+    if(brightness<=0.0f) return 0.0f;
+    const float fade=fadeDistance>0.0f?min(1.0f,max(0.0f,(endHeight-height)/fadeDistance)):1.0f;
+    return brightness*fade*fade*(3.0f-2.0f*fade);
+}
+
+float SilPomValidationDistanceBlend(float distance,float start,float end)
+{
+    if(end<=start) return 0.0f;
+    return min(1.0f,max(0.0f,(distance-start)/(end-start)));
+}
+
+uint SilPomDistanceBudget(uint nearBudget,uint farBudget,float blend)
+{
+    return uint(float(nearBudget)+(float(farBudget)-float(nearBudget))*blend+.5f);
+}
+
+float SilPomQualityLodOverlap(float scale,float maxDistance)
+{
+    const float overlap=2.0f*abs(scale);
+    return maxDistance>0.0f?min(overlap,maxDistance*.25f):overlap;
+}
+
+float SilPomQualityLodDepth(float scale,float reference,float projectionY,
+    float modeBudget,float pixelBudget,float maxDistance)
+{
+    const float budget=pixelBudget>0.0f?pixelBudget:modeBudget;
+    const float relief=abs(scale)*max(abs(reference),abs(1.0f-reference));
+    const float cutoff=relief*abs(projectionY)*328.0f/budget;
+    // Both near and shell draws use the same overlap. The near draw ends no
+    // farther than maxDistance, including its overlap with the shell.
+    return maxDistance>0.0f?min(cutoff,maxDistance-SilPomQualityLodOverlap(scale,maxDistance)):cutoff;
+}

@@ -1,0 +1,4 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#define SILPOM_TOWER_LOD_NEAR 1
+#include "SilPOMHitDepthNeuralCache.azsli"

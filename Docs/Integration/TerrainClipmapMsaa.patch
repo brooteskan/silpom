@@ -1,0 +1,53 @@
+diff --git a/integrations/o3de/EngineOverrides/TerrainRenderer/GraphMaterialClipmaps.cpp b/integrations/o3de/EngineOverrides/TerrainRenderer/GraphMaterialClipmaps.cpp
+index 5215fba..bc822dd 100644
+--- a/integrations/o3de/EngineOverrides/TerrainRenderer/GraphMaterialClipmaps.cpp
++++ b/integrations/o3de/EngineOverrides/TerrainRenderer/GraphMaterialClipmaps.cpp
+@@ -7,6 +7,7 @@
+ #include <Atom/RPI.Public/Image/AttachmentImagePool.h>
+ #include <Atom/RPI.Public/Image/ImageSystemInterface.h>
+ #include <Atom/RPI.Public/Pass/RasterPass.h>
++#include <Atom/RPI.Public/Pass/ParentPass.h>
+ #include <Atom/RPI.Public/Pass/PassAttachment.h>
+ #include <Atom/RPI.Public/Pass/PassFilter.h>
+ #include <Atom/RPI.Public/Pass/PassSystemInterface.h>
+@@ -151,6 +152,7 @@ namespace TerrainCompositor
+         AZStd::array<AZ::Vector4,Levels> mappings,tags;
+         AZStd::array<AZ::u64,Levels*4> timestampTicks{};
+         AZ::RPI::RenderPipelinePtr pipeline;
++        const AZ::RPI::Pass* root=nullptr;
+         AZ::Data::Instance<AZ::RPI::Material> material;
+         AZ::Data::Asset<AZ::RPI::ShaderAsset> shader;
+         AZ::Matrix4x4 camera=AZ::Matrix4x4::CreateZero();
+@@ -158,7 +160,14 @@ namespace TerrainCompositor
+         AZ::Vector3 lastPosition=AZ::Vector3::CreateZero();
+         AZ::u32 nextTag=1,cursor=0,stationaryFrames=0;
+         bool dirty=true,incremental=true,geometryPending=false;
+-        ~State() { for(auto& layer:layers) for(auto& pass:layer.passes) if(pass) pass->QueueForRemoval(); }
++        ~State()
++        {
++            // A pipeline can replace its entire pass tree without changing its
++            // identity (MSAA, hot reload). The old root owns its own teardown.
++            if(!pipeline || pipeline->GetRootPass().get()!=root) return;
++            for(auto& layer:layers) for(auto& pass:layer.passes)
++                if(pass && pass->GetParent()) pass->QueueForRemoval();
++        }
+     };
+
+     GraphMaterialClipmaps::GraphMaterialClipmaps()=default;
+@@ -217,12 +226,14 @@ namespace TerrainCompositor
+         if(!cacheShader.IsReady()) return;
+         auto pipeline=scene->GetDefaultRenderPipeline();if(!pipeline) return;
+         auto forward=pipeline->FindFirstPass(Name("Forward"));if(!forward) return;
+-        if(m_state && (m_state->pipeline!=pipeline || m_state->material!=material || m_state->shader.GetId()!=cacheShader.GetId() ||
++        if(m_state && (m_state->pipeline!=pipeline || m_state->root!=pipeline->GetRootPass().get() ||
++            m_state->material!=material || m_state->shader.GetId()!=cacheShader.GetId() ||
+             m_state->incremental!=bool(r_terrainGraphClipmapIncremental) || m_state->nextTag>0xffff00)) Shutdown();
+         if(!m_state)
+         {
+             m_state=AZStd::make_unique<State>();auto& state=*m_state;
+-            state.pipeline=pipeline;state.material=material;state.shader=cacheShader;state.incremental=r_terrainGraphClipmapIncremental;
++            state.pipeline=pipeline;state.root=pipeline->GetRootPass().get();
++            state.material=material;state.shader=cacheShader;state.incremental=r_terrainGraphClipmapIncremental;
+             auto pool=RPI::ImageSystemInterface::Get()->GetSystemAttachmentPool();
+             const auto clear=RHI::ClearValue::CreateVector4Float(0,0,0,0);
+             for(u32 level=0;level<Levels;++level)

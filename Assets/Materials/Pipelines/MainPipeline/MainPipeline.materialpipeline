@@ -1,0 +1,260 @@
+{
+    "shaderTemplates": [
+        {
+            "shader": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/ForwardPass_BaseLighting.shader.template",
+            "azsli": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/ForwardPass_BaseLighting.azsli",
+            "tag": "forward"
+        },
+        {
+            "shader": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/ForwardPass_StandardLighting.shader.template",
+            "azsli": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/ForwardPass_StandardLighting.azsli",
+            "tag": "forward"
+        },
+        {
+            "shader": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/ForwardPass_StandardLighting_CustomZ.shader.template",
+            "azsli": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/ForwardPass_StandardLighting_CustomZ.azsli",
+            "tag": "forward_customZ"
+        },
+        {
+            "shader": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/ForwardPass_EnhancedLighting.shader.template",
+            "azsli": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/ForwardPass_EnhancedLighting.azsli",
+            "tag": "forward"
+        },
+        {
+            "shader": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/ForwardPass_EnhancedLighting_CustomZ.shader.template",
+            "azsli": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/ForwardPass_EnhancedLighting_CustomZ.azsli",
+            "tag": "forward_customZ"
+        },
+        {
+            "shader": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/ForwardPass_SkinLighting.shader.template",
+            "azsli": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/ForwardPass_SkinLighting.azsli",
+            "tag": "forward"
+        },
+        {
+            "shader": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/Transparent_StandardLighting.shader.template",
+            "azsli": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/Transparent_StandardLighting.azsli",
+            "tag": "transparent"
+        },
+        {
+            "shader": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/Transparent_EnhancedLighting.shader.template",
+            "azsli": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/Transparent_EnhancedLighting.azsli",
+            "tag": "transparent"
+        },
+        {
+            "shader": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/TintedTransparent_StandardLighting.shader.template",
+            "azsli": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/Transparent_StandardLighting.azsli",
+            "tag": "tintedTransparent"
+        },
+        {
+            "shader": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/TintedTransparent_EnhancedLighting.shader.template",
+            "azsli": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/MainPipeline/Transparent_EnhancedLighting.azsli",
+            "tag": "tintedTransparent"
+        },
+        {
+            "shader": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/Common/DepthPass.shader.template",
+            "azsli": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/Common/DepthPass.azsli",
+            "tag": "depth"
+        },
+        {
+            "shader": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/Common/DepthPass_CustomZ.shader.template",
+            "azsli": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/Common/DepthPass_CustomZ.azsli",
+            "tag": "depth_customZ"
+        },
+        {
+            "shader": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/Common/ShadowmapPass.shader.template",
+            "azsli": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/Common/DepthPass.azsli",
+            "tag": "shadow"
+        },
+        {
+            "shader": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/Common/ShadowmapPass_CustomZ.shader.template",
+            "azsli": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/Common/DepthPass_CustomZ.azsli",
+            "tag": "shadow_customZ"
+        },
+        {
+            "shader": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/Common/DepthPassTransparentMin.shader.template",
+            "azsli": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/Common/DepthPass.azsli",
+            "tag": "depthPassTransparentMin"
+        },
+        {
+            "shader": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/Common/DepthPassTransparentMax.shader.template",
+            "azsli": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/Common/DepthPass.azsli",
+            "tag": "depthPassTransparentMax"
+        },
+        {
+            "shader": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/Common/MeshMotionVector.shader.template",
+            "azsli": "@gemroot:Atom_Feature_Common@/Assets/Materials/Pipelines/Common/MeshMotionVector.azsli",
+            "tag": "meshMotionVector"
+        },
+        {
+            "shader": "./SilPOMHitDepth.shader.template",
+            "azsli": "./SilPOMHitDepth.azsli",
+            "tag": "silpom_hit_depth"
+        },
+        {
+            "shader": "./SilPOMHitDepthBounds.shader.template",
+            "azsli": "./SilPOMHitDepthBounds.azsli",
+            "tag": "silpom_hit_depth_bounds"
+        },
+        {
+            "shader": "./SilPOMHitDepthNeural.shader.template",
+            "azsli": "./SilPOMHitDepthNeural.azsli",
+            "tag": "silpom_hit_depth_neural"
+        },
+        {
+            "shader": "./SilPOMHitDepthNeuralCache.shader.template",
+            "azsli": "./SilPOMHitDepthNeuralCache.azsli",
+            "tag": "silpom_hit_depth_neural_cache"
+        },
+        {
+            "shader": "./SilPOMHitDepthLodNear.shader.template",
+            "azsli": "./SilPOMHitDepthLodNear.azsli",
+            "tag": "silpom_hit_depth_lod_near"
+        },
+        {
+            "shader": "./SilPOMHitDepthLodShell.shader.template",
+            "azsli": "./SilPOMHitDepthLodShell.azsli",
+            "tag": "silpom_hit_depth_lod_shell"
+        },
+        {
+            "shader": "./SilPOMHitDepthWallBackup.shader.template",
+            "azsli": "./SilPOMHitDepthWallBackup.azsli",
+            "tag": "silpom_hit_depth_wall_backup"
+        },
+        {
+            "shader": "./SilPOMHitForward.shader.template",
+            "azsli": "./SilPOMHitForward.azsli",
+            "tag": "silpom_hit_forward"
+        },
+        {
+            "shader": "./SilPOMHitForwardNeuralOnly.shader.template",
+            "azsli": "./SilPOMHitForwardNeuralOnly.azsli",
+            "tag": "silpom_hit_forward_neural_only"
+        },
+        {
+            "shader": "./SilPOMHitForwardLearnedMaterial.shader.template",
+            "azsli": "./SilPOMHitForwardLearnedMaterial.azsli",
+            "tag": "silpom_hit_forward_learned_material"
+        },
+        {
+            "shader": "./SilPOMHitDepthProxy.shader.template",
+            "azsli": "./SilPOMHitDepthProxy.azsli",
+            "tag": "silpom_hit_depth_proxy"
+        },
+        {
+            "shader": "./SilPOMHitForwardLevelFive.shader.template",
+            "azsli": "./SilPOMHitForwardLevelFive.azsli",
+            "tag": "silpom_hit_forward_level_five"
+        },
+        {"shader":"./SilPOMHitForwardShared.shader.template","azsli":"./SilPOMHitForwardShared.azsli","tag":"silpom_hit_forward_shared"},
+        {"shader":"./SilPOMHitForwardSharedProxy.shader.template","azsli":"./SilPOMHitForwardSharedProxy.azsli","tag":"silpom_hit_forward_shared_proxy"},
+        {"shader":"./SilPOMHitForwardSharedCompare.shader.template","azsli":"./SilPOMHitForwardSharedCompare.azsli","tag":"silpom_hit_forward_shared_compare"},
+        {"shader":"./SilPOMHitForwardSharedProxyCompare.shader.template","azsli":"./SilPOMHitForwardSharedProxyCompare.azsli","tag":"silpom_hit_forward_shared_proxy_compare"},
+        {"shader":"./SilPOMHitForwardSharedAmbient.shader.template","azsli":"./SilPOMHitForwardSharedAmbient.azsli","tag":"silpom_hit_forward_shared_ambient"},
+        {"shader":"./SilPOMHitForwardSharedProxyAmbient.shader.template","azsli":"./SilPOMHitForwardSharedProxyAmbient.azsli","tag":"silpom_hit_forward_shared_proxy_ambient"},
+        {"shader":"./SilPOMHitForwardAngular.shader.template","azsli":"./SilPOMHitForwardAngular.azsli","tag":"silpom_hit_forward_angular"},
+        {"shader":"./SilPOMHitForwardAngularProxy.shader.template","azsli":"./SilPOMHitForwardAngularProxy.azsli","tag":"silpom_hit_forward_angular_proxy"},
+        {"shader":"./SilPOMHitForwardAngularAmbient.shader.template","azsli":"./SilPOMHitForwardAngularAmbient.azsli","tag":"silpom_hit_forward_angular_ambient"},
+        {"shader":"./SilPOMHitForwardAngularProxyAmbient.shader.template","azsli":"./SilPOMHitForwardAngularProxyAmbient.azsli","tag":"silpom_hit_forward_angular_proxy_ambient"},
+        {"shader":"./SilPOMHitDepthLearnedProxy.shader.template","azsli":"./SilPOMHitDepthLearnedProxy.azsli","tag":"silpom_hit_depth_learned_proxy"}
+    ],
+    "runtime": {
+        "properties": [
+            {
+                "name": "isTransparent",
+                "type": "Bool",
+                "defaultValue": false
+            },
+            {
+                "name": "isTintedTransparent",
+                "type": "Bool",
+                "defaultValue": false
+            },
+            {
+                "name": "castShadows",
+                "type": "Bool",
+                "defaultValue": true
+            },
+            {
+                "name": "doubleSided",
+                "type": "Bool",
+                "defaultValue": false
+            },
+            {
+                "name": "hasPerPixelDepth",
+                "type": "Bool",
+                "defaultValue": false
+            },
+            {
+                "name": "hasPerPixelClip",
+                "type": "Bool",
+                "defaultValue": false
+            },
+            {
+                "name": "silpomReuseDepthHit",
+                "type": "Bool",
+                "defaultValue": false
+            },
+            {
+                "name": "silpomUseDepthHeightBounds",
+                "type": "Bool",
+                "defaultValue": false
+            },
+            {
+                "name": "silpomUseNeuralSeed",
+                "type": "Bool",
+                "defaultValue": false
+            },
+            {
+                "name": "silpomUseNeuralCache",
+                "type": "Bool",
+                "defaultValue": false
+            },
+            {
+                "name": "silpomLearnedMaterial",
+                "type": "Bool",
+                "defaultValue": false
+            },
+            {
+                "name": "silpomNeuralVisibilityOnly",
+                "type": "Bool",
+                "defaultValue": false
+            },
+            {
+                "name": "silpomTowerLod",
+                "type": "Bool",
+                "defaultValue": false
+            },
+            {"name":"silpomSharedVisibility","type":"Bool","defaultValue":false},
+            {"name":"silpomLightingComparison","type":"Bool","defaultValue":false},
+            {"name":"silpomDiffuseAccessibility","type":"Bool","defaultValue":false},
+            {"name":"silpomAngularEdges","type":"Bool","defaultValue":false},
+            {"name":"silpomProxyDepth","type":"Bool","defaultValue":false},
+            {
+                "name": "silpomProxyLod",
+                "type": "Bool",
+                "defaultValue": false
+            }
+        ],
+        "functors": [
+            {
+                "type": "Lua",
+                "args": {
+                    "file": "Materials/Pipelines/Common/ShaderEnable.lua"
+                }
+            },
+            {
+                "type": "Lua",
+                "args": {
+                    "file": "Materials/Pipelines/Common/DoubleSided.lua"
+                }
+            },
+            {
+                "type": "Lua",
+                "args": {
+                    "file": "Materials/Pipelines/MainPipeline/SilPOMHitShaderEnable.lua"
+                }
+            }
+        ]
+    },
+    "pipelineScript": "./MainPipelineScript.lua"
+}

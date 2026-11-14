@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
+float SilPomPlanarPaintHeight();
+#define DECAL_PAINT_HEIGHT() SilPomPlanarPaintHeight()
+#endif
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_MaterialInputs.azsli>
 #if !SHADOWMAP
 #include "../../../Shaders/SilPOM/Heightfield.azsli"
@@ -14,6 +18,25 @@ SilPomPatch SilPomGetPatch(const MaterialParameters params)
     p.addressMode=params.m_silpomAddressMode; p.maxCells=params.m_silpomMaxCells;
     GetMaterialTexture(params.m_silpomHeightMap).GetDimensions(p.textureWidth,p.textureHeight);
     return p;
+}
+#endif
+
+#if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
+static SilPomPatch silpomPaintPatch;
+static float2 silpomPaintUv;
+static uint silpomPaintTexture;
+static bool silpomPaintValid=false;
+float SilPomPlanarPaintHeight()
+{
+    if(!silpomPaintValid)return -1;
+    const SilPomPatch p=silpomPaintPatch;
+    const float2 q=silpomPaintUv*float2(p.textureWidth,p.textureHeight)-.5f;
+    const int2 cell=int2(floor(q));const float2 f=frac(q);
+    const float a=SilPomTexel(GetMaterialTexture(silpomPaintTexture),p,cell.x,cell.y);
+    const float b=SilPomTexel(GetMaterialTexture(silpomPaintTexture),p,cell.x+1,cell.y);
+    const float c=SilPomTexel(GetMaterialTexture(silpomPaintTexture),p,cell.x,cell.y+1);
+    const float d=SilPomTexel(GetMaterialTexture(silpomPaintTexture),p,cell.x+1,cell.y+1);
+    return saturate(lerp(lerp(a,b,f.x),lerp(c,d,f.x),f.y));
 }
 #endif
 
@@ -92,11 +115,16 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN, VsSystemValues SV, bo
     ray.direction=mul(inverseRotation,direction);
     ray.tMin=0; ray.tMax=1e7;
     SilPomHit hit;
+#if defined(SILPOM_INTERSECTION_OVERRIDE)
+    float3 cameraLocal=mul(inverseRotation,ViewSrg::m_worldPosition.xyz-translation);
+    hit=SILPOM_INTERSECTION_OVERRIDE(params,p,ray,cameraLocal);
+#else
     if(o_silpomUseHierarchy)
         hit=SilPomIntersectBounds(GetMaterialTexture(params.m_silpomHeightMap),
             GetMaterialTexture(params.m_silpomHeightBounds),p,ray);
     else
         hit=SilPomIntersectMode(GetMaterialTexture(params.m_silpomHeightMap),p,ray,o_silpomReuseTexels);
+#endif
     IN.silpomDiagnostic=float4(float(hit.status),float(hit.cells),hit.t,0);
     // Exhaustion is conspicuous, never silently treated as a physical miss.
     if(hit.status==SP_MISS) discard;
@@ -112,6 +140,12 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN, VsSystemValues SV, bo
     float4 clip=mul(GetViewProjectionMatrix(SV),float4(geo.positionWS,1));
     if(clip.w<=0 || clip.z<0 || clip.z>clip.w) discard;
     IN.position.z=clip.z/clip.w;
+    IN.position.w=rcp(clip.w);
+#if defined(SILPOM_FLAT_HIT_TAG) && MATERIALPIPELINE_SHADER_HAS_GEOMETRIC_PIXEL_STAGE
+    // Give flat coverage room for roundoff between the depth and color shaders.
+    // This is reverse Z, so a slightly smaller depth is farther away.
+    if(hit.cells==SILPOM_FLAT_HIT_TAG) IN.position.z*=.99995;
+#endif
     IN.worldPosition=geo.positionWS;
     IN.color0=hit.status==SP_HIT?float4(1,1,1,1):float4(1,0,1,1);
     geo.vertexNormal=normalize(mul((float3x3)model,hit.normal));
@@ -143,6 +177,8 @@ COMMON_OPTIONS_EMISSIVE()
 #undef EvaluateSurface
 Surface EvaluateSurface(VsOutput IN, VsSystemValues SV, PixelGeometryData geo, const MaterialParameters params)
 {
+    silpomPaintPatch=SilPomGetPatch(params);silpomPaintUv=geo.uvs[0];
+    silpomPaintTexture=params.m_silpomHeightMap;silpomPaintValid=!geo.isDisplacementClipped;
     bool failed=geo.isDisplacementClipped;
     float3 geometricNormal=geo.vertexNormal;
     // The supplied normal map already describes the full relief slope in the planar frame.
@@ -160,8 +196,12 @@ Surface EvaluateSurface(VsOutput IN, VsSystemValues SV, PixelGeometryData geo, c
         if(params.m_silpomDebug==1) color=geometricNormal*.5+.5;
         if(params.m_silpomDebug==2)
         {
+#if defined(SILPOM_INTERSECTION_OVERRIDE)
+            color=IN.silpomDiagnostic.y==0 ? float3(0,0,1) : float3(1,.3,0);
+#else
             float work=saturate(IN.silpomDiagnostic.y/max(float(params.m_silpomMaxCells),1.0));
             color=float3(work,1-work,0);
+#endif
         }
         if(params.m_silpomDebug==3) color=float3(frac(geo.uvs[0]),0);
         if(params.m_silpomDebug==4) color=float3(IN.position.z,IN.position.z,IN.position.z);
@@ -170,6 +210,7 @@ Surface EvaluateSurface(VsOutput IN, VsSystemValues SV, PixelGeometryData geo, c
     return surface;
 }
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_LightingEval.azsli>
+#include "../../../Shaders/SilPOM/ForwardLighting.azsli"
 #elif MATERIALPIPELINE_SHADER_HAS_GEOMETRIC_PIXEL_STAGE
 void EvaluateSurface(VsOutput IN, VsSystemValues SV, PixelGeometryData geo, const MaterialParameters params) {}
 #endif
