@@ -176,7 +176,9 @@ def install(project, replace=False):
     folder = project / 'Levels' / NAME
     folder.mkdir(parents=True, exist_ok=True)
     for name in (NAME+'.prefab', 'scene.json'):
-        data = (FIXTURE / name).read_bytes()
+        # Git checkouts may use CRLF; keep the frozen JSON bytes and its
+        # recorded digest identical across PCs and Diversion workspaces.
+        data = (FIXTURE / name).read_bytes().replace(b'\r\n', b'\n')
         target = folder / name
         if target.exists() and target.read_bytes() != data and not replace:
             raise ValueError(f'{target} differs; use --replace only for an intentional fixture update')
