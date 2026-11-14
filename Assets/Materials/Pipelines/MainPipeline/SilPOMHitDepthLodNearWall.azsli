@@ -1,0 +1,4 @@
+// SPDX-License-Identifier: MIT
+// Selected only for model 4 with Level 2 and Gather. NoMSAA is the unchanged
+// generic shader; compile-time specialization applies exclusively to 4x.
+#include "SilPOMHitDepthLodNear.azsli"

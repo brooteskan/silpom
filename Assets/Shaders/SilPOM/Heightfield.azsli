@@ -57,6 +57,21 @@ int SilPomAddress(int i, int size, uint mode)
     // already lie inside it; wrapped taps need only one signed remainder.
     // Keep the approved 1x specialization below unchanged.
     if (uint(i) < uint(size)) { return i; }
+#if !SILPOM_MSAA_GENERIC_REMAINDER
+    // Constant divisors let the compiler use multiply/shift addressing for
+    // the tower atlas instead of repeated general-purpose integer division.
+    // Other image sizes retain the generic path; every result stays exact.
+    if (size == 6656)
+    {
+        const int remainder=i%6656;
+        return remainder<0?remainder+6656:remainder;
+    }
+    if (size == 6144)
+    {
+        const int remainder=i%6144;
+        return remainder<0?remainder+6144:remainder;
+    }
+#endif
     const int remainder=i%size;
     return remainder<0?remainder+size:remainder;
 #else

@@ -188,7 +188,12 @@ VsOutput VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
 {
     VsSystemValues SV;
     SV.m_instanceId = instanceId;
+#if SILPOM_MSAA_STATIC_WALL
+    MaterialParameters params = GetMaterialParameters();
+    params.m_silpomNeuralModel=4u;
+#else
     const MaterialParameters params = GetMaterialParameters();
+#endif
     VsOutput OUT = EvaluateVertexGeometry(IN, SV, params);
     const SilPomMeshFace face = SilPomLoadFace(params.m_meshBufferIndex, OUT.faceIndex);
     OUT.position.z = SilPomNearestFaceDepth(face, SV, params);
@@ -202,7 +207,12 @@ PsOutput PixelShader(VsOutput IN, bool isFrontFace : SV_IsFrontFace,uint sampleI
     VsSystemValues SV;
     SV.m_instanceId = IN.m_instanceId;
 
+#if SILPOM_MSAA_STATIC_WALL
+    MaterialParameters params = GetMaterialParameters();
+    params.m_silpomNeuralModel=4u;
+#else
     const MaterialParameters params = GetMaterialParameters();
+#endif
     PixelGeometryData geoData = EvaluatePixelGeometry(IN, SV, isFrontFace, params);
 
     // Pixel clipping can be done here

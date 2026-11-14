@@ -251,3 +251,24 @@ engine source used by the build (TGProject uses `user/engine-source`), then
 rebuild `DiffuseProbeGrid.Static`, `DiffuseProbeGrid.Editor` and `DiffuseProbeGrid`.
 It preserves GI settings and adds no GPU passes. This is separate from both the
 terrain clipmap fix and the address optimization.
+
+## Retained follow-up, 2026-11-14
+
+The 4× near path also has exact constant-divisor repeat addressing for atlas
+dimensions 6656 and 6144. Other dimensions retain the generic remainder path.
+The wall specialization is selected only for model 4 with both Level 2 and
+Gather enabled; other combinations use the generic near shader. Its NoMSAA
+supervariant retains the original generic program. The same predictor weights,
+probe order, Newton budgets, lighting and four independent hits are preserved.
+
+All 50 saved-settings 4× static/motion image, hit-record and sample-depth
+captures match the preceding implementation exactly. The address test covers
+2.4 million repeat/clamp cases, and all 36 standalone test groups pass.
+All 20 approved 1× captures also match exactly, the AA selector restores
+Current default, and both NoMSAA vertex/pixel programs match the previous
+bytecode. The saved level and tower settings are unchanged.
+The [follow-up report](../Tests/Reference/MsaaFollowupValidation.json) records
+the measured candidate and verification. A controlled paired performance
+comparison was not completed before the user stopped further optimization;
+these changes are not presented as a measured large speedup. Empty-probe
+batch skipping was discussed but was not implemented.

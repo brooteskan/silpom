@@ -1,0 +1,74 @@
+{
+  "date": "2026-11-14",
+  "base_commit": "8153f8de4d774ed1c7e3e0be12c97b0417914398",
+  "status": "Further optimization stopped at the user's request; retained candidate validation only.",
+  "hardware": "AMD Radeon RX 7900 XTX",
+  "backend": "DX12",
+  "width": 1280,
+  "height": 720,
+  "samples": 4,
+  "retained_changes": [
+    "Exact constant-divisor addressing for wrapped 6656/6144 atlas coordinates, with generic fallback.",
+    "Wall hit shader specialization gated on model 4, Level 2 and Gather; unchanged generic NoMSAA supervariant."
+  ],
+  "exact_msaa_captures": {
+    "lit_static_and_motion_rgba": 30,
+    "normalized_sample_hit_records": 10,
+    "sample_depth_atlases": 10
+  },
+  "address_cases_exact": 2400000,
+  "standalone_test_groups_passed": 36,
+  "candidate_timing": {
+    "method": "Two 120-frame captures per view after asset readiness; no inspection/readbacks during timing.",
+    "views": {
+      "lower-glancing": {
+        "frames": 240,
+        "hit_median_ms": 6.744,
+        "forward_median_ms": 3.2075,
+        "graphics_span_median_ms": 12.881
+      },
+      "lower-facing": {
+        "frames": 240,
+        "hit_median_ms": 3.078,
+        "forward_median_ms": 3.0585,
+        "graphics_span_median_ms": 12.9015
+      },
+      "upper-glancing": {
+        "frames": 240,
+        "hit_median_ms": 6.4565,
+        "forward_median_ms": 3.1365,
+        "graphics_span_median_ms": 12.9255
+      }
+    },
+    "conclusion": "No controlled paired A/B conclusion or larger speedup is claimed. Graphics spans include queue gaps and other scene passes."
+  },
+  "saved_level_sha256": "9124e6cd4ec1b601bcba0c7dc93424836483e2a2cabd56acb3fd6483596e9df8",
+  "saved_tower_settings_changed": false,
+  "saved_aa": "Current default (0)",
+  "solver_rays_probes_weights_and_lighting_unchanged": true,
+  "empty_probe_batch_skipping_implemented": false,
+  "quality_validation_passed": true,
+  "approved_1x_reference_captures_exact": 20,
+  "aa_selector_and_default_restore_passed": true,
+  "final_asset_readiness": {
+    "ready": true,
+    "failed_jobs": 0,
+    "stale_products": 0
+  },
+  "native_validation_errors_in_final_runs": false,
+  "gameplay_retested_in_this_followup": false,
+  "default_1x_shader_bytecode": {
+    "silpomhitdepthlodnear": {
+      "vertex_sha256": "222f0924d184bd4f5840ab32d4323e00080c1c99882e6a91c84a042dc556564f",
+      "pixel_sha256": "1c53fab3519ad19de5ea78666733f4b2b6fb569ed393705e903cff688d869103"
+    },
+    "silpomhitdepthlodnearwall": {
+      "vertex_sha256": "222f0924d184bd4f5840ab32d4323e00080c1c99882e6a91c84a042dc556564f",
+      "pixel_sha256": "1c53fab3519ad19de5ea78666733f4b2b6fb569ed393705e903cff688d869103"
+    }
+  },
+  "source_sha256": {
+    "Assets/Shaders/SilPOM/Heightfield.azsli": "c573324e1a53b5e6d4449ff3c9d779975c5b8247e171e761295237db4fa23422",
+    "Assets/Materials/Pipelines/MainPipeline/SilPOMHitDepthLodNearWall.shader.template": "95f97f25e0066428458725f73dd6cb32ba31a618f5b4d0be011d5a297b26cfe3"
+  }
+}

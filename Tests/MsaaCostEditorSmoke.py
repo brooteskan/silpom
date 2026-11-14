@@ -21,10 +21,21 @@ def main():
     requested=os.environ.get('TG_SILPOM_COST_MODE','4')
     mode4=requested=='4'
     general.idle_enable(True);source=LEVEL.read_bytes()
+    # Apply before loading/warm-up too: hidden test Editors otherwise inherit
+    # background throttling and can spend minutes waiting for idle frames.
+    command('ed_keepEditorActive',1);command('ed_backgroundUpdatePeriod',-1)
     if mode4:command('r_silpomMsaa4',1)
     assert general.open_level(str(LEVEL));general.idle_wait_frames(90)
     q=entity.SearchFilter();q.names=['Irish Fieldstone Tower (Open Shaft)']
     found=entity.SearchBus(bus.Broadcast,'SearchEntities',q);assert len(found)==1;tower=found[0];ready()
+    if os.environ.get('TG_SILPOM_COST_WAIT_FOR_ASSETS'):
+        result['stage']='waiting for assets';flush()
+        deadline=time.monotonic()+600
+        marker=Path(os.environ['TG_SILPOM_COST_WAIT_FOR_ASSETS'])
+        while not marker.exists():
+            assert time.monotonic()<deadline,'Asset readiness marker timed out'
+            general.idle_wait(1)
+        general.idle_wait_frames(120);ready()
     t=editor.EditorComponentAPIBus(bus.Broadcast,'FindComponentTypeIdsByEntityType',['SilPOM Mesh'],entity.EntityType().Game)[0]
     component=editor.EditorComponentAPIBus(bus.Broadcast,'GetComponentOfType',tower,t).GetValue()
     props=editor.EditorComponentAPIBus(bus.Broadcast,'BuildComponentPropertyList',component)

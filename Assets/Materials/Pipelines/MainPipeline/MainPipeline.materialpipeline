@@ -110,6 +110,7 @@
             "azsli": "./SilPOMHitDepthLodNear.azsli",
             "tag": "silpom_hit_depth_lod_near"
         },
+        {"shader":"./SilPOMHitDepthLodNearWall.shader.template","azsli":"./SilPOMHitDepthLodNearWall.azsli","tag":"silpom_hit_depth_lod_near_wall"},
         {
             "shader": "./SilPOMHitDepthLodShell.shader.template",
             "azsli": "./SilPOMHitDepthLodShell.azsli",
@@ -224,6 +225,7 @@
                 "type": "Bool",
                 "defaultValue": false
             },
+            {"name":"silpomStaticWallHit","type":"Bool","defaultValue":false},
             {"name":"silpomSharedVisibility","type":"Bool","defaultValue":false},
             {"name":"silpomLightingComparison","type":"Bool","defaultValue":false},
             {"name":"silpomDiffuseAccessibility","type":"Bool","defaultValue":false},

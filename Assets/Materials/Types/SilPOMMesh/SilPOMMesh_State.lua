@@ -1,10 +1,15 @@
 -- SPDX-License-Identifier: MIT
 function GetMaterialPropertyDependencies()
     return {"surface.scale", "surface.useHierarchy", "surface.useNeuralSeed", "surface.useNeuralCache",
+        "surface.levelTwoPredictor", "surface.validationGather",
         "surface.neuralModel", "surface.maxCells", "mesh.hitFaceBase", "surface.localShadowMethod", "surface.learnedMaterial", "surface.proxyLodEnabled", "surface.sharedVisibility", "surface.proxyDepthEnabled", "surface.lightingEstimator", "surface.diffuseAccessibility"}
 end
 
 function Process(context)
+    context:SetInternalMaterialPropertyValue_bool("silpomStaticWallHit",
+        context:GetMaterialPropertyValue_uint("surface.neuralModel") == 4
+        and context:GetMaterialPropertyValue_bool("surface.levelTwoPredictor")
+        and context:GetMaterialPropertyValue_bool("surface.validationGather"))
     context:SetInternalMaterialPropertyValue_bool("silpomDiffuseAccessibility",context:GetMaterialPropertyValue_bool("surface.diffuseAccessibility"))
     context:SetInternalMaterialPropertyValue_bool("silpomAngularEdges",context:GetMaterialPropertyValue_enum("surface.lightingEstimator") == 5)
     context:SetInternalMaterialPropertyValue_bool("silpomLightingComparison",context:GetMaterialPropertyValue_enum("surface.lightingEstimator") ~= 0)
