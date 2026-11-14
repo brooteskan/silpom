@@ -158,6 +158,7 @@ private:
     AZStd::string m_status = "Inactive";
     bool m_dirty = true;
     bool m_checkHitPasses = false;
+    unsigned m_hitSamplePolicy = 0;
 };
 class MeshComponent final : public AzFramework::Components::ComponentAdapter<MeshController, MeshConfig>
 {

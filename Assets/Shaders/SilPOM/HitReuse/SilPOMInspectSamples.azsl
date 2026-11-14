@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: MIT
+// Diagnostic only: bit-exact sample export to a single-sample 4W atlas.
+// Avoid Atom's generic float MSAA readback for integer ownership records.
+#include <Atom/Features/SrgSemantics.azsli>
+#include <Atom/Features/PostProcessing/FullscreenVertex.azsli>
+ShaderResourceGroup PassSrg : SRG_PerPass
+{
+    Texture2DMS<uint4> m_hits;
+    Texture2DMS<float> m_depth;
+}
+struct Output {uint4 hit:SV_Target0;float depth:SV_Target1;};
+Output MainPS(VSOutput IN)
+{
+    int2 p=int2(IN.m_position.xy);uint w,h,samples;PassSrg::m_hits.GetDimensions(w,h,samples);
+    uint sampleIndex=min(uint(p.x)%4u,samples-1u);p.x/=4;
+    Output OUT;OUT.hit=PassSrg::m_hits.Load(p,sampleIndex);OUT.depth=PassSrg::m_depth.Load(p,sampleIndex);return OUT;
+}

@@ -43,4 +43,13 @@
 // Lighting eval functions from the forward-pass that use functions defined by the material
 #include <Atom/Features/Pipeline/Forward/ForwardPassEvaluateLighting.azsli>
 
+// Keep Atom's decal/lighting/output implementation. Only add the sample-index
+// entry contract; the sample-interpolated ndc reconstructs this sample's ray.
+#define PixelShader SilPomForwardSample
 #include <Atom/Feature/Common/Assets/Materials/Pipelines/MainPipeline/ForwardPassVertexAndPixel.azsli>
+#undef PixelShader
+ForwardPassOutput PixelShader(VsOutput IN,bool isFrontFace:SV_IsFrontFace,uint sampleIndex:SV_SampleIndex)
+{
+    silpomHitSampleIndex=sampleIndex;
+    return SilPomForwardSample(IN,isFrontFace);
+}

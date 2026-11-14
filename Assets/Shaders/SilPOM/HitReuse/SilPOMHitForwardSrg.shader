@@ -1,39 +1,45 @@
 {
-    "Source" : "SilPOMHitForwardSrg.azsl",
-
-    "DepthStencilState" :
-    {
-        "Depth" :
-        {
-            "Enable" : false
+    "Source": "SilPOMHitForwardSrg.azsl",
+    "DepthStencilState": {
+        "Depth": {
+            "Enable": false
         },
-        "Stencil" :
-        {
-            "Enable" : false
+        "Stencil": {
+            "Enable": false
         }
     },
-
-    "ProgramSettings":
-    {
-      "EntryPoints":
-      [
-        {
-          "name": "MainVS",
-          "type": "Vertex"
-        },
-        {
-          "name": "MainPS",
-          "type": "Fragment"
-        }
-      ]
+    "ProgramSettings": {
+        "EntryPoints": [
+            {
+                "name": "MainVS",
+                "type": "Vertex"
+            },
+            {
+                "name": "MainPS",
+                "type": "Fragment"
+            }
+        ]
     },
-
-    "Supervariants":
-    [
+    "Supervariants": [
         {
             "Name": "",
             "RemoveBuildArguments": {
-                "azslc": ["--strip-unused-srgs"]
+                "azslc": [
+                    "--strip-unused-srgs"
+                ]
+            }
+        },
+        {
+            "Name": "NoMSAA",
+            "RemoveBuildArguments": {
+                "azslc": [
+                    "--strip-unused-srgs"
+                ]
+            },
+            "AddBuildArguments": {
+                "azslc": [
+                    "--no-ms"
+                ]
             }
         }
     ]

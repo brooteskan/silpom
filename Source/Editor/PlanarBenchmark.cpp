@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #include "PlanarBenchmark.h"
+#include <Atom/Feature/PostProcessing/SMAAFeatureProcessorInterface.h>
 #include <SilPOM/Patch.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetCommon.h>
@@ -99,6 +100,8 @@ void PlanarBenchmark::Reflect(AZ::ReflectContext* context)
             ->Attribute(AZ::Script::Attributes::Scope,AZ::Script::Attributes::ScopeFlags::Common)
             ->Event("CreateReference",&PlanarBenchmarkRequests::CreateReference)
             ->Event("IsReady",&PlanarBenchmarkRequests::IsReady)
+            ->Event("GetSmaaEnabled",&PlanarBenchmarkRequests::GetSmaaEnabled)
+            ->Event("SetSmaaEnabled",&PlanarBenchmarkRequests::SetSmaaEnabled)
             ->Event("SetReferenceVisible",&PlanarBenchmarkRequests::SetReferenceVisible)
             ->Event("SetOverlay",&PlanarBenchmarkRequests::SetOverlay)
             ->Event("BeginCapture",&PlanarBenchmarkRequests::BeginCapture)
@@ -136,6 +139,17 @@ bool PlanarBenchmark::CreateReference(AZ::EntityId patch,const AZStd::string& pa
 }
 bool PlanarBenchmark::IsReady() const
 {return m_processor && m_mesh.IsValid() && bool(m_processor->GetModel(m_mesh));}
+bool PlanarBenchmark::GetSmaaEnabled(AZ::EntityId entity) const
+{
+    auto* processor=AZ::RPI::Scene::GetFeatureProcessorForEntity<AZ::Render::SMAAFeatureProcessorInterface>(entity);
+    return processor&&processor->GetSettings().m_enable;
+}
+bool PlanarBenchmark::SetSmaaEnabled(AZ::EntityId entity,bool enabled)
+{
+    auto* processor=AZ::RPI::Scene::GetFeatureProcessorForEntity<AZ::Render::SMAAFeatureProcessorInterface>(entity);
+    if(!processor)return false;
+    processor->SetEnable(enabled);return true;
+}
 void PlanarBenchmark::SetReferenceVisible(bool visible)
 {
     if(m_processor && m_mesh.IsValid()) m_processor->SetVisible(m_mesh,visible);

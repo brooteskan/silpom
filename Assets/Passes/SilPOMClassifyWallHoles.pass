@@ -7,24 +7,87 @@
             "Name": "SilPOMClassifyWallHolesTemplate",
             "PassClass": "FullScreenTriangle",
             "Slots": [
-                { "Name": "SceneDepth", "ShaderInputName": "m_sceneDepth", "SlotType": "Input",
-                  "ScopeAttachmentUsage": "Shader", "ImageViewDesc": { "AspectFlags": ["Depth"] } },
-                { "Name": "Hit", "ShaderInputName": "m_hits", "SlotType": "Input", "ScopeAttachmentUsage": "Shader" },
-                { "Name": "Fill", "SlotType": "Output", "ScopeAttachmentUsage": "RenderTarget",
-                  "LoadStoreAction": { "LoadAction": "Clear", "ClearValue": { "Value": [0, 0, 0, 0] } } }
+                {
+                    "Name": "SceneDepth",
+                    "ShaderInputName": "m_sceneDepth",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ImageViewDesc": {
+                        "AspectFlags": [
+                            "Depth"
+                        ]
+                    }
+                },
+                {
+                    "Name": "Hit",
+                    "ShaderInputName": "m_hits",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader"
+                },
+                {
+                    "Name": "Fill",
+                    "SlotType": "Output",
+                    "ScopeAttachmentUsage": "RenderTarget",
+                    "LoadStoreAction": {
+                        "LoadAction": "Clear",
+                        "ClearValue": {
+                            "Value": [
+                                0,
+                                0,
+                                0,
+                                0
+                            ]
+                        }
+                    }
+                }
             ],
             "Connections": [
-                { "LocalSlot": "SceneDepth", "AttachmentRef": { "Pass": "SilPOMHitDepth", "Attachment": "Depth" } },
-                { "LocalSlot": "Hit", "AttachmentRef": { "Pass": "SilPOMHitDepth", "Attachment": "Hit" } },
-                { "LocalSlot": "Fill", "AttachmentRef": { "Pass": "This", "Attachment": "FillRecords" } }
+                {
+                    "LocalSlot": "SceneDepth",
+                    "AttachmentRef": {
+                        "Pass": "SilPOMHitDepth",
+                        "Attachment": "Depth"
+                    }
+                },
+                {
+                    "LocalSlot": "Hit",
+                    "AttachmentRef": {
+                        "Pass": "SilPOMHitDepth",
+                        "Attachment": "Hit"
+                    }
+                },
+                {
+                    "LocalSlot": "Fill",
+                    "AttachmentRef": {
+                        "Pass": "This",
+                        "Attachment": "FillRecords"
+                    }
+                }
             ],
             "ImageAttachments": [
-                { "Name": "FillRecords", "SizeSource": { "Source": { "Pass": "This", "Attachment": "Hit" } },
-                  "ImageDescriptor": { "Format": "R32G32B32A32_UINT", "SharedQueueMask": "Graphics" } }
+                {
+                    "Name": "FillRecords",
+                    "SizeSource": {
+                        "Source": {
+                            "Pass": "This",
+                            "Attachment": "Hit"
+                        }
+                    },
+                    "ImageDescriptor": {
+                        "Format": "R32G32B32A32_UINT",
+                        "SharedQueueMask": "Graphics"
+                    },
+                    "MultisampleSource": {
+                        "Pass": "This",
+                        "Attachment": "Hit"
+                    }
+                }
             ],
             "PassData": {
                 "$type": "FullscreenTrianglePassData",
-                "ShaderAsset": { "FilePath": "Shaders/SilPOM/HitReuse/SilPOMClassifyWallHoles.shader" }
+                "ShaderAsset": {
+                    "FilePath": "Shaders/SilPOM/HitReuse/SilPOMClassifyWallHoles.shader"
+                }
             }
         }
     }

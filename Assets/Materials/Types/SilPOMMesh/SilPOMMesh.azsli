@@ -375,7 +375,7 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     return geo;
 #else
 #if SILPOM_HIT_FORWARD
-    uint4 record=PassSrg::m_silpomHitBuffer.Load(int3(int2(IN.position.xy),0));
+    uint4 record=PassSrg::m_silpomHitBuffer.Load(int2(IN.position.xy),silpomHitSampleIndex);
     const uint localFace=(record.w>>2)-params.m_silpomHitFaceBase;
     if(params.m_silpomMaxCells==SP_TOWER_LOD_4PX_RESOLVE)
     {

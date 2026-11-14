@@ -9,9 +9,16 @@
 #include <Atom/RPI.Public/ViewportContextBus.h>
 #include <Atom/RPI.Public/Pass/PassAttachment.h>
 #include <Atom/RPI.Public/Shader/ShaderResourceGroup.h>
+#include <Atom/RPI.Public/Shader/ShaderSystemInterface.h>
 #include <AtomCore/Instance/InstanceDatabase.h>
 #include <cmath>
 #include <Atom/RPI.Public/Scene.h>
+#include <Atom/RPI.Public/RPISystemInterface.h>
+#if defined(AZ_PLATFORM_WINDOWS)
+#include <Atom/RHI.Interface/DX12/RHIDX12Interface.h>
+#undef near
+#undef far
+#endif
 #include <Atom/RPI.Public/RenderPipeline.h>
 #include <Atom/RPI.Public/Pass/Pass.h>
 #include <Atom/RPI.Public/Pass/PassSystemInterface.h>
@@ -44,7 +51,123 @@ namespace SilPOM
 namespace
 {
 AZ_CVAR(bool, r_silpomReuseDepthHits, false, nullptr, AZ::ConsoleFunctorFlags::Null,
-    "Use the experimental DX12 SilPOM hit buffer for meshes prepared in a single-sample MainPipeline.");
+    "Use the experimental DX12 SilPOM hit buffer in MainPipeline (1x, or opt-in r_silpomMsaa4).");
+AZ_CVAR(bool,r_silpomMsaa4,false,nullptr,AZ::ConsoleFunctorFlags::Null,
+    "Opt into sample-frequency 4x SilPOM. Enabling selects r_multiSampleCount 4; disabling restores 1x. Models/settings are unchanged.");
+AZ_CVAR(bool,r_silpomMsaaRawCoverage,true,nullptr,AZ::ConsoleFunctorFlags::Null,
+    "Inspect unrepaired 4x sample coverage. Does not affect the approved 1x repair path.");
+AZ_CVAR(bool,r_silpomMsaaInspect,false,nullptr,AZ::ConsoleFunctorFlags::Null,
+    "Enable diagnostic raw/final hit, depth and shaded-color sample atlases. Adds GPU/readback work; normally off.");
+
+bool SupportsHitMsaa4()
+{
+#if defined(AZ_PLATFORM_WINDOWS)
+    if(AZ::RHI::Factory::Get().GetName()!=AZ::Name("dx12"))return false;
+    auto* rhi=AZ::RHI::RHISystemInterface::Get();
+    if(!rhi||rhi->GetDeviceCount()==0)return false;
+    // Query the actual rendering devices, including each active device.
+    for(int index=0;index<rhi->GetDeviceCount();++index)
+    {
+        auto* native=AZ::DX12::GetDeviceNativeHandle(*rhi->GetDevice(index));
+        if(!native)return false;
+        const DXGI_FORMAT colors[]={DXGI_FORMAT_R32G32B32A32_UINT,DXGI_FORMAT_R16G16B16A16_FLOAT,
+            DXGI_FORMAT_R8G8B8A8_UNORM,DXGI_FORMAT_R10G10B10A2_UNORM};
+        for(auto format:colors)
+        {
+            D3D12_FEATURE_DATA_FORMAT_SUPPORT support{format};
+            constexpr UINT needed=D3D12_FORMAT_SUPPORT1_RENDER_TARGET|D3D12_FORMAT_SUPPORT1_MULTISAMPLE_RENDERTARGET
+                |D3D12_FORMAT_SUPPORT1_MULTISAMPLE_LOAD;
+            D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS quality{format,4,D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE,0};
+            if(FAILED(native->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT,&support,sizeof(support)))
+                ||(support.Support1&needed)!=needed
+                ||FAILED(native->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,&quality,sizeof(quality)))
+                ||quality.NumQualityLevels==0)return false;
+        }
+        D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS depth{DXGI_FORMAT_D32_FLOAT_S8X24_UINT,4,D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE,0};
+        D3D12_FEATURE_DATA_FORMAT_SUPPORT depthLoad{DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS};
+        if(FAILED(native->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,&depth,sizeof(depth)))||depth.NumQualityLevels==0
+            ||FAILED(native->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT,&depthLoad,sizeof(depthLoad)))
+            ||!(depthLoad.Support1&D3D12_FORMAT_SUPPORT1_MULTISAMPLE_LOAD))return false;
+    }
+    return true;
+#else
+    return false;
+#endif
+}
+
+struct HitSampleTransition
+    : AZ::RPI::SceneNotificationBus::MultiHandler
+{
+    AZStd::vector<AZStd::pair<AZ::RPI::RenderPipelinePtr,bool>> paused;
+    AZ::u64 resumeTick=0;
+    void OnRenderPipelineChanged(AZ::RPI::RenderPipeline* pipeline,AZ::RPI::SceneNotification::RenderPipelineChangeType type) override
+    {
+        if(type==AZ::RPI::SceneNotification::RenderPipelineChangeType::Removed)return;
+        // MSAA recreates roots. Apply the pause to the new root before drawing.
+        for(const auto& entry:paused)if(entry.first.get()==pipeline)pipeline->GetRootPass()->SetEnabled(false);
+    }
+};
+HitSampleTransition& SampleTransition()
+{
+    static HitSampleTransition transition;
+    return transition;
+}
+
+unsigned UpdateHitSamplePolicy(AZ::RPI::Scene* scene)
+{
+    static bool requested=false,raw=true,inspect=false;static unsigned version=0;
+    auto& transition=SampleTransition();auto& paused=transition.paused;auto& resumeTick=transition.resumeTick;
+    auto* rpi=AZ::RPI::RPISystemInterface::Get();
+    if(!paused.empty())
+    {
+        // Pass attachments update before MeshFeatureProcessor has rebuilt all
+        // scene draw packets. Submit no scene draws across that transition.
+        const bool resume=rpi->GetCurrentTick()>=resumeTick;
+        for(const auto& entry:paused)entry.first->GetRootPass()->SetEnabled(resume&&entry.second);
+        if(resume){paused.clear();transition.BusDisconnect();}
+    }
+    if(requested!=r_silpomMsaa4)
+    {
+        if(r_silpomMsaa4&&!SupportsHitMsaa4())
+        {
+            AZ_Error("SilPOM",false,"4x MSAA requires supported render, load and sample-count capabilities; retaining 1x.");
+            r_silpomMsaa4=false;
+        }
+        else
+        {
+            // The application sample count also changes preview/editor scenes.
+            // Pause all existing pipeline roots, not only the tower's scene.
+            AZStd::set<AZ::RPI::Scene*> scenes;
+            if(scene)scenes.insert(scene);
+            for(const auto& root:AZ::RPI::PassSystemInterface::Get()->GetRootPass()->GetChildren())
+                if(auto* owner=root->GetScene())scenes.insert(owner);
+            transition.BusDisconnect();
+            for(auto* owner:scenes)
+            {
+                for(const auto& pipeline:owner->GetRenderPipelines())
+                {
+                    const auto found=AZStd::find_if(paused.begin(),paused.end(),[&](const auto& entry){return entry.first==pipeline;});
+                    if(found==paused.end())paused.push_back({pipeline,pipeline->GetRootPass()->IsEnabled()});
+                    pipeline->GetRootPass()->SetEnabled(false);
+                }
+                transition.BusConnect(owner->GetId());
+            }
+            resumeTick=rpi->GetCurrentTick()+3;
+            requested=r_silpomMsaa4;++version;
+            AZ::Interface<AZ::IConsole>::Get()->PerformCommand(requested?"r_multiSampleCount 4":"r_multiSampleCount 1");
+        }
+    }
+    if(raw!=r_silpomMsaaRawCoverage){raw=r_silpomMsaaRawCoverage;++version;}
+    if(inspect!=r_silpomMsaaInspect){inspect=r_silpomMsaaInspect;++version;}
+    static unsigned previousSamples=1;
+    const unsigned samples=AZ::RPI::RPISystemInterface::Get()->GetApplicationMultisampleState().m_samples;
+    if(samples!=previousSamples)
+    {
+        previousSamples=samples;++version;
+        AZ::RPI::ShaderSystemInterface::Get()->SetGlobalShaderOption(AZ::Name("o_silpomSampleFrequency"),AZ::RPI::ShaderOptionValue{samples>1});
+    }
+    return version;
+}
 
 AZ::RPI::Ptr<AZ::RPI::Pass> MakeHitPass(const AZ::Name& name, const AZ::Name& templateName, const AZ::RPI::Pass& reference)
 {
@@ -69,29 +192,44 @@ bool InstallHitPasses(AZ::RPI::Scene& scene, bool required)
     const AZ::Name classifyName("SilPOMClassifyWallHoles"), fillName("SilPOMFillWallHoles");
     const AZ::Name backupName("SilPOMHitDepthWallBackup"), backupTemplate("SilPOMHitDepthWallBackupTemplate");
     const AZ::Name depthTemplate("SilPOMHitDepthTemplate"), forwardTemplate("SilPOMHitForwardTemplate");
+    const AZ::Name clearName("SilPOMClearHits"),clearTemplate("SilPOMClearHitsTemplate"),msaaDepthTemplate("SilPOMHitDepthMsaaTemplate");
     const AZ::Name classifyTemplate("SilPOMClassifyWallHolesTemplate"), fillTemplate("SilPOMFillWallHolesTemplate");
+    const AZ::Name msaaClassifyTemplate("SilPOMClassifyWallHolesMsaaTemplate");
     const AZ::Name depthName("DepthPass"), forwardName("Forward");
     bool foundMainPipeline = false;
     for (const auto& pipeline : scene.GetRenderPipelines())
     {
         if (pipeline->GetDescriptor().m_materialPipelineTag != "MainPipeline") continue;
-        if (pipeline->GetRenderSettings().m_multisampleState.m_samples != 1
+        const auto samples=pipeline->GetRenderSettings().m_multisampleState.m_samples;
+        if ((samples!=1 && !(samples==4 && r_silpomMsaa4))
             || !pipeline->FindFirstPass(depthName) || !pipeline->FindFirstPass(forwardName)) return false;
         foundMainPipeline = true;
     }
     if (!foundMainPipeline) return false;
-    if ((!system->GetPassTemplate(depthTemplate) || (required && !system->GetPassTemplate(backupTemplate)))
+    if ((!system->GetPassTemplate(depthTemplate) || !system->GetPassTemplate(clearTemplate) || !system->GetPassTemplate(msaaDepthTemplate)
+        || !system->GetPassTemplate(msaaClassifyTemplate) || (required && !system->GetPassTemplate(backupTemplate))
+        ||(r_silpomMsaaInspect&&!system->GetPassTemplate(AZ::Name("SilPOMInspectSamplesTemplate"))))
         && !system->LoadPassTemplateMappings("passes/silpomhittemplates.azasset"))
         return false;
 
     for (const auto& pipeline : scene.GetRenderPipelines())
     {
         if (pipeline->GetDescriptor().m_materialPipelineTag != "MainPipeline") continue;
+        const bool msaa=pipeline->GetRenderSettings().m_multisampleState.m_samples==4;
         if (!pipeline->FindFirstPass(hitDepthName) || !pipeline->FindFirstPass(hitForwardName))
         {
-            auto depth = MakeHitPass(hitDepthName, depthTemplate, *pipeline->FindFirstPass(depthName));
+            if(msaa&&!pipeline->FindFirstPass(clearName))
+            {
+                // Native clearing of this 4x integer RTV hung on the tested
+                // DX12 device. A pixel-frequency shader initializes all samples.
+                // Keep the established native clear at 1x.
+                AZ::RPI::PassRequest request;request.m_passName=clearName;request.m_templateName=clearTemplate;
+                auto clear=system->CreatePassFromRequest(&request);
+                if(!clear||!pipeline->AddPassAfter(clear,depthName))return false;
+            }
+            auto depth = MakeHitPass(hitDepthName, msaa?msaaDepthTemplate:depthTemplate, *pipeline->FindFirstPass(depthName));
             auto forward = MakeHitPass(hitForwardName, forwardTemplate, *pipeline->FindFirstPass(forwardName));
-            if (!depth || !forward || !pipeline->AddPassAfter(depth, depthName)) return false;
+            if (!depth || !forward || !pipeline->AddPassAfter(depth, msaa?clearName:depthName)) return false;
             if (!pipeline->AddPassAfter(forward, forwardName))
             {
                 depth->QueueForRemoval();
@@ -102,7 +240,7 @@ bool InstallHitPasses(AZ::RPI::Scene& scene, bool required)
         {
             AZ::RPI::PassRequest classifyRequest;
             classifyRequest.m_passName = classifyName;
-            classifyRequest.m_templateName = classifyTemplate;
+            classifyRequest.m_templateName = msaa?msaaClassifyTemplate:classifyTemplate;
             AZ::RPI::PassRequest fillRequest;
             fillRequest.m_passName = fillName;
             fillRequest.m_templateName = fillTemplate;
@@ -119,6 +257,27 @@ bool InstallHitPasses(AZ::RPI::Scene& scene, bool required)
         {
             auto backup = MakeHitPass(backupName, backupTemplate, *pipeline->FindFirstPass(depthName));
             if (!backup || !pipeline->AddPassAfter(backup, fillName)) return false;
+        }
+        if(auto classify=pipeline->FindFirstPass(classifyName))classify->SetEnabled(!msaa||!r_silpomMsaaRawCoverage);
+        if(auto fill=pipeline->FindFirstPass(fillName))fill->SetEnabled(!msaa||!r_silpomMsaaRawCoverage);
+        // A raster backup plane cannot distinguish a valid subpixel miss from
+        // a failed intersection. Never use it to expand 4x silhouette coverage.
+        if(auto backup=pipeline->FindFirstPass(backupName))backup->SetEnabled(!msaa);
+        const char* inspectionNames[]={"SilPOMInspectRaw","SilPOMInspectFinal","SilPOMInspectColors"};
+        for(unsigned i=0;i<3;++i)
+        {
+            const AZ::Name name(inspectionNames[i]);auto pass=pipeline->FindFirstPass(name);
+            if(!pass&&r_silpomMsaaInspect)
+            {
+                AZ::RPI::PassRequest request;request.m_passName=name;
+                request.m_templateName=AZ::Name(i==2?"SilPOMInspectColorsTemplate":"SilPOMInspectSamplesTemplate");
+                pass=system->CreatePassFromRequest(&request);
+                if(!pass)return false;
+                const bool added=i==2?pipeline->AddPassBefore(pass,AZ::Name("MSAAResolveDiffusePass"))
+                    :pipeline->AddPassAfter(pass,i==0?hitDepthName:backupName);
+                if(!added)return false;
+            }
+            if(pass)pass->SetEnabled(r_silpomMsaaInspect);
         }
     }
     return true;
@@ -1239,6 +1398,8 @@ void MeshController::UpdateProxyLod()
 }
 void MeshController::OnTick(float, AZ::ScriptTimePoint)
 {
+    const unsigned policy=UpdateHitSamplePolicy(AZ::RPI::Scene::GetSceneForEntityId(m_entity));
+    if(m_hitSamplePolicy!=policy){m_hitSamplePolicy=policy;m_checkHitPasses=true;}
     if (m_dirty) { Release(m_pending); m_dirty = Prepare(); }
     if (m_checkHitPasses)
     {

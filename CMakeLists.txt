@@ -235,6 +235,9 @@ ly_add_target(NAME ${gem_name}.Static STATIC NAMESPACE Gem
     FILES_CMAKE silpom_files.cmake
     INCLUDE_DIRECTORIES PUBLIC Include PRIVATE Source
     BUILD_DEPENDENCIES PUBLIC AZ::AzCore AZ::AzFramework Gem::Atom_RPI.Public Gem::Atom_Feature_Common.Public)
+if(WIN32)
+    target_link_libraries(${gem_name}.Static PRIVATE Gem::Atom_RHI_DX12.Interface)
+endif()
 ly_add_target(NAME ${gem_name} ${PAL_TRAIT_MONOLITHIC_DRIVEN_MODULE_TYPE} NAMESPACE Gem
     FILES_CMAKE silpom_shared_files.cmake BUILD_DEPENDENCIES PRIVATE Gem::${gem_name}.Static)
 if(PAL_TRAIT_BUILD_HOST_TOOLS)

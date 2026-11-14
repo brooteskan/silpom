@@ -5,7 +5,7 @@
 
 ShaderResourceGroup PassSrg : SRG_PerPass
 {
-    Texture2D<uint4> m_fill;
+    Texture2DMS<uint4> m_fill;
 }
 
 struct PSOutput
@@ -14,9 +14,9 @@ struct PSOutput
     float depth : SV_Depth;
 };
 
-PSOutput MainPS(VSOutput input)
+PSOutput MainPS(VSOutput input,uint sampleIndex:SV_SampleIndex)
 {
-    const uint4 record = PassSrg::m_fill.Load(int3(int2(input.m_position.xy), 0));
+    const uint4 record = PassSrg::m_fill.Load(int2(input.m_position.xy),sampleIndex);
     if (record.w == 0)
         discard;
     PSOutput output;

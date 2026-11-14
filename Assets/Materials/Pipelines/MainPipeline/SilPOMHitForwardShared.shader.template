@@ -36,5 +36,15 @@
             }
         ]
     },
-    "DrawList": "silpomHitForward"
+    "DrawList": "silpomHitForward",
+    "Supervariants": [
+        {
+            "Name": "NoMSAA",
+            "AddBuildArguments": {
+                "azslc": [
+                    "--no-ms"
+                ]
+            }
+        }
+    ]
 }

@@ -50,5 +50,7 @@ ShaderResourceGroup PassSrg : SRG_PerPass
     // And the shaders can calculate linear depth themselves
     uint m_isOriginalDepth;
 
-    Texture2D<uint4> m_silpomHitBuffer;
+    // AZSLc generates the existing 1x layout in its NoMSAA supervariant.
+    Texture2DMS<uint4> m_silpomHitBuffer;
 }
+static uint silpomHitSampleIndex;

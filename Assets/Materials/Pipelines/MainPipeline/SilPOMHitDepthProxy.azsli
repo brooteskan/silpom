@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Authored proxy rasterization only. No intersection/predictor includes.
+option bool o_silpomSampleFrequency=false;
 #include <Atom/Features/SrgSemantics.azsli>
 #define MATERIALPIPELINE_SHADER_HAS_GEOMETRIC_PIXEL_STAGE 1
 #define PIPELINE_HAS_PASS_SRG 0
@@ -24,6 +25,7 @@ struct ProxyVertex
     float4 position:SV_Position;
     sample float2 uv:TEXCOORD0;
     nointerpolation uint face:TEXCOORD1;
+    noperspective sample float rasterDepth:TEXCOORD3;
 #if SILPOM_PROXY_DEPTH
     nointerpolation uint instance:TEXCOORD2;
 #endif
@@ -43,20 +45,21 @@ ProxyVertex VertexShader(VsInput IN,uint instanceId:SV_InstanceID)
     float3 position=origin+du*(output.uv.x-u.x)+dv*(output.uv.y-u.y);
     VsSystemValues sv;sv.m_instanceId=instanceId;
     output.position=mul(GetViewProjectionMatrix(sv),mul(GetObjectToWorldMatrix(sv),float4(position,1)));
+    output.rasterDepth=output.position.z/output.position.w;
     output.face=params.m_silpomHitFaceBase+face;
 #if SILPOM_PROXY_DEPTH
     output.instance=instanceId;
 #endif
     return output;
 }
-#if SILPOM_PROXY_DEPTH
+#if SILPOM_PROXY_DEPTH || SILPOM_MSAA_PLANE_DEPTH
 struct ProxyOutput {precise float depth:SV_Depth;uint4 hit:SV_Target0;};
 #else
 struct ProxyOutput {precise float depth:SV_DepthLessEqual;uint4 hit:SV_Target0;};
 #endif
-ProxyOutput PixelShader(ProxyVertex IN)
+ProxyOutput PixelShader(ProxyVertex IN,uint sampleIndex:SV_SampleIndex)
 {
-    ProxyOutput output;output.depth=IN.position.z;
+    ProxyOutput output;output.depth=o_silpomSampleFrequency?IN.rasterDepth:IN.position.z;
     float2 hitUv=IN.uv;
 #if SILPOM_PROXY_DEPTH
     // Sample features and infer once. Coverage is the original triangle.

@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: MIT
+#include <Atom/Features/SrgSemantics.azsli>
+#include <Atom/Features/PostProcessing/FullscreenVertex.azsli>
+
+// Pixel-frequency broadcast of the empty record to all covered samples.
+// No depth attachment is written and no hit record is resolved.
+uint4 MainPS(VSOutput input):SV_Target0 { return uint4(0,0,0,0); }

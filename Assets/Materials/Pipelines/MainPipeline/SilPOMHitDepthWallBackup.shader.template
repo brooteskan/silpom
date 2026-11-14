@@ -8,9 +8,25 @@
     },
     "ProgramSettings": {
         "EntryPoints": [
-            { "name": "VertexShader", "type": "Vertex" },
-            { "name": "PixelShader", "type": "Fragment" }
+            {
+                "name": "VertexShader",
+                "type": "Vertex"
+            },
+            {
+                "name": "PixelShader",
+                "type": "Fragment"
+            }
         ]
     },
-    "DrawList": "silpomHitDepthWallBackup"
+    "DrawList": "silpomHitDepthWallBackup",
+    "Supervariants": [
+        {
+            "Name": "NoMSAA",
+            "AddBuildArguments": {
+                "azslc": [
+                    "--no-ms"
+                ]
+            }
+        }
+    ]
 }

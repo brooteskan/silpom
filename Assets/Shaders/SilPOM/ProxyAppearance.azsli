@@ -42,7 +42,7 @@ float2 SilPomAppearanceLightGain(float3 light,float reach,bool enabled,MaterialP
 }
 Surface SilPomEvaluateProxySurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,MaterialParameters params)
 {
-    uint width,height;PassSrg::m_silpomHitBuffer.GetDimensions(width,height);
+    uint width,height,samples;PassSrg::m_silpomHitBuffer.GetDimensions(width,height,samples);
     const float3 towardCamera=normalize(ViewSrg::m_worldPosition.xyz-geo.positionWS);
     const float3 worldDu=mul(silpomLitRotation,silpomLitFace.du),worldDv=mul(silpomLitRotation,silpomLitFace.dv);
     SilPomProxyQuery query=SilPomRestoreProxyQuery(geo.positionWS,towardCamera,silpomLitOriginWS,

@@ -1,0 +1,107 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "SilPOMInspectColorsTemplate",
+            "PassClass": "FullScreenTriangle",
+            "Slots": [
+                {
+                    "Name": "Diffuse",
+                    "ShaderInputName": "m_diffuse",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader"
+                },
+                {
+                    "Name": "Specular",
+                    "ShaderInputName": "m_specular",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader"
+                },
+                {
+                    "Name": "DiffuseSamples",
+                    "SlotType": "Output",
+                    "ScopeAttachmentUsage": "RenderTarget"
+                },
+                {
+                    "Name": "SpecularSamples",
+                    "SlotType": "Output",
+                    "ScopeAttachmentUsage": "RenderTarget"
+                }
+            ],
+            "Connections": [
+                {
+                    "LocalSlot": "Diffuse",
+                    "AttachmentRef": {
+                        "Pass": "Forward",
+                        "Attachment": "DiffuseOutput"
+                    }
+                },
+                {
+                    "LocalSlot": "Specular",
+                    "AttachmentRef": {
+                        "Pass": "Forward",
+                        "Attachment": "SpecularOutput"
+                    }
+                },
+                {
+                    "LocalSlot": "DiffuseSamples",
+                    "AttachmentRef": {
+                        "Pass": "This",
+                        "Attachment": "DiffuseSamplesImage"
+                    }
+                },
+                {
+                    "LocalSlot": "SpecularSamples",
+                    "AttachmentRef": {
+                        "Pass": "This",
+                        "Attachment": "SpecularSamplesImage"
+                    }
+                }
+            ],
+            "ImageAttachments": [
+                {
+                    "Name": "DiffuseSamplesImage",
+                    "SizeSource": {
+                        "Source": {
+                            "Pass": "This",
+                            "Attachment": "Diffuse"
+                        },
+                        "Multipliers": {
+                            "WidthMultiplier": 4,
+                            "HeightMultiplier": 1
+                        }
+                    },
+                    "ImageDescriptor": {
+                        "Format": "R16G16B16A16_FLOAT",
+                        "SharedQueueMask": "Graphics"
+                    }
+                },
+                {
+                    "Name": "SpecularSamplesImage",
+                    "SizeSource": {
+                        "Source": {
+                            "Pass": "This",
+                            "Attachment": "Diffuse"
+                        },
+                        "Multipliers": {
+                            "WidthMultiplier": 4,
+                            "HeightMultiplier": 1
+                        }
+                    },
+                    "ImageDescriptor": {
+                        "Format": "R16G16B16A16_FLOAT",
+                        "SharedQueueMask": "Graphics"
+                    }
+                }
+            ],
+            "PassData": {
+                "$type": "FullscreenTrianglePassData",
+                "ShaderAsset": {
+                    "FilePath": "Shaders/SilPOM/HitReuse/SilPOMInspectColors.shader"
+                }
+            }
+        }
+    }
+}

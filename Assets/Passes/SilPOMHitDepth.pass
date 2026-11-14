@@ -61,6 +61,10 @@
                     "ImageDescriptor": {
                         "Format": "R32G32B32A32_UINT",
                         "SharedQueueMask": "Graphics"
+                    },
+                    "MultisampleSource": {
+                        "Pass": "DepthPass",
+                        "Attachment": "Output"
                     }
                 }
             ],

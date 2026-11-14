@@ -7,6 +7,9 @@
  */
 #pragma once
 #define SILPOM_HIT_DEPTH 1
+// Application-owned; follows Atom's actual sample count. Default preserves
+// center SV_Position depth exactly on the established 1x route.
+option bool o_silpomSampleFrequency=false;
 #include <Atom/Features/SrgSemantics.azsli>
 
 #define MATERIALPIPELINE_SHADER_HAS_GEOMETRIC_PIXEL_STAGE 1
@@ -33,8 +36,14 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////
 struct PsOutput
 {
-    // With reverse Z, the hit cannot be nearer than the rasterized bound.
+    // Implicit hits are behind their constant raster bound. A shell plane's
+    // sample depth can be nearer than its pixel-center raster depth, so its
+    // MSAA variant must not promise the conservative pixel-center constraint.
+#if SILPOM_MSAA_PLANE_DEPTH
+    precise float m_depth : SV_Depth;
+#else
     precise float m_depth : SV_DepthLessEqual;
+#endif
     uint4 m_hit : SV_Target0;
 };
 
@@ -44,6 +53,7 @@ struct SilPomShellVertex
     float4 position : SV_Position;
     sample float2 uv : TEXCOORD0;
     nointerpolation uint face : TEXCOORD1;
+    noperspective sample float rasterDepth : TEXCOORD2;
 };
 
 SilPomShellVertex VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
@@ -125,6 +135,7 @@ SilPomShellVertex VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
     // The existing proxy indices are (0,1,2), (2,1,3).
     const uint corner=IN.position.y>0 ? (IN.position.x>0 ? 2u : count-1u) : uint(IN.position.x>0);
     output.position=poly[corner];
+    output.rasterDepth=output.position.z/output.position.w;
     output.uv=polyUv[corner];
     output.face=params.m_silpomHitFaceBase+uint(round(IN.position.z));
     if(SilPomIsTowerWallModel(params.m_silpomNeuralModel)) output.face|=SP_HIT_RECORD_WALL;
@@ -133,6 +144,9 @@ SilPomShellVertex VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
 
 uint4 ShellHit(SilPomShellVertex IN)
 {
+    // SV_Position.z is center-interpolated. Preserve its established 1x
+    // result; the sample-interpolated plane depth is required for MSAA.
+    if(o_silpomSampleFrequency)IN.position.z=IN.rasterDepth;
     const uint flags=SP_HIT_RECORD_SHELL|(IN.face&SP_HIT_RECORD_WALL);
     return uint4(asuint(IN.uv),asuint(IN.position.z)|flags,(IN.face<<2)|SP_HIT);
 }
@@ -145,10 +159,10 @@ uint4 PixelShader(SilPomShellVertex IN) : SV_Target0
     return ShellHit(IN);
 }
 #else
-PsOutput PixelShader(SilPomShellVertex IN)
+PsOutput PixelShader(SilPomShellVertex IN,uint sampleIndex:SV_SampleIndex)
 {
     PsOutput output;
-    output.m_depth=IN.position.z;
+    output.m_depth=o_silpomSampleFrequency?IN.rasterDepth:IN.position.z;
     // The reverse clip depth is nonnegative. Flag shell winners for the capture.
     output.m_hit=ShellHit(IN);
     return output;
@@ -182,7 +196,7 @@ VsOutput VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
     return OUT;
 }
 
-PsOutput PixelShader(VsOutput IN, bool isFrontFace : SV_IsFrontFace)
+PsOutput PixelShader(VsOutput IN, bool isFrontFace : SV_IsFrontFace,uint sampleIndex:SV_SampleIndex)
 {
     // ------- Reconstruct the Instance-Id --------
     VsSystemValues SV;

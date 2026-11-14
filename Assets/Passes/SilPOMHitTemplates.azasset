@@ -4,11 +4,46 @@
     "ClassName": "AssetAliasesSourceData",
     "ClassData": {
         "AssetPaths": [
-            {"Name": "SilPOMHitDepthTemplate", "Path": "Passes/SilPOMHitDepth.pass"},
-            {"Name": "SilPOMHitForwardTemplate", "Path": "Passes/SilPOMHitForward.pass"},
-            {"Name": "SilPOMClassifyWallHolesTemplate", "Path": "Passes/SilPOMClassifyWallHoles.pass"},
-            {"Name": "SilPOMFillWallHolesTemplate", "Path": "Passes/SilPOMFillWallHoles.pass"},
-            {"Name": "SilPOMHitDepthWallBackupTemplate", "Path": "Passes/SilPOMHitDepthWallBackup.pass"}
+            {
+                "Name": "SilPOMHitDepthTemplate",
+                "Path": "Passes/SilPOMHitDepth.pass"
+            },
+            {
+                "Name": "SilPOMHitForwardTemplate",
+                "Path": "Passes/SilPOMHitForward.pass"
+            },
+            {
+                "Name": "SilPOMClassifyWallHolesTemplate",
+                "Path": "Passes/SilPOMClassifyWallHoles.pass"
+            },
+            {
+                "Name": "SilPOMFillWallHolesTemplate",
+                "Path": "Passes/SilPOMFillWallHoles.pass"
+            },
+            {
+                "Name": "SilPOMHitDepthWallBackupTemplate",
+                "Path": "Passes/SilPOMHitDepthWallBackup.pass"
+            },
+            {
+                "Name": "SilPOMInspectSamplesTemplate",
+                "Path": "Passes/SilPOMInspectSamples.pass"
+            },
+            {
+                "Name": "SilPOMInspectColorsTemplate",
+                "Path": "Passes/SilPOMInspectColors.pass"
+            },
+            {
+                "Name": "SilPOMClearHitsTemplate",
+                "Path": "Passes/SilPOMClearHits.pass"
+            },
+            {
+                "Name": "SilPOMHitDepthMsaaTemplate",
+                "Path": "Passes/SilPOMHitDepthMsaa.pass"
+            },
+            {
+                "Name": "SilPOMClassifyWallHolesMsaaTemplate",
+                "Path": "Passes/SilPOMClassifyWallHolesMsaa.pass"
+            }
         ]
     }
 }

@@ -5,8 +5,8 @@
 
 ShaderResourceGroup PassSrg : SRG_PerPass
 {
-    Texture2D<float2> m_sceneDepth;
-    Texture2D<uint4> m_hits;
+    Texture2DMS<float2> m_sceneDepth;
+    Texture2DMS<uint4> m_hits;
 }
 
 bool IsWallHit(uint4 record)
@@ -14,6 +14,7 @@ bool IsWallHit(uint4 record)
     return (record.z & SP_HIT_RECORD_WALL) != 0 && (record.w & 3u) == 1u;
 }
 
+static uint silpomRepairSample;
 static const float MinimumPairAgreement = .90f;
 static const float MaximumGapDepthRatio = .80f;
 
@@ -73,8 +74,8 @@ uint4 BridgeGap(int2 pixel, int2 axis, float centerDepth, uint centerOwner, uint
     float weight = .5f;
     if (!nearA)
     {
-        gapDepth = max(gapDepth, PassSrg::m_sceneDepth.Load(int3(pixel - axis, 0)).r);
-        a = PassSrg::m_hits.Load(int3(pixel - 2 * axis, 0));
+        gapDepth = max(gapDepth, PassSrg::m_sceneDepth.Load(pixel - axis,silpomRepairSample).r);
+        a = PassSrg::m_hits.Load(pixel - 2 * axis,silpomRepairSample);
         if (!IsWallHit(a))
             return 0;
         za = RecordDepth(a);
@@ -82,8 +83,8 @@ uint4 BridgeGap(int2 pixel, int2 axis, float centerDepth, uint centerOwner, uint
     }
     else if (!nearB)
     {
-        gapDepth = max(gapDepth, PassSrg::m_sceneDepth.Load(int3(pixel + axis, 0)).r);
-        b = PassSrg::m_hits.Load(int3(pixel + 2 * axis, 0));
+        gapDepth = max(gapDepth, PassSrg::m_sceneDepth.Load(pixel + axis,silpomRepairSample).r);
+        b = PassSrg::m_hits.Load(pixel + 2 * axis,silpomRepairSample);
         if (!IsWallHit(b))
             return 0;
         zb = RecordDepth(b);
@@ -102,17 +103,30 @@ uint4 BridgeGap(int2 pixel, int2 axis, float centerDepth, uint centerOwner, uint
     return fill;
 }
 
-uint4 MainPS(VSOutput input) : SV_Target0
+uint4 MainPS(VSOutput input,uint sampleIndex:SV_SampleIndex) : SV_Target0
 {
+    silpomRepairSample=sampleIndex;
     const int2 pixel = int2(input.m_position.xy);
-    const float centerDepth = PassSrg::m_sceneDepth.Load(int3(pixel, 0)).r;
+    uint width,height,samples;PassSrg::m_hits.GetDimensions(width,height,samples);
+    if(samples>1)
+    {
+        // Never grow MSAA silhouettes or overwrite ordinary geometry. Only
+        // repair depth discontinuities inside pixels already entirely wall.
+        const uint owner=PassSrg::m_hits.Load(pixel,0).w;
+        for(uint s=0;s<samples;++s)
+        {
+            const uint4 hit=PassSrg::m_hits.Load(pixel,s);
+            if(!IsWallHit(hit)||hit.w!=owner)return 0;
+        }
+    }
+    const float centerDepth = PassSrg::m_sceneDepth.Load(pixel,silpomRepairSample).r;
     const int2 horizontal = int2(1, 0);
     const int2 vertical = int2(0, 1);
     // Out-of-bounds loads are zero, so the viewport edge cannot supply support.
-    const uint4 left = PassSrg::m_hits.Load(int3(pixel - horizontal, 0));
-    const uint4 right = PassSrg::m_hits.Load(int3(pixel + horizontal, 0));
-    const uint4 top = PassSrg::m_hits.Load(int3(pixel - vertical, 0));
-    const uint4 bottom = PassSrg::m_hits.Load(int3(pixel + vertical, 0));
+    const uint4 left = PassSrg::m_hits.Load(pixel - horizontal,silpomRepairSample);
+    const uint4 right = PassSrg::m_hits.Load(pixel + horizontal,silpomRepairSample);
+    const uint4 top = PassSrg::m_hits.Load(pixel - vertical,silpomRepairSample);
+    const uint4 bottom = PassSrg::m_hits.Load(pixel + vertical,silpomRepairSample);
     if (centerDepth == 0.0f)
     {
         const uint4 skyFill = FillIsolatedSky(left, right, top, bottom);
@@ -120,7 +134,7 @@ uint4 MainPS(VSOutput input) : SV_Target0
             return skyFill;
     }
 
-    const uint centerOwner = PassSrg::m_hits.Load(int3(pixel, 0)).w;
+    const uint centerOwner = PassSrg::m_hits.Load(pixel,silpomRepairSample).w;
     uint4 fill = BridgeGap(pixel, horizontal, centerDepth, centerOwner, left, right);
     if (fill.w == 0)
         fill = BridgeGap(pixel, vertical, centerDepth, centerOwner, top, bottom);
@@ -132,12 +146,14 @@ uint4 MainPS(VSOutput input) : SV_Target0
         if (fill.w == 0)
         {
             const int2 axis = diagonals[i];
-            const uint4 a = PassSrg::m_hits.Load(int3(pixel - axis, 0));
-            const uint4 b = PassSrg::m_hits.Load(int3(pixel + axis, 0));
+            const uint4 a = PassSrg::m_hits.Load(pixel - axis,silpomRepairSample);
+            const uint4 b = PassSrg::m_hits.Load(pixel + axis,silpomRepairSample);
             fill = BridgeGap(pixel, axis, centerDepth, centerOwner, a, b);
         }
     }
-    if (fill.w == 0)
+    // The 4x variant initializes every sample instead of using a native clear
+    // of the integer MSAA target. Preserve the established 1x discard behavior.
+    if (fill.w == 0 && samples==1)
         discard;
     return fill;
 }
