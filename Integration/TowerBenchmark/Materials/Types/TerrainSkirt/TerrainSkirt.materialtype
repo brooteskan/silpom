@@ -1,0 +1,9 @@
+{
+  "$import": {
+    "filename": "@gemroot:TerrainCompositor@/Assets/Materials/Types/TerrainMeshBlend/TerrainMeshBlend.materialtype",
+    "patch": {
+      "description": "Tower skirt with world-space terrain sampling and a smooth normal transition at ground level.",
+      "materialShaderCode": "@projectroot@/Materials/Types/TerrainSkirt/TerrainSkirt.azsli"
+    }
+  }
+}
