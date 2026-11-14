@@ -25,6 +25,9 @@ AZ_TYPE_INFO_SPECIALIZE(LocalShadowMethod, "{8C21E33E-53B1-45A9-9554-57656F558F1
 // Lighting only. Zero preserves the approved near/shared/proxy routing.
 enum class LightingEstimator : AZ::u32 { CurrentRouting=0, PhysicalRayNeural=1, DirectionalField32=2, AngularOccluders4=3, AngularOccluders8=4, AngularEdges4=5 };
 AZ_TYPE_INFO_SPECIALIZE(LightingEstimator, "{4BDDBA90-2C99-4DD0-99A2-40F22F5D8B82}");
+// Default is passive: existing levels retain their approved renderer settings.
+enum class AntiAliasing : AZ::u32 { CurrentDefault=0, SMAA=1, TAA=2, MSAA4=3 };
+AZ_TYPE_INFO_SPECIALIZE(AntiAliasing, "{46E20631-E4B5-416E-9A1D-66C7CCCD0218}");
 struct MeshMaterialBinding
 {
     AZ_TYPE_INFO(MeshMaterialBinding, "{B592E91C-172C-4A55-A887-B4870B8F19F5}");
@@ -84,6 +87,7 @@ public:
     AZ::u32 m_spiralLightShadowSteps = 18;
     LocalShadowMethod m_localShadowMethod = LocalShadowMethod::Baseline;
     LightingEstimator m_lightingEstimator = LightingEstimator::CurrentRouting;
+    AntiAliasing m_antiAliasing = AntiAliasing::CurrentDefault;
     bool m_diffuseAccessibility = false;
     bool m_neuralDirectionalVisibility = false;
     bool m_proxyDirectionalResponse = false;
@@ -111,6 +115,7 @@ public:
     virtual bool IsReady() const = 0;
     virtual AZ::Vector3 GetProxyLodState() const = 0; // far faces, candidate faces, largest selected pixel bound
     virtual AZStd::vector<AZ::u32> GetProxyFaceOwners() const = 0;
+    virtual AZ::Vector3 GetAntiAliasingState() const = 0; // samples, Atom AA mode, SMAA enabled
 };
 using MeshRequestBus = AZ::EBus<MeshRequests>;
 
@@ -134,6 +139,7 @@ public:
     bool IsReady() const override;
     AZ::Vector3 GetProxyLodState() const override;
     AZStd::vector<AZ::u32> GetProxyFaceOwners() const override;
+    AZ::Vector3 GetAntiAliasingState() const override;
     MeshConfig m_configuration;
 private:
     struct Generation;

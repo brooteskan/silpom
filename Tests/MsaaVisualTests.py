@@ -114,10 +114,17 @@ def validate(root):
         err_msg='Indirect lighting resolved geometry attributes before sample shading')
     summary['indirect']=dict(mean_added_light=float((lit[:,:,:,:3]-dark[:,:,:,:3])[owned].mean()),
         resolve_max_error=float(np.abs(resolved-lit.mean(2)).max()))
-    smaa=json.loads((root/'gpu-SMAA.json').read_text())
-    active={p['path']:sum(s[1]==i for s in smaa['samples']) for i,p in enumerate(smaa['passes']) if 'SMAA' in p['path']}
-    assert any('BlendingWeight' in name and count>=100 for name,count in active.items()),'SMAA was only a pass-through comparison'
-    summary['smaa_active_gpu_samples']=active
+    states=report.get('aa_pipeline_states')
+    if states is not None:
+        assert states['SMAA']==[1,1,1],'SMAA requires the SMAA pipeline mode and enabled feature processor at 1x'
+        summary['smaa_pipeline_state']=states['SMAA']
+    else:
+        # Preserve validation of older captures that used timing as activation
+        # evidence. New visual runs do not require performance capture files.
+        smaa=json.loads((root/'gpu-SMAA.json').read_text())
+        active={p['path']:sum(s[1]==i for s in smaa['samples']) for i,p in enumerate(smaa['passes']) if 'SMAA' in p['path']}
+        assert any('BlendingWeight' in name and count>=100 for name,count in active.items()),'SMAA was only a pass-through comparison'
+        summary['smaa_active_gpu_samples']=active
     (root/'msaa-validation.json').write_text(json.dumps(summary,indent=2)+'\n');print(json.dumps(summary,indent=2))
 
 

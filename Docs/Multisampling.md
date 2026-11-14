@@ -4,6 +4,58 @@ The DX12 MainPipeline has an opt-in four-sample path. The default remains the
 approved single-sample renderer. Height reconstruction, trained weights, and
 material-footprint filtering are shared between them.
 
+In VueLiveLink, select **Irish Fieldstone Tower (Open Shaft)** and open its
+**SilPOM Mesh → Anti-aliasing** dropdown:
+
+- **Current default (unchanged)** preserves the approved single-sample default.
+- **SMAA** enables both Atom's SMAA passes and its SMAA feature processor at 1×.
+- **TAA** enables temporal AA at 1×.
+- **4x MSAA (editor comparison)** selects the experimental four-sample renderer.
+
+SMAA and TAA carry into game mode. The selection changes scene AA without regenerating
+the tower or changing its estimator, lighting, recovery or quality settings.
+Returning to Current default, or disabling the component, restores the settings
+active before the comparison. Default components are passive. If several meshes
+make explicit selections, the most recently edited selection wins; releasing it
+returns to the remaining selection. MSAA's sample count affects the application,
+including preview scenes, so a brief rendering pause protects sample transitions.
+Existing levels deserialize to Current default; no tower prefab needs rewriting.
+
+Use four samples for editor comparisons. **After using MSAA, select Current
+default, save and restart the Editor before Ctrl-G.** The MSAA-to-game handoff
+currently exposes a native DX12 `SkinnedMeshOutputStream0` UAV/read-state barrier
+mismatch, including when the sample count has already returned to one. Merely
+selecting a different AA option does not establish that gameplay is safe in
+that session. The selector does not claim to fix this engine limitation.
+
+Four samples add substantial GPU cost and remain an experimental coverage
+comparison. They retain the current raw/repair console choice; selecting AA does
+not alter that choice or add diagnostic passes. Unsupported devices retain 1×.
+`Tests/AntiAliasingSelectorEditorSmoke.py` exercises the actual dropdown property,
+rapid transitions, disable/re-enable and exact approved 1× captures. Gameplay
+after an MSAA comparison is explicitly outside this editor visual suite.
+
+The visual suite does not collect timings by default. Set
+`TG_SILPOM_MSAA_TIMING=1` to add the existing 120-frame GPU captures. New visual
+reports verify SMAA through its active pipeline mode and enabled feature
+processor; older reports can still use their recorded pass timing evidence.
+The established 1× reference includes classify/fill and the backup shell, while
+raw 4× omits them and repaired 4× only repairs fully covered, same-owner pixels.
+Consequently these images compare recovery policy as well as AA. They do not
+establish that MSAA alone improves silhouettes. Do not fill genuine partial
+sample coverage with the backup shell to match the repaired 1× image.
+
+TGProject's terrain-compositor integration also needs
+[the clipmap pass lifecycle fix](Integration/TerrainClipmapMsaa.patch), included
+here for reproducible VueLiveLink builds. A sample-count change replaces the
+pipeline's root without replacing the pipeline object. Terrain must recreate its
+cached passes for that new root and avoid queuing detached old passes for removal.
+Otherwise the terrain cache can disappear and Ctrl-G can assert after an MSAA
+comparison. Apply the patch from the terrain-compositor repository and rebuild
+`Terrain.Static`, `Terrain.Editor` and `Terrain` alongside the SilPOM modules.
+
+The equivalent manual four-sample controls remain available:
+
 ```text
 r_antiAliasing MSAA
 r_silpomMsaa4 1
@@ -13,7 +65,10 @@ Disabling `r_silpomMsaa4` restores one sample. The native rendering device is
 checked for four-sample render/load support on the actual attachment formats
 before enabling the path. Pipeline roots pause during the sample-count
 transition, including root recreation, so old draw packets cannot be submitted
-to new attachments.
+to new attachments. The transition owns its tick handler until completion and
+drops removed pipelines; disabling the last mesh cannot leave surviving roots
+paused. The three-tick delay remains a scheduling guard rather than a general
+shader/readiness guarantee.
 
 Each covered sample has its own unresolved `uint4` hit record. Intersection uses
 sample-interpolated camera coordinates. The forward wrapper supplies

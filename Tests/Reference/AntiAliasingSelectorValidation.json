@@ -1,0 +1,52 @@
+{
+  "passed": true,
+  "scope": "Editor comparisons; MSAA-to-gameplay limitation remains documented",
+  "baseline_state": [
+    1,
+    0,
+    0
+  ],
+  "mode_states": {
+    "smaa": [
+      1,
+      1,
+      1
+    ],
+    "taa": [
+      1,
+      2,
+      0
+    ],
+    "msaa4": [
+      4,
+      0,
+      0
+    ],
+    "smaa-after-msaa": [
+      1,
+      1,
+      1
+    ],
+    "default-restored": [
+      1,
+      0,
+      0
+    ]
+  },
+  "approved_reference_captures_exact": 20,
+  "standalone_test_groups_passed": 35,
+  "level_sha256": "9124e6cd4ec1b601bcba0c7dc93424836483e2a2cabd56acb3fd6483596e9df8",
+  "saved_level_unchanged": true,
+  "checks": [
+    "AA edits retain mesh generation and quality/lighting settings",
+    "Returning to default restores identical saved-tower pixels",
+    "Rapid sample-count transitions",
+    "Disable/re-enable resumes surviving pipelines independently of mesh ticks"
+  ],
+  "visual_only_validator_passed_on_recorded_captures_without_timing_files": true,
+  "benchmark_performed": false,
+  "known_limitations": [
+    "After MSAA, select Current default, save and restart before Ctrl-G; native SkinnedMeshOutputStream0 barrier validation remains unresolved.",
+    "1x and 4x currently use different coverage-repair policies."
+  ]
+}

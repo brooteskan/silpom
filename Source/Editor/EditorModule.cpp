@@ -5,6 +5,8 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <Atom/Feature/Utils/EditorRenderComponentAdapter.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Serialization/Utils.h>
+#include <AzCore/IO/ByteContainerStream.h>
 #include <SilPOM/MeshSettingRules.h>
 namespace SilPOM
 {
@@ -73,9 +75,10 @@ public:
             m_controller.SetConfiguration(config);
             SetDirty();
         }
+        m_previousMeshSettings=MeshSettings(m_controller.GetConfiguration());
         AZ::TickBus::Handler::BusConnect();
     }
-    void Deactivate() override { AZ::TickBus::Handler::BusDisconnect(); BaseClass::Deactivate(); }
+    void Deactivate() override { AZ::TickBus::Handler::BusDisconnect();BaseClass::Deactivate(); }
     AZStd::string Status() const { return m_controller.GetStatus(); }
     static void Reflect(AZ::ReflectContext* context)
     {
@@ -97,6 +100,12 @@ public:
                     ->Attribute(AZ::Edit::Attributes::Visibility,AZ::Edit::PropertyVisibility::ShowChildrenOnly);
                 edit->Class<MeshConfig>("Mesh settings","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_surface,"Mesh surface","Export .fbx and .silpom.json together; select the compiled .silpommesh")
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox,&MeshConfig::m_antiAliasing,"Anti-aliasing",
+                        "Compare scene AA without changing tower quality or lighting. Current default restores the settings active before comparison. SMAA and TAA use one sample. Experimental 4x MSAA costs more GPU time and uses a different coverage-repair policy. After using MSAA, select Current default, save and restart the Editor before Ctrl-G: the native skinning-buffer transition currently fails validation on that handoff. Latest explicit selection wins across meshes.")
+                    ->EnumAttribute(AntiAliasing::CurrentDefault,"Current default (unchanged)")
+                    ->EnumAttribute(AntiAliasing::SMAA,"SMAA")
+                    ->EnumAttribute(AntiAliasing::TAA,"TAA")
+                    ->EnumAttribute(AntiAliasing::MSAA4,"4x MSAA (editor comparison)")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_materials,"Materials","One assignment per authored material identity")
                     ->DataElement(AZ::Edit::UIHandlers::Slider,&MeshConfig::m_reliefDepthMultiplier,"Relief depth multiplier",
                         "Scales the displacement of all trained profiles together. 0 is flat and 1 uses the authored depths.")
@@ -230,6 +239,16 @@ private:
         c.m_lightingEstimator=static_cast<LightingEstimator>(choice.lighting);
         c.m_diffuseAccessibility=choice.diffuseAmbient;
     }
+    static AZStd::vector<AZ::u8> MeshSettings(MeshConfig config)
+    {
+        // Exclude AA when deciding whether to regenerate geometry/materials.
+        // Comparing the full remaining configuration also handles compound undo.
+        config.m_antiAliasing=AntiAliasing::CurrentDefault;
+        AZStd::vector<AZ::u8> data;
+        AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8>> stream(&data);
+        AZ::Utils::SaveObjectToStream(stream,AZ::DataStream::ST_BINARY,&config);
+        return data;
+    }
     AZ::u32 OnConfigurationChanged() override
     {
         // The generic adapter deactivates the controller for every property
@@ -237,7 +256,10 @@ private:
         auto config = m_controller.GetConfiguration();
         m_previousChoices=MeshSettingRules::Edit(m_previousChoices,Choices(config));
         ApplyChoices(config,m_previousChoices);
-        m_controller.SetConfiguration(config);
+        auto settings=MeshSettings(config);
+        if(settings!=m_previousMeshSettings)m_controller.SetConfiguration(config);
+        else m_controller.m_configuration=config;
+        m_previousMeshSettings=AZStd::move(settings);
         return AZ::Edit::PropertyRefreshLevels::AttributesAndValues;
     }
     void OnTick(float,AZ::ScriptTimePoint) override
@@ -257,6 +279,7 @@ private:
         }
     }
     AZStd::string m_lastStatus;
+    AZStd::vector<AZ::u8> m_previousMeshSettings;
     MeshSettingRules::Choices m_previousChoices;
     size_t m_lastSlots=0;
 };

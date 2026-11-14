@@ -4,6 +4,7 @@
 #include <SilPOM/AppearanceCodec.h>
 #include <SilPOM/ReliefLod.h>
 #include <SilPOM/DirectionalEstimatorContract.h>
+#include <Atom/Feature/PostProcessing/SMAAFeatureProcessorInterface.h>
 #include <Atom/RPI.Public/View.h>
 #include <Atom/RPI.Public/ViewportContext.h>
 #include <Atom/RPI.Public/ViewportContextBus.h>
@@ -97,12 +98,26 @@ bool SupportsHitMsaa4()
 
 struct HitSampleTransition
     : AZ::RPI::SceneNotificationBus::MultiHandler
+    , AZ::TickBus::Handler
 {
     AZStd::vector<AZStd::pair<AZ::RPI::RenderPipelinePtr,bool>> paused;
     AZ::u64 resumeTick=0;
+    void Resume()
+    {
+        const bool resume=AZ::RPI::RPISystemInterface::Get()->GetCurrentTick()>=resumeTick;
+        for(const auto& entry:paused)
+            if(entry.first->GetScene()&&entry.first->GetRootPass()->GetParent())
+                entry.first->GetRootPass()->SetEnabled(resume&&entry.second);
+        if(resume){paused.clear();AZ::RPI::SceneNotificationBus::MultiHandler::BusDisconnect();AZ::TickBus::Handler::BusDisconnect();}
+    }
+    void OnTick(float,AZ::ScriptTimePoint) override { Resume(); }
     void OnRenderPipelineChanged(AZ::RPI::RenderPipeline* pipeline,AZ::RPI::SceneNotification::RenderPipelineChangeType type) override
     {
-        if(type==AZ::RPI::SceneNotification::RenderPipelineChangeType::Removed)return;
+        if(type==AZ::RPI::SceneNotification::RenderPipelineChangeType::Removed)
+        {
+            AZStd::erase_if(paused,[&](const auto& entry){return entry.first.get()==pipeline;});
+            return;
+        }
         // MSAA recreates roots. Apply the pause to the new root before drawing.
         for(const auto& entry:paused)if(entry.first.get()==pipeline)pipeline->GetRootPass()->SetEnabled(false);
     }
@@ -122,9 +137,7 @@ unsigned UpdateHitSamplePolicy(AZ::RPI::Scene* scene)
     {
         // Pass attachments update before MeshFeatureProcessor has rebuilt all
         // scene draw packets. Submit no scene draws across that transition.
-        const bool resume=rpi->GetCurrentTick()>=resumeTick;
-        for(const auto& entry:paused)entry.first->GetRootPass()->SetEnabled(resume&&entry.second);
-        if(resume){paused.clear();transition.BusDisconnect();}
+        transition.Resume();
     }
     if(requested!=r_silpomMsaa4)
     {
@@ -141,7 +154,7 @@ unsigned UpdateHitSamplePolicy(AZ::RPI::Scene* scene)
             if(scene)scenes.insert(scene);
             for(const auto& root:AZ::RPI::PassSystemInterface::Get()->GetRootPass()->GetChildren())
                 if(auto* owner=root->GetScene())scenes.insert(owner);
-            transition.BusDisconnect();
+            transition.AZ::RPI::SceneNotificationBus::MultiHandler::BusDisconnect();
             for(auto* owner:scenes)
             {
                 for(const auto& pipeline:owner->GetRenderPipelines())
@@ -150,9 +163,11 @@ unsigned UpdateHitSamplePolicy(AZ::RPI::Scene* scene)
                     if(found==paused.end())paused.push_back({pipeline,pipeline->GetRootPass()->IsEnabled()});
                     pipeline->GetRootPass()->SetEnabled(false);
                 }
-                transition.BusConnect(owner->GetId());
+                transition.AZ::RPI::SceneNotificationBus::MultiHandler::BusConnect(owner->GetId());
             }
             resumeTick=rpi->GetCurrentTick()+3;
+            // Resume even when the last SilPOM component was just disabled.
+            if(!transition.AZ::TickBus::Handler::BusIsConnected())transition.AZ::TickBus::Handler::BusConnect();
             requested=r_silpomMsaa4;++version;
             AZ::Interface<AZ::IConsole>::Get()->PerformCommand(requested?"r_multiSampleCount 4":"r_multiSampleCount 1");
         }
@@ -168,6 +183,80 @@ unsigned UpdateHitSamplePolicy(AZ::RPI::Scene* scene)
     }
     return version;
 }
+
+// AA is a viewport/application setting, not a material setting. Default meshes
+// are passive; the most recently changed explicit selection wins. Keep the
+// original per-scene settings until the last override is released, including
+// editor/game scene hand-offs. Never rewrite the user's tower quality settings.
+struct AntiAliasingOverrides
+{
+    struct Request { AZ::EntityId entity; AntiAliasing mode; };
+    struct PipelineState { AZ::RPI::SceneId scene; AZ::RPI::RenderPipelineId pipeline; AZ::RPI::AntiAliasingMode mode; };
+    struct SceneState { AZ::RPI::SceneId scene; bool smaa; };
+    AZStd::vector<Request> requests;
+    AZStd::vector<PipelineState> pipelines;
+    AZStd::vector<SceneState> scenes;
+    bool originalMsaa4=false;
+    bool checkedMsaa4=false,supportsMsaa4=false;
+    AZ::u64 lastTick=~AZ::u64(0);
+
+    void Update(AZ::EntityId entity,AntiAliasing mode)
+    {
+        auto found=AZStd::find_if(requests.begin(),requests.end(),[&](const auto& r){return r.entity==entity;});
+        const bool changed=found==requests.end()?mode!=AntiAliasing::CurrentDefault:found->mode!=mode;
+        if(changed)
+        {
+            if(requests.empty())originalMsaa4=r_silpomMsaa4;
+            if(found!=requests.end())requests.erase(found);
+            if(mode!=AntiAliasing::CurrentDefault)requests.push_back({entity,mode});
+        }
+        auto* rpi=AZ::RPI::RPISystemInterface::Get();
+        if(requests.empty())
+        {
+            if(!changed)return;
+            for(const auto& state:pipelines)
+                if(auto* scene=rpi->GetScene(state.scene))
+                    if(auto pipeline=scene->GetRenderPipeline(state.pipeline))
+                        pipeline->SetActiveAAMethod(AZ::RPI::RenderPipeline::GetAAMethodNameByIndex(state.mode));
+            for(const auto& state:scenes)
+                if(auto* scene=rpi->GetScene(state.scene))
+                    if(auto* fp=scene->GetFeatureProcessor<AZ::Render::SMAAFeatureProcessorInterface>())fp->SetEnable(state.smaa);
+            pipelines.clear();scenes.clear();r_silpomMsaa4=originalMsaa4;
+            lastTick=~AZ::u64(0);return;
+        }
+        if(!changed&&lastTick==rpi->GetCurrentTick())return;
+        lastTick=rpi->GetCurrentTick();
+        const auto active=requests.back().mode;
+        const auto method=active==AntiAliasing::SMAA?AZ::RPI::AntiAliasingMode::SMAA:
+            active==AntiAliasing::TAA?AZ::RPI::AntiAliasingMode::TAA:AZ::RPI::AntiAliasingMode::MSAA;
+        // Reuse the capability check and guarded sample-count transition below.
+        if(active==AntiAliasing::MSAA4&&!checkedMsaa4)
+        {
+            supportsMsaa4=SupportsHitMsaa4();checkedMsaa4=true;
+            AZ_Warning("SilPOM",supportsMsaa4,"4x MSAA is unavailable on this device; retaining single-sample rendering.");
+        }
+        r_silpomMsaa4=active==AntiAliasing::MSAA4&&supportsMsaa4;
+        AZStd::set<AZ::RPI::Scene*> owners;
+        for(const auto& root:AZ::RPI::PassSystemInterface::Get()->GetRootPass()->GetChildren())
+            if(auto* scene=root->GetScene())owners.insert(scene);
+        for(auto* scene:owners)
+            for(const auto& pipeline:scene->GetRenderPipelines())
+            {
+                if(pipeline->GetDescriptor().m_materialPipelineTag!="MainPipeline")continue;
+                if(AZStd::none_of(pipelines.begin(),pipelines.end(),[&](const auto& s){return s.scene==scene->GetId()&&s.pipeline==pipeline->GetId();}))
+                    pipelines.push_back({scene->GetId(),pipeline->GetId(),pipeline->GetActiveAAMethod()});
+                if(pipeline->GetActiveAAMethod()!=method)
+                    pipeline->SetActiveAAMethod(AZ::RPI::RenderPipeline::GetAAMethodNameByIndex(method));
+                if(auto* fp=scene->GetFeatureProcessor<AZ::Render::SMAAFeatureProcessorInterface>())
+                {
+                    if(AZStd::none_of(scenes.begin(),scenes.end(),[&](const auto& s){return s.scene==scene->GetId();}))
+                        scenes.push_back({scene->GetId(),fp->GetSettings().m_enable});
+                    if(fp->GetSettings().m_enable!=(active==AntiAliasing::SMAA))fp->SetEnable(active==AntiAliasing::SMAA);
+                }
+            }
+    }
+};
+AntiAliasingOverrides& AntiAliasingState() { static AntiAliasingOverrides state;return state; }
 
 AZ::RPI::Ptr<AZ::RPI::Pass> MakeHitPass(const AZ::Name& name, const AZ::Name& templateName, const AZ::RPI::Pass& reference)
 {
@@ -562,7 +651,10 @@ void MeshConfig::Reflect(AZ::ReflectContext* context)
             ->Value("PhysicalRayNeural",LightingEstimator::PhysicalRayNeural)->Value("DirectionalField32",LightingEstimator::DirectionalField32)
             ->Value("AngularOccluders4",LightingEstimator::AngularOccluders4)->Value("AngularOccluders8",LightingEstimator::AngularOccluders8)
             ->Value("AngularEdges4",LightingEstimator::AngularEdges4);
-        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(21)->Field("Surface", &MeshConfig::m_surface)
+        sc->Enum<AntiAliasing>()->Value("CurrentDefault",AntiAliasing::CurrentDefault)
+            ->Value("SMAA",AntiAliasing::SMAA)->Value("TAA",AntiAliasing::TAA)->Value("MSAA4",AntiAliasing::MSAA4);
+        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(22)->Field("Surface", &MeshConfig::m_surface)
+            ->Field("AntiAliasing", &MeshConfig::m_antiAliasing)
             ->Field("LightingEstimator", &MeshConfig::m_lightingEstimator)
             ->Field("DiffuseAccessibility", &MeshConfig::m_diffuseAccessibility)
             ->Field("Materials", &MeshConfig::m_materials)->Field("Profiles", &MeshConfig::m_profiles)
@@ -619,7 +711,8 @@ void MeshController::Reflect(AZ::ReflectContext* context)
             ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
             ->Event("GetStatus", &MeshRequests::GetStatus)->Event("IsReady", &MeshRequests::IsReady)
             ->Event("GetProxyLodState",&MeshRequests::GetProxyLodState)
-            ->Event("GetProxyFaceOwners",&MeshRequests::GetProxyFaceOwners);
+            ->Event("GetProxyFaceOwners",&MeshRequests::GetProxyFaceOwners)
+            ->Event("GetAntiAliasingState",&MeshRequests::GetAntiAliasingState);
 }
 void MeshComponent::Reflect(AZ::ReflectContext* context)
 {
@@ -634,6 +727,17 @@ bool MeshController::IsReady() const
     // A retained last-known-good generation is visible, but is not readiness
     // for a newly requested configuration which failed validation.
     return m_active && !m_dirty && !m_pending && m_status.starts_with("Ready:");
+}
+AZ::Vector3 MeshController::GetAntiAliasingState() const
+{
+    float method=-1,smaa=0;
+    if(auto* scene=AZ::RPI::Scene::GetSceneForEntityId(m_entity))
+    {
+        for(const auto& pipeline:scene->GetRenderPipelines())
+            if(pipeline->GetDescriptor().m_materialPipelineTag=="MainPipeline")method=float(pipeline->GetActiveAAMethod());
+        if(auto* fp=scene->GetFeatureProcessor<AZ::Render::SMAAFeatureProcessorInterface>())smaa=fp->GetSettings().m_enable?1.f:0.f;
+    }
+    return AZ::Vector3(float(AZ::RPI::RPISystemInterface::Get()->GetApplicationMultisampleState().m_samples),method,smaa);
 }
 void MeshController::ConnectAssets()
 {
@@ -688,6 +792,8 @@ void MeshController::Release(AZStd::unique_ptr<Generation>& generation)
 }
 void MeshController::Deactivate()
 {
+    AntiAliasingState().Update(m_entity,AntiAliasing::CurrentDefault);
+    UpdateHitSamplePolicy(AZ::RPI::Scene::GetSceneForEntityId(m_entity));
     AZ::RPI::SceneNotificationBus::Handler::BusDisconnect();
     m_checkHitPasses = false;
     AZ::TickBus::Handler::BusDisconnect(); MeshRequestBus::Handler::BusDisconnect();
@@ -1398,6 +1504,7 @@ void MeshController::UpdateProxyLod()
 }
 void MeshController::OnTick(float, AZ::ScriptTimePoint)
 {
+    AntiAliasingState().Update(m_entity,m_configuration.m_antiAliasing);
     const unsigned policy=UpdateHitSamplePolicy(AZ::RPI::Scene::GetSceneForEntityId(m_entity));
     if(m_hitSamplePolicy!=policy){m_hitSamplePolicy=policy;m_checkHitPasses=true;}
     if (m_dirty) { Release(m_pending); m_dirty = Prepare(); }

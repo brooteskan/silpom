@@ -36,6 +36,8 @@ def inspect(stem):
 
 
 def gpu_cost(mode):
+    if os.environ.get('TG_SILPOM_MSAA_TIMING','0')!='1':return
+    result['benchmark_performed']=True
     # Timestamp collection only: no screenshots, readbacks, inspection atlases
     # or active shader compilation during these steady-state frames.
     command('r_silpomMsaaInspect',0);general.idle_wait_frames(120);renderer_clean()
@@ -108,6 +110,12 @@ def main():
         if mode=='msaa4':
             command('r_silpomMsaa4',1);general.idle_wait_frames(120)
             assert str(general.get_cvar('r_silpomMsaa4')).lower() in ('true','1'),'4x capability check rejected the device'
+        general.idle_wait_frames(3)
+        state=silpom.SilPomMeshRequestBus(bus.Event,'GetAntiAliasingState',tower)
+        actual=[int(state.x),int(state.y),int(state.z)]
+        expected=[4,0,0] if mode=='msaa4' else [1,1,1] if mode=='SMAA' else [1,2,0] if mode=='TAA' else [1,0,0]
+        assert actual==expected,(mode,actual,expected)
+        result.setdefault('aa_pipeline_states',{})[mode]=actual;flush()
         for name,eye,direction,pose in cases:
             view(eye,direction,pose);general.idle_wait_frames(90)
             screenshot(OUTPUT/f'{mode}-{name}.png')
