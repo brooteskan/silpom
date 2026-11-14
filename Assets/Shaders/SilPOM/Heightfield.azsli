@@ -52,7 +52,16 @@ int SilPomAddress(int i, int size, uint mode)
     // Power-of-two repeat is exact for negative coordinates too. Avoid two
     // runtime integer remainders for every axis of every height texel load.
     if ((size & (size - 1)) == 0) { return int(uint(i) & uint(size - 1)); }
+#if SILPOM_MSAA_FAST_ADDRESSING
+    // The tower's 6656x6144 atlas is not power-of-two. Most validator taps
+    // already lie inside it; wrapped taps need only one signed remainder.
+    // Keep the approved 1x specialization below unchanged.
+    if (uint(i) < uint(size)) { return i; }
+    const int remainder=i%size;
+    return remainder<0?remainder+size:remainder;
+#else
     return ((i % size) + size) % size;
+#endif
 }
 float SilPomTexel(SP_TEX texture, SilPomPatch p, int x, int y)
 {

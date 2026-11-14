@@ -207,3 +207,47 @@ retain the common forward implementation and sample world position; this
 suite does not include a separate decal-projector visual fixture.
 Raw 4x also exposes residual intersection holes hidden by the established 1x
 repair path. It is not a replacement for the approved repaired 1x appearance.
+
+## Exact MSAA address optimization
+
+The four-sample near shader specializes repeat addressing for the tower's
+6656×6144 height atlas. In-range integer taps return directly. Other taps use
+one signed remainder and correct negative results, preserving the original
+repeat/clamp coordinates exactly. The NoMSAA specialization retains its original
+implementation. No rays, solver iterations, recovery probes, trained weights,
+lighting options or sample coverage are reduced, and Current default remains
+unchanged.
+
+The generated near pixel shader contains 180 signed-remainder instructions,
+down from 360. The [cost validation report](../Tests/Reference/MsaaCostValidation.json)
+records repeated 120-frame GPU measurements at the saved settings, plus exact
+comparisons of lit static/moving images and per-sample hit/depth captures.
+At 1280×720 on the RX 7900 XTX, median graphics spans over 240 frames per view:
+
+| Saved tower view | Original 4× | Optimized 4× | Reduction |
+|---|---:|---:|---:|
+| Lower glancing | 12.913 ms | 12.383 ms | 4.10% |
+| Lower facing | 11.220 ms | 10.726 ms | 4.40% |
+| Upper glancing | 12.620 ms | 12.131 ms | 3.87% |
+
+Hit generation alone is 8.2–11.1% cheaper. All 50 original 4× image/hit/depth
+captures and all 20 approved 1× captures match exactly. The installed build
+also passes three MSAA gameplay entries and restores Current default.
+`Tests/MsaaAddressTests.cpp` checks 2.4 million addresses, including negative
+coordinates, integer extremes, clamp, power-of-two sizes and the tower atlas.
+
+`Tests/MsaaCostEditorSmoke.py` profiles without changing tower quality or lighting.
+Use `TG_SILPOM_MSAA_TIMING=1`, `TG_SILPOM_COST_MODE=4` and the startup-4× argument
+documented above. `TG_SILPOM_COST_TIMING_ONLY=1` skips image/readback work;
+measurements always disable inspection and warm the view before capturing.
+`TG_SILPOM_COST_MODE=switch` tests both 1× and a live transition to 4×.
+
+The longer comparison exposed another independent engine lifecycle defect:
+diffuse-probe-grid draw packets refreshed only when their sort order changed,
+so a live sample-count change could retain a 1× pipeline state in a 4× GI pass.
+[The GI integration patch](Integration/DiffuseProbeGridMsaa.patch) also refreshes
+the packet when its RHI pipeline-state identity changes. Apply it to the actual
+engine source used by the build (TGProject uses `user/engine-source`), then
+rebuild `DiffuseProbeGrid.Static`, `DiffuseProbeGrid.Editor` and `DiffuseProbeGrid`.
+It preserves GI settings and adds no GPU passes. This is separate from both the
+terrain clipmap fix and the address optimization.

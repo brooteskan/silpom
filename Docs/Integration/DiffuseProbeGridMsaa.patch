@@ -1,0 +1,34 @@
+--- a/Gems/DiffuseProbeGrid/Code/Source/Render/DiffuseProbeGrid.cpp
++++ b/Gems/DiffuseProbeGrid/Code/Source/Render/DiffuseProbeGrid.cpp
+@@ -76,11 +76,11 @@
+                 // the list index passed in from the feature processor is the index of this probe in the sorted probe list.
+                 // this is needed to render the probe volumes in order from largest to smallest
+                 RHI::DrawItemSortKey sortKey = static_cast<RHI::DrawItemSortKey>(probeIndex);
+-                if (sortKey != m_sortKey)
++                if (sortKey != m_sortKey || m_drawPacketPipelineState != m_renderData->m_pipelineState->GetRHIPipelineState())
+                 {
+                     if (m_renderData->m_pipelineState->GetRHIPipelineState())
+                     {
+-                        // the sort key changed, rebuild draw packets
++                        // The sort key or render output changed (for example MSAA). Rebuild the cached draw packet.
+                         m_sortKey = sortKey;
+ 
+                         RHI::DrawPacketBuilder drawPacketBuilder{RHI::MultiDevice::AllDevices};
+@@ -96,6 +96,7 @@
+                         drawPacketBuilder.AddDrawItem(drawRequest);
+ 
+                         m_drawPacket = drawPacketBuilder.End();
++                        m_drawPacketPipelineState = m_renderData->m_pipelineState->GetRHIPipelineState();
+ 
+                         // we also need to update culling with the new draw packet
+                         UpdateCulling();
+--- a/Gems/DiffuseProbeGrid/Code/Source/Render/DiffuseProbeGrid.h
++++ b/Gems/DiffuseProbeGrid/Code/Source/Render/DiffuseProbeGrid.h
+@@ -384,6 +384,7 @@
+ 
+             // render draw packet
+             RHI::ConstPtr<RHI::DrawPacket> m_drawPacket;
++            RHI::ConstPtr<RHI::PipelineState> m_drawPacketPipelineState;
+ 
+             // sort key for the draw item
+             const RHI::DrawItemSortKey InvalidSortKey = static_cast<RHI::DrawItemSortKey>(-1);

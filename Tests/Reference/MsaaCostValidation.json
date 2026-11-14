@@ -1,0 +1,139 @@
+{
+  "passed": true,
+  "date": "2026-11-13",
+  "base_commit": "113ee64c3e5ee7e7f603fad34fef6215f6af6bc4",
+  "hardware": "AMD Radeon RX 7900 XTX",
+  "backend": "DX12",
+  "runtime_shader_model": "6.7",
+  "width": 1280,
+  "height": 720,
+  "samples": 4,
+  "timing_method": "Two 120-frame timestamp captures per camera, warm-up per view, inspection/readback disabled. Optimization-disabled control followed by optimized repeat in fresh processes with the same GI-corrected renderer.",
+  "views": {
+    "lower-glancing": {
+      "before": {
+        "frames": 240,
+        "hit_generation": {
+          "median_ms": 7.865,
+          "p95_ms": 9.007
+        },
+        "graphics_span": {
+          "median_ms": 12.913,
+          "p95_ms": 13.845
+        }
+      },
+      "after": {
+        "frames": 240,
+        "hit_generation": {
+          "median_ms": 7.220000000000001,
+          "p95_ms": 8.024
+        },
+        "graphics_span": {
+          "median_ms": 12.383,
+          "p95_ms": 13.39
+        }
+      },
+      "hit_reduction_percent": 8.200890019071828,
+      "graphics_span_reduction_percent": 4.104390923875179
+    },
+    "lower-facing": {
+      "before": {
+        "frames": 240,
+        "hit_generation": {
+          "median_ms": 3.214,
+          "p95_ms": 3.496
+        },
+        "graphics_span": {
+          "median_ms": 11.2195,
+          "p95_ms": 12.908
+        }
+      },
+      "after": {
+        "frames": 240,
+        "hit_generation": {
+          "median_ms": 2.8970000000000002,
+          "p95_ms": 3.139
+        },
+        "graphics_span": {
+          "median_ms": 10.7255,
+          "p95_ms": 12.325
+        }
+      },
+      "hit_reduction_percent": 9.863098942128179,
+      "graphics_span_reduction_percent": 4.403048264182896
+    },
+    "upper-glancing": {
+      "before": {
+        "frames": 240,
+        "hit_generation": {
+          "median_ms": 7.5845,
+          "p95_ms": 8.451
+        },
+        "graphics_span": {
+          "median_ms": 12.6195,
+          "p95_ms": 13.518
+        }
+      },
+      "after": {
+        "frames": 240,
+        "hit_generation": {
+          "median_ms": 6.745,
+          "p95_ms": 7.576
+        },
+        "graphics_span": {
+          "median_ms": 12.130500000000001,
+          "p95_ms": 13.163
+        }
+      },
+      "hit_reduction_percent": 11.068626804667414,
+      "graphics_span_reduction_percent": 3.8749554261262253
+    }
+  },
+  "exact_msaa_captures": {
+    "lit_static_and_motion_rgba": 30,
+    "normalized_sample_hit_records": 10,
+    "sample_depth_atlases": 10
+  },
+  "approved_1x_reference_captures_exact": 20,
+  "default_1x_near_pixel_bytecode_unchanged": true,
+  "default_1x_near_pixel_sha256": "1c53fab3519ad19de5ea78666733f4b2b6fb569ed393705e903cff688d869103",
+  "generated_near_pixel_signed_remainder_instructions": {
+    "before": 360,
+    "after": 180
+  },
+  "address_cases_exact": 2400000,
+  "standalone_test_groups_passed": 36,
+  "installed_gameplay_entries": 3,
+  "restored_default_state": [
+    1,
+    0,
+    0
+  ],
+  "saved_level_sha256": "9124e6cd4ec1b601bcba0c7dc93424836483e2a2cabd56acb3fd6483596e9df8",
+  "saved_tower_settings_changed": false,
+  "quality_reductions": [],
+  "solver_rays_probes_weights_and_lighting_unchanged": true,
+  "native_validation_errors_in_final_runs": false,
+  "gi_integration": {
+    "patch": "Docs/Integration/DiffuseProbeGridMsaa.patch",
+    "actual_build_source": "TGProject/user/engine-source",
+    "upstream_checkout_modified": false,
+    "installed_module_sha256": {
+      "DiffuseProbeGrid.dll": "8c3a36f6371444cf2728a85a9b6ebec56561b854c80b15abf9fa1d723d7c0be6",
+      "DiffuseProbeGrid.Editor.dll": "8cf4b4dbecd22f836034570409acaf46379f84b8d78f3228cfc6e293106a827c"
+    },
+    "fix": "Rebuild cached grid draw packets when their RHI pipeline-state identity changes, even with unchanged sort order.",
+    "live_switch_validated": true
+  },
+  "readiness_check": "Byte-identical cached shader products may retain timestamps; a completed zero-error AP job newer than all source inputs is accepted as freshness evidence.",
+  "notes": [
+    "The original image-reference capture completed before an AuxGeom assertion during shutdown in the earlier capture harness; subsequent runs wait for viewport restoration to settle and are clean.",
+    "Existing missing baked-probe texture warnings were not suppressed and lighting settings were preserved.",
+    "Graphics spans include ordinary passes and queue gaps; they are not GPU busy time or an FPS conversion.",
+    "MSAA remains experimental and retains its existing raw/repaired coverage policy."
+  ],
+  "source_sha256": {
+    "Assets/Shaders/SilPOM/Heightfield.azsli": "38a996f1a8600562c28a74c292f9316c3de561e8d29b8ca81cce06e18261d6f0",
+    "Assets/Materials/Pipelines/MainPipeline/SilPOMHitDepthLodNear.shader.template": "12338d1984b1c660552acc08b7838a2cc035949c6edca97416c20d710100b8fb"
+  }
+}
