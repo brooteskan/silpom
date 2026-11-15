@@ -1,0 +1,1950 @@
+{
+  "date": "2026-11-15 America/Los_Angeles",
+  "implementation_commit": "e4dfed22c37280213b8481e0a71943859f800bff",
+  "branch": "codex/frustum-aabb-ryzen-5700g",
+  "starting_commit": "3623e7d592ee2074415323927071f69adaf0fb61",
+  "main_unchanged": "2f818d87cd29663fab360cc7ccde06e117c257cf",
+  "baseline_commit": "18c33bbaa1e4db68e7dfa56e47a5ecbedbea67fc",
+  "diversion": "dv.commit.73",
+  "tg_silpom_pin": "e9684244b85e878b445606164b157b16438398d4",
+  "engine_base": "061180bf24f1666eb30315b35da292eb14f4659c",
+  "terrain_base": "ee6887b4b743047f7dece1b179c0cf30cb281880",
+  "bundle": "tg-o3de-20261114",
+  "patch_sha256_lf": {
+    "engine.patch": "3dd9ed2e11485f7592f7462e7da850b154ca30c1159994b1ca6f0fcfec7877f3",
+    "terrain-compositor.patch": "dab37b902de3e3ca417531b6b08d9fed59c20dc02382c12426b3500a89137841"
+  },
+  "shader_sha256_lf": "17816901f116f4c4df171a48ec3465d5da31b4f3e64d05483042fc74359cb107",
+  "backend": "DX12",
+  "shader_model": "6.2",
+  "width": 1280,
+  "height": 720,
+  "samples": 2,
+  "aa": "Current default; r_silpomAntiAliasing=0; SMAA off",
+  "height_derived_sampling": true,
+  "hardware": {
+    "captured_utc": "2026-11-15T08:21:20.0286963Z",
+    "cpu": {
+      "Name": "AMD Ryzen 7 5700G with Radeon Graphics         ",
+      "NumberOfCores": 8,
+      "NumberOfLogicalProcessors": 16
+    },
+    "gpu": {
+      "Name": "AMD Radeon(TM) Graphics",
+      "PNPDeviceID": "PCI\\VEN_1002&DEV_1638&SUBSYS_88091043&REV_C8\\4&3293EFF9&0&0041",
+      "DriverVersion": "31.0.21923.11000",
+      "DriverDate": "2025-06-30T17:00:00-07:00",
+      "AdapterRAM": 536870912,
+      "CurrentHorizontalResolution": 1920,
+      "CurrentVerticalResolution": 1200
+    },
+    "memory": [
+      {
+        "Capacity": 17179869184,
+        "Manufacturer": "G Skill Intl",
+        "PartNumber": "F4-3200C16-16GVK",
+        "DeviceLocator": "DIMM_A1",
+        "ConfiguredClockSpeed": 2133
+      },
+      {
+        "Capacity": 17179869184,
+        "Manufacturer": "G Skill Intl",
+        "PartNumber": "F4-3200C16-16GVK",
+        "DeviceLocator": "DIMM_B1",
+        "ConfiguredClockSpeed": 2133
+      }
+    ],
+    "os": {
+      "Caption": "Microsoft Windows 11 Pro",
+      "Version": "10.0.26300",
+      "FreePhysicalMemory": 19939404,
+      "TotalVisibleMemorySize": 32888716
+    },
+    "powerplan": "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)",
+    "developer_mode": null
+  },
+  "baseline_directory": "D:\\diversion\\TG\\TGProject\\user\\silpom-rebenchmark-2f818d8-20261114\\timings-2x-20261114-210459",
+  "candidate_directory": "D:\\diversion\\TG\\TGProject\\user\\silpom-frustum-aabb-20261115\\timings-2x-20261115-003015",
+  "raw_root": "D:\\diversion\\TG\\TGProject\\user\\silpom-frustum-aabb-20261115",
+  "metrics": {
+    "exterior": {
+      "hit_generation": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 19.2775,
+            "p95_ms": 19.448050000000002,
+            "min_ms": 19.031,
+            "max_ms": 19.764
+          },
+          "repeat_median_range": {
+            "min_ms": 19.276,
+            "max_ms": 19.2785
+          },
+          "captures": [
+            {
+              "file": "gpu-exterior-1.json",
+              "count": 120,
+              "median_ms": 19.276,
+              "p95_ms": 19.45765,
+              "min_ms": 19.031,
+              "max_ms": 19.666
+            },
+            {
+              "file": "gpu-exterior-2.json",
+              "count": 120,
+              "median_ms": 19.2785,
+              "p95_ms": 19.416050000000002,
+              "min_ms": 19.055,
+              "max_ms": 19.583
+            },
+            {
+              "file": "gpu-exterior-3.json",
+              "count": 120,
+              "median_ms": 19.278,
+              "p95_ms": 19.449,
+              "min_ms": 19.087,
+              "max_ms": 19.764
+            }
+          ]
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 18.5875,
+            "p95_ms": 18.76405,
+            "min_ms": 18.291,
+            "max_ms": 18.913
+          },
+          "repeat_median_range": {
+            "min_ms": 18.5745,
+            "max_ms": 18.598
+          },
+          "captures": [
+            {
+              "file": "gpu-exterior-1.json",
+              "count": 120,
+              "median_ms": 18.598,
+              "p95_ms": 18.77805,
+              "min_ms": 18.349,
+              "max_ms": 18.913
+            },
+            {
+              "file": "gpu-exterior-2.json",
+              "count": 120,
+              "median_ms": 18.5835,
+              "p95_ms": 18.752599999999997,
+              "min_ms": 18.306,
+              "max_ms": 18.89
+            },
+            {
+              "file": "gpu-exterior-3.json",
+              "count": 120,
+              "median_ms": 18.5745,
+              "p95_ms": 18.73045,
+              "min_ms": 18.291,
+              "max_ms": 18.839
+            }
+          ]
+        },
+        "median_saved_ms": 0.6900000000000013,
+        "median_reduction_percent": 3.5793022954221265
+      },
+      "silpom_forward_shading": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 25.2295,
+            "p95_ms": 30.6367,
+            "min_ms": 22.271,
+            "max_ms": 31.465
+          },
+          "repeat_median_range": {
+            "min_ms": 25.153,
+            "max_ms": 25.295
+          },
+          "captures": [
+            {
+              "file": "gpu-exterior-1.json",
+              "count": 120,
+              "median_ms": 25.295,
+              "p95_ms": 30.61685,
+              "min_ms": 22.271,
+              "max_ms": 31.422
+            },
+            {
+              "file": "gpu-exterior-2.json",
+              "count": 120,
+              "median_ms": 25.259,
+              "p95_ms": 30.76895,
+              "min_ms": 22.318,
+              "max_ms": 31.315
+            },
+            {
+              "file": "gpu-exterior-3.json",
+              "count": 120,
+              "median_ms": 25.153,
+              "p95_ms": 30.23015,
+              "min_ms": 22.455,
+              "max_ms": 31.465
+            }
+          ]
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 25.383,
+            "p95_ms": 31.23695,
+            "min_ms": 21.983,
+            "max_ms": 32.27
+          },
+          "repeat_median_range": {
+            "min_ms": 25.333,
+            "max_ms": 25.407
+          },
+          "captures": [
+            {
+              "file": "gpu-exterior-1.json",
+              "count": 120,
+              "median_ms": 25.407,
+              "p95_ms": 31.27845,
+              "min_ms": 21.983,
+              "max_ms": 32.27
+            },
+            {
+              "file": "gpu-exterior-2.json",
+              "count": 120,
+              "median_ms": 25.333,
+              "p95_ms": 30.439149999999998,
+              "min_ms": 22.169,
+              "max_ms": 31.749
+            },
+            {
+              "file": "gpu-exterior-3.json",
+              "count": 120,
+              "median_ms": 25.372500000000002,
+              "p95_ms": 31.3903,
+              "min_ms": 22.343,
+              "max_ms": 32.054
+            }
+          ]
+        },
+        "median_saved_ms": -0.15349999999999753,
+        "median_reduction_percent": -0.6084147525713846
+      },
+      "graphics_pass_span": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 64.6055,
+            "p95_ms": 70.10640000000001,
+            "min_ms": 61.053,
+            "max_ms": 80.486
+          },
+          "repeat_median_range": {
+            "min_ms": 64.5745,
+            "max_ms": 64.637
+          },
+          "captures": [
+            {
+              "file": "gpu-exterior-1.json",
+              "count": 120,
+              "median_ms": 64.5925,
+              "p95_ms": 69.90135,
+              "min_ms": 61.701,
+              "max_ms": 73.262
+            },
+            {
+              "file": "gpu-exterior-2.json",
+              "count": 120,
+              "median_ms": 64.5745,
+              "p95_ms": 70.32645,
+              "min_ms": 61.053,
+              "max_ms": 80.486
+            },
+            {
+              "file": "gpu-exterior-3.json",
+              "count": 120,
+              "median_ms": 64.637,
+              "p95_ms": 69.70665,
+              "min_ms": 61.775,
+              "max_ms": 70.852
+            }
+          ]
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 64.114,
+            "p95_ms": 69.88980000000001,
+            "min_ms": 60.609,
+            "max_ms": 77.189
+          },
+          "repeat_median_range": {
+            "min_ms": 64.083,
+            "max_ms": 64.2
+          },
+          "captures": [
+            {
+              "file": "gpu-exterior-1.json",
+              "count": 120,
+              "median_ms": 64.2,
+              "p95_ms": 69.98825,
+              "min_ms": 60.609,
+              "max_ms": 77.189
+            },
+            {
+              "file": "gpu-exterior-2.json",
+              "count": 120,
+              "median_ms": 64.083,
+              "p95_ms": 69.37325,
+              "min_ms": 60.838,
+              "max_ms": 70.399
+            },
+            {
+              "file": "gpu-exterior-3.json",
+              "count": 120,
+              "median_ms": 64.094,
+              "p95_ms": 70.02505000000001,
+              "min_ms": 61.003,
+              "max_ms": 70.877
+            }
+          ]
+        },
+        "median_saved_ms": 0.49150000000000205,
+        "median_reduction_percent": 0.7607711417758622
+      },
+      "cpu_frame_period": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 64.95060000000001,
+            "p95_ms": 70.46135,
+            "min_ms": 61.4952,
+            "max_ms": 80.8052
+          },
+          "repeat_median_range": {
+            "min_ms": 64.9247,
+            "max_ms": 65.00245000000001
+          },
+          "captures": [
+            {
+              "file": "gpu-exterior-1.json",
+              "count": 120,
+              "median_ms": 64.9511,
+              "p95_ms": 70.297635,
+              "min_ms": 62.0883,
+              "max_ms": 73.6424
+            },
+            {
+              "file": "gpu-exterior-2.json",
+              "count": 120,
+              "median_ms": 64.9247,
+              "p95_ms": 70.77835,
+              "min_ms": 61.4952,
+              "max_ms": 80.8052
+            },
+            {
+              "file": "gpu-exterior-3.json",
+              "count": 120,
+              "median_ms": 65.00245000000001,
+              "p95_ms": 70.07391000000001,
+              "min_ms": 61.871,
+              "max_ms": 71.3603
+            }
+          ]
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 64.50565,
+            "p95_ms": 70.37969,
+            "min_ms": 60.992,
+            "max_ms": 77.4949
+          },
+          "repeat_median_range": {
+            "min_ms": 64.4837,
+            "max_ms": 64.51195
+          },
+          "captures": [
+            {
+              "file": "gpu-exterior-1.json",
+              "count": 120,
+              "median_ms": 64.51195,
+              "p95_ms": 70.38723,
+              "min_ms": 60.992,
+              "max_ms": 77.4949
+            },
+            {
+              "file": "gpu-exterior-2.json",
+              "count": 120,
+              "median_ms": 64.4837,
+              "p95_ms": 69.66572500000001,
+              "min_ms": 61.0007,
+              "max_ms": 70.9686
+            },
+            {
+              "file": "gpu-exterior-3.json",
+              "count": 120,
+              "median_ms": 64.49745,
+              "p95_ms": 70.48056500000001,
+              "min_ms": 61.2039,
+              "max_ms": 71.2627
+            }
+          ]
+        },
+        "median_saved_ms": 0.44495000000000573,
+        "median_reduction_percent": 0.6850591064593847
+      }
+    },
+    "lower-facing": {
+      "hit_generation": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 79.7,
+            "p95_ms": 80.17505,
+            "min_ms": 79.064,
+            "max_ms": 80.724
+          },
+          "repeat_median_range": {
+            "min_ms": 79.697,
+            "max_ms": 79.7065
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-facing-1.json",
+              "count": 120,
+              "median_ms": 79.7065,
+              "p95_ms": 80.1995,
+              "min_ms": 79.064,
+              "max_ms": 80.51
+            },
+            {
+              "file": "gpu-lower-facing-2.json",
+              "count": 120,
+              "median_ms": 79.70400000000001,
+              "p95_ms": 80.07605,
+              "min_ms": 79.22,
+              "max_ms": 80.272
+            },
+            {
+              "file": "gpu-lower-facing-3.json",
+              "count": 120,
+              "median_ms": 79.697,
+              "p95_ms": 80.10265,
+              "min_ms": 79.122,
+              "max_ms": 80.724
+            }
+          ]
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 59.8655,
+            "p95_ms": 60.386950000000006,
+            "min_ms": 59.432,
+            "max_ms": 60.833
+          },
+          "repeat_median_range": {
+            "min_ms": 59.8525,
+            "max_ms": 59.8995
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-facing-1.json",
+              "count": 120,
+              "median_ms": 59.878,
+              "p95_ms": 60.41645,
+              "min_ms": 59.462,
+              "max_ms": 60.833
+            },
+            {
+              "file": "gpu-lower-facing-2.json",
+              "count": 120,
+              "median_ms": 59.8525,
+              "p95_ms": 60.2223,
+              "min_ms": 59.432,
+              "max_ms": 60.702
+            },
+            {
+              "file": "gpu-lower-facing-3.json",
+              "count": 120,
+              "median_ms": 59.8995,
+              "p95_ms": 60.387750000000004,
+              "min_ms": 59.511,
+              "max_ms": 60.58
+            }
+          ]
+        },
+        "median_saved_ms": 19.834500000000006,
+        "median_reduction_percent": 24.886449184441663
+      },
+      "silpom_forward_shading": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 100.1335,
+            "p95_ms": 104.15765,
+            "min_ms": 97.093,
+            "max_ms": 109.991
+          },
+          "repeat_median_range": {
+            "min_ms": 99.92699999999999,
+            "max_ms": 100.3475
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-facing-1.json",
+              "count": 120,
+              "median_ms": 99.9975,
+              "p95_ms": 104.1494,
+              "min_ms": 97.093,
+              "max_ms": 106.659
+            },
+            {
+              "file": "gpu-lower-facing-2.json",
+              "count": 120,
+              "median_ms": 100.3475,
+              "p95_ms": 103.83749999999999,
+              "min_ms": 97.551,
+              "max_ms": 109.991
+            },
+            {
+              "file": "gpu-lower-facing-3.json",
+              "count": 120,
+              "median_ms": 99.92699999999999,
+              "p95_ms": 104.2187,
+              "min_ms": 97.474,
+              "max_ms": 105.601
+            }
+          ]
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 100.435,
+            "p95_ms": 104.91465,
+            "min_ms": 96.621,
+            "max_ms": 109.789
+          },
+          "repeat_median_range": {
+            "min_ms": 99.9185,
+            "max_ms": 101.159
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-facing-1.json",
+              "count": 120,
+              "median_ms": 99.9185,
+              "p95_ms": 103.66409999999999,
+              "min_ms": 97.117,
+              "max_ms": 106.435
+            },
+            {
+              "file": "gpu-lower-facing-2.json",
+              "count": 120,
+              "median_ms": 100.1845,
+              "p95_ms": 103.45824999999999,
+              "min_ms": 96.877,
+              "max_ms": 108.549
+            },
+            {
+              "file": "gpu-lower-facing-3.json",
+              "count": 120,
+              "median_ms": 101.159,
+              "p95_ms": 106.0719,
+              "min_ms": 96.621,
+              "max_ms": 109.789
+            }
+          ]
+        },
+        "median_saved_ms": -0.3015000000000043,
+        "median_reduction_percent": -0.30109803412445846
+      },
+      "graphics_pass_span": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 200.308,
+            "p95_ms": 205.15689999999998,
+            "min_ms": 196.942,
+            "max_ms": 215.063
+          },
+          "repeat_median_range": {
+            "min_ms": 200.159,
+            "max_ms": 200.4155
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-facing-1.json",
+              "count": 120,
+              "median_ms": 200.159,
+              "p95_ms": 204.9449,
+              "min_ms": 197.068,
+              "max_ms": 209.436
+            },
+            {
+              "file": "gpu-lower-facing-2.json",
+              "count": 120,
+              "median_ms": 200.328,
+              "p95_ms": 205.55075,
+              "min_ms": 197.27,
+              "max_ms": 215.063
+            },
+            {
+              "file": "gpu-lower-facing-3.json",
+              "count": 120,
+              "median_ms": 200.4155,
+              "p95_ms": 205.05885,
+              "min_ms": 196.942,
+              "max_ms": 206.636
+            }
+          ]
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 181.065,
+            "p95_ms": 186.62875,
+            "min_ms": 176.983,
+            "max_ms": 198.192
+          },
+          "repeat_median_range": {
+            "min_ms": 180.61849999999998,
+            "max_ms": 182.076
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-facing-1.json",
+              "count": 120,
+              "median_ms": 180.64,
+              "p95_ms": 184.7762,
+              "min_ms": 177.081,
+              "max_ms": 198.192
+            },
+            {
+              "file": "gpu-lower-facing-2.json",
+              "count": 120,
+              "median_ms": 180.61849999999998,
+              "p95_ms": 184.66449999999998,
+              "min_ms": 176.983,
+              "max_ms": 191.231
+            },
+            {
+              "file": "gpu-lower-facing-3.json",
+              "count": 120,
+              "median_ms": 182.076,
+              "p95_ms": 187.92195,
+              "min_ms": 177.638,
+              "max_ms": 194.323
+            }
+          ]
+        },
+        "median_saved_ms": 19.242999999999995,
+        "median_reduction_percent": 9.606705673263171
+      },
+      "cpu_frame_period": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 200.9408,
+            "p95_ms": 205.961455,
+            "min_ms": 197.411,
+            "max_ms": 215.5549
+          },
+          "repeat_median_range": {
+            "min_ms": 200.7875,
+            "max_ms": 200.96544999999998
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-facing-1.json",
+              "count": 120,
+              "median_ms": 200.7875,
+              "p95_ms": 205.47573,
+              "min_ms": 197.7437,
+              "max_ms": 210.0841
+            },
+            {
+              "file": "gpu-lower-facing-2.json",
+              "count": 120,
+              "median_ms": 200.96544999999998,
+              "p95_ms": 206.45335500000002,
+              "min_ms": 197.7377,
+              "max_ms": 215.5549
+            },
+            {
+              "file": "gpu-lower-facing-3.json",
+              "count": 120,
+              "median_ms": 200.9464,
+              "p95_ms": 205.62744999999998,
+              "min_ms": 197.411,
+              "max_ms": 207.288
+            }
+          ]
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 181.6246,
+            "p95_ms": 187.175905,
+            "min_ms": 177.4459,
+            "max_ms": 198.7605
+          },
+          "repeat_median_range": {
+            "min_ms": 181.11455,
+            "max_ms": 182.6909
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-facing-1.json",
+              "count": 120,
+              "median_ms": 181.1473,
+              "p95_ms": 185.605685,
+              "min_ms": 177.6324,
+              "max_ms": 198.7605
+            },
+            {
+              "file": "gpu-lower-facing-2.json",
+              "count": 120,
+              "median_ms": 181.11455,
+              "p95_ms": 185.11963,
+              "min_ms": 177.4459,
+              "max_ms": 191.7569
+            },
+            {
+              "file": "gpu-lower-facing-3.json",
+              "count": 120,
+              "median_ms": 182.6909,
+              "p95_ms": 188.592515,
+              "min_ms": 178.2111,
+              "max_ms": 194.9652
+            }
+          ]
+        },
+        "median_saved_ms": 19.31620000000001,
+        "median_reduction_percent": 9.612881007739594
+      }
+    },
+    "lower-glancing": {
+      "hit_generation": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 125.4375,
+            "p95_ms": 125.7256,
+            "min_ms": 124.747,
+            "max_ms": 126.075
+          },
+          "repeat_median_range": {
+            "min_ms": 125.4055,
+            "max_ms": 125.45349999999999
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-glancing-1.json",
+              "count": 120,
+              "median_ms": 125.443,
+              "p95_ms": 125.72,
+              "min_ms": 124.865,
+              "max_ms": 126.075
+            },
+            {
+              "file": "gpu-lower-glancing-2.json",
+              "count": 120,
+              "median_ms": 125.4055,
+              "p95_ms": 125.6914,
+              "min_ms": 124.747,
+              "max_ms": 125.974
+            },
+            {
+              "file": "gpu-lower-glancing-3.json",
+              "count": 120,
+              "median_ms": 125.45349999999999,
+              "p95_ms": 125.72595,
+              "min_ms": 124.806,
+              "max_ms": 126.026
+            }
+          ]
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 120.5485,
+            "p95_ms": 120.85115,
+            "min_ms": 119.076,
+            "max_ms": 120.987
+          },
+          "repeat_median_range": {
+            "min_ms": 120.512,
+            "max_ms": 120.592
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-glancing-1.json",
+              "count": 120,
+              "median_ms": 120.554,
+              "p95_ms": 120.86925,
+              "min_ms": 119.279,
+              "max_ms": 120.987
+            },
+            {
+              "file": "gpu-lower-glancing-2.json",
+              "count": 120,
+              "median_ms": 120.592,
+              "p95_ms": 120.8572,
+              "min_ms": 119.076,
+              "max_ms": 120.983
+            },
+            {
+              "file": "gpu-lower-glancing-3.json",
+              "count": 120,
+              "median_ms": 120.512,
+              "p95_ms": 120.81809999999999,
+              "min_ms": 119.307,
+              "max_ms": 120.956
+            }
+          ]
+        },
+        "median_saved_ms": 4.888999999999996,
+        "median_reduction_percent": 3.8975585450921724
+      },
+      "silpom_forward_shading": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 105.38300000000001,
+            "p95_ms": 108.94775,
+            "min_ms": 102.507,
+            "max_ms": 117.516
+          },
+          "repeat_median_range": {
+            "min_ms": 105.105,
+            "max_ms": 105.8175
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-glancing-1.json",
+              "count": 120,
+              "median_ms": 105.8175,
+              "p95_ms": 109.25005,
+              "min_ms": 102.794,
+              "max_ms": 109.394
+            },
+            {
+              "file": "gpu-lower-glancing-2.json",
+              "count": 120,
+              "median_ms": 105.105,
+              "p95_ms": 108.1289,
+              "min_ms": 102.609,
+              "max_ms": 110.111
+            },
+            {
+              "file": "gpu-lower-glancing-3.json",
+              "count": 120,
+              "median_ms": 105.4495,
+              "p95_ms": 109.20875,
+              "min_ms": 102.507,
+              "max_ms": 117.516
+            }
+          ]
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 105.7835,
+            "p95_ms": 108.7904,
+            "min_ms": 102.051,
+            "max_ms": 110.574
+          },
+          "repeat_median_range": {
+            "min_ms": 105.541,
+            "max_ms": 105.845
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-glancing-1.json",
+              "count": 120,
+              "median_ms": 105.541,
+              "p95_ms": 108.38719999999999,
+              "min_ms": 103.152,
+              "max_ms": 110.497
+            },
+            {
+              "file": "gpu-lower-glancing-2.json",
+              "count": 120,
+              "median_ms": 105.845,
+              "p95_ms": 109.13825,
+              "min_ms": 102.167,
+              "max_ms": 110.574
+            },
+            {
+              "file": "gpu-lower-glancing-3.json",
+              "count": 120,
+              "median_ms": 105.803,
+              "p95_ms": 108.28009999999999,
+              "min_ms": 102.051,
+              "max_ms": 110.344
+            }
+          ]
+        },
+        "median_saved_ms": -0.40049999999999386,
+        "median_reduction_percent": -0.38004232181660935
+      },
+      "graphics_pass_span": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 251.952,
+            "p95_ms": 257.52405,
+            "min_ms": 248.723,
+            "max_ms": 275.016
+          },
+          "repeat_median_range": {
+            "min_ms": 251.418,
+            "max_ms": 252.2705
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-glancing-1.json",
+              "count": 120,
+              "median_ms": 252.1505,
+              "p95_ms": 257.2645,
+              "min_ms": 248.919,
+              "max_ms": 266.6
+            },
+            {
+              "file": "gpu-lower-glancing-2.json",
+              "count": 120,
+              "median_ms": 251.418,
+              "p95_ms": 255.32399999999998,
+              "min_ms": 248.73,
+              "max_ms": 263.231
+            },
+            {
+              "file": "gpu-lower-glancing-3.json",
+              "count": 120,
+              "median_ms": 252.2705,
+              "p95_ms": 259.53075,
+              "min_ms": 248.723,
+              "max_ms": 275.016
+            }
+          ]
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 248.1225,
+            "p95_ms": 251.44705,
+            "min_ms": 244.161,
+            "max_ms": 261.556
+          },
+          "repeat_median_range": {
+            "min_ms": 246.885,
+            "max_ms": 248.71800000000002
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-glancing-1.json",
+              "count": 120,
+              "median_ms": 246.885,
+              "p95_ms": 250.41285000000002,
+              "min_ms": 244.161,
+              "max_ms": 252.337
+            },
+            {
+              "file": "gpu-lower-glancing-2.json",
+              "count": 120,
+              "median_ms": 248.71800000000002,
+              "p95_ms": 252.0786,
+              "min_ms": 244.781,
+              "max_ms": 257.331
+            },
+            {
+              "file": "gpu-lower-glancing-3.json",
+              "count": 120,
+              "median_ms": 248.483,
+              "p95_ms": 251.14495,
+              "min_ms": 244.535,
+              "max_ms": 261.556
+            }
+          ]
+        },
+        "median_saved_ms": 3.829499999999996,
+        "median_reduction_percent": 1.5199323680701093
+      },
+      "cpu_frame_period": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 252.6262,
+            "p95_ms": 258.26626999999996,
+            "min_ms": 249.3649,
+            "max_ms": 275.658
+          },
+          "repeat_median_range": {
+            "min_ms": 252.05235,
+            "max_ms": 252.94185
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-glancing-1.json",
+              "count": 120,
+              "median_ms": 252.82065,
+              "p95_ms": 257.86228,
+              "min_ms": 249.5017,
+              "max_ms": 267.2918
+            },
+            {
+              "file": "gpu-lower-glancing-2.json",
+              "count": 120,
+              "median_ms": 252.05235,
+              "p95_ms": 256.001595,
+              "min_ms": 249.3837,
+              "max_ms": 263.8579
+            },
+            {
+              "file": "gpu-lower-glancing-3.json",
+              "count": 120,
+              "median_ms": 252.94185,
+              "p95_ms": 260.292795,
+              "min_ms": 249.3649,
+              "max_ms": 275.658
+            }
+          ]
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 248.82425,
+            "p95_ms": 252.08785,
+            "min_ms": 244.7804,
+            "max_ms": 262.367
+          },
+          "repeat_median_range": {
+            "min_ms": 247.51685,
+            "max_ms": 249.38045
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-glancing-1.json",
+              "count": 120,
+              "median_ms": 247.51685,
+              "p95_ms": 251.056175,
+              "min_ms": 244.7804,
+              "max_ms": 252.9184
+            },
+            {
+              "file": "gpu-lower-glancing-2.json",
+              "count": 120,
+              "median_ms": 249.38045,
+              "p95_ms": 252.87445,
+              "min_ms": 245.4749,
+              "max_ms": 258.0175
+            },
+            {
+              "file": "gpu-lower-glancing-3.json",
+              "count": 120,
+              "median_ms": 249.15879999999999,
+              "p95_ms": 251.881095,
+              "min_ms": 245.3857,
+              "max_ms": 262.367
+            }
+          ]
+        },
+        "median_saved_ms": 3.801950000000005,
+        "median_reduction_percent": 1.5049705849987105
+      }
+    },
+    "upper-glancing": {
+      "hit_generation": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 182.09,
+            "p95_ms": 187.16604999999998,
+            "min_ms": 179.185,
+            "max_ms": 187.533
+          },
+          "repeat_median_range": {
+            "min_ms": 182.0585,
+            "max_ms": 183.52300000000002
+          },
+          "captures": [
+            {
+              "file": "gpu-upper-glancing-1.json",
+              "count": 120,
+              "median_ms": 183.52300000000002,
+              "p95_ms": 187.21975,
+              "min_ms": 179.352,
+              "max_ms": 187.331
+            },
+            {
+              "file": "gpu-upper-glancing-2.json",
+              "count": 120,
+              "median_ms": 182.075,
+              "p95_ms": 187.13830000000002,
+              "min_ms": 179.243,
+              "max_ms": 187.304
+            },
+            {
+              "file": "gpu-upper-glancing-3.json",
+              "count": 120,
+              "median_ms": 182.0585,
+              "p95_ms": 187.1681,
+              "min_ms": 179.185,
+              "max_ms": 187.533
+            }
+          ]
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 113.4055,
+            "p95_ms": 115.857,
+            "min_ms": 111.62,
+            "max_ms": 117.177
+          },
+          "repeat_median_range": {
+            "min_ms": 113.3875,
+            "max_ms": 113.444
+          },
+          "captures": [
+            {
+              "file": "gpu-upper-glancing-1.json",
+              "count": 120,
+              "median_ms": 113.3875,
+              "p95_ms": 115.76535,
+              "min_ms": 111.785,
+              "max_ms": 117.131
+            },
+            {
+              "file": "gpu-upper-glancing-2.json",
+              "count": 120,
+              "median_ms": 113.444,
+              "p95_ms": 115.8429,
+              "min_ms": 111.697,
+              "max_ms": 116.418
+            },
+            {
+              "file": "gpu-upper-glancing-3.json",
+              "count": 120,
+              "median_ms": 113.3905,
+              "p95_ms": 115.85855,
+              "min_ms": 111.62,
+              "max_ms": 117.177
+            }
+          ]
+        },
+        "median_saved_ms": 68.6845,
+        "median_reduction_percent": 37.72008347520457
+      },
+      "silpom_forward_shading": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 90.42949999999999,
+            "p95_ms": 92.16545,
+            "min_ms": 88.007,
+            "max_ms": 98.713
+          },
+          "repeat_median_range": {
+            "min_ms": 90.3195,
+            "max_ms": 90.536
+          },
+          "captures": [
+            {
+              "file": "gpu-upper-glancing-1.json",
+              "count": 120,
+              "median_ms": 90.536,
+              "p95_ms": 92.2744,
+              "min_ms": 88.007,
+              "max_ms": 98.713
+            },
+            {
+              "file": "gpu-upper-glancing-2.json",
+              "count": 120,
+              "median_ms": 90.3195,
+              "p95_ms": 91.91755,
+              "min_ms": 88.292,
+              "max_ms": 92.253
+            },
+            {
+              "file": "gpu-upper-glancing-3.json",
+              "count": 120,
+              "median_ms": 90.4055,
+              "p95_ms": 92.2949,
+              "min_ms": 88.627,
+              "max_ms": 97.132
+            }
+          ]
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 90.166,
+            "p95_ms": 91.76679999999999,
+            "min_ms": 88.017,
+            "max_ms": 98.044
+          },
+          "repeat_median_range": {
+            "min_ms": 89.9905,
+            "max_ms": 90.348
+          },
+          "captures": [
+            {
+              "file": "gpu-upper-glancing-1.json",
+              "count": 120,
+              "median_ms": 90.3315,
+              "p95_ms": 91.8425,
+              "min_ms": 88.596,
+              "max_ms": 96.816
+            },
+            {
+              "file": "gpu-upper-glancing-2.json",
+              "count": 120,
+              "median_ms": 89.9905,
+              "p95_ms": 91.63615,
+              "min_ms": 88.017,
+              "max_ms": 95.622
+            },
+            {
+              "file": "gpu-upper-glancing-3.json",
+              "count": 120,
+              "median_ms": 90.348,
+              "p95_ms": 91.69205000000001,
+              "min_ms": 88.077,
+              "max_ms": 98.044
+            }
+          ]
+        },
+        "median_saved_ms": 0.2634999999999934,
+        "median_reduction_percent": 0.29138721324345473
+      },
+      "graphics_pass_span": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 296.1435,
+            "p95_ms": 301.36365,
+            "min_ms": 289.923,
+            "max_ms": 307.617
+          },
+          "repeat_median_range": {
+            "min_ms": 296.005,
+            "max_ms": 296.2255
+          },
+          "captures": [
+            {
+              "file": "gpu-upper-glancing-1.json",
+              "count": 120,
+              "median_ms": 296.2255,
+              "p95_ms": 301.60544999999996,
+              "min_ms": 290.728,
+              "max_ms": 304.744
+            },
+            {
+              "file": "gpu-upper-glancing-2.json",
+              "count": 120,
+              "median_ms": 296.151,
+              "p95_ms": 300.87145,
+              "min_ms": 290.612,
+              "max_ms": 307.617
+            },
+            {
+              "file": "gpu-upper-glancing-3.json",
+              "count": 120,
+              "median_ms": 296.005,
+              "p95_ms": 301.5602,
+              "min_ms": 289.923,
+              "max_ms": 303.835
+            }
+          ]
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 226.4115,
+            "p95_ms": 229.85625000000002,
+            "min_ms": 221.864,
+            "max_ms": 238.603
+          },
+          "repeat_median_range": {
+            "min_ms": 226.3435,
+            "max_ms": 226.4855
+          },
+          "captures": [
+            {
+              "file": "gpu-upper-glancing-1.json",
+              "count": 120,
+              "median_ms": 226.3435,
+              "p95_ms": 229.75515,
+              "min_ms": 222.962,
+              "max_ms": 237.146
+            },
+            {
+              "file": "gpu-upper-glancing-2.json",
+              "count": 120,
+              "median_ms": 226.4035,
+              "p95_ms": 229.4075,
+              "min_ms": 221.864,
+              "max_ms": 237.641
+            },
+            {
+              "file": "gpu-upper-glancing-3.json",
+              "count": 120,
+              "median_ms": 226.4855,
+              "p95_ms": 229.9064,
+              "min_ms": 221.931,
+              "max_ms": 238.603
+            }
+          ]
+        },
+        "median_saved_ms": 69.73200000000003,
+        "median_reduction_percent": 23.546692735109843
+      },
+      "cpu_frame_period": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 296.9018,
+            "p95_ms": 302.064205,
+            "min_ms": 290.6346,
+            "max_ms": 308.4449
+          },
+          "repeat_median_range": {
+            "min_ms": 296.73845,
+            "max_ms": 297.0586
+          },
+          "captures": [
+            {
+              "file": "gpu-upper-glancing-1.json",
+              "count": 120,
+              "median_ms": 297.0586,
+              "p95_ms": 302.301825,
+              "min_ms": 291.3368,
+              "max_ms": 305.6554
+            },
+            {
+              "file": "gpu-upper-glancing-2.json",
+              "count": 120,
+              "median_ms": 296.97735,
+              "p95_ms": 301.73389000000003,
+              "min_ms": 291.3703,
+              "max_ms": 308.4449
+            },
+            {
+              "file": "gpu-upper-glancing-3.json",
+              "count": 120,
+              "median_ms": 296.73845,
+              "p95_ms": 302.34083,
+              "min_ms": 290.6346,
+              "max_ms": 304.5902
+            }
+          ]
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 227.0072,
+            "p95_ms": 230.540695,
+            "min_ms": 222.4617,
+            "max_ms": 239.3485
+          },
+          "repeat_median_range": {
+            "min_ms": 226.88695,
+            "max_ms": 227.1033
+          },
+          "captures": [
+            {
+              "file": "gpu-upper-glancing-1.json",
+              "count": 120,
+              "median_ms": 226.88695,
+              "p95_ms": 230.30284500000002,
+              "min_ms": 223.6142,
+              "max_ms": 237.733
+            },
+            {
+              "file": "gpu-upper-glancing-2.json",
+              "count": 120,
+              "median_ms": 226.9811,
+              "p95_ms": 229.98693,
+              "min_ms": 222.4617,
+              "max_ms": 238.233
+            },
+            {
+              "file": "gpu-upper-glancing-3.json",
+              "count": 120,
+              "median_ms": 227.1033,
+              "p95_ms": 230.71463500000002,
+              "min_ms": 222.6194,
+              "max_ms": 239.3485
+            }
+          ]
+        },
+        "median_saved_ms": 69.89459999999997,
+        "median_reduction_percent": 23.54131904892458
+      }
+    }
+  },
+  "visual_comparison": {
+    "passed": true,
+    "before": "D:\\diversion\\TG\\TGProject\\user\\silpom-rebenchmark-2f818d8-20261114\\visuals-2x-20261114-205859",
+    "after": "D:\\diversion\\TG\\TGProject\\user\\silpom-frustum-aabb-20261115\\visuals-2x-20261115-002353",
+    "views": {
+      "exterior": {
+        "image_changed_pixels": 0,
+        "image_max_channel_delta": 0,
+        "image_mean_absolute_delta": 0.0
+      },
+      "lower-facing": {
+        "image_changed_pixels": 0,
+        "image_max_channel_delta": 0,
+        "image_mean_absolute_delta": 0.0,
+        "samples": [
+          {
+            "sample": 0,
+            "baseline_valid": 921596,
+            "candidate_valid": 921596,
+            "lost": 0,
+            "gained": 0,
+            "changed_winner_records": 0,
+            "changed_depth_bits": 0,
+            "changed_record_components": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "passed": true
+          },
+          {
+            "sample": 1,
+            "baseline_valid": 921595,
+            "candidate_valid": 921595,
+            "lost": 0,
+            "gained": 0,
+            "changed_winner_records": 0,
+            "changed_depth_bits": 0,
+            "changed_record_components": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "passed": true
+          }
+        ]
+      },
+      "lower-glancing": {
+        "image_changed_pixels": 0,
+        "image_max_channel_delta": 0,
+        "image_mean_absolute_delta": 0.0,
+        "samples": [
+          {
+            "sample": 0,
+            "baseline_valid": 911171,
+            "candidate_valid": 911171,
+            "lost": 0,
+            "gained": 0,
+            "changed_winner_records": 0,
+            "changed_depth_bits": 0,
+            "changed_record_components": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "passed": true
+          },
+          {
+            "sample": 1,
+            "baseline_valid": 911229,
+            "candidate_valid": 911229,
+            "lost": 0,
+            "gained": 0,
+            "changed_winner_records": 0,
+            "changed_depth_bits": 0,
+            "changed_record_components": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "passed": true
+          }
+        ]
+      },
+      "upper-glancing": {
+        "image_changed_pixels": 0,
+        "image_max_channel_delta": 0,
+        "image_mean_absolute_delta": 0.0,
+        "samples": [
+          {
+            "sample": 0,
+            "baseline_valid": 903170,
+            "candidate_valid": 903170,
+            "lost": 0,
+            "gained": 0,
+            "changed_winner_records": 0,
+            "changed_depth_bits": 0,
+            "changed_record_components": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "passed": true
+          },
+          {
+            "sample": 1,
+            "baseline_valid": 903180,
+            "candidate_valid": 903180,
+            "lost": 0,
+            "gained": 0,
+            "changed_winner_records": 0,
+            "changed_depth_bits": 0,
+            "changed_record_components": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "passed": true
+          }
+        ]
+      },
+      "gameplay": {
+        "image_changed_pixels": 0,
+        "image_max_channel_delta": 0,
+        "image_mean_absolute_delta": 0.0
+      }
+    }
+  },
+  "gpu_bounds": {
+    "passed": true,
+    "event": 473,
+    "shader_commit": "e4dfed22c37280213b8481e0a71943859f800bff",
+    "raster_xy_w_unchanged": true,
+    "original_one_proxies": 57,
+    "tightened": 53,
+    "remaining_one": [
+      299,
+      300,
+      301,
+      504
+    ],
+    "face_308": {
+      "face": 308,
+      "gpu_bound": 0.6667630672454834,
+      "reference": 0.6665592342328764
+    },
+    "cases": [
+      {
+        "face": 263,
+        "gpu_bound": 0.48938852548599243,
+        "reference": 0.48921036356894393
+      },
+      {
+        "face": 264,
+        "gpu_bound": 0.34558460116386414,
+        "reference": 0.3454477500163013
+      },
+      {
+        "face": 294,
+        "gpu_bound": 0.6383518576622009,
+        "reference": 0.6381485089710109
+      },
+      {
+        "face": 297,
+        "gpu_bound": 0.8997408151626587,
+        "reference": 0.8994512942621643
+      },
+      {
+        "face": 299,
+        "gpu_bound": 1.0,
+        "reference": 1.0
+      },
+      {
+        "face": 300,
+        "gpu_bound": 1.0,
+        "reference": 1.0
+      },
+      {
+        "face": 301,
+        "gpu_bound": 1.0,
+        "reference": 1.0
+      },
+      {
+        "face": 304,
+        "gpu_bound": 0.6468563079833984,
+        "reference": 0.6466583399321204
+      },
+      {
+        "face": 306,
+        "gpu_bound": 0.6557672619819641,
+        "reference": 0.6555669114474232
+      },
+      {
+        "face": 307,
+        "gpu_bound": 0.6667630672454834,
+        "reference": 0.6665592249979098
+      },
+      {
+        "face": 308,
+        "gpu_bound": 0.6667630672454834,
+        "reference": 0.6665592342328764
+      },
+      {
+        "face": 311,
+        "gpu_bound": 0.41403141617774963,
+        "reference": 0.4138914822446937
+      },
+      {
+        "face": 313,
+        "gpu_bound": 0.4893006384372711,
+        "reference": 0.48914479972044383
+      },
+      {
+        "face": 314,
+        "gpu_bound": 0.6360414624214172,
+        "reference": 0.6358470362402502
+      },
+      {
+        "face": 315,
+        "gpu_bound": 0.6360414624214172,
+        "reference": 0.6358470460027491
+      },
+      {
+        "face": 318,
+        "gpu_bound": 0.415295273065567,
+        "reference": 0.41515496531093193
+      },
+      {
+        "face": 320,
+        "gpu_bound": 0.4176350235939026,
+        "reference": 0.4174942334897629
+      },
+      {
+        "face": 321,
+        "gpu_bound": 0.420469731092453,
+        "reference": 0.4203284995483156
+      },
+      {
+        "face": 322,
+        "gpu_bound": 0.420469731092453,
+        "reference": 0.42032852152648775
+      },
+      {
+        "face": 325,
+        "gpu_bound": 0.250368595123291,
+        "reference": 0.2503440589968992
+      },
+      {
+        "face": 327,
+        "gpu_bound": 0.27927538752555847,
+        "reference": 0.2791572402468949
+      },
+      {
+        "face": 328,
+        "gpu_bound": 0.3271222412586212,
+        "reference": 0.3269973313298835
+      },
+      {
+        "face": 329,
+        "gpu_bound": 0.3271222412586212,
+        "reference": 0.3269973311091346
+      },
+      {
+        "face": 332,
+        "gpu_bound": 0.2820785343647003,
+        "reference": 0.2820499334350815
+      },
+      {
+        "face": 334,
+        "gpu_bound": 0.2825391888618469,
+        "reference": 0.2824205462439008
+      },
+      {
+        "face": 335,
+        "gpu_bound": 0.28298327326774597,
+        "reference": 0.28286467380198455
+      },
+      {
+        "face": 336,
+        "gpu_bound": 0.28298327326774597,
+        "reference": 0.2828646775572749
+      },
+      {
+        "face": 339,
+        "gpu_bound": 0.17709915339946747,
+        "reference": 0.17708147574794914
+      },
+      {
+        "face": 341,
+        "gpu_bound": 0.19126743078231812,
+        "reference": 0.1912485570613289
+      },
+      {
+        "face": 342,
+        "gpu_bound": 0.21136295795440674,
+        "reference": 0.21134218191890858
+      },
+      {
+        "face": 343,
+        "gpu_bound": 0.21136292815208435,
+        "reference": 0.2113421819189087
+      },
+      {
+        "face": 346,
+        "gpu_bound": 0.2067314237356186,
+        "reference": 0.20671137268520487
+      },
+      {
+        "face": 348,
+        "gpu_bound": 0.20673152804374695,
+        "reference": 0.20671136798569537
+      },
+      {
+        "face": 349,
+        "gpu_bound": 0.20673158764839172,
+        "reference": 0.20671137126609698
+      },
+      {
+        "face": 350,
+        "gpu_bound": 0.20673158764839172,
+        "reference": 0.2067113719977126
+      },
+      {
+        "face": 468,
+        "gpu_bound": 0.13764509558677673,
+        "reference": 0.1376299940899198
+      },
+      {
+        "face": 469,
+        "gpu_bound": 0.13764509558677673,
+        "reference": 0.1376299941094685
+      },
+      {
+        "face": 475,
+        "gpu_bound": 0.15659260749816895,
+        "reference": 0.15657626809734354
+      },
+      {
+        "face": 476,
+        "gpu_bound": 0.15659260749816895,
+        "reference": 0.15657626798669186
+      },
+      {
+        "face": 486,
+        "gpu_bound": 0.15458449721336365,
+        "reference": 0.15456847594847745
+      },
+      {
+        "face": 488,
+        "gpu_bound": 0.15556052327156067,
+        "reference": 0.1555443602667848
+      },
+      {
+        "face": 489,
+        "gpu_bound": 0.15659260749816895,
+        "reference": 0.15657627028237656
+      },
+      {
+        "face": 490,
+        "gpu_bound": 0.15659260749816895,
+        "reference": 0.15657627028237653
+      },
+      {
+        "face": 504,
+        "gpu_bound": 1.0,
+        "reference": null
+      },
+      {
+        "face": 549,
+        "gpu_bound": 0.17569513618946075,
+        "reference": 0.1756775446925105
+      },
+      {
+        "face": 550,
+        "gpu_bound": 0.17569582164287567,
+        "reference": 0.17567754468191119
+      },
+      {
+        "face": 553,
+        "gpu_bound": 0.32061439752578735,
+        "reference": 0.3204854273192723
+      },
+      {
+        "face": 554,
+        "gpu_bound": 0.3206145167350769,
+        "reference": 0.3204854273355596
+      },
+      {
+        "face": 555,
+        "gpu_bound": 0.32061657309532166,
+        "reference": 0.3204854273355597
+      },
+      {
+        "face": 559,
+        "gpu_bound": 0.32061418890953064,
+        "reference": 0.3204854273483191
+      },
+      {
+        "face": 561,
+        "gpu_bound": 0.30631130933761597,
+        "reference": 0.3061889422452362
+      },
+      {
+        "face": 562,
+        "gpu_bound": 0.30631133913993835,
+        "reference": 0.30618895034343746
+      },
+      {
+        "face": 564,
+        "gpu_bound": 0.3063112795352936,
+        "reference": 0.30618894599899094
+      },
+      {
+        "face": 565,
+        "gpu_bound": 0.30631133913993835,
+        "reference": 0.3061889553868388
+      },
+      {
+        "face": 566,
+        "gpu_bound": 0.18995334208011627,
+        "reference": 0.18993455911212712
+      },
+      {
+        "face": 568,
+        "gpu_bound": 0.18304817378520966,
+        "reference": 0.18302999948311569
+      },
+      {
+        "face": 569,
+        "gpu_bound": 0.17569507658481598,
+        "reference": 0.17567746218590363
+      }
+    ],
+    "sample_0_replay_depth_bit_differences": 0,
+    "sample_1_replay_depth_bit_differences": 0,
+    "minimum_margin_over_float64_reference": 1.5101477308238076e-05
+  },
+  "numerical_validation": {
+    "passed": true,
+    "cases": 860,
+    "certified": 245,
+    "captured_tightened": 53
+  },
+  "timing_integrity": {
+    "passed": true,
+    "total_frames": 1440,
+    "raw_files": [
+      {
+        "file": "gpu-exterior-1.json",
+        "sha256": "f879bcb53b628cfb1848dfeee3d95e899479df401a17d3e671377b954bc42810",
+        "frames": 120
+      },
+      {
+        "file": "gpu-exterior-2.json",
+        "sha256": "2403ba72b396d232160aa23d9c16c8712277fb837d00fc4e4b71ce79c24ff711",
+        "frames": 120
+      },
+      {
+        "file": "gpu-exterior-3.json",
+        "sha256": "4d896f1874c3af7f97ccc9beb9ea17bd07c462a4428b4ea62453e6a36f3e158e",
+        "frames": 120
+      },
+      {
+        "file": "gpu-lower-facing-1.json",
+        "sha256": "df625e592645ee20c2c4b3501b8456aa203f295a514878184865518af6d0a9f5",
+        "frames": 120
+      },
+      {
+        "file": "gpu-lower-facing-2.json",
+        "sha256": "0bbfb7cd01a2b51af651fcbb975697740046e50a9813ceb85ad95a412206dfa3",
+        "frames": 120
+      },
+      {
+        "file": "gpu-lower-facing-3.json",
+        "sha256": "520c08f9a09df65f1de007e0df543ba5a2d6872da2ba8d7ba5e376c446583ccd",
+        "frames": 120
+      },
+      {
+        "file": "gpu-lower-glancing-1.json",
+        "sha256": "1cfab98dd7cf8562ac0cec26a845cfa5f6b8513b83b66835564afeadf569e576",
+        "frames": 120
+      },
+      {
+        "file": "gpu-lower-glancing-2.json",
+        "sha256": "25f4cc1bada997234fb003e5cf059a6771f554617dfbdd071f398d3d1515b107",
+        "frames": 120
+      },
+      {
+        "file": "gpu-lower-glancing-3.json",
+        "sha256": "0a0129a0f7ee932f2af5ca644fba32d9d34ec2578b1fb310161f8df0166bef40",
+        "frames": 120
+      },
+      {
+        "file": "gpu-upper-glancing-1.json",
+        "sha256": "c9efaea07235ca8a3151e2b55a0969e86eaa07ed1f51cd55994548871207d6de",
+        "frames": 120
+      },
+      {
+        "file": "gpu-upper-glancing-2.json",
+        "sha256": "7e4c7afec9dc6d4e8794dcf1858de060734f7f35ecaabd59e29ed3d550536403",
+        "frames": 120
+      },
+      {
+        "file": "gpu-upper-glancing-3.json",
+        "sha256": "6b1cc3f15b930b7c76609b9ba18054db85994e158257e372038a42b397f59632",
+        "frames": 120
+      }
+    ],
+    "images_or_dds": 0,
+    "inspection_passes": 0
+  },
+  "preservation": {
+    "passed": true,
+    "checked_files": 68,
+    "changed_files": []
+  },
+  "asset_readiness": {
+    "ready": true,
+    "stale_products": [],
+    "failed_jobs": []
+  },
+  "native_rebuild": false,
+  "native_build_records_retained": true,
+  "asset_build": {
+    "successful": 523,
+    "failed": 0,
+    "errors": 0
+  },
+  "counter_collection": {
+    "collected": false,
+    "reason": "Windows administrator prompt canceled before elevated helper started; Developer Mode was never enabled",
+    "verification": {
+      "value_present": false,
+      "value": null
+    }
+  },
+  "notes": {
+    "graphics_span": "First-to-last graphics-pass timestamp span, including queue gaps; not GPU busy time or FPS.",
+    "cpu": "RHI frame-to-frame period at timestamp collection, including waits; delayed GPU readbacks are not paired CPU/GPU frames. Zero means unavailable. Capture wall time is not CPU frame time.",
+    "timings": "3x120 accepted frames per view after warm-up; inspector/screenshots/attachment readbacks disabled; RenderDoc replay separate",
+    "baseline": "Frozen prior native baseline on same PC; not re-run or overwritten. Small differences may include inter-session variation. No new PS invocation counts."
+  },
+  "scene_sha256": "a0894326d0eb68b7328949b1f1829a8021b7293ce16a567e0c2ea8c9148f6e7b",
+  "tower_configuration_sha256": "0584f1064982f7229d13ca9c426eb847cb655d31390895b8ce5e2d90ae1714ee",
+  "effective_tower_configuration_sha256": "b76f275b9af10b14731ac7dc5115e1e29eb6edb11cebd57cd05e22b3b32ec67e",
+  "saved_controls": {
+    "Lighting estimator": 5,
+    "Height-derived normals (off = cheaper)": true,
+    "Level 2 predictor (experimental)": true,
+    "Gather validation (may be cheaper)": true,
+    "R16 height textures (less GPU memory)": true,
+    "Anti-aliasing": 0
+  }
+}
