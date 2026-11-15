@@ -178,6 +178,7 @@ PsOutput PixelShader(SilPomShellVertex IN,uint sampleIndex:SV_SampleIndex)
 }
 #endif
 #else
+#include "../../../Shaders/SilPOM/FrustumDepthBound.azsli"
 float SilPomNearestFaceDepth(SilPomMeshFace face, VsSystemValues systemValues, const MaterialParameters params)
 {
     float3 low, high;
@@ -190,7 +191,10 @@ float SilPomNearestFaceDepth(SilPomMeshFace face, VsSystemValues systemValues, c
     const float4 center = mul(localToClip, float4((high + low) * .5f, 1.0f));
     const float minW = center.w - dot(abs(localToClip[3].xyz), extent);
     const float maxZ = center.z + dot(abs(localToClip[2].xyz), extent);
-    return minW > 1e-6f ? saturate(maxZ / minW + 1e-5f) : 1.0f;
+    const float legacy = minW > 1e-6f ? saturate(maxZ / minW + 1e-5f) : 1.0f;
+    if (legacy < 1.0f) return legacy;
+    return SilPomFrustumDepthBound((high + low) * .5f, extent,
+        GetObjectToWorldMatrix(systemValues), GetViewProjectionMatrix(systemValues));
 }
 
 VsOutput VertexShader(VsInput IN, uint instanceId : SV_InstanceID)

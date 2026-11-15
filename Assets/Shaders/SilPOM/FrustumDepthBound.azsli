@@ -1,0 +1,107 @@
+/*
+ * Copyright (c) Contributors to the Open 3D Engine Project.
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ */
+#pragma once
+
+// Reverse-Z upper bound over the SAME expanded AABB intersected with the six
+// rendering-frustum half spaces. Used only when the legacy bound is 1.
+// Work in a unit box to avoid solving with large local coordinates or thin faces.
+float SilPomFrustumDepthBound(float3 localCenter, float3 extent,
+    float4x4 localToWorld, float4x4 viewProjection)
+{
+    const float4x4 localToClip = mul(viewProjection, localToWorld);
+    const float4 center = mul(localToClip, float4(localCenter, 1));
+    float4 rows[4];
+    float4 error;
+    const float4 localMagnitude = float4(abs(localCenter) + extent, 1);
+    float4 worldMagnitude;
+    for (uint r = 0; r < 4; ++r)
+        worldMagnitude[r] = dot(abs(localToWorld[r]), localMagnitude);
+    for (uint r = 0; r < 4; ++r)
+    {
+        rows[r] = float4(localToClip[r].xyz * extent, center[r]);
+        // Allow for composed vs. two-stage hit projection, unit-box conversion
+        // and multiply/add rounding. 32 float epsilons exceeds their operation
+        // count; the absolute products also cover cancellation. Non-finite or
+        // ill-conditioned cases cannot pass the final certificate.
+        error[r] = 3.814697265625e-6f * dot(abs(viewProjection[r]), worldMagnitude) + 1e-7f;
+    }
+
+    // Inside is dot(plane, float4(q,1)) >= 0. Expand the frustum by the
+    // projection error, so rounding cannot exclude an actual visible hit.
+    float4 planes[12];
+    planes[0] = float4(1,0,0,1); planes[1] = float4(-1,0,0,1);
+    planes[2] = float4(0,1,0,1); planes[3] = float4(0,-1,0,1);
+    planes[4] = float4(0,0,1,1); planes[5] = float4(0,0,-1,1);
+    planes[6] = rows[3] + rows[0]; planes[7] = rows[3] - rows[0];
+    planes[8] = rows[3] + rows[1]; planes[9] = rows[3] - rows[1];
+    planes[10] = rows[2]; planes[11] = rows[3] - rows[2];
+    planes[6].w += error.w + error.x; planes[7].w += error.w + error.x;
+    planes[8].w += error.w + error.y; planes[9].w += error.w + error.y;
+    planes[10].w += error.z; planes[11].w += error.w + error.z;
+    for (uint p = 6; p < 12; ++p)
+    {
+        const float scale = max(abs(planes[p].x), max(abs(planes[p].y), abs(planes[p].z)));
+        if (!(scale > 1e-12f && scale < 1e30f)) return 1.0f;
+        planes[p] /= scale;
+    }
+
+    float bestDepth = -1.0f;
+    float4 bestClip = 0;
+    uint3 bestPlanes = uint3(0,2,4);
+    // Every vertex of the full 3-D intersection is a triple of these planes.
+    // Missing a numerically degenerate vertex is safe: enumeration proposes a
+    // bound; the independent whole-enclosure certificate below authorizes it.
+    [loop] for (uint i = 0; i < 10; ++i)
+    [loop] for (uint j = i + 1; j < 11; ++j)
+    [loop] for (uint k = j + 1; k < 12; ++k)
+    {
+        const float3 a = planes[i].xyz, b = planes[j].xyz, c = planes[k].xyz;
+        const float3 bc = cross(b,c), ca = cross(c,a), ab = cross(a,b);
+        const float det = dot(a,bc);
+        if (abs(det) < 1e-6f) continue;
+        const float3 q = (-planes[i].w*bc - planes[j].w*ca - planes[k].w*ab) / det;
+        const float4 unitPosition = float4(q,1);
+        const float tolerance = 1e-5f * (1.0f + dot(abs(q),float3(1,1,1)));
+        bool inside = true;
+        [loop] for (uint p = 0; p < 12; ++p)
+            if (!(dot(planes[p],unitPosition) >= -tolerance)) { inside = false; break; }
+        if (!inside) continue;
+        const float w = dot(rows[3],unitPosition), z = dot(rows[2],unitPosition);
+        if (!(w > error.w + 1e-6f)) continue;
+        const float depth = z/w;
+        if (depth > bestDepth)
+        {
+            bestDepth = depth;
+            bestClip = float4(0,0,z,w);
+            bestPlanes = uint3(i,j,k);
+        }
+    }
+    if (!(bestDepth >= 0 && bestDepth < 1)) return 1.0f; // Includes empty/near-plane cases.
+
+    const float4 a = planes[bestPlanes.x], b = planes[bestPlanes.y], c = planes[bestPlanes.z];
+    const float3 bc = cross(b.xyz,c.xyz), ca = cross(c.xyz,a.xyz), ab = cross(a.xyz,b.xyz);
+    const float det = dot(a.xyz,bc);
+    const float projected = (bestClip.z + error.z) / (bestClip.w - error.w);
+    float bias = 1e-5f;
+    [loop] for (uint attempt = 0; attempt < 4; ++attempt)
+    {
+        const float bound = projected + bias;
+        if (!(bound >= 0 && bound < 1)) return 1.0f;
+        const float3 gradient = rows[2].xyz - bound*rows[3].xyz;
+        const float3 weights = max(float3(-dot(gradient,bc),-dot(gradient,ca),-dot(gradient,ab))/det,0.0f);
+        // For nonnegative weights and feasible g_i, f <= f + sum(weights*g_i).
+        // Bound the residual over the entire parent unit box, independently of
+        // the vertex search. This also tolerates a clamped/rounded dual solve.
+        precise float4 residual = rows[2] - bound*rows[3] + weights.x*a + weights.y*b + weights.z*c;
+        const float magnitude = dot(abs(rows[2]) + bound*abs(rows[3])
+            + weights.x*abs(a) + weights.y*abs(b) + weights.z*abs(c),float4(1,1,1,1));
+        const float arithmeticError = 7.62939453125e-6f * magnitude + 1e-7f;
+        const float upper = residual.w + dot(abs(residual.xyz),float3(1,1,1))
+            + error.z + bound*error.w + arithmeticError;
+        if (upper < 0) return bound;
+        bias *= 10.0f;
+    }
+    return 1.0f;
+}
