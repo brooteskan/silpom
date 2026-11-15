@@ -1,0 +1,495 @@
+{
+  "date_local": "2026-11-14",
+  "baseline_commit": "8efd8e95159fd3633cf085d2f8ce44f77c526ff6",
+  "capture_sha256": "1d3609c2e173a7e4bd52e1d584d1cec53b79613c0bdcc70a8bfefdfd20de89e8",
+  "capture": "D:\\diversion\\TG\\TGProject\\user\\silpom-profile-ryzen-5700g-20261114\\renderdoc-upper-glancing-20261114-160216\\upper-glancing_frame303.rdc",
+  "scene_sha256": "a0894326d0eb68b7328949b1f1829a8021b7293ce16a567e0c2ea8c9148f6e7b",
+  "effective_configuration_sha256": "b76f275b9af10b14731ac7dc5115e1e29eb6edb11cebd57cd05e22b3b32ec67e",
+  "renderdoc_version": "1.47",
+  "gpu": "AMD Radeon(TM) Graphics (1002:1638)",
+  "driver": "31.0.21923.11000",
+  "backend": "DX12",
+  "shader_target": "6_2",
+  "resolution": [
+    1280,
+    720
+  ],
+  "sample_count": 1,
+  "controls": {
+    "Anti-aliasing": 0,
+    "Lighting estimator": 5,
+    "Height-derived normals (off = cheaper)": true,
+    "Level 2 predictor (experimental)": true,
+    "Gather validation (may be cheaper)": true,
+    "R16 height textures (less GPU memory)": true
+  },
+  "warmup_replays": 1,
+  "measured_replays": 3,
+  "timed_events_per_replay": 225,
+  "mapped_draws_dispatches": 186,
+  "exported_shader_count": 54,
+  "renderdoc_bindless_feedback": false,
+  "final_fatal_status": "<Result: 'Success'>",
+  "temporary_developer_mode_restored": true,
+  "time_scope": "RenderDoc requests stable GPU power state for counter replay. Draw elapsed durations include stalls; no per-line, occupancy or cache-stall attribution. Separate from normal-clock baseline.",
+  "sum_scope": "Sum of per-event intervals, not frame span, continuous GPU busy time or FPS; queues may overlap. Group totals are sums within each replay, then median/range across three replays.",
+  "all_timed_event_sum": {
+    "median_ms": 378.02867999999995,
+    "min_ms": 377.01716,
+    "max_ms": 379.1078,
+    "values_ms": [
+      378.02867999999995,
+      377.01716,
+      379.1078
+    ]
+  },
+  "raw_evidence": "D:\\diversion\\TG\\TGProject\\user\\silpom-profile-ryzen-5700g-20261114\\renderdoc-investigation-20261114-184351\\integrated-profile",
+  "raw_profile_sha256": "d02a87ca6457c723f61226036803a20028602bde3132042b5f93bb9b6592ca37",
+  "raw_profile_bytes": 438149,
+  "branch": "codex/renderdoc-ryzen-5700g",
+  "baseline_branch": "codex/profile-ryzen-5700g (unchanged at 8efd8e9)",
+  "diagnoses": [
+    {
+      "trigger": "FetchCounters -> D3D12 SetStablePowerState(TRUE) with Windows Developer Mode off",
+      "evidence": "noopt-validation-duration/renderdoc.log; fatal status explicitly names Developer Mode requirement",
+      "resolution": "User-approved temporary AllowDevelopmentWithoutDevLicense=1 during profiling; prior absent registry value restored and independently verified"
+    },
+    {
+      "trigger": "Shader-state inspection with optional D3D12 bindless descriptor feedback enabled",
+      "evidence": "developer-mode-profile/renderdoc.log: E_INVALIDARG, then device-removed while reading feedback buffer at event 2294",
+      "resolution": "Process-local D3D12.BindlessFeedback=false; successful three counter rounds and all 186 draw/dispatch mappings; setting restored in process before exit"
+    }
+  ],
+  "shader_identity_method": "Complete container or DXIL SHA256; alternatively exact program bytes after reproducing O3DE runtime VBR specialization, excluding only the re-signed container hash. Read-only input assets.",
+  "matched_shaders": 54,
+  "limitations": [
+    "GPUPerfAPI explicitly reports hardware not supported on this Radeon; no occupancy, memory-stall or cache-miss counters.",
+    "Captured shaders have no HLSL debug files. No per-function, per-line or per-instruction GPU timing was obtained.",
+    "Static DXIL operation sites are not dynamic execution counts and do not identify a cost cause.",
+    "PS invocations include raster/quad behavior; invocations per viewport pixel are not an exact unique-pixel overdraw measure.",
+    "Baseline normal-clock timestamps and stable-power replay durations have different scopes; no speedup or FPS comparison is implied."
+  ],
+  "shaders": [
+    {
+      "shader": "ResourceId::3172",
+      "draws": 9,
+      "events": [
+        464,
+        500,
+        636,
+        536,
+        740,
+        704,
+        568,
+        668,
+        600
+      ],
+      "duration": {
+        "median_ms": 260.77547999999996,
+        "min_ms": 259.78924,
+        "max_ms": 261.33844,
+        "values_ms": [
+          260.77547999999996,
+          259.78924,
+          261.33844
+        ]
+      },
+      "ps_invocations": [
+        9032205,
+        9032621,
+        9032461
+      ],
+      "program_sha256": "b7d1720904a70fdb6c050b774f035ceb06affb7f2fe527cf479002c68fa35eaf",
+      "static_count_scope": "Static call sites, not executed operation counts; loops/branches and compiler lowering prevent direct cost attribution.",
+      "fraction_of_sum_timed_event_medians": 0.6898298827485787,
+      "shader_products": [
+        "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitdepthlodnear-nomsaa_dx12_0.azshadervariant",
+        "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitdepthlodnearwall-nomsaa_dx12_0.azshadervariant"
+      ]
+    },
+    {
+      "shader": "ResourceId::3198",
+      "draws": 6,
+      "events": [
+        2294,
+        2302,
+        2356,
+        2309,
+        2349,
+        2333
+      ],
+      "duration": {
+        "median_ms": 84.61092,
+        "min_ms": 84.5738,
+        "max_ms": 84.71136,
+        "values_ms": [
+          84.5738,
+          84.61092,
+          84.71136
+        ]
+      },
+      "ps_invocations": [
+        5529600,
+        5529600,
+        5529600
+      ],
+      "program_sha256": "6e4720b954ba7f9993ea7e6a2d4ff62d59cd2c8c79a86e576f79cba7ae9887d8",
+      "static_count_scope": "Static call sites, not executed operation counts; loops/branches and compiler lowering prevent direct cost attribution.",
+      "fraction_of_sum_timed_event_medians": 0.22382143069144914,
+      "shader_products": [
+        "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitforwardangularproxyambient-nomsaa_dx12_0.azshadervariant"
+      ]
+    },
+    {
+      "shader": "ResourceId::3183",
+      "draws": 3,
+      "events": [
+        2317,
+        2341,
+        2325
+      ],
+      "duration": {
+        "median_ms": 6.8232,
+        "min_ms": 6.81996,
+        "max_ms": 6.831879999999999,
+        "values_ms": [
+          6.831879999999999,
+          6.8232,
+          6.81996
+        ]
+      },
+      "ps_invocations": [
+        2764800,
+        2764800,
+        2764800
+      ],
+      "program_sha256": "df586590f9f6ae5b7f271317ada63ffe22b9173a5483199a237c4561004ec76e",
+      "static_count_scope": "Static call sites, not executed operation counts; loops/branches and compiler lowering prevent direct cost attribution.",
+      "fraction_of_sum_timed_event_medians": 0.01804942418654585,
+      "shader_products": [
+        "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitforwardneuralonly-nomsaa_dx12_0.azshadervariant"
+      ]
+    },
+    {
+      "shader": "ResourceId::1098",
+      "draws": 1,
+      "events": [
+        2162
+      ],
+      "duration": {
+        "median_ms": 3.41432,
+        "min_ms": 3.4122000000000003,
+        "max_ms": 3.4156,
+        "values_ms": [
+          3.41432,
+          3.4156,
+          3.4122000000000003
+        ]
+      },
+      "ps_invocations": [
+        921600,
+        921600,
+        921600
+      ],
+      "program_sha256": "422976472e1cde37440524179c6f95b409de60b3a1d1593ce391c84d4b7f45ec",
+      "fraction_of_sum_timed_event_medians": 0.009031907314545553,
+      "shader_products": [
+        "shaders/shadow/fullscreenshadow-nomsaa_dx12_0.azshadervariant",
+        "shaders/shadow/fullscreenshadow_dx12_0.azshadervariant"
+      ]
+    },
+    {
+      "shader": "ResourceId::1016",
+      "draws": 1,
+      "events": [
+        2576
+      ],
+      "duration": {
+        "median_ms": 2.27204,
+        "min_ms": 2.2279999999999998,
+        "max_ms": 2.2748,
+        "values_ms": [
+          2.2279999999999998,
+          2.27204,
+          2.2748
+        ]
+      },
+      "ps_invocations": [
+        921600,
+        921600,
+        921600
+      ],
+      "program_sha256": "cd0f9f42af5b3ef8926fb3cfd7b939267995ffbf537767681d0f50d35c1d49f0",
+      "fraction_of_sum_timed_event_medians": 0.0060102318162738345,
+      "shader_products": [
+        "shaders/editormodeoutline_dx12_0.azshadervariant"
+      ]
+    },
+    {
+      "shader": "ResourceId::3000",
+      "draws": 38,
+      "events": [
+        1144,
+        1110,
+        1397,
+        1363,
+        1034,
+        992,
+        1026,
+        1650,
+        1684,
+        984,
+        1076,
+        1461,
+        1245,
+        1279,
+        1287,
+        1748,
+        1068,
+        1532,
+        977,
+        1953,
+        2063,
+        1566,
+        1329,
+        1945,
+        2029,
+        1237,
+        1823,
+        1995,
+        1574,
+        1230,
+        1864,
+        1524,
+        1616,
+        1321,
+        1857,
+        1789,
+        1961,
+        1608
+      ],
+      "duration": {
+        "median_ms": 2.0082,
+        "min_ms": 2.00168,
+        "max_ms": 2.01516,
+        "values_ms": [
+          2.01516,
+          2.0082,
+          2.00168
+        ]
+      },
+      "ps_invocations": [
+        4250286,
+        4250286,
+        4250286
+      ],
+      "program_sha256": "a833b46d0f6c6aa142d770fb4c270bcc248ccb18b43d5f534e0d5feb85cad0e9",
+      "fraction_of_sum_timed_event_medians": 0.005312295352828786,
+      "shader_products": [
+        "materials/types/silpommesh/silpommesh_mainpipeline_shadowmappass_customz_dx12_0.azshadervariant"
+      ]
+    },
+    {
+      "shader": "ResourceId::881",
+      "draws": 1,
+      "events": [
+        2563
+      ],
+      "duration": {
+        "median_ms": 1.5618800000000002,
+        "min_ms": 1.56172,
+        "max_ms": 1.56252,
+        "values_ms": [
+          1.56252,
+          1.5618800000000002,
+          1.56172
+        ]
+      },
+      "ps_invocations": [
+        921600,
+        921600,
+        921600
+      ],
+      "program_sha256": "0cbf322aba3727b3657c85365cd02dbb1f5a025edfc49f647b52c514211776ff",
+      "fraction_of_sum_timed_event_medians": 0.004131644191652338,
+      "shader_products": [
+        "shaders/postprocessing/displaymapper_dx12_0.azshadervariant"
+      ]
+    },
+    {
+      "shader": "ResourceId::2991",
+      "draws": 8,
+      "events": [
+        2242,
+        2226,
+        2218,
+        2271,
+        2264,
+        2257,
+        2250,
+        2234
+      ],
+      "duration": {
+        "median_ms": 1.4192,
+        "min_ms": 1.4144,
+        "max_ms": 1.4290800000000001,
+        "values_ms": [
+          1.4144,
+          1.4192,
+          1.4290800000000001
+        ]
+      },
+      "ps_invocations": [
+        18413,
+        18413,
+        18413
+      ],
+      "program_sha256": "137dc5f9c298c60e4170795e83366d8b2bac83f3180ad1dcfd75b90218c509cf",
+      "fraction_of_sum_timed_event_medians": 0.0037542125110719116,
+      "shader_products": [
+        "assets/vuelivelink/vuepbrmaterial_mainpipeline_forwardpass_standardlighting_dx12_0.azshadervariant",
+        "materials/types/standardpbr_mainpipeline_forwardpass_standardlighting_dx12_0.azshadervariant"
+      ]
+    }
+  ],
+  "top_draws": [
+    {
+      "event": 464,
+      "indices": 3426,
+      "instances": 1,
+      "duration_ms": [
+        248.05427999999998,
+        247.08388,
+        248.62044
+      ],
+      "median_ms": 248.05427999999998,
+      "min_ms": 247.08388,
+      "max_ms": 248.62044,
+      "ps_invocations": [
+        8432359,
+        8432775,
+        8432615
+      ],
+      "shaders": {
+        "ShaderStage.Vertex": "ResourceId::3171",
+        "ShaderStage.Pixel": "ResourceId::3172"
+      }
+    },
+    {
+      "event": 2294,
+      "indices": 3426,
+      "instances": 1,
+      "duration_ms": [
+        79.46132,
+        79.49972,
+        79.59812
+      ],
+      "median_ms": 79.49972,
+      "min_ms": 79.46132,
+      "max_ms": 79.59812,
+      "ps_invocations": [
+        921600,
+        921600,
+        921600
+      ],
+      "shaders": {
+        "ShaderStage.Vertex": "ResourceId::3197",
+        "ShaderStage.Pixel": "ResourceId::3198"
+      }
+    },
+    {
+      "event": 500,
+      "indices": 702,
+      "instances": 1,
+      "duration_ms": [
+        12.204120000000001,
+        12.189480000000001,
+        12.19876
+      ],
+      "median_ms": 12.19876,
+      "min_ms": 12.189480000000001,
+      "max_ms": 12.204120000000001,
+      "ps_invocations": [
+        599846,
+        599846,
+        599846
+      ],
+      "shaders": {
+        "ShaderStage.Vertex": "ResourceId::3171",
+        "ShaderStage.Pixel": "ResourceId::3172"
+      }
+    },
+    {
+      "event": 2317,
+      "indices": 5184,
+      "instances": 1,
+      "duration_ms": [
+        4.025639999999999,
+        4.02312,
+        4.02516
+      ],
+      "median_ms": 4.02516,
+      "min_ms": 4.02312,
+      "max_ms": 4.025639999999999,
+      "ps_invocations": [
+        921600,
+        921600,
+        921600
+      ],
+      "shaders": {
+        "ShaderStage.Vertex": "ResourceId::3182",
+        "ShaderStage.Pixel": "ResourceId::3183"
+      }
+    },
+    {
+      "event": 2162,
+      "indices": 3,
+      "instances": 1,
+      "duration_ms": [
+        3.41432,
+        3.4156,
+        3.4122000000000003
+      ],
+      "median_ms": 3.41432,
+      "min_ms": 3.4122000000000003,
+      "max_ms": 3.4156,
+      "ps_invocations": [
+        921600,
+        921600,
+        921600
+      ],
+      "shaders": {
+        "ShaderStage.Vertex": "ResourceId::1097",
+        "ShaderStage.Pixel": "ResourceId::1098"
+      }
+    },
+    {
+      "event": 2576,
+      "indices": 3,
+      "instances": 1,
+      "duration_ms": [
+        2.2279999999999998,
+        2.27204,
+        2.2748
+      ],
+      "median_ms": 2.27204,
+      "min_ms": 2.2279999999999998,
+      "max_ms": 2.2748,
+      "ps_invocations": [
+        921600,
+        921600,
+        921600
+      ],
+      "shaders": {
+        "ShaderStage.Vertex": "ResourceId::723",
+        "ShaderStage.Pixel": "ResourceId::1016"
+      }
+    }
+  ],
+  "raw_evidence_hashes": {
+    "integrated-profile/profile.json": "d02a87ca6457c723f61226036803a20028602bde3132042b5f93bb9b6592ca37",
+    "integrated-profile/shader-product-matches.json": "1dd76bfaccbca65e06cafc85812cdfd5fa2e328a0365eca24195bf2309d440f3",
+    "integrated-profile/developer-mode-state.json": "c91f54f3d7179847f00cc3a805bb1630e7e7101c71e9fc6316d3fb280b456a02"
+  },
+  "baseline_report_sha256": "b8c954429cabbd8fd50d7979c47d2f7de5f83c745d96e3351226ab8a11daade3"
+}
