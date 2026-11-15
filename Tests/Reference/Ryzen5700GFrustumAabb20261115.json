@@ -1923,8 +1923,418 @@
     "errors": 0
   },
   "counter_collection": {
-    "collected": false,
-    "reason": "Windows administrator prompt canceled before elevated helper started; Developer Mode was never enabled",
+    "collected": true,
+    "scope": "One warm-up and three measured stable-power captured-frame replays per frozen capture; separate from native application timings",
+    "comparison": {
+      "counters_valid": true,
+      "scope": "Separate captured-frame replay under RenderDoc stable power state; excluded from baseline statistics",
+      "normal_clock_baseline_unchanged": true,
+      "capture_sha256": {
+        "baseline": "bfe021553de239202c95a9303370f04de0599d2f58cc02700b86153580165413",
+        "candidate": "59e218f0fa340b68d4599e435254f2e974cda76728ee34e41bac7239563a312b"
+      },
+      "rounds": 3,
+      "warmup_rounds": 1,
+      "samples": 2,
+      "height_derived_sampling": true,
+      "dominant_draw": {
+        "label": "Near-field wall, EID 473",
+        "baseline": {
+          "events": [
+            473
+          ],
+          "draws": 1,
+          "duration_ms": {
+            "rounds": [
+              395.812,
+              396.37932,
+              395.92484
+            ],
+            "median": 395.92484,
+            "minimum": 395.812,
+            "maximum": 396.37932
+          },
+          "ps_invocations": {
+            "rounds": [
+              16877834,
+              16878162,
+              16878106
+            ],
+            "median": 16878106,
+            "minimum": 16877834,
+            "maximum": 16878162
+          },
+          "vs_invocations": {
+            "rounds": [
+              2284,
+              2284,
+              2284
+            ],
+            "median": 2284,
+            "minimum": 2284,
+            "maximum": 2284
+          },
+          "samples_passed": {
+            "rounds": [
+              2784451,
+              2784451,
+              2784451
+            ],
+            "median": 2784451,
+            "minimum": 2784451,
+            "maximum": 2784451
+          }
+        },
+        "candidate": {
+          "events": [
+            473
+          ],
+          "draws": 1,
+          "duration_ms": {
+            "rounds": [
+              271.54928,
+              271.57804000000004,
+              271.46152
+            ],
+            "median": 271.54928,
+            "minimum": 271.46152,
+            "maximum": 271.57804000000004
+          },
+          "ps_invocations": {
+            "rounds": [
+              12294955,
+              12294755,
+              12295083
+            ],
+            "median": 12294955,
+            "minimum": 12294755,
+            "maximum": 12295083
+          },
+          "vs_invocations": {
+            "rounds": [
+              2284,
+              2284,
+              2284
+            ],
+            "median": 2284,
+            "minimum": 2284,
+            "maximum": 2284
+          },
+          "samples_passed": {
+            "rounds": [
+              2784451,
+              2784451,
+              2784451
+            ],
+            "median": 2784451,
+            "minimum": 2784451,
+            "maximum": 2784451
+          }
+        },
+        "ps_invocation_reduction_percent": 27.154415311765433,
+        "duration_reduction_percent": 31.413931997800393
+      },
+      "near_wall_six_draws": {
+        "label": "Same near-wall pixel program",
+        "baseline": {
+          "events": [
+            473,
+            509,
+            645,
+            545,
+            749,
+            713
+          ],
+          "draws": 6,
+          "duration_ms": {
+            "rounds": [
+              416.23436000000004,
+              416.78764,
+              416.35116
+            ],
+            "median": 416.35116,
+            "minimum": 416.23436000000004,
+            "maximum": 416.78764
+          },
+          "ps_invocations": {
+            "rounds": [
+              18087078,
+              18087406,
+              18087350
+            ],
+            "median": 18087350,
+            "minimum": 18087078,
+            "maximum": 18087406
+          },
+          "vs_invocations": {
+            "rounds": [
+              2976,
+              2976,
+              2976
+            ],
+            "median": 2976,
+            "minimum": 2976,
+            "maximum": 2976
+          },
+          "samples_passed": {
+            "rounds": [
+              2785601,
+              2785601,
+              2785601
+            ],
+            "median": 2785601,
+            "minimum": 2785601,
+            "maximum": 2785601
+          }
+        },
+        "candidate": {
+          "events": [
+            473,
+            509,
+            545,
+            645,
+            749,
+            713
+          ],
+          "draws": 6,
+          "duration_ms": {
+            "rounds": [
+              281.39412,
+              281.44844000000006,
+              281.32244000000003
+            ],
+            "median": 281.39412,
+            "minimum": 281.32244000000003,
+            "maximum": 281.44844000000006
+          },
+          "ps_invocations": {
+            "rounds": [
+              12661682,
+              12661482,
+              12661810
+            ],
+            "median": 12661682,
+            "minimum": 12661482,
+            "maximum": 12661810
+          },
+          "vs_invocations": {
+            "rounds": [
+              2976,
+              2976,
+              2976
+            ],
+            "median": 2976,
+            "minimum": 2976,
+            "maximum": 2976
+          },
+          "samples_passed": {
+            "rounds": [
+              2785601,
+              2785601,
+              2785601
+            ],
+            "median": 2785601,
+            "minimum": 2785601,
+            "maximum": 2785601
+          }
+        },
+        "ps_invocation_reduction_percent": 29.997031074203797,
+        "duration_reduction_percent": 32.41423417674638
+      },
+      "all_primary_hit_draws": {
+        "label": "Primary hit draw list; wall-backup excluded",
+        "baseline": {
+          "events": [
+            473,
+            509,
+            645,
+            545,
+            592,
+            749,
+            713,
+            692,
+            577,
+            677,
+            624,
+            609,
+            469,
+            488,
+            541,
+            505,
+            641,
+            745,
+            709,
+            524,
+            560,
+            764,
+            660,
+            728
+          ],
+          "draws": 24,
+          "duration_ms": {
+            "rounds": [
+              416.62984,
+              417.18524,
+              416.74676
+            ],
+            "median": 416.74676,
+            "minimum": 416.62984,
+            "maximum": 417.18524
+          },
+          "ps_invocations": {
+            "rounds": [
+              18309918,
+              18310246,
+              18310190
+            ],
+            "median": 18310190,
+            "minimum": 18309918,
+            "maximum": 18310246
+          },
+          "vs_invocations": {
+            "rounds": [
+              22752,
+              22752,
+              22752
+            ],
+            "median": 22752,
+            "minimum": 22752,
+            "maximum": 22752
+          },
+          "samples_passed": {
+            "rounds": [
+              2785601,
+              2785601,
+              2785601
+            ],
+            "median": 2785601,
+            "minimum": 2785601,
+            "maximum": 2785601
+          }
+        },
+        "candidate": {
+          "events": [
+            473,
+            509,
+            545,
+            645,
+            577,
+            677,
+            609,
+            749,
+            592,
+            713,
+            692,
+            624,
+            469,
+            488,
+            505,
+            641,
+            541,
+            709,
+            745,
+            524,
+            764,
+            660,
+            560,
+            728
+          ],
+          "draws": 24,
+          "duration_ms": {
+            "rounds": [
+              283.52456,
+              283.57740000000007,
+              283.45744
+            ],
+            "median": 283.52456,
+            "minimum": 283.45744,
+            "maximum": 283.57740000000007
+          },
+          "ps_invocations": {
+            "rounds": [
+              12884522,
+              12884322,
+              12884650
+            ],
+            "median": 12884522,
+            "minimum": 12884322,
+            "maximum": 12884650
+          },
+          "vs_invocations": {
+            "rounds": [
+              22752,
+              22752,
+              22752
+            ],
+            "median": 22752,
+            "minimum": 22752,
+            "maximum": 22752
+          },
+          "samples_passed": {
+            "rounds": [
+              2785601,
+              2785601,
+              2785601
+            ],
+            "median": 2785601,
+            "minimum": 2785601,
+            "maximum": 2785601
+          }
+        },
+        "ps_invocation_reduction_percent": 29.631959034832512,
+        "duration_reduction_percent": 31.96718314018806
+      },
+      "hot_pixel_shader_identical": true,
+      "hot_pixel_sha256": "cc2f733eb3c09ce096fa094a7f3dbaf73838357926d1cd63632f3964b1d0cd5c",
+      "program_comparison": {
+        "pixel_draws_byte_identical": 110,
+        "pixel_draws_changed": 0,
+        "vertex_draws_identical": 164,
+        "vertex_draws_changed": 9,
+        "candidate_shaders_matched": 59,
+        "candidate_shader_count": 59
+      },
+      "replay_final_status": {
+        "baseline": "<Result: 'Success'>",
+        "candidate": "<Result: 'Success'>"
+      },
+      "wrapper_exit": 1,
+      "wrapper_timeout_seconds": 300,
+      "wrapper_note": "Both per-capture and batch results completed successfully with healthy final device status before the wrapper stopped the still-running qrenderdoc process at its exit/cleanup timeout.",
+      "developer_mode_state": {
+        "temporary_mode_requested": true,
+        "key_existed": true,
+        "value_existed": false,
+        "old_value": null,
+        "old_kind": "",
+        "enabled": true,
+        "restored": true,
+        "error": "System.Management.Automation.RuntimeException: RenderDoc exceeded the 300 second limit",
+        "completed_utc": "2026-11-15T14:34:40.1488045Z"
+      },
+      "developer_mode_verification": {
+        "value_present": false,
+        "value": null
+      },
+      "raw_sha256": {
+        "profile-baseline-retry\\profile.json": "2dc7795040d64c4ab7f3aa4d49b263e4ecdd2da1cc94d2c5e5516f671c8e74f0",
+        "profile-candidate-retry\\profile.json": "0811c0e9bfcc0510e554a37a6694890bd173f5c9cf0bf586bd0b6de4914634d8",
+        "profile-candidate-retry\\shader-product-matches.json": "6e4d3d52197c52a7f6e10f7074fa7b2ce32db0aa978e84753d5207ef55dc0900",
+        "counter-config-retry.json": "ed2e329257a9d8096954dfce2a27549559dd3298df39f77c97f2c7dc8a24340a",
+        "counter-batch-retry\\profile.json": "780552d1ec50b1abb0bf21e2db11bb27ac8e1a9ca7e44f4928a46a6a0eeda1d7",
+        "counter-batch-retry\\developer-mode-state.json": "be141ec82de33f6f8e9a7c2e2e8584b4d4eafdc3f5e57241a31812ed2e382a85"
+      },
+      "hardware_verification": {
+        "captured_utc": "2026-11-15T14:40:51.4102900Z",
+        "gpu": {
+          "Name": "AMD Radeon(TM) Graphics",
+          "PNPDeviceID": "PCI\\VEN_1002&DEV_1638&SUBSYS_88091043&REV_C8\\4&3293EFF9&0&0041",
+          "DriverVersion": "31.0.21923.11000",
+          "DriverDate": "2025-06-30T17:00:00-07:00"
+        }
+      }
+    },
+    "first_attempt": "Windows canceled the original UAC request; retained cancellation log.",
     "verification": {
       "value_present": false,
       "value": null
@@ -1934,7 +2344,7 @@
     "graphics_span": "First-to-last graphics-pass timestamp span, including queue gaps; not GPU busy time or FPS.",
     "cpu": "RHI frame-to-frame period at timestamp collection, including waits; delayed GPU readbacks are not paired CPU/GPU frames. Zero means unavailable. Capture wall time is not CPU frame time.",
     "timings": "3x120 accepted frames per view after warm-up; inspector/screenshots/attachment readbacks disabled; RenderDoc replay separate",
-    "baseline": "Frozen prior native baseline on same PC; not re-run or overwritten. Small differences may include inter-session variation. No new PS invocation counts."
+    "baseline": "Frozen prior native baseline on same PC; not re-run or overwritten. Small differences may include inter-session variation. New invocation counts come from a separate matched stable-power replay and must not replace the native timings."
   },
   "scene_sha256": "a0894326d0eb68b7328949b1f1829a8021b7293ce16a567e0c2ea8c9148f6e7b",
   "tower_configuration_sha256": "0584f1064982f7229d13ca9c426eb847cb655d31390895b8ce5e2d90ae1714ee",

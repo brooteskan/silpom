@@ -148,14 +148,59 @@ At upper glancing, the largest remaining measured leaves are hit generation
 shading (**100.435 ms**) now exceeds hit generation (**59.866 ms**).
 These are pass costs, not per-function/instruction hardware profiles.
 
-A separate paired RenderDoc counter run was prepared for the original and new
-captures after native timing ended. **Windows canceled the administrator
-prompt**, so the elevated helper never started and no new invocation counters
-were collected. Developer Mode was never enabled; its registry value is still
-absent. The earlier modeled 41.8% completed-depth eligibility reduction must
-not be labeled an observed PS-invocation reduction. The timestamp result above
-measures the actual net effect, but does not quantify shader invocation savings
-or isolate vertex-bound overhead from pixel-work savings.
+## Matched RenderDoc invocation counters
+
+The user-authorized retry successfully enabled Developer Mode temporarily and
+collected **one warm-up plus three measured counter replays per frozen capture**.
+These are separate **stable-power captured-frame replay** measurements on the
+same Radeon/driver, not normal-clock application timings. The original native
+tables above remain unchanged. Both individual results and the batch report
+pass, with final device status **Success** and no device-lost error.
+
+| Dominant near-field wall draw, event 473 | Original bound | Frustum AABB bound |
+| --- | ---: | ---: |
+| Indices / VS invocations | 3,426 / 2,284 | 3,426 / 2,284 |
+| Median PS invocations | **16,878,106** | **12,294,955** |
+| PS invocation repeat range | 16,877,834–16,878,162 | 12,294,755–12,295,083 |
+| Passing-sample events, every repeat | 2,784,451 | 2,784,451 |
+| Median replay draw duration, ms | **395.925** | **271.549** |
+| Replay duration repeat range, ms | 395.812–396.379 | 271.462–271.578 |
+
+The dominant draw executes **4,583,151 fewer PS invocations (27.15%)** and its
+replay draw duration falls **31.41%**, including new vertex work. Passing-sample
+events and VS invocation counts are unchanged. Passing-sample events include
+overlap; they are not unique final visible pixel/sample slots.
+
+Its **pixel-shader container bytes are identical** between the two captures.
+Pixel-shader bytecode matches for all **110 corresponding draws** with a pixel shader;
+only nine graphics draws have changed vertex programs. All **59/59** candidate
+programs map to processed project assets using the existing read-only shader
+matcher. This confirms that the bounds avoid executing unchanged pixel code,
+rather than changing height sampling or the hit solver.
+
+Across the six draws sharing the near-wall program, PS invocations fall
+**18,087,350 → 12,661,682 (30.00%)** and the median per-round duration sum falls
+**416.351 → 281.394 ms (32.41%)**. Across all **24 primary hit draws**, excluding
+the separate wall-backup draw list, PS invocations fall
+**18,310,190 → 12,884,522 (29.63%)** and duration sums fall
+**416.747 → 283.525 ms (31.97%)**. Group sums are calculated within each repeat
+before taking medians; parent intervals are not added to children. Other primary
+hit draws together cost 0.396 ms before and 2.130 ms after in replay; their added
+cost is included in the net result, not attributed to isolated vertex cycles.
+
+The observed invocation reduction need not equal the earlier **41.8% modeled
+completed-depth eligibility** reduction: these are different measurements, and
+real depth availability follows draw order. Neither replay timings nor the
+native graphics spans establish FPS, continuous GPU busy time, per-invocation
+latency or individual shader-function costs.
+
+The initial administrator prompt cancellation log remains preserved. On retry,
+the wrapper reached its **300-second process-exit/cleanup limit after all replay
+results and shader exports were saved**, stopped the still-running qrenderdoc
+process, and returned exit 1. This is recorded separately from the completed,
+healthy counter datasets. Its `finally` restored the prior Windows setting;
+an independent registry check confirms Developer Mode's value is **absent/off**.
+No further administrator prompt or counter rerun was needed to recover data.
 
 ## Hardware, engine and preservation
 
@@ -205,6 +250,11 @@ Raw root: `D:/diversion/TG/TGProject/user/silpom-frustum-aabb-20261115` (ignored
   `timing-integrity.json`, hardware, preservation and Developer Mode verification.
 - `Run-Tower.ps1`, `Capture-Tower.ps1`, counter config/cancellation log, asset
   compilation logs, and the unchanged native build log/manifest.
+- `profile-baseline-retry`, `profile-candidate-retry`: full three-round counter
+  profiles and shader exports; candidate shader/product matches.
+- `counter-config-retry.json`, `counter-comparison-retry.json`,
+  `counter-batch-retry`: batch success, timeout/restoration record and raw hashes;
+  independent `developer-mode-retry-verification.json` and replay driver check.
 
 Run from the SILPOM checkout; substitute a **fresh** ignored output path:
 
@@ -251,3 +301,12 @@ to `upper-glancing` with timing disabled, then run
 `TG_SILPOM_COVERAGE_CONFIG` pointing to the retained probe config (update capture
 and output paths). This needs no Developer Mode. Counter collection is separate
 and must not be attempted with Developer Mode off on this driver.
+
+The counter retry used the following command. Copy the retained config and give
+all output folders fresh paths before another run. The recorded 300-second
+limit covers both captures and final process exit; the timeout note above
+distinguishes successful data collection from the wrapper's exit status.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Invoke-TowerRenderDocProfile.ps1 -ConfigPath "$project/user/silpom-frustum-aabb-20261115/counter-config-retry.json" -TemporaryDeveloperMode -TimeoutSeconds 300
+```
