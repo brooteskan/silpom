@@ -1,0 +1,933 @@
+{
+  "date_local": "2026-11-14",
+  "status": "Validated 1x SM6.2 baseline; no shader optimization",
+  "branch": "codex/profile-ryzen-5700g",
+  "diversion_main": "dv.commit.73",
+  "silpom_implementation": "e9684244b85e878b445606164b157b16438398d4",
+  "bundle": "tg-o3de-20261114",
+  "patch_hash_encoding": "sha256; CRLF normalized to LF; all patched files are text",
+  "components": [
+    {
+      "name": "engine",
+      "base": "061180bf24f1666eb30315b35da292eb14f4659c",
+      "patch_sha256": "3dd9ed2e11485f7592f7462e7da850b154ca30c1159994b1ca6f0fcfec7877f3"
+    },
+    {
+      "name": "terrain-compositor",
+      "base": "ee6887b4b743047f7dece1b179c0cf30cb281880",
+      "patch_sha256": "dab37b902de3e3ca417531b6b08d9fed59c20dc02382c12426b3500a89137841"
+    }
+  ],
+  "dependency_manifest_sha256": "627fc62526d0dc10f738dcdc7a1ceb7c8f1973feb87f6723f4807bf28a5c2fdc",
+  "scene_sha256": "a0894326d0eb68b7328949b1f1829a8021b7293ce16a567e0c2ea8c9148f6e7b",
+  "tower_configuration_sha256": "0584f1064982f7229d13ca9c426eb847cb655d31390895b8ce5e2d90ae1714ee",
+  "effective_tower_configuration_sha256": "b76f275b9af10b14731ac7dc5115e1e29eb6edb11cebd57cd05e22b3b32ec67e",
+  "runtime_controls": {
+    "Anti-aliasing": 0,
+    "Lighting estimator": 5,
+    "Height-derived normals (off = cheaper)": true,
+    "Level 2 predictor (experimental)": true,
+    "Gather validation (may be cheaper)": true,
+    "R16 height textures (less GPU memory)": true
+  },
+  "requested_overrides": {
+    "UseHeightDerivedNormals": true
+  },
+  "saved_height_derived_normals": false,
+  "hardware": {
+    "cpu": "AMD Ryzen 7 5700G",
+    "cores": 8,
+    "logical_processors": 16,
+    "active_rendering_gpu": "AMD Radeon(TM) Graphics",
+    "pci_vendor": "1002",
+    "pci_device": "1638",
+    "driver": "31.0.21923.11000",
+    "driver_date_utc": "2025-07-01",
+    "ram_gib": 32,
+    "ram_modules": "2 x 16 GiB G.Skill F4-3200C16-16GVK",
+    "ram_slots": [
+      "DIMM_A1",
+      "DIMM_B1"
+    ],
+    "configured_memory_mt_s": 2133,
+    "dxgi_dedicated_video_bytes": 519847936,
+    "dxgi_shared_system_bytes": 16839022592,
+    "highest_reported_shader_model": "6.7",
+    "native_16bit_shader_ops": true,
+    "os": "Windows 11 Pro 10.0.26300",
+    "power_plan": "Balanced (unchanged)"
+  },
+  "rendering": {
+    "backend": "DX12",
+    "shader_target": "6_2",
+    "resolution": [
+      1280,
+      720
+    ],
+    "sample_count": 1,
+    "aa_component": "Current default (0)",
+    "effective_aa_state": [
+      1,
+      0,
+      0
+    ],
+    "startup_override": "--regset=/O3DE/Autoexec/ConsoleCommands/r_multiSampleCount=1",
+    "reason": "The source main pipeline descriptor starts at unsupported 2x; process-local 1x override preserves saved component AA.",
+    "editor": "Source build profile-5700g-sm6_2; original SDK intact"
+  },
+  "build": {
+    "cmake": "4.3.1",
+    "generator": "Visual Studio 18 2026",
+    "msvc": "19.51.36260.0",
+    "windows_sdk": "10.0.26100",
+    "parallel": 4,
+    "native_targets": "All bundle build targets succeeded",
+    "asset_processor_batch": {
+      "exit_code": 0,
+      "processed": 133,
+      "failed": 0,
+      "errors": 0
+    },
+    "aggregate_verify_only": "95 of 95 file hashes match",
+    "asset_readiness": {
+      "ready": true,
+      "failed_jobs": [],
+      "stale_products": []
+    }
+  },
+  "validation": {
+    "editor_smoke": true,
+    "visual_tests": true,
+    "ctrl_g_visible": true,
+    "manual_review": "Exterior and Ctrl-G tower complete; stone surfaces and interior column illuminated. Dark relief recesses retain visible texture. Fine 1x edge aliasing remains visible; no broad missing surfaces or uniform-black interior walls.",
+    "saved_level_unchanged": true,
+    "vue_live_link_unchanged": true,
+    "renderer_binding_or_assert_errors": false,
+    "unrelated_log_error": "Ctrl-G YarnEditor cannot find assets-source/Yarn/The Leucistic Raven/BuildCredits.ps1. Tower renders; narrative build unavailable. Timing-only run never enters game mode.",
+    "warnings": "Startup SRG already-queued warnings and DynamicDraw pipeline initialization warnings during shutdown; no measured renderer validation errors."
+  },
+  "method": {
+    "cameras": "Levels/SilPOMTowerBenchmark/scene.json",
+    "captures_per_view": 3,
+    "frames_per_capture": 120,
+    "frames_per_view": 360,
+    "warmup": "90 frames on camera selection; 120 + 30 frames before each capture; native capture discards 16 warm-up samples",
+    "interval_exclusions": "No screenshots, attachment readbacks, inspection atlases, gameplay or shader builds during timestamp capture intervals",
+    "graphics_span_scope": "First-to-last graphics-pass timestamp span, including queue gaps; not GPU busy time or FPS.",
+    "cpu_scope": "RHI frame-to-frame period at timestamp collection, including waits; delayed GPU readbacks are not paired CPU/GPU frames. Zero means unavailable. Capture wall time is not CPU frame time.",
+    "percentile": "analyze_planar_ab.distribution: linear interpolation at (n-1)*p",
+    "limitations": "Leaf GPU intervals measure elapsed pass duration, not shader-instruction busy cycles. No continuous GPU-busy metric, CPU-busy metric or FPS claim. SM6.7 and 4x MSAA were not compared."
+  },
+  "local_evidence_root": "D:\\diversion\\TG\\TGProject\\user\\silpom-profile-ryzen-5700g-20261114",
+  "renderdoc": {
+    "version": "1.47",
+    "source_commit": "b0e1370309f7d7bf986a73830446ca39d9b8c1fd",
+    "portable_zip_sha256": "b51712e58d40066b34ca30c7869d15f72e4b5c001b2d92232f6783a636d5a3c1",
+    "view": "upper-glancing",
+    "capture": "renderdoc-upper-glancing-20261114-160216/upper-glancing_frame303.rdc",
+    "capture_bytes": 314466594,
+    "fixture_capture_passed": true,
+    "replay_usable": false,
+    "builtin_counters_exposed": 13,
+    "amd_hardware_counters_exposed": 0,
+    "counter_samples_returned": 0,
+    "pixel_shader_bindings": "null",
+    "user_report": "GPU device lost error while RenderDoc was open",
+    "response": "Stopped task-owned RenderDoc processes; no further GPU replay. Windows video controller reports OK, ConfigManagerErrorCode 0; no matching Display 4101 event found.",
+    "conclusion": "Capture/replay compatibility problem not diagnosed; no instruction, source-line, occupancy or cache-stall cost claims. Independent baseline completed before replay attempts."
+  },
+  "timing_directory": "timings-sm6_2-normals-on-1x-20261114-154615",
+  "visual_directory": "visuals-sm6_2-normals-on-1x-20261114-153830",
+  "views": {
+    "exterior": {
+      "pooled": {
+        "hit_generation": {
+          "count": 360,
+          "median_ms": 10.9855,
+          "p95_ms": 11.107299999999999,
+          "min_ms": 10.564,
+          "max_ms": 11.213
+        },
+        "silpom_forward_shading": {
+          "count": 360,
+          "median_ms": 13.83,
+          "p95_ms": 14.316550000000001,
+          "min_ms": 10.584,
+          "max_ms": 14.622
+        },
+        "graphics_pass_span": {
+          "count": 360,
+          "median_ms": 40.179500000000004,
+          "p95_ms": 40.71005,
+          "min_ms": 36.899,
+          "max_ms": 46.962
+        },
+        "cpu_frame_period": {
+          "count": 360,
+          "median_ms": 40.7221,
+          "p95_ms": 41.314185,
+          "min_ms": 5.0971,
+          "max_ms": 84.3956
+        }
+      },
+      "repeat_median_ranges": {
+        "hit_generation": {
+          "min_ms": 10.975,
+          "max_ms": 10.9895
+        },
+        "silpom_forward_shading": {
+          "min_ms": 11.7355,
+          "max_ms": 13.9505
+        },
+        "graphics_pass_span": {
+          "min_ms": 38.03,
+          "max_ms": 40.3185
+        },
+        "cpu_frame_period": {
+          "min_ms": 38.306,
+          "max_ms": 40.88245
+        }
+      },
+      "captures": [
+        {
+          "file": "gpu-exterior-1.json",
+          "hit_generation": {
+            "count": 120,
+            "median_ms": 10.9855,
+            "p95_ms": 11.137500000000001,
+            "min_ms": 10.564,
+            "max_ms": 11.213
+          },
+          "silpom_forward_shading": {
+            "count": 120,
+            "median_ms": 11.7355,
+            "p95_ms": 12.16325,
+            "min_ms": 10.584,
+            "max_ms": 13.895
+          },
+          "graphics_pass_span": {
+            "count": 120,
+            "median_ms": 38.03,
+            "p95_ms": 39.33105,
+            "min_ms": 36.899,
+            "max_ms": 46.962
+          },
+          "cpu_frame_period": {
+            "count": 120,
+            "median_ms": 38.306,
+            "p95_ms": 39.23080999999999,
+            "min_ms": 5.0971,
+            "max_ms": 84.3956
+          },
+          "partial_passes": []
+        },
+        {
+          "file": "gpu-exterior-2.json",
+          "hit_generation": {
+            "count": 120,
+            "median_ms": 10.9895,
+            "p95_ms": 11.09835,
+            "min_ms": 10.723,
+            "max_ms": 11.17
+          },
+          "silpom_forward_shading": {
+            "count": 120,
+            "median_ms": 13.942,
+            "p95_ms": 14.3302,
+            "min_ms": 13.5,
+            "max_ms": 14.622
+          },
+          "graphics_pass_span": {
+            "count": 120,
+            "median_ms": 40.3185,
+            "p95_ms": 40.8341,
+            "min_ms": 39.825,
+            "max_ms": 45.818
+          },
+          "cpu_frame_period": {
+            "count": 120,
+            "median_ms": 40.862300000000005,
+            "p95_ms": 41.450075000000005,
+            "min_ms": 40.285,
+            "max_ms": 44.4265
+          },
+          "partial_passes": []
+        },
+        {
+          "file": "gpu-exterior-3.json",
+          "hit_generation": {
+            "count": 120,
+            "median_ms": 10.975,
+            "p95_ms": 11.09045,
+            "min_ms": 10.695,
+            "max_ms": 11.165
+          },
+          "silpom_forward_shading": {
+            "count": 120,
+            "median_ms": 13.9505,
+            "p95_ms": 14.4043,
+            "min_ms": 13.531,
+            "max_ms": 14.473
+          },
+          "graphics_pass_span": {
+            "count": 120,
+            "median_ms": 40.3185,
+            "p95_ms": 40.712199999999996,
+            "min_ms": 39.664,
+            "max_ms": 45.38
+          },
+          "cpu_frame_period": {
+            "count": 120,
+            "median_ms": 40.88245,
+            "p95_ms": 41.35214,
+            "min_ms": 40.2529,
+            "max_ms": 46.0382
+          },
+          "partial_passes": []
+        }
+      ],
+      "largest_leaf_passes": {
+        "Root.MainPipeline_0.OpaquePass.SilPOMHitForward": {
+          "count": 360,
+          "median_ms": 13.83,
+          "p95_ms": 14.316550000000001,
+          "min_ms": 10.584,
+          "max_ms": 14.622
+        },
+        "Root.MainPipeline_0.DepthPrePass.SilPOMHitDepth": {
+          "count": 360,
+          "median_ms": 10.9855,
+          "p95_ms": 11.107299999999999,
+          "min_ms": 10.564,
+          "max_ms": 11.213
+        },
+        "Root.MainPipeline_0.OpaquePass.Forward": {
+          "count": 360,
+          "median_ms": 3.473,
+          "p95_ms": 3.56905,
+          "min_ms": 3.456,
+          "max_ms": 3.631
+        },
+        "Root.MainPipeline_0.Shadows.FullscreenShadowPass": {
+          "count": 360,
+          "median_ms": 1.091,
+          "p95_ms": 1.094,
+          "min_ms": 1.088,
+          "max_ms": 1.101
+        },
+        "Root.MainPipeline_0.EditorModeFeedback.EntitySelectionPass.EntitySelectionTemplateChildPass0_EditorModeOutlineTemplate": {
+          "count": 360,
+          "median_ms": 0.862,
+          "p95_ms": 0.87705,
+          "min_ms": 0.85,
+          "max_ms": 0.899
+        }
+      }
+    },
+    "lower-facing": {
+      "pooled": {
+        "hit_generation": {
+          "count": 360,
+          "median_ms": 47.6005,
+          "p95_ms": 47.87715,
+          "min_ms": 47.206,
+          "max_ms": 48.075
+        },
+        "silpom_forward_shading": {
+          "count": 360,
+          "median_ms": 48.8305,
+          "p95_ms": 50.57775,
+          "min_ms": 47.575,
+          "max_ms": 57.514
+        },
+        "graphics_pass_span": {
+          "count": 360,
+          "median_ms": 110.167,
+          "p95_ms": 112.9613,
+          "min_ms": 108.534,
+          "max_ms": 129.066
+        },
+        "cpu_frame_period": {
+          "count": 360,
+          "median_ms": 110.76915,
+          "p95_ms": 113.600515,
+          "min_ms": 109.0822,
+          "max_ms": 129.9982
+        }
+      },
+      "repeat_median_ranges": {
+        "hit_generation": {
+          "min_ms": 47.584,
+          "max_ms": 47.6095
+        },
+        "silpom_forward_shading": {
+          "min_ms": 48.748999999999995,
+          "max_ms": 48.974999999999994
+        },
+        "graphics_pass_span": {
+          "min_ms": 109.93350000000001,
+          "max_ms": 110.62700000000001
+        },
+        "cpu_frame_period": {
+          "min_ms": 110.506,
+          "max_ms": 111.2048
+        }
+      },
+      "captures": [
+        {
+          "file": "gpu-lower-facing-1.json",
+          "hit_generation": {
+            "count": 120,
+            "median_ms": 47.584,
+            "p95_ms": 47.864349999999995,
+            "min_ms": 47.254,
+            "max_ms": 48.075
+          },
+          "silpom_forward_shading": {
+            "count": 120,
+            "median_ms": 48.748999999999995,
+            "p95_ms": 50.1434,
+            "min_ms": 47.786,
+            "max_ms": 50.894
+          },
+          "graphics_pass_span": {
+            "count": 120,
+            "median_ms": 109.93350000000001,
+            "p95_ms": 111.82,
+            "min_ms": 108.714,
+            "max_ms": 115.417
+          },
+          "cpu_frame_period": {
+            "count": 120,
+            "median_ms": 110.506,
+            "p95_ms": 112.408215,
+            "min_ms": 109.3187,
+            "max_ms": 116.0657
+          },
+          "partial_passes": []
+        },
+        {
+          "file": "gpu-lower-facing-2.json",
+          "hit_generation": {
+            "count": 120,
+            "median_ms": 47.6095,
+            "p95_ms": 47.880250000000004,
+            "min_ms": 47.276,
+            "max_ms": 47.968
+          },
+          "silpom_forward_shading": {
+            "count": 120,
+            "median_ms": 48.836,
+            "p95_ms": 50.325300000000006,
+            "min_ms": 47.575,
+            "max_ms": 51.234
+          },
+          "graphics_pass_span": {
+            "count": 120,
+            "median_ms": 110.03,
+            "p95_ms": 111.9567,
+            "min_ms": 108.534,
+            "max_ms": 119.159
+          },
+          "cpu_frame_period": {
+            "count": 120,
+            "median_ms": 110.63755,
+            "p95_ms": 112.56294,
+            "min_ms": 109.0822,
+            "max_ms": 119.7712
+          },
+          "partial_passes": []
+        },
+        {
+          "file": "gpu-lower-facing-3.json",
+          "hit_generation": {
+            "count": 120,
+            "median_ms": 47.5895,
+            "p95_ms": 47.8811,
+            "min_ms": 47.206,
+            "max_ms": 47.974
+          },
+          "silpom_forward_shading": {
+            "count": 120,
+            "median_ms": 48.974999999999994,
+            "p95_ms": 50.756750000000004,
+            "min_ms": 47.889,
+            "max_ms": 57.514
+          },
+          "graphics_pass_span": {
+            "count": 120,
+            "median_ms": 110.62700000000001,
+            "p95_ms": 114.58059999999999,
+            "min_ms": 108.674,
+            "max_ms": 129.066
+          },
+          "cpu_frame_period": {
+            "count": 120,
+            "median_ms": 111.2048,
+            "p95_ms": 115.10326500000001,
+            "min_ms": 109.219,
+            "max_ms": 129.9982
+          },
+          "partial_passes": []
+        }
+      ],
+      "largest_leaf_passes": {
+        "Root.MainPipeline_0.OpaquePass.SilPOMHitForward": {
+          "count": 360,
+          "median_ms": 48.8305,
+          "p95_ms": 50.57775,
+          "min_ms": 47.575,
+          "max_ms": 57.514
+        },
+        "Root.MainPipeline_0.DepthPrePass.SilPOMHitDepth": {
+          "count": 360,
+          "median_ms": 47.6005,
+          "p95_ms": 47.87715,
+          "min_ms": 47.206,
+          "max_ms": 48.075
+        },
+        "Root.MainPipeline_0.Shadows.FullscreenShadowPass": {
+          "count": 360,
+          "median_ms": 1.209,
+          "p95_ms": 1.211,
+          "min_ms": 1.208,
+          "max_ms": 1.23
+        },
+        "Root.MainPipeline_0.EditorModeFeedback.EntitySelectionPass.EntitySelectionTemplateChildPass0_EditorModeOutlineTemplate": {
+          "count": 360,
+          "median_ms": 0.859,
+          "p95_ms": 0.879,
+          "min_ms": 0.85,
+          "max_ms": 1.05
+        },
+        "Root.MainPipeline_0.DepthPrePass.SilPOMClassifyWallHoles": {
+          "count": 360,
+          "median_ms": 0.668,
+          "p95_ms": 0.69505,
+          "min_ms": 0.66,
+          "max_ms": 0.855
+        }
+      }
+    },
+    "lower-glancing": {
+      "pooled": {
+        "hit_generation": {
+          "count": 360,
+          "median_ms": 76.3305,
+          "p95_ms": 76.56215,
+          "min_ms": 75.942,
+          "max_ms": 77.65
+        },
+        "silpom_forward_shading": {
+          "count": 360,
+          "median_ms": 51.705,
+          "p95_ms": 52.96615,
+          "min_ms": 50.224,
+          "max_ms": 54.281
+        },
+        "graphics_pass_span": {
+          "count": 360,
+          "median_ms": 142.82,
+          "p95_ms": 144.5122,
+          "min_ms": 141.241,
+          "max_ms": 152.443
+        },
+        "cpu_frame_period": {
+          "count": 360,
+          "median_ms": 143.48075,
+          "p95_ms": 145.151665,
+          "min_ms": 141.9039,
+          "max_ms": 153.1369
+        }
+      },
+      "repeat_median_ranges": {
+        "hit_generation": {
+          "min_ms": 76.33,
+          "max_ms": 76.332
+        },
+        "silpom_forward_shading": {
+          "min_ms": 51.671,
+          "max_ms": 51.774
+        },
+        "graphics_pass_span": {
+          "min_ms": 142.75,
+          "max_ms": 142.9225
+        },
+        "cpu_frame_period": {
+          "min_ms": 143.40475,
+          "max_ms": 143.55509999999998
+        }
+      },
+      "captures": [
+        {
+          "file": "gpu-lower-glancing-1.json",
+          "hit_generation": {
+            "count": 120,
+            "median_ms": 76.332,
+            "p95_ms": 76.5164,
+            "min_ms": 75.942,
+            "max_ms": 76.663
+          },
+          "silpom_forward_shading": {
+            "count": 120,
+            "median_ms": 51.671,
+            "p95_ms": 52.8281,
+            "min_ms": 50.344,
+            "max_ms": 53.471
+          },
+          "graphics_pass_span": {
+            "count": 120,
+            "median_ms": 142.75,
+            "p95_ms": 143.93984999999998,
+            "min_ms": 141.241,
+            "max_ms": 152.443
+          },
+          "cpu_frame_period": {
+            "count": 120,
+            "median_ms": 143.40475,
+            "p95_ms": 144.60894499999998,
+            "min_ms": 141.9047,
+            "max_ms": 153.1369
+          },
+          "partial_passes": []
+        },
+        {
+          "file": "gpu-lower-glancing-2.json",
+          "hit_generation": {
+            "count": 120,
+            "median_ms": 76.3315,
+            "p95_ms": 76.5735,
+            "min_ms": 75.953,
+            "max_ms": 77.65
+          },
+          "silpom_forward_shading": {
+            "count": 120,
+            "median_ms": 51.681,
+            "p95_ms": 53.572449999999996,
+            "min_ms": 50.597,
+            "max_ms": 54.281
+          },
+          "graphics_pass_span": {
+            "count": 120,
+            "median_ms": 142.81,
+            "p95_ms": 145.0112,
+            "min_ms": 141.255,
+            "max_ms": 147.379
+          },
+          "cpu_frame_period": {
+            "count": 120,
+            "median_ms": 143.47230000000002,
+            "p95_ms": 145.657005,
+            "min_ms": 141.9039,
+            "max_ms": 148.0391
+          },
+          "partial_passes": []
+        },
+        {
+          "file": "gpu-lower-glancing-3.json",
+          "hit_generation": {
+            "count": 120,
+            "median_ms": 76.33,
+            "p95_ms": 76.5746,
+            "min_ms": 75.983,
+            "max_ms": 76.897
+          },
+          "silpom_forward_shading": {
+            "count": 120,
+            "median_ms": 51.774,
+            "p95_ms": 52.81705,
+            "min_ms": 50.224,
+            "max_ms": 53.749
+          },
+          "graphics_pass_span": {
+            "count": 120,
+            "median_ms": 142.9225,
+            "p95_ms": 144.0273,
+            "min_ms": 141.384,
+            "max_ms": 147.6
+          },
+          "cpu_frame_period": {
+            "count": 120,
+            "median_ms": 143.55509999999998,
+            "p95_ms": 144.70956,
+            "min_ms": 142.0352,
+            "max_ms": 148.2731
+          },
+          "partial_passes": []
+        }
+      ],
+      "largest_leaf_passes": {
+        "Root.MainPipeline_0.DepthPrePass.SilPOMHitDepth": {
+          "count": 360,
+          "median_ms": 76.3305,
+          "p95_ms": 76.56215,
+          "min_ms": 75.942,
+          "max_ms": 77.65
+        },
+        "Root.MainPipeline_0.OpaquePass.SilPOMHitForward": {
+          "count": 360,
+          "median_ms": 51.705,
+          "p95_ms": 52.96615,
+          "min_ms": 50.224,
+          "max_ms": 54.281
+        },
+        "Root.MainPipeline_0.Shadows.FullscreenShadowPass": {
+          "count": 360,
+          "median_ms": 1.213,
+          "p95_ms": 1.214,
+          "min_ms": 1.211,
+          "max_ms": 1.215
+        },
+        "Root.MainPipeline_0.EditorModeFeedback.EntitySelectionPass.EntitySelectionTemplateChildPass0_EditorModeOutlineTemplate": {
+          "count": 360,
+          "median_ms": 0.869,
+          "p95_ms": 0.879,
+          "min_ms": 0.859,
+          "max_ms": 0.902
+        },
+        "Root.MainPipeline_0.DepthPrePass.SilPOMClassifyWallHoles": {
+          "count": 360,
+          "median_ms": 0.739,
+          "p95_ms": 0.759,
+          "min_ms": 0.729,
+          "max_ms": 0.867
+        }
+      }
+    },
+    "upper-glancing": {
+      "pooled": {
+        "hit_generation": {
+          "count": 360,
+          "median_ms": 114.399,
+          "p95_ms": 116.33735,
+          "min_ms": 111.006,
+          "max_ms": 117.347
+        },
+        "silpom_forward_shading": {
+          "count": 360,
+          "median_ms": 44.022,
+          "p95_ms": 44.68025,
+          "min_ms": 43.15,
+          "max_ms": 51.576
+        },
+        "graphics_pass_span": {
+          "count": 360,
+          "median_ms": 174.161,
+          "p95_ms": 176.89759999999998,
+          "min_ms": 170.491,
+          "max_ms": 193.151
+        },
+        "cpu_frame_period": {
+          "count": 360,
+          "median_ms": 174.97404999999998,
+          "p95_ms": 177.74545999999998,
+          "min_ms": 171.2087,
+          "max_ms": 193.9594
+        }
+      },
+      "repeat_median_ranges": {
+        "hit_generation": {
+          "min_ms": 114.34299999999999,
+          "max_ms": 114.417
+        },
+        "silpom_forward_shading": {
+          "min_ms": 43.979,
+          "max_ms": 44.0825
+        },
+        "graphics_pass_span": {
+          "min_ms": 174.03199999999998,
+          "max_ms": 174.371
+        },
+        "cpu_frame_period": {
+          "min_ms": 174.8196,
+          "max_ms": 175.16285
+        }
+      },
+      "captures": [
+        {
+          "file": "gpu-upper-glancing-1.json",
+          "hit_generation": {
+            "count": 120,
+            "median_ms": 114.41300000000001,
+            "p95_ms": 116.47735,
+            "min_ms": 111.105,
+            "max_ms": 117.191
+          },
+          "silpom_forward_shading": {
+            "count": 120,
+            "median_ms": 43.979,
+            "p95_ms": 44.57015,
+            "min_ms": 43.449,
+            "max_ms": 45.278
+          },
+          "graphics_pass_span": {
+            "count": 120,
+            "median_ms": 174.091,
+            "p95_ms": 176.75735,
+            "min_ms": 170.491,
+            "max_ms": 178.079
+          },
+          "cpu_frame_period": {
+            "count": 120,
+            "median_ms": 174.9388,
+            "p95_ms": 177.56150499999998,
+            "min_ms": 171.2807,
+            "max_ms": 178.873
+          },
+          "partial_passes": []
+        },
+        {
+          "file": "gpu-upper-glancing-2.json",
+          "hit_generation": {
+            "count": 120,
+            "median_ms": 114.417,
+            "p95_ms": 116.2822,
+            "min_ms": 111.231,
+            "max_ms": 117.347
+          },
+          "silpom_forward_shading": {
+            "count": 120,
+            "median_ms": 44.0305,
+            "p95_ms": 44.495349999999995,
+            "min_ms": 43.232,
+            "max_ms": 44.685
+          },
+          "graphics_pass_span": {
+            "count": 120,
+            "median_ms": 174.03199999999998,
+            "p95_ms": 176.45114999999998,
+            "min_ms": 170.495,
+            "max_ms": 177.679
+          },
+          "cpu_frame_period": {
+            "count": 120,
+            "median_ms": 174.8196,
+            "p95_ms": 177.229345,
+            "min_ms": 171.2087,
+            "max_ms": 178.575
+          },
+          "partial_passes": []
+        },
+        {
+          "file": "gpu-upper-glancing-3.json",
+          "hit_generation": {
+            "count": 120,
+            "median_ms": 114.34299999999999,
+            "p95_ms": 116.22335,
+            "min_ms": 111.006,
+            "max_ms": 116.98
+          },
+          "silpom_forward_shading": {
+            "count": 120,
+            "median_ms": 44.0825,
+            "p95_ms": 45.03705,
+            "min_ms": 43.15,
+            "max_ms": 51.576
+          },
+          "graphics_pass_span": {
+            "count": 120,
+            "median_ms": 174.371,
+            "p95_ms": 177.63649999999998,
+            "min_ms": 170.559,
+            "max_ms": 193.151
+          },
+          "cpu_frame_period": {
+            "count": 120,
+            "median_ms": 175.16285,
+            "p95_ms": 178.81607,
+            "min_ms": 171.448,
+            "max_ms": 193.9594
+          },
+          "partial_passes": []
+        }
+      ],
+      "largest_leaf_passes": {
+        "Root.MainPipeline_0.DepthPrePass.SilPOMHitDepth": {
+          "count": 360,
+          "median_ms": 114.399,
+          "p95_ms": 116.33735,
+          "min_ms": 111.006,
+          "max_ms": 117.347
+        },
+        "Root.MainPipeline_0.OpaquePass.SilPOMHitForward": {
+          "count": 360,
+          "median_ms": 44.022,
+          "p95_ms": 44.68025,
+          "min_ms": 43.15,
+          "max_ms": 51.576
+        },
+        "Root.MainPipeline_0.Shadows.FullscreenShadowPass": {
+          "count": 360,
+          "median_ms": 1.213,
+          "p95_ms": 1.216,
+          "min_ms": 1.211,
+          "max_ms": 1.247
+        },
+        "Root.MainPipeline_0.EditorModeFeedback.EntitySelectionPass.EntitySelectionTemplateChildPass0_EditorModeOutlineTemplate": {
+          "count": 360,
+          "median_ms": 0.871,
+          "p95_ms": 0.90005,
+          "min_ms": 0.855,
+          "max_ms": 0.971
+        },
+        "Root.MainPipeline_0.OpaquePass.Forward": {
+          "count": 360,
+          "median_ms": 0.843,
+          "p95_ms": 0.86,
+          "min_ms": 0.778,
+          "max_ms": 0.957
+        }
+      }
+    }
+  },
+  "raw_files": {
+    "gpu-exterior-1.json": {
+      "bytes": 630906,
+      "sha256": "c76a5eac8fae2e24b8309611b95caaceeaff2c9cdd250e5b7a40ca8da081449e"
+    },
+    "gpu-exterior-2.json": {
+      "bytes": 640793,
+      "sha256": "087fbe69b9a153eb2600aed5146922c8311b052020a4d3db627ca52322c8dca4"
+    },
+    "gpu-exterior-3.json": {
+      "bytes": 640862,
+      "sha256": "c5e404d3e1490b040405deb0955944acc724f3beb2062d1946e51ed09f2dccad"
+    },
+    "gpu-lower-facing-1.json": {
+      "bytes": 641317,
+      "sha256": "4b1d5020bb4308181c54fba31b610a2456161609d0c1483df55ff8d862334d4f"
+    },
+    "gpu-lower-facing-2.json": {
+      "bytes": 641335,
+      "sha256": "bc70323d7092b7df6cd36c6ed3d2fcc2f58eda9e30bbeab8e6edaa87289e02ee"
+    },
+    "gpu-lower-facing-3.json": {
+      "bytes": 641355,
+      "sha256": "4bd474356d29104548b948368c1d51f22c76424629323e0a6daf2efda8aee757"
+    },
+    "gpu-lower-glancing-1.json": {
+      "bytes": 641526,
+      "sha256": "00e0991afd96c6dfe6539ef7999a5bc57bb9d5a4edcca86d4a2c65231d1f2773"
+    },
+    "gpu-lower-glancing-2.json": {
+      "bytes": 641560,
+      "sha256": "0fc00c1e118cb770d5be38e2e072ed97daced126ef80f255c1e4fffdc385d86b"
+    },
+    "gpu-lower-glancing-3.json": {
+      "bytes": 641566,
+      "sha256": "f7c5846fa0aeabab239673059424aeb2a11fa252cc0aa49ff47e4b6cf18a1d3a"
+    },
+    "gpu-upper-glancing-1.json": {
+      "bytes": 642134,
+      "sha256": "86754d525c93a4795105b9ea5c8cdce7425b6660e55966db316dc5f237c72abe"
+    },
+    "gpu-upper-glancing-2.json": {
+      "bytes": 642138,
+      "sha256": "7744dcc34307d113bf803cbc7a3f13a9b5cc6ac269a246d29a57e765550ec2b1"
+    },
+    "gpu-upper-glancing-3.json": {
+      "bytes": 642138,
+      "sha256": "eed96b614c4024dfeb0edd6e554992476bb1bb11860812d3e6d933cc34f8c95b"
+    }
+  }
+}

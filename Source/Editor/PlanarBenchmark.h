@@ -57,6 +57,7 @@ private:
     AZStd::vector<Query> m_queries;
     AZStd::vector<Sample> m_samples;
     AZStd::vector<AZ::u64> m_graphicsSpans;
+    AZStd::vector<double> m_cpuFrameMilliseconds;
     AZ::Render::MeshFeatureProcessorInterface* m_processor=nullptr;
     AZ::Render::MeshFeatureProcessorInterface::MeshHandle m_mesh;
     AZ::Data::Asset<AZ::RPI::ModelAsset> m_model;

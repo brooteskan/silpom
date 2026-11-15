@@ -181,6 +181,7 @@ bool PlanarBenchmark::BeginCapture(AZ::u32 samples)
     for(auto& query:m_queries) query.pass->SetTimestampQueryEnabled(true);
     m_requested=samples; m_frames=0; m_warmup=16;
     m_samples.reserve(size_t(samples)*m_queries.size());
+    m_cpuFrameMilliseconds.reserve(samples);
     return true;
 }
 AZStd::string PlanarBenchmark::EndCapture()
@@ -188,6 +189,7 @@ AZStd::string PlanarBenchmark::EndCapture()
     rapidjson::StringBuffer buffer; rapidjson::Writer<rapidjson::StringBuffer> out(buffer);
     out.StartObject(); out.Key("requested"); out.Uint(m_requested); out.Key("frames"); out.Uint(m_frames);
     out.Key("hardware"); out.String(m_hardware.c_str());
+    out.Key("cpu_frame_ms_scope"); out.String("RHI frame-to-frame period at readback collection, including waits; not paired to the delayed GPU frame; zero means unavailable");
     out.Key("depth_attachment"); out.StartObject();
     out.Key("width"); out.Uint(m_width); out.Key("height"); out.Uint(m_height); out.Key("msaa"); out.Uint(m_msaa); out.EndObject();
     out.Key("complete"); out.Bool(IsCaptureDone()); out.Key("passes"); out.StartArray();
@@ -206,10 +208,12 @@ AZStd::string PlanarBenchmark::EndCapture()
     }
     out.EndArray(); out.Key("graphics_span_ns"); out.StartArray();
     for(const auto ns:m_graphicsSpans) out.Uint64(ns);
+    out.EndArray(); out.Key("cpu_frame_ms"); out.StartArray();
+    for(const auto ms:m_cpuFrameMilliseconds) out.Double(ms);
     out.EndArray(); out.EndObject();
     // Parent setters recurse. Restore parents first, then each child's own state.
     for(auto& query:m_queries) query.pass->SetTimestampQueryEnabled(query.previouslyEnabled);
-    m_queries.clear(); m_samples.clear(); m_graphicsSpans.clear(); m_requested=0; m_frames=0;
+    m_queries.clear(); m_samples.clear(); m_graphicsSpans.clear(); m_cpuFrameMilliseconds.clear(); m_requested=0; m_frames=0;
     return {buffer.GetString(),buffer.GetSize()};
 }
 void PlanarBenchmark::Release()
@@ -264,6 +268,9 @@ void PlanarBenchmark::OnTick(float,AZ::ScriptTimePoint)
         }
     }
     m_graphicsSpans.push_back(hasGraphics?graphicsSpan.GetDurationInNanoseconds():0);
+    // RHI frame-to-frame period at readback collection, including CPU/GPU waits.
+    // GPU query results are delayed; this is not paired CPU work for that GPU frame.
+    m_cpuFrameMilliseconds.push_back(AZ::RHI::RHISystemInterface::Get()->GetCpuFrameTime());
     ++m_frames;
 }
 }

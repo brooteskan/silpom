@@ -12,6 +12,7 @@ def validate(folder):
     result=json.loads((folder/'results.json').read_text())
     assert result['passed'] and result['restored'] and result['gameplay_visible']
     assert result['saved_level_unchanged'] and result['vue_live_link_unchanged']
+    assert result['controls'].get('Height-derived normals (off = cheaper)') is True,'Height-derived normals must remain enabled'
     captures={}
     for name in ('exterior','lower-facing','lower-glancing','upper-glancing','gameplay'):
         rgba=np.array(Image.open(folder/(name+'.png')).convert('RGBA'))
@@ -31,6 +32,9 @@ def validate(folder):
     return {'passed':True,'scene_sha256':result['scene_sha256'],
         'width':1280,'height':720,'samples':1,'gameplay_visible':True,
         'saved_tower_controls':result['controls'],'vue_live_link_unchanged':True,
+        'requested_overrides':result.get('requested_overrides',{}),
+        'saved_height_derived_normals':result.get('saved_height_derived_normals'),
+        'effective_tower_configuration_sha256':result['effective_tower_configuration_sha256'],
         'target_5700g_performance_measured':False,'captures':captures}
 
 
