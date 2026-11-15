@@ -19,6 +19,15 @@ Returning to Project default restores the exact original sample count, AA mode
 and SMAA enablement. The control is renderer-wide and remains active when the
 tower is disabled or removed. MSAA's sample count affects the application,
 including preview scenes, so a brief rendering pause protects sample transitions.
+The standard 2× path retains the inset wall backup used at 1×. This prevents
+missed neural intersections from exposing sky through solid interior/exterior
+walls. The experimental 4× comparison keeps its separate raw-coverage policy.
+At 2×, neighbor-supported recovery runs per sample before the backing surface.
+The backup shader explicitly publishes the same depth bits to its hit record
+and depth output. Using hardware raster depth for one and interpolated sample
+depth for the other can fail the forward pass's depth-equality test, leaving
+covered samples black along triangle edges. The gameplay coverage regression
+checks both missing wall samples and exact backup-depth equality.
 The old component field remains readable for migration, but no longer appears
 on the tower. An older explicit component selection is adopted once as a global
 selection. The console equivalent is `r_silpomAntiAliasing`: 0=project default,

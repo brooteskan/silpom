@@ -108,10 +108,11 @@ uint4 MainPS(VSOutput input,uint sampleIndex:SV_SampleIndex) : SV_Target0
     silpomRepairSample=sampleIndex;
     const int2 pixel = int2(input.m_position.xy);
     uint width,height,samples;PassSrg::m_hits.GetDimensions(width,height,samples);
-    if(samples>1)
+    if(samples>2)
     {
-        // Never grow MSAA silhouettes or overwrite ordinary geometry. Only
-        // repair depth discontinuities inside pixels already entirely wall.
+        // Experimental 4x preserves raw mixed/partial sample ownership.
+        // Standard 2x instead uses the established neighbor-supported repair
+        // per sample, before the recessed wall backup can introduce a seam.
         const uint owner=PassSrg::m_hits.Load(pixel,0).w;
         for(uint s=0;s<samples;++s)
         {

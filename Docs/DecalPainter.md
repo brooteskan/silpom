@@ -1,6 +1,9 @@
 # Decal Painter
 
 Open **Tools > Decal Painter**, choose **New paint entity**, and enable painting.
+If undo also removes the paint entity, the enabled brush continues tracking the
+surface. Your next valid Stamp/Paint click starts a new paint entity automatically.
+Erase and Edit point do not create an empty document.
 The tool is available in any level, including VueLiveLink. It creates a **Decal
 Paint** entity with a **Surface Decal Paint** component; it does not alter the
 tower's material or its heightmap. Save the level to save your work. Layers and
@@ -41,6 +44,22 @@ blends or normal paint can still be expensive. Layer ordering is defined within
 one paint entity, as before.
 
 ## Painting
+
+The **Decal library** shows thumbnail tiles for the included round brushes and
+SurfaceTexture 0001/0002 stamps. Click a tile to choose it for new paint. Textured
+stamps use white tint, full dab opacity and their normal map; adjust these below
+the library as needed. Existing paint changes only with **Apply brush settings
+to selected stroke**. Search filters tiles by name; **Refresh** discovers new
+materials without reopening the pane.
+
+Add custom `.material` files under the project's `Assets/Materials/DecalPaint`
+(subfolders supported). Supply a same-named `.preview.png` thumbnail, or a
+same-named `.png` for the fallback preview. A same-named `_normal.png` enables
+normal opacity when selected.
+Wait for Asset Processor to finish before painting with new materials.
+`Tools/ImportSurfaceDecals.py` reproducibly imports the two source packages from
+`assets-source/Textures/Decals`, retaining RGBA and DirectX normals. Height,
+roughness, metallic and AO maps are not applied by the color/normal decal renderer.
 
 Choose **Paint** or **Erase (selected layer)** in **Brush operation** (the Paint /
 Erase selector under the Stamp/Paint/Edit-point selector). Both operations work
@@ -129,6 +148,12 @@ position. Decals affect color and optionally shading normals; they do not change
 neural model, physics, or the stair materials. Projection depth controls how
 thick a volume receives a dab. Use a shallow depth where nearby walls should
 remain separate. Back-facing surfaces are rejected by angle attenuation.
+
+Gameplay sky gaps at 2× MSAA were traced independently of paint to disabled
+wall recovery. The 2× path now retains the inset wall backing used at 1×;
+single-sample surface hits and the experimental 4× policy are unchanged. The
+`decal_gameplay_coverage_smoke.py` / `DecalGameplayCoverageVisualTests.py`
+comparison disables paint and checks matched interior/exterior gameplay views.
 
 Depth snapshots are asynchronous, at most about seven per second, and requested
 only while the visible painter is enabled. Static views can use the latest

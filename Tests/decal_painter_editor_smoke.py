@@ -132,6 +132,29 @@ try:
     assert canvas.IsValid(), "No paint entity"
     app = QtWidgets.QApplication.instance()
     panel = next(w for w in app.allWidgets() if w.objectName() == "DecalPainter")
+    stage("decal library")
+    library = ui(QtWidgets.QListWidget, "DecalLibrary")
+    library.grab().save(str(output / "decal_library.png"))
+    search = ui(QtWidgets.QLineEdit, "DecalLibrarySearch")
+    names = [library.item(i).text() for i in range(library.count())]
+    assert {"soft round", "hard round", "surfacetexture 0001", "surfacetexture 0002"} <= set(names), names
+    for name in ("surfacetexture 0001", "surfacetexture 0002"):
+        item = next(library.item(i) for i in range(library.count()) if library.item(i).text() == name)
+        assert not item.icon().isNull(), name
+        library.itemClicked.emit(item)
+        assert ui(QtWidgets.QLineEdit, "DecalMaterial").text() == item.data(QtCore.Qt.ItemDataRole.UserRole)
+        assert ui(QtWidgets.QDoubleSpinBox, "BrushNormalOpacity").value() == 1
+        search.setText(name)
+        assert sum(not library.item(i).isHidden() for i in range(library.count())) == 1
+    search.clear()
+    ui(QtWidgets.QPushButton, "RefreshDecalLibrary").click()
+    assert library.count() == len(names)
+    assert library.currentItem().text() == "surfacetexture 0002"
+    result["library_entries"] = names
+    ui(QtWidgets.QLineEdit, "DecalMaterial").setText("materials/decalpaint/soft_round.azmaterial")
+    assert library.currentItem().text() == "soft round"
+    ui(QtWidgets.QDoubleSpinBox, "BrushNormalOpacity").setValue(0)
+    ui(QtWidgets.QDoubleSpinBox, "BrushOpacity").setValue(.6)
     viewport = QtWidgets.QWidget.find(silpom.DecalPainterBus(bus.Broadcast, "GetViewportWindowId"))
     assert viewport is not None
     ui(QtWidgets.QCheckBox, "EnablePainting").setChecked(True)
@@ -172,6 +195,23 @@ try:
                 differences.append(abs(delta.GetLength() - base_hit.Distance))
     result["max_visible_vs_collider_difference_m"] = max(differences, default=0)
     assert result["max_visible_vs_collider_difference_m"] > .001, differences
+    stage("imported decal stamps")
+    result["imported_stamps"] = []
+    for name in ("surfacetexture 0001", "surfacetexture 0002"):
+        item = next(library.item(i) for i in range(library.count()) if library.item(i).text() == name)
+        library.itemClicked.emit(item)
+        pointer(QtCore.QEvent.Type.MouseButtonPress, x, y)
+        pointer(QtCore.QEvent.Type.MouseButtonRelease, x, y)
+        general.idle_wait_frames(30)
+        assert len(strokes()) == 1
+        result["imported_stamps"].append(strokes()[0])
+        capture(name.replace(" ", "_"))
+        general.undo()
+        general.idle_wait_frames(12)
+        assert len(strokes()) == 0
+    ui(QtWidgets.QLineEdit, "DecalMaterial").setText("materials/decalpaint/soft_round.azmaterial")
+    ui(QtWidgets.QDoubleSpinBox, "BrushNormalOpacity").setValue(0)
+    ui(QtWidgets.QDoubleSpinBox, "BrushOpacity").setValue(.6)
     stage("single stamp")
     pointer(QtCore.QEvent.Type.MouseButtonPress, x, y)
     pointer(QtCore.QEvent.Type.MouseButtonRelease, x, y)

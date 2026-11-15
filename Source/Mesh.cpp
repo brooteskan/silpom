@@ -397,7 +397,9 @@ bool InstallHitPasses(AZ::RPI::Scene& scene, bool required)
     for (const auto& pipeline : scene.GetRenderPipelines())
     {
         if (pipeline->GetDescriptor().m_materialPipelineTag != "MainPipeline") continue;
-        const bool msaa=pipeline->GetRenderSettings().m_multisampleState.m_samples>1;
+        const auto sampleCount=pipeline->GetRenderSettings().m_multisampleState.m_samples;
+        const bool msaa=sampleCount>1;
+        const bool repairedCoverage=sampleCount<=2;
         if (!pipeline->FindFirstPass(hitDepthName) || !pipeline->FindFirstPass(hitForwardName))
         {
             if(msaa&&!pipeline->FindFirstPass(clearName))
@@ -440,11 +442,12 @@ bool InstallHitPasses(AZ::RPI::Scene& scene, bool required)
             auto backup = MakeHitPass(backupName, backupTemplate, *pipeline->FindFirstPass(depthName));
             if (!backup || !pipeline->AddPassAfter(backup, fillName)) return false;
         }
-        if(auto classify=pipeline->FindFirstPass(classifyName))classify->SetEnabled(!msaa||!r_silpomMsaaRawCoverage);
-        if(auto fill=pipeline->FindFirstPass(fillName))fill->SetEnabled(!msaa||!r_silpomMsaaRawCoverage);
-        // A raster backup plane cannot distinguish a valid subpixel miss from
-        // a failed intersection. Never use it to expand 4x silhouette coverage.
-        if(auto backup=pipeline->FindFirstPass(backupName))backup->SetEnabled(!msaa);
+        if(auto classify=pipeline->FindFirstPass(classifyName))classify->SetEnabled(repairedCoverage||!r_silpomMsaaRawCoverage);
+        if(auto fill=pipeline->FindFirstPass(fillName))fill->SetEnabled(repairedCoverage||!r_silpomMsaaRawCoverage);
+        // The normal 2x renderer needs the same inset wall backing as 1x:
+        // neural misses must not become sky-visible cracks through solid walls.
+        // Keep experimental 4x raw coverage independent of this continuity path.
+        if(auto backup=pipeline->FindFirstPass(backupName))backup->SetEnabled(repairedCoverage);
         const char* inspectionNames[]={"SilPOMInspectRaw","SilPOMInspectFinal","SilPOMInspectColors"};
         for(unsigned i=0;i<3;++i)
         {
