@@ -32,7 +32,18 @@ def intersections(planes, tolerance, determinant_limit):
     return q[inside], tri[inside]
 
 
-def propose(center, extent, world, vp):
+def certificate_upper_float64(rows, bound, weights, selected_planes, error):
+    """Bound the augmented expression with every operand promoted BEFORE math."""
+    rows64 = np.asarray(rows, dtype=np.float64)
+    bound64 = np.float64(bound)
+    weights64 = np.asarray(weights, dtype=np.float64)
+    planes64 = np.asarray(selected_planes, dtype=np.float64)
+    error64 = np.asarray(error, dtype=np.float64)
+    residual = rows64[2] - bound64*rows64[3] + weights64@planes64
+    return residual[3] + np.abs(residual[:3]).sum(dtype=np.float64) + error64[2] + bound64*error64[3]
+
+
+def propose(center, extent, world, vp, certificate_slacks=None):
     f = np.float32
     center, extent, world, vp = [np.asarray(v,dtype=f) for v in (center,extent,world,vp)]
     matrix = vp@world
@@ -69,15 +80,17 @@ def propose(center, extent, world, vp):
         upper=residual[3]+np.abs(residual[:3]).sum()+error[2]+bound*error[3]+arithmetic
         if upper<0:
             # Re-evaluate the certificate in float64; independent of searching.
-            exact=rows[2].astype(float)-float(bound)*rows[3]+weights.astype(float)@planes[tri[best]].astype(float)
-            assert exact[3]+np.abs(exact[:3]).sum()+error[2]+float(bound)*error[3]<0
+            exact_upper=certificate_upper_float64(rows,bound,weights,planes[tri[best]],error)
+            assert exact_upper<0
+            if certificate_slacks is not None:certificate_slacks.append(float(-exact_upper))
             return float(bound),'certified'
         bias*=f(10)
     return 1.,'certificate-fallback'
 
 
 def exact_bound(center, extent, world, vp):
-    matrix=np.asarray(vp,dtype=float)@np.asarray(world,dtype=float)
+    center,extent,world,vp=[np.asarray(v,dtype=np.float64) for v in (center,extent,world,vp)]
+    matrix=vp@world
     rows=np.c_[matrix[:,:3]*extent,matrix@np.r_[center,1]]
     planes=planes_from_rows(rows)
     scale=np.max(np.abs(planes[:,:3]),axis=1)
@@ -119,11 +132,11 @@ def run(geometry=None):
             center=((g['low'][i]+g['high'][i])/2).astype(np.float32)
             extent=((g['high'][i]-g['low'][i])/2+2e-5).astype(np.float32)
             cases.append((f'capture-{i}',center,extent,np.eye(4),g['local_clip'].astype(np.float32)))
-    report=[]
+    report=[];certificate_slacks=[]
     for name,center,extent,world,vp in cases:
         # Both references receive the same float32 input values.
         center,extent,world,vp=[np.asarray(v,dtype=np.float32) for v in (center,extent,world,vp)]
-        candidate,reason=propose(center,extent,world,vp)
+        candidate,reason=propose(center,extent,world,vp,certificate_slacks)
         exact=exact_bound(center.astype(float),extent.astype(float),world,vp)
         assert 0<=candidate<=1,(name,candidate)
         if exact is not None:assert candidate>=exact-1e-10,(name,candidate,exact)
@@ -131,7 +144,8 @@ def run(geometry=None):
         if name=='empty':assert candidate==1
         report.append(dict(case=name,bound=candidate,reference=exact,reason=reason))
     return dict(passed=True,cases=len(report),certified=sum(r['reason']=='certified' for r in report),
-        captured_tightened=sum(r['case'].startswith('capture-') and r['bound']<1 for r in report),results=report)
+        captured_tightened=sum(r['case'].startswith('capture-') and r['bound']<1 for r in report),
+        certificate_reference_dtype='float64',minimum_certificate_safety_slack=min(certificate_slacks),results=report)
 
 
 if __name__=='__main__':

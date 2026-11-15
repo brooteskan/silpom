@@ -5,11 +5,29 @@ exec(compile(helper.read_text().split('\ndef main():')[0],str(helper),'exec'))
 LEVEL=PROJECT/'Levels/SilPOMTowerBenchmark/SilPOMTowerBenchmark.prefab'
 
 
+def capture_route_view(name):
+    """Exact real-sample export at 1x/2x/4x, diagnostic runs only."""
+    screenshot(OUTPUT/(name+'.png'))
+    result['image_views'].append(name)
+    command('r_silpomMsaaInspect',1);general.idle_wait_frames(12)
+    hierarchy=['Root','MainPipeline_0','DepthPrePass','SilPOMInspectFinal']
+    capture(OUTPUT/(name+'-hit.dds'),'Records',hierarchy)
+    capture(OUTPUT/(name+'-depth.dds'),'SampleDepth',hierarchy)
+    result['record_capture_views'].append(name)
+    result['hit_capture_layout']='four-columns-per-pixel sample atlas'
+    command('r_silpomMsaaInspect',0);general.idle_wait_frames(12)
+
+
 def main():
     global tower,component
     timing_only=os.environ.get('TG_SILPOM_TOWER_TIMING_ONLY','0')=='1'
     timing=os.environ.get('TG_SILPOM_MSAA_TIMING','0')=='1'
     renderdoc_view=os.environ.get('TG_SILPOM_TOWER_RENDERDOC_VIEW','')
+    path_file=os.environ.get('TG_SILPOM_TOWER_CAMERA_PATH','')
+    camera_path=json.loads(Path(path_file).read_text()) if path_file else None
+    assert not camera_path or (not timing and not renderdoc_view),'Movement validation is separate from timing/replay'
+    if camera_path:
+        result.update(camera_sequence=camera_path,image_views=[],record_capture_views=[],observed_camera_sequence=[])
     assert not renderdoc_view or not timing,'RenderDoc inspection must be separate from timing'
     repeats=int(os.environ.get('TG_SILPOM_TOWER_TIMING_REPEATS','3'))
     assert not timing_only or timing,'Timing-only mode requires TG_SILPOM_MSAA_TIMING=1'
@@ -34,7 +52,7 @@ def main():
     state=silpom.SilPomMeshRequestBus(bus.Event,'GetAntiAliasingState',tower)
     result['initial_aa_state']=[int(state.x),int(state.y),int(state.z)]
     samples=int(os.environ.get('TG_SILPOM_TOWER_SAMPLES',str(int(state.x))))
-    assert samples in (1,2),samples
+    assert samples in ((1,2,4) if camera_path else (1,2)),samples
     result['samples']=samples
     result['initial_renderer_cvars']={name:str(general.get_cvar(name)) for name in
         ('r_multiSampleCount','r_antiAliasing','r_silpomAntiAliasing','r_silpomReuseDepthHits','r_silpomMsaa4')}
@@ -86,8 +104,11 @@ def main():
             from TowerBenchmarkRenderDoc import capture_frame
             result['renderdoc']=capture_frame(OUTPUT,name,general)
         elif not timing_only:
-            screenshot(OUTPUT/(name+'.png'))
-            if name!='exterior':
+            if camera_path:
+                capture_route_view(name)
+            else:
+                screenshot(OUTPUT/(name+'.png'))
+            if not camera_path and name!='exterior':
                 if samples==1:
                     capture_hit(OUTPUT/(name+'-hit.dds'))
                 else:
@@ -101,6 +122,19 @@ def main():
                     command('r_silpomMsaaInspect',0);general.idle_wait_frames(12)
         if timing:
             for repeat in range(repeats):gpu_cost(f'{name}-{repeat+1}')
+    if camera_path:
+        for frame in camera_path['frames']:
+            result['stage']=frame['name'];flush()
+            general.set_current_view_position(*map(float,frame['position']))
+            general.set_current_view_rotation(*map(float,frame['rotation']))
+            general.idle_wait_frames(int(frame.get('settle_frames',2)))
+            actual=general.get_current_view_position()
+            observed=[float(actual.x),float(actual.y),float(actual.z)]
+            assert max(abs(a-b) for a,b in zip(observed,frame['position']))<1e-4,(frame['name'],observed)
+            result['observed_camera_sequence'].append({'name':frame['name'],'position':observed})
+            if frame['capture']:capture_route_view(frame['name'])
+            renderer_clean()
+        result['camera_movement_complete']=True
     if timing_only or renderdoc_view:
         renderer_clean()
         assert LEVEL.read_bytes()==source
@@ -118,6 +152,7 @@ def main():
     result['gameplay_aa_state']=[int(runtime_state.x),int(runtime_state.y),int(runtime_state.z)]
     assert result['gameplay_aa_state']==[samples,0,0]
     screenshot(OUTPUT/'gameplay.png')
+    if camera_path:result['image_views'].append('gameplay')
     general.exit_game_mode();general.idle_enable(True);general.idle_wait(3.0);ready()
     renderer_clean()
     log=(PROJECT/'user/log/Editor.log').read_text(errors='replace')

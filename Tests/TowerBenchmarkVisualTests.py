@@ -14,9 +14,9 @@ def validate(folder):
     assert result['saved_level_unchanged'] and result['vue_live_link_unchanged']
     assert result['controls'].get('Height-derived normals (off = cheaper)') is True,'Height-derived normals must remain enabled'
     samples=int(result.get('samples',1))
-    assert samples in (1,2)
+    assert samples in (1,2,4)
     captures={}
-    for name in ('exterior','lower-facing','lower-glancing','upper-glancing','gameplay'):
+    for name in result.get('image_views',('exterior','lower-facing','lower-glancing','upper-glancing','gameplay')):
         rgba=np.array(Image.open(folder/(name+'.png')).convert('RGBA'))
         assert rgba.shape==(720,1280,4),(name,rgba.shape)
         rgb=rgba[:,:,:3]
@@ -24,10 +24,10 @@ def validate(folder):
         assert 5<mean<235 and contrast>10,(name,'Dark or blank comparison',mean,contrast)
         captures[name]={'rgba_sha256':hashlib.sha256(rgba.tobytes()).hexdigest(),
             'mean_rgb':round(mean,3),'contrast':round(contrast,3)}
-    for name in ('lower-facing','lower-glancing','upper-glancing'):
+    for name in result.get('record_capture_views',('lower-facing','lower-glancing','upper-glancing')):
         raw=(folder/(name+'-hit.dds')).read_bytes()
         assert raw[:4]==b'DDS ' and struct.unpack_from('<I',raw,128)[0]==3
-        if samples==2:
+        if result.get('hit_capture_layout')=='four-columns-per-pixel sample atlas' or samples>1:
             height,width=struct.unpack_from('<II',raw,12)
             assert (height,width)==(720,5120),(height,width)
             hits=np.frombuffer(raw,dtype='<u4',offset=148).reshape(height,1280,4,4)[:,:,:samples,:]
@@ -51,7 +51,8 @@ def validate(folder):
         'requested_overrides':result.get('requested_overrides',{}),
         'saved_height_derived_normals':result.get('saved_height_derived_normals'),
         'effective_tower_configuration_sha256':result['effective_tower_configuration_sha256'],
-        'target_5700g_performance_measured':False,'captures':captures}
+        'target_5700g_performance_measured':False,'camera_movement_complete':result.get('camera_movement_complete',False),
+        'captures':captures}
 
 
 if __name__=='__main__':
