@@ -26,7 +26,7 @@ AZ_TYPE_INFO_SPECIALIZE(LocalShadowMethod, "{8C21E33E-53B1-45A9-9554-57656F558F1
 enum class LightingEstimator : AZ::u32 { CurrentRouting=0, PhysicalRayNeural=1, DirectionalField32=2, AngularOccluders4=3, AngularOccluders8=4, AngularEdges4=5 };
 AZ_TYPE_INFO_SPECIALIZE(LightingEstimator, "{4BDDBA90-2C99-4DD0-99A2-40F22F5D8B82}");
 // Default is passive: existing levels retain their approved renderer settings.
-enum class AntiAliasing : AZ::u32 { CurrentDefault=0, SMAA=1, TAA=2, MSAA4=3 };
+enum class AntiAliasing : AZ::u32 { CurrentDefault=0, SMAA=1, TAA=2, MSAA4=3, MSAA2=4 };
 AZ_TYPE_INFO_SPECIALIZE(AntiAliasing, "{46E20631-E4B5-416E-9A1D-66C7CCCD0218}");
 struct MeshMaterialBinding
 {
@@ -122,6 +122,10 @@ using MeshRequestBus = AZ::EBus<MeshRequests>;
 // Keep the viewport AA override while editor entities transfer to/from runtime.
 void BeginAntiAliasingHandoff();
 void EndAntiAliasingHandoff();
+// Driven by the gem system component, independently of any tower/mesh entity.
+void TickRenderingSettings();
+void StartRenderingSettings();
+void StopRenderingSettings();
 
 class MeshController final : private AZ::TickBus::Handler, private AZ::TransformNotificationBus::Handler,
     private AZ::Data::AssetBus::MultiHandler, private MeshRequestBus::Handler, private AZ::RPI::SceneNotificationBus::Handler

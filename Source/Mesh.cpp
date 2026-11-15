@@ -52,18 +52,22 @@ namespace SilPOM
 namespace
 {
 AZ_CVAR(bool, r_silpomReuseDepthHits, false, nullptr, AZ::ConsoleFunctorFlags::Null,
-    "Use the experimental DX12 SilPOM hit buffer in MainPipeline (1x, or opt-in r_silpomMsaa4).");
+    "Use the DX12 SilPOM hit buffer in MainPipeline (1x, 2x or 4x).");
 AZ_CVAR(bool,r_silpomMsaa4,false,nullptr,AZ::ConsoleFunctorFlags::Null,
-    "Opt into sample-frequency 4x SilPOM. Enabling selects r_multiSampleCount 4; disabling restores 1x. Models/settings are unchanged.");
+    "Opt into sample-frequency 4x SilPOM. Disabling restores the sample count active before enabling it. Models/settings are unchanged.");
 AZ_CVAR(bool,r_silpomMsaaRawCoverage,true,nullptr,AZ::ConsoleFunctorFlags::Null,
     "Inspect unrepaired 4x sample coverage. Does not affect the approved 1x repair path.");
 AZ_CVAR(bool,r_silpomMsaaInspect,false,nullptr,AZ::ConsoleFunctorFlags::Null,
     "Enable diagnostic raw/final hit, depth and shaded-color sample atlases. Adds GPU/readback work; normally off.");
 AZ_CVAR(bool,r_silpomAaTrace,false,nullptr,AZ::ConsoleFunctorFlags::Null,
     "Trace AA ownership, sample-count changes and pipeline transitions. Diagnostic only; normally off.");
+AZ_CVAR(AZ::u32,r_silpomAntiAliasing,0,nullptr,AZ::ConsoleFunctorFlags::Null,
+    "Renderer-wide AA: 0=project default, 1=SMAA, 2=TAA, 3=4x MSAA, 4=2x MSAA. Applies to every scene.");
 
-bool SupportsHitMsaa4()
+bool SupportsHitMsaa(unsigned samples)
 {
+    if(samples==1)return true;
+    if(samples!=2&&samples!=4)return false;
 #if defined(AZ_PLATFORM_WINDOWS)
     if(AZ::RHI::Factory::Get().GetName()!=AZ::Name("dx12"))return false;
     auto* rhi=AZ::RHI::RHISystemInterface::Get();
@@ -80,13 +84,13 @@ bool SupportsHitMsaa4()
             D3D12_FEATURE_DATA_FORMAT_SUPPORT support{format};
             constexpr UINT needed=D3D12_FORMAT_SUPPORT1_RENDER_TARGET|D3D12_FORMAT_SUPPORT1_MULTISAMPLE_RENDERTARGET
                 |D3D12_FORMAT_SUPPORT1_MULTISAMPLE_LOAD;
-            D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS quality{format,4,D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE,0};
+            D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS quality{format,samples,D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE,0};
             if(FAILED(native->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT,&support,sizeof(support)))
                 ||(support.Support1&needed)!=needed
                 ||FAILED(native->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,&quality,sizeof(quality)))
                 ||quality.NumQualityLevels==0)return false;
         }
-        D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS depth{DXGI_FORMAT_D32_FLOAT_S8X24_UINT,4,D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE,0};
+        D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS depth{DXGI_FORMAT_D32_FLOAT_S8X24_UINT,samples,D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE,0};
         D3D12_FEATURE_DATA_FORMAT_SUPPORT depthLoad{DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS};
         if(FAILED(native->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,&depth,sizeof(depth)))||depth.NumQualityLevels==0
             ||FAILED(native->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT,&depthLoad,sizeof(depthLoad)))
@@ -201,9 +205,14 @@ HitSampleTransition& SampleTransition()
     return transition;
 }
 
+// One-shot sample-count requests from the selector. Default meshes remain
+// passive after restoration, so later native application changes still work.
+unsigned& PendingHitSamples() { static unsigned samples=0;return samples; }
+
 unsigned UpdateHitSamplePolicy(AZ::RPI::Scene* scene)
 {
-    static bool requested=false,raw=true,inspect=false;static unsigned version=0;
+    static bool legacyRequested=false,raw=true,inspect=false;
+    static unsigned legacyOriginalSamples=1,version=0;
     auto& transition=SampleTransition();
     auto* rpi=AZ::RPI::RPISystemInterface::Get();
     if(transition.active)
@@ -212,30 +221,35 @@ unsigned UpdateHitSamplePolicy(AZ::RPI::Scene* scene)
         // scene draw packets. Submit no scene draws across that transition.
         transition.Resume();
     }
-    if(requested!=r_silpomMsaa4)
+    unsigned desired=rpi->GetApplicationMultisampleState().m_samples;
+    if(PendingHitSamples())
     {
-        if(r_silpomMsaa4&&!SupportsHitMsaa4())
+        desired=PendingHitSamples();PendingHitSamples()=0;
+        legacyRequested=r_silpomMsaa4;
+    }
+    else if(legacyRequested!=r_silpomMsaa4)
+    {
+        if(r_silpomMsaa4)
         {
-            AZ_Error("SilPOM",false,"4x MSAA requires supported render, load and sample-count capabilities; retaining 1x.");
-            r_silpomMsaa4=false;
+            legacyOriginalSamples=desired;
+            if(SupportsHitMsaa(4))desired=4;
+            else
+            {
+                AZ_Error("SilPOM",false,"4x MSAA is unsupported; retaining the current sample count.");
+                r_silpomMsaa4=false;
+            }
         }
-        else if(rpi->GetApplicationMultisampleState().m_samples==(r_silpomMsaa4?4:1))
-        {
-            // A renderer initialized at the desired sample count needs hit-pass
-            // policy updates, but no redundant global pipeline reconstruction.
-            requested=r_silpomMsaa4;++version;
-            if(r_silpomAaTrace)AZ_Printf("SilPOM AA","adopt existing samples=%u tick=%llu\n",requested?4u:1u,
-                static_cast<unsigned long long>(rpi->GetCurrentTick()));
-        }
-        else
-        {
-            if(r_silpomAaTrace)AZ_Printf("SilPOM AA","change samples=%u->%u tick=%llu\n",
-                unsigned(rpi->GetApplicationMultisampleState().m_samples),r_silpomMsaa4?4u:1u,
-                static_cast<unsigned long long>(rpi->GetCurrentTick()));
-            transition.Begin(scene,r_silpomMsaa4?4:1);
-            requested=r_silpomMsaa4;++version;
-            AZ::Interface<AZ::IConsole>::Get()->PerformCommand(requested?"r_multiSampleCount 4":"r_multiSampleCount 1");
-        }
+        else desired=legacyOriginalSamples;
+        legacyRequested=r_silpomMsaa4;
+    }
+    if(desired!=rpi->GetApplicationMultisampleState().m_samples)
+    {
+        if(r_silpomAaTrace)AZ_Printf("SilPOM AA","change samples=%u->%u tick=%llu\n",
+            unsigned(rpi->GetApplicationMultisampleState().m_samples),desired,
+            static_cast<unsigned long long>(rpi->GetCurrentTick()));
+        transition.Begin(scene,desired);++version;
+        const auto command=AZStd::string::format("r_multiSampleCount %u",desired);
+        AZ::Interface<AZ::IConsole>::Get()->PerformCommand(command.c_str());
     }
     if(raw!=r_silpomMsaaRawCoverage){raw=r_silpomMsaaRawCoverage;++version;}
     if(inspect!=r_silpomMsaaInspect){inspect=r_silpomMsaaInspect;++version;}
@@ -262,13 +276,15 @@ struct AntiAliasingOverrides
     AZStd::vector<PipelineState> pipelines;
     AZStd::vector<SceneState> scenes;
     bool originalMsaa4=false;
+    unsigned originalSamples=1;
     bool baselineCaptured=false,handoff=false;
     AntiAliasing handoffMode=AntiAliasing::CurrentDefault;
-    bool checkedMsaa4=false,supportsMsaa4=false;
+    bool checkedSamples[5]={},supportedSamples[5]={};
     AZ::u64 lastTick=~AZ::u64(0);
 
     void Update(AZ::EntityId entity,AntiAliasing mode)
     {
+        auto* rpi=AZ::RPI::RPISystemInterface::Get();
         auto found=AZStd::find_if(requests.begin(),requests.end(),[&](const auto& r){return r.entity==entity;});
         const bool changed=found==requests.end()?mode!=AntiAliasing::CurrentDefault:found->mode!=mode;
         if(changed)
@@ -276,11 +292,15 @@ struct AntiAliasingOverrides
             if(r_silpomAaTrace)AZ_Printf("SilPOM AA","owner=%s mode=%u->%u requests=%zu tick=%llu\n",entity.ToString().c_str(),
                 found==requests.end()?0u:unsigned(found->mode),unsigned(mode),requests.size(),
                 static_cast<unsigned long long>(AZ::RPI::RPISystemInterface::Get()->GetCurrentTick()));
-            if(!baselineCaptured){originalMsaa4=r_silpomMsaa4;baselineCaptured=true;}
+            if(!baselineCaptured)
+            {
+                originalMsaa4=r_silpomMsaa4;
+                originalSamples=rpi->GetApplicationMultisampleState().m_samples;
+                baselineCaptured=true;
+            }
             if(found!=requests.end())requests.erase(found);
             if(mode!=AntiAliasing::CurrentDefault)requests.push_back({entity,mode});
         }
-        auto* rpi=AZ::RPI::RPISystemInterface::Get();
         if(requests.empty())
         {
             if(handoff||!baselineCaptured)return;
@@ -291,7 +311,8 @@ struct AntiAliasingOverrides
             for(const auto& state:scenes)
                 if(auto* scene=rpi->GetScene(state.scene))
                     if(auto* fp=scene->GetFeatureProcessor<AZ::Render::SMAAFeatureProcessorInterface>())fp->SetEnable(state.smaa);
-            pipelines.clear();scenes.clear();r_silpomMsaa4=originalMsaa4;baselineCaptured=false;
+            pipelines.clear();scenes.clear();r_silpomMsaa4=originalMsaa4;
+            PendingHitSamples()=originalSamples;baselineCaptured=false;
             lastTick=~AZ::u64(0);return;
         }
         if(!changed&&lastTick==rpi->GetCurrentTick())return;
@@ -300,12 +321,14 @@ struct AntiAliasingOverrides
         const auto method=active==AntiAliasing::SMAA?AZ::RPI::AntiAliasingMode::SMAA:
             active==AntiAliasing::TAA?AZ::RPI::AntiAliasingMode::TAA:AZ::RPI::AntiAliasingMode::MSAA;
         // Reuse the capability check and guarded sample-count transition below.
-        if(active==AntiAliasing::MSAA4&&!checkedMsaa4)
+        const unsigned samples=active==AntiAliasing::MSAA4?4u:active==AntiAliasing::MSAA2?2u:1u;
+        if(!checkedSamples[samples])
         {
-            supportsMsaa4=SupportsHitMsaa4();checkedMsaa4=true;
-            AZ_Warning("SilPOM",supportsMsaa4,"4x MSAA is unavailable on this device; retaining single-sample rendering.");
+            supportedSamples[samples]=SupportsHitMsaa(samples);checkedSamples[samples]=true;
+            AZ_Warning("SilPOM",supportedSamples[samples],"%ux MSAA is unavailable on this device; retaining single-sample rendering.",samples);
         }
-        r_silpomMsaa4=active==AntiAliasing::MSAA4&&supportsMsaa4;
+        PendingHitSamples()=supportedSamples[samples]?samples:1u;
+        r_silpomMsaa4=PendingHitSamples()==4;
         AZStd::set<AZ::RPI::Scene*> owners;
         for(const auto& root:AZ::RPI::PassSystemInterface::Get()->GetRootPass()->GetChildren())
             if(auto* scene=root->GetScene())owners.insert(scene);
@@ -360,7 +383,7 @@ bool InstallHitPasses(AZ::RPI::Scene& scene, bool required)
     {
         if (pipeline->GetDescriptor().m_materialPipelineTag != "MainPipeline") continue;
         const auto samples=pipeline->GetRenderSettings().m_multisampleState.m_samples;
-        if ((samples!=1 && !(samples==4 && r_silpomMsaa4))
+        if ((samples!=1 && samples!=2 && samples!=4)
             || !pipeline->FindFirstPass(depthName) || !pipeline->FindFirstPass(forwardName)) return false;
         foundMainPipeline = true;
     }
@@ -374,7 +397,7 @@ bool InstallHitPasses(AZ::RPI::Scene& scene, bool required)
     for (const auto& pipeline : scene.GetRenderPipelines())
     {
         if (pipeline->GetDescriptor().m_materialPipelineTag != "MainPipeline") continue;
-        const bool msaa=pipeline->GetRenderSettings().m_multisampleState.m_samples==4;
+        const bool msaa=pipeline->GetRenderSettings().m_multisampleState.m_samples>1;
         if (!pipeline->FindFirstPass(hitDepthName) || !pipeline->FindFirstPass(hitForwardName))
         {
             if(msaa&&!pipeline->FindFirstPass(clearName))
@@ -722,7 +745,8 @@ void MeshConfig::Reflect(AZ::ReflectContext* context)
             ->Value("AngularOccluders4",LightingEstimator::AngularOccluders4)->Value("AngularOccluders8",LightingEstimator::AngularOccluders8)
             ->Value("AngularEdges4",LightingEstimator::AngularEdges4);
         sc->Enum<AntiAliasing>()->Value("CurrentDefault",AntiAliasing::CurrentDefault)
-            ->Value("SMAA",AntiAliasing::SMAA)->Value("TAA",AntiAliasing::TAA)->Value("MSAA4",AntiAliasing::MSAA4);
+            ->Value("SMAA",AntiAliasing::SMAA)->Value("TAA",AntiAliasing::TAA)
+            ->Value("MSAA2",AntiAliasing::MSAA2)->Value("MSAA4",AntiAliasing::MSAA4);
         sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(22)->Field("Surface", &MeshConfig::m_surface)
             ->Field("AntiAliasing", &MeshConfig::m_antiAliasing)
             ->Field("LightingEstimator", &MeshConfig::m_lightingEstimator)
@@ -854,15 +878,40 @@ void BeginAntiAliasingHandoff()
 void EndAntiAliasingHandoff()
 {
     auto& state=AntiAliasingState();state.handoff=false;state.lastTick=~AZ::u64(0);
-    state.Update(AZ::EntityId{},AntiAliasing::CurrentDefault);
+    state.Update(AZ::EntityId{},static_cast<AntiAliasing>(AZ::u32(r_silpomAntiAliasing)));
     UpdateHitSamplePolicy(nullptr);
     if(r_silpomAaTrace)AZ_Printf("SilPOM AA","end handoff requests=%zu\n",state.requests.size());
 }
+void TickRenderingSettings()
+{
+    auto* rhi=AZ::RHI::RHISystemInterface::Get();
+    auto* passes=AZ::RPI::PassSystemInterface::Get();
+    if(!rhi||rhi->GetDeviceCount()==0||!passes||!passes->GetRootPass()||!AZ::RPI::RPISystemInterface::Get())return;
+    if(r_silpomAntiAliasing>4u)r_silpomAntiAliasing=0u;
+    AntiAliasingState().Update(AZ::EntityId{},static_cast<AntiAliasing>(AZ::u32(r_silpomAntiAliasing)));
+    UpdateHitSamplePolicy(nullptr);
+}
+namespace
+{
+struct RenderingSettingsTicker : AZ::TickBus::Handler
+{
+    void OnTick(float,AZ::ScriptTimePoint) override { TickRenderingSettings(); }
+};
+RenderingSettingsTicker& RenderingTicker() { static RenderingSettingsTicker ticker;return ticker; }
+}
+void StartRenderingSettings() { RenderingTicker().BusConnect(); }
+void StopRenderingSettings() { RenderingTicker().BusDisconnect(); }
 void MeshController::Activate(AZ::EntityId entity)
 {
     m_entity = entity; m_dirty = true;
-    // Reacquire during activation, before the editor handoff completes.
-    AntiAliasingState().Update(entity,m_configuration.m_antiAliasing);
+    // Migrate an old component selection once; renderer controls own all later
+    // changes. The serialized field remains readable but is no longer editable.
+    static bool migratedLegacySelection=false;
+    if(!migratedLegacySelection&&m_configuration.m_antiAliasing!=AntiAliasing::CurrentDefault)
+    {
+        if(r_silpomAntiAliasing==0u)r_silpomAntiAliasing=static_cast<AZ::u32>(m_configuration.m_antiAliasing);
+        migratedLegacySelection=true;
+    }
     AZ::TransformBus::EventResult(m_world, entity, &AZ::TransformBus::Events::GetWorldTM);
     AZ::Data::AssetId materialId;
     AZ::Data::AssetCatalogRequestBus::BroadcastResult(materialId, &AZ::Data::AssetCatalogRequests::GetAssetIdByPath,
@@ -878,8 +927,6 @@ void MeshController::Release(AZStd::unique_ptr<Generation>& generation)
 }
 void MeshController::Deactivate()
 {
-    AntiAliasingState().Update(m_entity,AntiAliasing::CurrentDefault);
-    UpdateHitSamplePolicy(AZ::RPI::Scene::GetSceneForEntityId(m_entity));
     AZ::RPI::SceneNotificationBus::Handler::BusDisconnect();
     m_checkHitPasses = false;
     AZ::TickBus::Handler::BusDisconnect(); MeshRequestBus::Handler::BusDisconnect();
@@ -1590,7 +1637,6 @@ void MeshController::UpdateProxyLod()
 }
 void MeshController::OnTick(float, AZ::ScriptTimePoint)
 {
-    AntiAliasingState().Update(m_entity,m_configuration.m_antiAliasing);
     const unsigned policy=UpdateHitSamplePolicy(AZ::RPI::Scene::GetSceneForEntityId(m_entity));
     if(m_hitSamplePolicy!=policy){m_hitSamplePolicy=policy;m_checkHitPasses=true;}
     if (m_dirty) { Release(m_pending); m_dirty = Prepare(); }
