@@ -278,10 +278,9 @@ index b20371e9bfcdeac6758a44457be2559d251c0371..db51fd76b15514aa69a0d2b06ddf8bc0
      float3 m_decalColor;
 diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalComposite.azsli b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalComposite.azsli
 new file mode 100644
-index 0000000000000000000000000000000000000000..bcd4a19e3f29e2e16e123af1eb3cc2ae7cf327bd
 --- /dev/null
 +++ b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalComposite.azsli
-@@ -0,0 +1,134 @@
+@@ -0,0 +1,148 @@
 +// Copyright (c) Contributors to the Open 3D Engine Project.
 +// SPDX-License-Identifier: Apache-2.0 OR MIT
 +#pragma once
@@ -356,7 +355,21 @@ index 0000000000000000000000000000000000000000..bcd4a19e3f29e2e16e123af1eb3cc2ae
 +void ApplyPaintComposite(Decal composite,inout Surface surface,float3 positionDx,float3 positionDy)
 +{
 +    ByteAddressBuffer buffer=Bindless::GetByteAddressBuffer(composite.m_textureArrayIndex);
-+    uint4 header=buffer.Load4(0);
++    // All spatial groups share one allocation. Native textureIndex is the
++    // group's header byte offset for Composite decals (ordinary decals still
++    // use it as their texture-array slice).
++    const uint base=composite.m_textureIndex;
++    uint4 header=buffer.Load4(base);
++    [branch] if((header.z&8)!=0)
++    {
++        const uint offset=header.y+header.w*96;
++        const uint4 low=buffer.Load4(offset),high=buffer.Load4(offset+16);
++        const float3 p=surface.position,lo=asfloat(low.xyz),hi=asfloat(high.xyz);
++        if(any(p<lo)||any(p>hi))return;
++        // Shared split planes belong to exactly one child, independent of
++        // tile-list sorting. This prevents both paint seams and double blends.
++        if(((low.w&1)==0&&p.x>=hi.x)||((low.w&2)==0&&p.y>=hi.y)||((low.w&4)==0&&p.z>=hi.z))return;
++    }
 +    // The material hook performs exact bilinear mip-zero height lookup once per
 +    // filtered batch, with the same tiling/addressing as SILPOM intersection.
 +    float height=-1;
@@ -377,7 +390,7 @@ index 0000000000000000000000000000000000000000..bcd4a19e3f29e2e16e123af1eb3cc2ae
 +    [loop]
 +    while(node<header.x)
 +    {
-+        uint offset=16+node*32;
++        uint offset=base+16+node*32;
 +        uint4 low=buffer.Load4(offset), high=buffer.Load4(offset+16);
 +        if(any(surface.position<asfloat(low.xyz))||any(surface.position>asfloat(high.xyz)))
 +        {

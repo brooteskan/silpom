@@ -7,6 +7,7 @@
  */
 #pragma once
 #define SILPOM_HIT_FORWARD 1
+// Spatial paint groups use the shared-buffer protocol in the O3DE integration.
 
 #include <Atom/Features/SrgSemantics.azsli>
 

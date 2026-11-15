@@ -18,6 +18,48 @@ std::vector<Point> Samples(const std::vector<Point>& path,bool pressure=false,si
 }
 int main()
 {
+    // Spatial grouping must yield exactly the original ordered stream at every
+    // point, including split planes and dabs spanning many cells. This protects
+    // every blend/normal/erase/layer operation, not just commutative alpha.
+    std::vector<Bounds> spatial;
+    for(int i=0;i<4096;++i)
+    {
+        const float x=float((i*37)%127)-63,y=float((i*71)%131)-65,z=float((i*43)%137)-68;
+        spatial.push_back({{x-.7f,y-.4f,z-.3f},{x+.7f,y+.4f,z+.3f}});
+    }
+    spatial.push_back({{-80,-80,-80},{80,80,80}});
+    const auto groups=BuildSpatialGroups(spatial);
+    Require(groups.size()>1&&groups.size()<=32,"Spatial partition bounded native handle count");
+    size_t refs=0;for(const auto& g:groups)refs+=g.projections.size();
+    Require(refs<=spatial.size()*2,"Cross-cell references bounded to twice the input");
+    auto check=[&](Vec point)
+    {
+        std::vector<uint32_t> expected,actual;unsigned owners=0;
+        for(uint32_t i=0;i<spatial.size();++i)if(spatial[i].Contains(point))expected.push_back(i);
+        for(const auto& g:groups)if(g.Contains(point))
+        {
+            ++owners;
+            std::vector<CompositeNode> local;
+            BuildCompositeNodes(local,0,uint32_t(g.projections.size()),[&](uint32_t i){return Intersection(spatial[g.projections[i]],g.clip);});
+            VisitComposite(local,point,[&](uint32_t i){actual.push_back(g.projections[i]);return true;});
+        }
+        Require(owners==1&&actual==expected,"Exclusive cell ownership preserves exact ordered candidates");
+    };
+    for(const auto& b:spatial){check(b.low);check(b.high);check((b.low+b.high)*.5f);}
+    for(const auto& g:groups)
+    {
+        check(g.clip.low);check(g.clip.high);check((g.clip.low+g.clip.high)*.5f);
+        for(unsigned axis=0;axis<3;++axis)
+        {
+            Vec p=(g.clip.low+g.clip.high)*.5f;SetAxis(p,axis,Axis(g.clip.high,axis));check(p);
+            SetAxis(p,axis,std::nextafter(Axis(g.clip.high,axis),-INFINITY));check(p);
+            SetAxis(p,axis,std::nextafter(Axis(g.clip.high,axis),INFINITY));
+            if(Bounds{{-80,-80,-80},{80,80,80}}.Contains(p))check(p);
+        }
+    }
+    Require(BuildSpatialGroups({}).empty(),"Empty paint has no spatial volumes");
+    Require(BuildSpatialGroups(spatial,false).size()==1,"Single-volume benchmark baseline retained");
+    Require(BuildSpatialGroups(std::vector<Bounds>(5000,{{-1,-1,-1},{1,1,1}})).size()==1,"Coincident paint stays in one volume");
     Require(BrushFlags(true,5)==0x501&&BrushFlags(false,7)==0x700,"GPU operation and height-band packing");
     for(unsigned mask=0;mask<8;++mask)
     {

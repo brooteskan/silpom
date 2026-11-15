@@ -8,7 +8,7 @@ the pinned O3DE source revision and rebuild native modules and processed assets.
 - O3DE base: `061180bf24f1666eb30315b35da292eb14f4659c` (2.7.0).
 - SILPOM visual/profiling reference: `e9684244b85e878b445606164b157b16438398d4`.
 - Terrain integration base: `ee6887b4b743047f7dece1b179c0cf30cb281880`.
-- Bundle identifier: `tg-o3de-20261114`. Exact input/output hashes and patch
+- Bundle identifier: `tg-o3de-20261115`. Exact input/output hashes and patch
   hashes are in `manifest.json`. Text hashes normalize CRLF to LF.
 
 `engine.patch` covers 91 source/configuration files, including seven added
@@ -30,6 +30,11 @@ The files under the older `scripts/EnginePatches` and SILPOM's
 them on top of this aggregate. The aggregate already contains their applicable
 final changes. Existing fully matching files are accepted; a conflicting or
 partially modified file is rejected before any component is applied.
+
+The 2026-11-15 revision adds shared-buffer spatial paint groups and exclusive
+cell clipping to `DecalComposite.azsli`. Use it with the spatial-grouping painter;
+the single-volume buffer format remains compatible. Stamps affect color/normals,
+not the SiLPOM heightmap or its relief bounds.
 
 ## Preparing the profiling PC
 

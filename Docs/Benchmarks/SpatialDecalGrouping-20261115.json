@@ -1,0 +1,261 @@
+{
+  "date": "2026-11-15",
+  "base_silpom_commit": "cd425e4",
+  "configuration": "profile; DX12; Shader Model 6.7; gameplay; 1280x720; 2x MSAA",
+  "hardware": {
+    "gpu": "AMD Radeon RX 7900 XTX",
+    "cpu": "AMD Ryzen 7 2700 Eight-Core Processor"
+  },
+  "method": "180 timestamp frames per run; warm-ups; two original-binary repeats; matched ABBA grouping 0,1,1,0 in one Editor; medians of per-run medians",
+  "level_sha256": "a0cd36ade8a6ef7fb9492908556e93ca61c022e2450685ae1eacff8018d51689",
+  "gpu_times": {
+    "before/saved/inside/original": {
+      "gpu_span_ms": 7.4825,
+      "hit_forward_ms": 1.953,
+      "cpu_frame_period_ms": 10.689274999999999
+    },
+    "before/saved/outside/original": {
+      "gpu_span_ms": 6.1445,
+      "hit_forward_ms": 1.141,
+      "cpu_frame_period_ms": 10.745049999999999
+    },
+    "before/spread/inside/original": {
+      "gpu_span_ms": 35.93625,
+      "hit_forward_ms": 28.38475,
+      "cpu_frame_period_ms": 36.165925
+    },
+    "before/spread/outside/original": {
+      "gpu_span_ms": 8.03575,
+      "hit_forward_ms": 2.573,
+      "cpu_frame_period_ms": 10.718625
+    },
+    "after/saved/inside/0": {
+      "gpu_span_ms": 7.2595,
+      "hit_forward_ms": 1.909,
+      "cpu_frame_period_ms": 10.35145
+    },
+    "after/saved/inside/1": {
+      "gpu_span_ms": 6.979,
+      "hit_forward_ms": 1.616,
+      "cpu_frame_period_ms": 10.41415
+    },
+    "after/saved/outside/0": {
+      "gpu_span_ms": 6.1655,
+      "hit_forward_ms": 1.23,
+      "cpu_frame_period_ms": 10.4516
+    },
+    "after/saved/outside/1": {
+      "gpu_span_ms": 6.019,
+      "hit_forward_ms": 1.089,
+      "cpu_frame_period_ms": 10.378074999999999
+    },
+    "after/spread/inside/0": {
+      "gpu_span_ms": 33.6185,
+      "hit_forward_ms": 26.308,
+      "cpu_frame_period_ms": 33.842225
+    },
+    "after/spread/inside/1": {
+      "gpu_span_ms": 19.69125,
+      "hit_forward_ms": 13.411750000000001,
+      "cpu_frame_period_ms": 19.9135
+    },
+    "after/spread/outside/0": {
+      "gpu_span_ms": 7.9405,
+      "hit_forward_ms": 2.517,
+      "cpu_frame_period_ms": 10.723500000000001
+    },
+    "after/spread/outside/1": {
+      "gpu_span_ms": 6.59675,
+      "hit_forward_ms": 1.52075,
+      "cpu_frame_period_ms": 10.713325000000001
+    }
+  },
+  "render_stats": {
+    "saved": {
+      "0": {
+        "batches": 1,
+        "materials": 1,
+        "unique_projections": 12940,
+        "projection_references": 12940,
+        "gpu_buffers": 1,
+        "gpu_bytes": 2070384,
+        "rebuild_ms": 7.815
+      },
+      "1": {
+        "batches": 32,
+        "materials": 1,
+        "unique_projections": 12940,
+        "projection_references": 17042,
+        "gpu_buffers": 1,
+        "gpu_bytes": 2727232,
+        "rebuild_ms": 41.3708
+      }
+    },
+    "spread": {
+      "0": {
+        "batches": 1,
+        "materials": 1,
+        "unique_projections": 4096,
+        "projection_references": 4096,
+        "gpu_buffers": 1,
+        "gpu_bytes": 655344,
+        "rebuild_ms": 3.1794
+      },
+      "1": {
+        "batches": 4,
+        "materials": 1,
+        "unique_projections": 4096,
+        "projection_references": 4600,
+        "gpu_buffers": 1,
+        "gpu_bytes": 736064,
+        "rebuild_ms": 7.5115
+      }
+    }
+  },
+  "material_output_comparisons": {
+    "saved/inside/diffuse": {
+      "identical": true,
+      "changed_bytes": 0,
+      "total_bytes": 7372800,
+      "tower_changed_pixels": 0
+    },
+    "saved/inside/normal": {
+      "identical": true,
+      "changed_bytes": 0,
+      "total_bytes": 3686400,
+      "tower_changed_pixels": 0
+    },
+    "saved/outside/diffuse": {
+      "identical": false,
+      "changed_bytes": 199,
+      "total_bytes": 7372800,
+      "tower_changed_pixels": 0
+    },
+    "saved/outside/normal": {
+      "identical": false,
+      "changed_bytes": 92,
+      "total_bytes": 3686400,
+      "tower_changed_pixels": 0
+    },
+    "spread/inside/diffuse": {
+      "identical": true,
+      "changed_bytes": 0,
+      "total_bytes": 7372800,
+      "tower_changed_pixels": 0
+    },
+    "spread/inside/normal": {
+      "identical": true,
+      "changed_bytes": 0,
+      "total_bytes": 3686400,
+      "tower_changed_pixels": 0
+    },
+    "spread/outside/diffuse": {
+      "identical": false,
+      "changed_bytes": 1186,
+      "total_bytes": 7372800,
+      "tower_changed_pixels": 0
+    },
+    "spread/outside/normal": {
+      "identical": false,
+      "changed_bytes": 159,
+      "total_bytes": 3686400,
+      "tower_changed_pixels": 0
+    }
+  },
+  "hit_comparisons": {
+    "saved/inside": {
+      "identical": true,
+      "stable_valid_pixels": 879371
+    },
+    "saved/outside": {
+      "identical": true,
+      "stable_valid_pixels": 358248
+    },
+    "spread/inside": {
+      "identical": true,
+      "stable_valid_pixels": 879371
+    },
+    "spread/outside": {
+      "identical": true,
+      "stable_valid_pixels": 358248
+    }
+  },
+  "shader_before": {
+    "profiles": [
+      [
+        6,
+        7
+      ],
+      [
+        6,
+        7
+      ]
+    ],
+    "sha256": "083d34f9b13aeec66ae934a2d2ffc9a24060ad1c1ecb248928e86735e5e548f7"
+  },
+  "shader_after": {
+    "profiles": [
+      [
+        6,
+        7
+      ],
+      [
+        6,
+        7
+      ]
+    ],
+    "sha256": "b62b378f4b64d3395c8d5904f412f0e50059828ecc1ec539e4dd5b81ef369015"
+  },
+  "raw_evidence": "scratch/decal-spatial/{before-fixed,after} in the TG workspace",
+  "notes": [
+    "Grouping is renderer-only. Document order, fixed/live history, and texture resources are unchanged.",
+    "The spread fixture stresses exterior/large bounds and interior rejection; most interior pixels have no stamp contribution. The saved-paint case contains visible paint in the interior.",
+    "A few non-tower pixels differ between captures; all valid tower hit records and associated diffuse/normal outputs are bit-identical.",
+    "CPU frame period includes waits; GPU graphics span is not an end-to-end FPS guarantee.",
+    "Rebuild times are individual Editor observations, not a statistical CPU benchmark."
+  ],
+  "shader_job_validation": {
+    "dependent_shader_jobs": 159,
+    "all_updated_and_successful": true,
+    "clean_cache_check_failed_assets": 0,
+    "clean_cache_check_errors": 0
+  },
+  "validation": {
+    "candidate_order_and_boundary_tests": "passed",
+    "engine_patch_install_LF_and_CRLF": "passed; 95 file hashes; idempotence; conflicts preserved",
+    "editor_smoke": {
+      "passed": true,
+      "stage": "complete",
+      "native_undo_redo": true,
+      "redo_counts": [
+        100,
+        4901
+      ],
+      "layer_delete_undo_redo": true,
+      "roundtrip": true,
+      "reference_errors": {
+        "mixed": {
+          "mean": 0.0,
+          "maximum": 0
+        },
+        "alpha": {
+          "mean": 0.00019837333862328903,
+          "maximum": 1
+        }
+      },
+      "editor_assertions": 0,
+      "long_gesture": {
+        "live": 100,
+        "fixed": 725
+      }
+    }
+  },
+  "source_sha256": {
+    "Include/SilPOM/DecalCompositeMath.h": "d19b88f76cc0c0f374ea3c43368d4fad90409327341ca2fbf98b427dcfe88e96",
+    "Include/SilPOM/DecalPaint.h": "cebfbe97105e426c3c145672c1adee344ecc005128fda9d183655c792eada92e",
+    "Source/DecalComposite.inl": "51e14d31b80e8ae1f578102906efebb4ddf9eeb2b97ef16cf0344c5349194f85",
+    "Source/DecalPaint.cpp": "956a2e38a138a4b46064b8ff9f24646d0eccc3ffc4e1eb3ca1674770c07a4f5a",
+    "Integration/O3DE/engine.patch": "c74ea1c04961017e1a6643dd3a50ef549810059a7288d91186511022b48b203d",
+    "Integration/O3DE/manifest.json": "fbfa36c9da9ea294d4b042e75f07bf532ba72e5f7d6cceea61a8245f28ce61ca"
+  }
+}

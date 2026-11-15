@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "bundle": "tg-o3de-20261114",
+  "bundle": "tg-o3de-20261115",
   "hash_encoding": "sha256; CRLF normalized to LF; all patched files are text",
   "upstream_url": "https://github.com/o3de/o3de.git",
   "silpom_reference_commit": "e9684244b85e878b445606164b157b16438398d4",
@@ -12,7 +12,7 @@
       "upstream_commit": "061180bf24f1666eb30315b35da292eb14f4659c",
       "project_path": null,
       "patch": "engine.patch",
-      "patch_sha256": "3dd9ed2e11485f7592f7462e7da850b154ca30c1159994b1ca6f0fcfec7877f3",
+      "patch_sha256": "c74ea1c04961017e1a6643dd3a50ef549810059a7288d91186511022b48b203d",
       "files": [
         {
           "path": "Code/Framework/AzFramework/Platform/Windows/AzFramework/Windowing/NativeWindow_Windows.cpp",
@@ -72,7 +72,7 @@
         {
           "path": "Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalComposite.azsli",
           "before_sha256": null,
-          "after_sha256": "a6f5594527e481cdfa26da02bce375c8bff5f2c06ad49c82a9af2f5eda2abb71"
+          "after_sha256": "5aef9ffe098032db4bbb4ec78ea988d2bcdc4086951d6712c02f0af6f99be9e1"
         },
         {
           "path": "Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Decals.azsli",

@@ -95,6 +95,7 @@ public:
     virtual AZ::u64 GetRevision() const=0;
     virtual AZ::u32 GetCompositeDabCount() const=0;
     virtual AZ::u32 GetRenderHandleCount() const=0;
+    virtual AZStd::string GetRenderStatsJson() const=0;
     virtual AZStd::string SetDocumentJson(const AZStd::string&)=0;
     virtual bool ConsumeCompositeRepair()=0;
     virtual void RestoreUndoDocument(const PaintConfig&)=0;
@@ -121,7 +122,8 @@ public:
     AZStd::string GetDocumentJson() const override;
     AZ::u32 GetDabCount() const override { return m_liveCount; }
     AZ::u32 GetCompositeDabCount() const override { return m_compositeCount; }
-    AZ::u32 GetRenderHandleCount() const override { return m_batch.IsValid()?1:0; }
+    AZ::u32 GetRenderHandleCount() const override { return aznumeric_cast<AZ::u32>(m_batches.size()); }
+    AZStd::string GetRenderStatsJson() const override { return m_renderStats; }
     AZStd::string SetDocumentJson(const AZStd::string&) override;
     bool ConsumeCompositeRepair() override {const bool repaired=m_repairedComposite;m_repairedComposite=false;return repaired;}
     void RestoreUndoDocument(const PaintConfig&) override;
@@ -135,12 +137,13 @@ private:
     AZ::EntityId m_entity;
     AZ::Transform m_world=AZ::Transform::CreateIdentity();
     AZ::Render::DecalFeatureProcessorInterface* m_processor=nullptr;
-    AZ::Render::DecalFeatureProcessorInterface::DecalHandle m_batch;
+    AZStd::vector<AZ::Render::DecalFeatureProcessorInterface::DecalHandle> m_batches;
     AZStd::unordered_map<AZ::Data::AssetId,AZ::Render::DecalFeatureProcessorInterface::DecalHandle> m_materialHandles;
     AZ::Data::Instance<AZ::RPI::Buffer> m_buffer;
     AZ::u32 m_liveCount=0,m_compositeCount=0;
     AZ::u64 m_materialFingerprint=0;
     AZStd::string m_status="Inactive";
+    AZStd::string m_renderStats="{}";
     AZ::u64 m_revision=0;
     bool m_dirty=true;
     bool m_repairedComposite=false;

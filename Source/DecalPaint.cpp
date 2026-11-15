@@ -15,6 +15,7 @@
 #include <AzCore/std/containers/unordered_set.h>
 #include <algorithm>
 #include <cmath>
+#include <chrono>
 
 namespace SilPOM
 {
@@ -23,6 +24,8 @@ namespace
 AZStd::atomic_uint64_t PaintRevision{0};
 AZ_CVAR(bool,r_silpomPaintCompositeReference,false,nullptr,AZ::ConsoleFunctorFlags::Null,
     "Diagnostic: evaluate the complete paint stream without spatial skipping or opacity early-out.");
+AZ_CVAR(bool,r_silpomPaintSpatialGrouping,true,nullptr,AZ::ConsoleFunctorFlags::Null,
+    "Automatically partition a paint entity into ordered, spatially clipped render batches; false retains the single-volume baseline.");
 // Native entity undo reconstructs controllers. Retain the irreversible frontier
 // separately so an old entity snapshot cannot resurrect composited source paths.
 AZStd::unordered_map<AZ::EntityId,PaintConfig> CompositeHistory;
@@ -141,6 +144,7 @@ void PaintController::Reflect(AZ::ReflectContext* context)
             ->Event("GetPaintStatus",&PaintRequests::GetPaintStatus)->Event("GetDabCount",&PaintRequests::GetDabCount)
             ->Event("GetDocumentJson",&PaintRequests::GetDocumentJson)
             ->Event("GetCompositeDabCount",&PaintRequests::GetCompositeDabCount)->Event("GetRenderHandleCount",&PaintRequests::GetRenderHandleCount)
+            ->Event("GetRenderStatsJson",&PaintRequests::GetRenderStatsJson)
             ->Event("SetDocumentJson",&PaintRequests::SetDocumentJson);
 }
 void PaintComponent::Reflect(AZ::ReflectContext* c)
@@ -162,10 +166,10 @@ void PaintController::Release()
 {
     if(m_processor)
     {
-        if(m_batch.IsValid())m_processor->ReleaseDecal(m_batch);
+        for(auto& batch:m_batches)m_processor->ReleaseDecal(batch);
         for(auto [id,h]:m_materialHandles){(void)id;m_processor->ReleaseDecal(h);}
     }
-    m_batch={};m_materialHandles.clear();m_buffer={};
+    m_batches.clear();m_materialHandles.clear();m_buffer={};
 }
 void PaintController::Deactivate()
 {
@@ -256,6 +260,7 @@ void PaintController::OnTick(float,AZ::ScriptTimePoint)
     if(m_processor)
     {
         AZ::u64 fingerprint=r_silpomPaintCompositeReference?0x7144878129ULL:0;
+        if(r_silpomPaintSpatialGrouping)fingerprint^=0x51a71a1ULL;
         for(const auto& [id,h]:m_materialHandles)
         {
             (void)id;const auto d=m_processor->GetDecalData(h);
