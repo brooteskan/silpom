@@ -1,0 +1,1685 @@
+{
+  "date_local": "2026-11-14",
+  "status": "Offline depth-bound investigation complete; no shader changes or timing claim",
+  "starting_profile_commit": "7228815073f4ef2fe1310d6605571b922b767bb3",
+  "branch": "codex/depth-bounds-ryzen-5700g",
+  "upstream_main": "2f818d87cd29663fab360cc7ccde06e117c257cf",
+  "hardware": {
+    "cpu": "AMD Ryzen 7 5700G",
+    "cores": 8,
+    "logical_processors": 16,
+    "active_rendering_gpu": "AMD Radeon(TM) Graphics",
+    "pci_vendor": "1002",
+    "pci_device": "1638",
+    "driver": "31.0.21923.11000",
+    "driver_date_utc": "2025-07-01",
+    "ram_gib": 32,
+    "ram_modules": "2 x 16 GiB G.Skill F4-3200C16-16GVK",
+    "ram_slots": [
+      "DIMM_A1",
+      "DIMM_B1"
+    ],
+    "configured_memory_mt_s": 2133,
+    "dxgi_dedicated_video_bytes": 519847936,
+    "dxgi_shared_system_bytes": 16839022592,
+    "highest_reported_shader_model": "6.7",
+    "native_16bit_shader_ops": true,
+    "os": "Windows 11 Pro 10.0.26300",
+    "power_plan": "Balanced (unchanged)"
+  },
+  "shader_target": "DX12 SM6.2",
+  "resolution": [
+    1280,
+    720
+  ],
+  "samples": 2,
+  "view": "upper-glancing",
+  "event": 473,
+  "capture_sha256": "bfe021553de239202c95a9303370f04de0599d2f58cc02700b86153580165413",
+  "controls": {
+    "Lighting estimator": 5,
+    "Height-derived normals (off = cheaper)": true,
+    "Level 2 predictor (experimental)": true,
+    "Gather validation (may be cheaper)": true,
+    "R16 height textures (less GPU memory)": true,
+    "Anti-aliasing": 0
+  },
+  "scene_sha256": "a0894326d0eb68b7328949b1f1829a8021b7293ce16a567e0c2ea8c9148f6e7b",
+  "effective_configuration_sha256": "b76f275b9af10b14731ac7dc5115e1e29eb6edb11cebd57cd05e22b3b32ec67e",
+  "unchanged_tg_silpom_pin": "e9684244b85e878b445606164b157b16438398d4",
+  "bundle": "tg-o3de-20261114",
+  "components": [
+    {
+      "name": "engine",
+      "base": "061180bf24f1666eb30315b35da292eb14f4659c",
+      "patch_sha256": "3dd9ed2e11485f7592f7462e7da850b154ca30c1159994b1ca6f0fcfec7877f3"
+    },
+    {
+      "name": "terrain-compositor",
+      "base": "ee6887b4b743047f7dece1b179c0cf30cb281880",
+      "patch_sha256": "dab37b902de3e3ca417531b6b08d9fed59c20dc02382c12426b3500a89137841"
+    }
+  ],
+  "camera": {
+    "world_position": [
+      1.0041462182998657,
+      -1.069727897644043,
+      18.182477951049805
+    ],
+    "near_m": 0.2,
+    "far_m": 1024,
+    "view_projection": [
+      [
+        0.7301577925682068,
+        0.06439542025327682,
+        0.010303297080099583,
+        -0.8516390919685364
+      ],
+      [
+        -4.248030904818734e-08,
+        -0.20589733123779297,
+        1.2868577241897583,
+        -23.61851692199707
+      ],
+      [
+        1.7378682969138026e-05,
+        -0.00019213238556403667,
+        -3.0741193768335506e-05,
+        0.2003750503063202
+      ],
+      [
+        -0.08896147459745407,
+        0.9835256338119507,
+        0.15736417472362518,
+        -1.7198355197906494
+      ]
+    ],
+    "projection": [
+      [
+        0.7330642342567444,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.3032252788543701,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.00019535065803211182,
+        0.2000390738248825
+      ],
+      [
+        0.0,
+        0.0,
+        -1.0,
+        0.0
+      ]
+    ],
+    "model": [
+      [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ]
+  },
+  "material": {
+    "m_silpomScale": 0.05000000074505806,
+    "m_silpomReference": 0.05000000074505806,
+    "m_silpomNeuralModel": 4,
+    "m_silpomValidationIterations": 4,
+    "m_silpomValidationRetryCap": 2,
+    "m_silpomValidationToleranceMultiplier": 5.0,
+    "m_silpomDistantValidationToleranceMultiplier": 5.0,
+    "m_silpomValidationDistanceEnd": 0.0,
+    "m_silpomUseHeightDerivedNormals": 1,
+    "m_meshBufferIndex": 217,
+    "m_silpomHitFaceBase": 5273
+  },
+  "height_range_m": [
+    -0.0025000000745058065,
+    0.04750000067055225
+  ],
+  "maximum_reconstruction_error_vs_gpu_postvs": 8.584798486532819e-07,
+  "active_proxies": 172,
+  "depth_one_proxies": 57,
+  "negative_or_near_zero_w_fallbacks": 41,
+  "positive_w_saturations": 16,
+  "positive_w_saturation_range_m": [
+    0.009662819073105067,
+    0.19432093425561248
+  ],
+  "six_extrema_cross_near_anywhere": 51,
+  "owned_recorded_winning_samples_checked": 1804749,
+  "baseline_eligibility": {
+    "eligible_before": 22680953,
+    "eligible_after": 14440274,
+    "original_57_eligible_after": 12449726,
+    "after_reduction_vs_current_percent": 0.0
+  },
+  "methods": {
+    "box_corner_ratio": {
+      "active_bound_one_remaining": 57,
+      "original_57_tightened": 0,
+      "active_tightened": 0,
+      "captured_hit_bound_violations": 0,
+      "maximum_captured_hit_excess": 0.0,
+      "empty_volumes": 0,
+      "uncertified_nonempty_fallbacks": 0,
+      "eligible_before": 22680953,
+      "eligible_after": 14440274,
+      "original_57_eligible_after": 12449726,
+      "after_reduction_vs_current_percent": 0.0,
+      "maximum_certified_z_minus_Bw_upper_bound": null
+    },
+    "box_visible": {
+      "active_bound_one_remaining": 4,
+      "original_57_tightened": 53,
+      "active_tightened": 164,
+      "captured_hit_bound_violations": 0,
+      "maximum_captured_hit_excess": 0.0,
+      "empty_volumes": 1,
+      "uncertified_nonempty_fallbacks": 0,
+      "eligible_before": 22335328,
+      "eligible_after": 8410221,
+      "original_57_eligible_after": 7485637,
+      "after_reduction_vs_current_percent": 41.7585774341955,
+      "maximum_certified_z_minus_Bw_upper_bound": -2.231224448787919e-06
+    },
+    "box_proxy_visible": {
+      "active_bound_one_remaining": 4,
+      "original_57_tightened": 53,
+      "active_tightened": 164,
+      "captured_hit_bound_violations": 0,
+      "maximum_captured_hit_excess": 0.0,
+      "empty_volumes": 1,
+      "uncertified_nonempty_fallbacks": 0,
+      "eligible_before": 22334907,
+      "eligible_after": 8408601,
+      "original_57_eligible_after": 7484023,
+      "after_reduction_vs_current_percent": 41.76979605788643,
+      "maximum_certified_z_minus_Bw_upper_bound": -2.231224448787919e-06
+    },
+    "ideal_hull_visible": {
+      "active_bound_one_remaining": 2,
+      "original_57_tightened": 55,
+      "active_tightened": 166,
+      "captured_hit_bound_violations": 0,
+      "maximum_captured_hit_excess": 0.0,
+      "empty_volumes": 1,
+      "uncertified_nonempty_fallbacks": 4,
+      "eligible_before": 22254765,
+      "eligible_after": 7847455,
+      "original_57_eligible_after": 6935806,
+      "after_reduction_vs_current_percent": 45.65577495274674,
+      "maximum_certified_z_minus_Bw_upper_bound": -2.674263192895581e-06
+    },
+    "padded_hull_visible": {
+      "active_bound_one_remaining": 2,
+      "original_57_tightened": 55,
+      "active_tightened": 170,
+      "captured_hit_bound_violations": 0,
+      "maximum_captured_hit_excess": 0.0,
+      "empty_volumes": 1,
+      "uncertified_nonempty_fallbacks": 0,
+      "eligible_before": 22255067,
+      "eligible_after": 7850132,
+      "original_57_eligible_after": 6938414,
+      "after_reduction_vs_current_percent": 45.63723652335129,
+      "maximum_certified_z_minus_Bw_upper_bound": -2.674072666058703e-06
+    }
+  },
+  "remaining_box_depth_one": {
+    "visible_near_plane_intersections": [
+      299,
+      300,
+      301
+    ],
+    "certified_empty_but_retained": [
+      504
+    ]
+  },
+  "remaining_padded_hull_depth_one": {
+    "visible_near_plane_intersections": [
+      301
+    ],
+    "certified_empty_but_retained": [
+      504
+    ]
+  },
+  "example_face_308": {
+    "diagnosis": {
+      "face": 308,
+      "min_w": -0.7195886539830725,
+      "max_z": 0.2001796514427125,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.5157937331628157,
+      "six_corner_min_near_distance": -0.7159335731324391,
+      "low": [
+        0.5210716485666014,
+        -0.7576444463384584,
+        11.520000457763672
+      ],
+      "high": [
+        0.7576444526619477,
+        -0.5210716394118914,
+        20.600000367357953
+      ],
+      "coverage": 599521,
+      "box_visible_bound": 0.6665692925453186,
+      "padded_hull_bound": 0.5469916462898254
+    },
+    "certificate": {
+      "empty": false,
+      "certified": true,
+      "vertices": 10,
+      "dual_upper_z_minus_bound_w": -3.017685376915935e-06,
+      "dual_roundoff_allowance": 1.9503784848990697e-11,
+      "dual_constraint_indices": [
+        0,
+        3,
+        9
+      ],
+      "dual_weights": [
+        0.05285317941099507,
+        0.5992842661788719,
+        0.11934312704585064
+      ],
+      "dual_constraint_rows": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          -0.7576644526619477
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0,
+          -0.7576644463384584
+        ],
+        [
+          0.054156335753664755,
+          -0.47339007729540183,
+          -0.8791865137819107,
+          15.425010356811361
+        ]
+      ]
+    }
+  },
+  "empty_face_504_certificate": {
+    "constraints": [
+      0,
+      2,
+      7,
+      8
+    ],
+    "weights": [
+      0.18823326476804314,
+      0.3670258972878031,
+      0.3716502760525092,
+      0.07309056189164446
+    ],
+    "constraint_rows": [
+      [
+        1.0,
+        0.0,
+        0.0,
+        0.7171736019300555
+      ],
+      [
+        0.0,
+        1.0,
+        0.0,
+        0.2739235653026787
+      ],
+      [
+        -0.5171301903822985,
+        -0.845157089968019,
+        -0.13522521758887238,
+        2.0739157700573867
+      ],
+      [
+        0.05415628420661046,
+        -0.7240747659309424,
+        0.6875920521813671,
+        -13.331071516544798
+      ]
+    ],
+    "minimum_box_weighted_lhs": 0.0,
+    "weighted_rhs": -0.03192883152976489,
+    "contradiction_gap": 0.03192883152976489
+  },
+  "cases": [
+    {
+      "face": 263,
+      "min_w": -1.0995287593402823,
+      "max_z": 0.20025387299437802,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.575426412978316,
+      "six_corner_min_near_distance": -0.775577902231371,
+      "low": [
+        1.5231690447590902,
+        -1.045527567477464,
+        11.51999346960257
+      ],
+      "high": [
+        1.8457399111400221,
+        -0.35738621309458146,
+        24.000000384986098
+      ],
+      "coverage": 145054,
+      "box_visible_bound": 0.48922038078308105,
+      "padded_hull_bound": 0.3467663824558258
+    },
+    {
+      "face": 264,
+      "min_w": -0.5809985151135642,
+      "max_z": 0.2001525777668967,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.575426412978316,
+      "six_corner_min_near_distance": -0.775577902231371,
+      "low": [
+        1.7390368015829538,
+        -0.5181456753151628,
+        11.519993333075663
+      ],
+      "high": [
+        1.847576032218839,
+        -0.3573861923309754,
+        24.000000354878587
+      ],
+      "coverage": 136017,
+      "box_visible_bound": 0.3454577922821045,
+      "padded_hull_bound": 0.3313175141811371
+    },
+    {
+      "face": 294,
+      "min_w": -0.8319858994873002,
+      "max_z": 0.20020160831927922,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.7011327092536472,
+      "six_corner_min_near_distance": -0.901308755315336,
+      "low": [
+        0.2739435592320858,
+        -0.8906644662826272,
+        11.520000457751374
+      ],
+      "high": [
+        0.5504609048804481,
+        -0.7171936019300555,
+        20.60000095245057
+      ],
+      "coverage": 203939,
+      "box_visible_bound": 0.6381585597991943,
+      "padded_hull_bound": 0.6344055533409119
+    },
+    {
+      "face": 297,
+      "min_w": -0.8050561807863358,
+      "max_z": 0.20019634758078436,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.7946427739694684,
+      "six_corner_min_near_distance": -0.9948370872843357,
+      "low": [
+        0.8215179319152901,
+        -0.8250053495439857,
+        11.520000457614723
+      ],
+      "high": [
+        0.9736520205155076,
+        -0.6780103065873151,
+        20.60000095244999
+      ],
+      "coverage": 282046,
+      "box_visible_bound": 0.8994613289833069,
+      "padded_hull_bound": 0.6661786437034607
+    },
+    {
+      "face": 299,
+      "min_w": -0.8695722727134342,
+      "max_z": 0.20020895084217694,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.8533232838171385,
+      "six_corner_min_near_distance": -1.0535290604085752,
+      "low": [
+        0.7559211725959847,
+        -0.8906021088632912,
+        11.520000457763672
+      ],
+      "high": [
+        0.9736519942682825,
+        -0.6780103271720989,
+        20.60000095244999
+      ],
+      "coverage": 193800,
+      "box_visible_bound": 1.0,
+      "padded_hull_bound": 0.7018095850944519
+    },
+    {
+      "face": 300,
+      "min_w": -0.9512539749904406,
+      "max_z": 0.20022490741694826,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.9275431717984142,
+      "six_corner_min_near_distance": -1.1277634472942586,
+      "low": [
+        0.6780103145101827,
+        -0.9736520067811871,
+        11.520000457763672
+      ],
+      "high": [
+        0.9736519806589092,
+        -0.6780103407814722,
+        20.600001537542056
+      ],
+      "coverage": 205910,
+      "box_visible_bound": 1.0,
+      "padded_hull_bound": 0.7523114085197449
+    },
+    {
+      "face": 301,
+      "min_w": -0.9512539782879433,
+      "max_z": 0.2002249074175924,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.9275431717984142,
+      "six_corner_min_near_distance": -1.1277634472942586,
+      "low": [
+        0.6780103145101827,
+        -0.9736520067811871,
+        11.520000457763672
+      ],
+      "high": [
+        0.9736520177255454,
+        -0.678010303714836,
+        20.600000952451488
+      ],
+      "coverage": 782351,
+      "box_visible_bound": 1.0,
+      "padded_hull_bound": 1.0
+    },
+    {
+      "face": 304,
+      "min_w": -0.7092296311543437,
+      "max_z": 0.2001776278007436,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.7011327066231723,
+      "six_corner_min_near_distance": -0.9013087526843473,
+      "low": [
+        0.5210716451836221,
+        -0.7576444497214376,
+        11.520000457751374
+      ],
+      "high": [
+        0.6412004952659538,
+        -0.6315930515256554,
+        20.60000095244999
+      ],
+      "coverage": 249362,
+      "box_visible_bound": 0.6466683745384216,
+      "padded_hull_bound": 0.6320122480392456
+    },
+    {
+      "face": 306,
+      "min_w": -0.713944545843172,
+      "max_z": 0.2001785488624501,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.6200031382896498,
+      "six_corner_min_near_distance": -0.8201633356357716,
+      "low": [
+        0.5210716384371988,
+        -0.7576444564678609,
+        11.520000457763672
+      ],
+      "high": [
+        0.69419993212127,
+        -0.5785936146703392,
+        20.600001537542056
+      ],
+      "coverage": 180154,
+      "box_visible_bound": 0.6555769443511963,
+      "padded_hull_bound": 0.5922563672065735
+    },
+    {
+      "face": 307,
+      "min_w": -0.7195886494355468,
+      "max_z": 0.20017965144182415,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.5725917325644914,
+      "six_corner_min_near_distance": -0.7727426680610181,
+      "low": [
+        0.5210716531768208,
+        -0.757644441728239,
+        11.520000457763672
+      ],
+      "high": [
+        0.7576444525129361,
+        -0.5210716394118914,
+        20.60000036735792
+      ],
+      "coverage": 192250,
+      "box_visible_bound": 0.6665692925453186,
+      "padded_hull_bound": 0.5708535313606262
+    },
+    {
+      "face": 308,
+      "min_w": -0.7195886539830725,
+      "max_z": 0.2001796514427125,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.5157937331628157,
+      "six_corner_min_near_distance": -0.7159335731324391,
+      "low": [
+        0.5210716485666014,
+        -0.7576444463384584,
+        11.520000457763672
+      ],
+      "high": [
+        0.7576444526619477,
+        -0.5210716394118914,
+        20.600000367357953
+      ],
+      "coverage": 599521,
+      "box_visible_bound": 0.6665692925453186,
+      "padded_hull_bound": 0.5469916462898254
+    },
+    {
+      "face": 311,
+      "min_w": -0.520124086013404,
+      "max_z": 0.2001406859068665,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.5134521953394369,
+      "six_corner_min_near_distance": -0.7135915778880424,
+      "low": [
+        1.025325207643881,
+        -0.5198383426730272,
+        11.520000457751246
+      ],
+      "high": [
+        1.144596568912677,
+        -0.3564511170322396,
+        20.60000036735806
+      ],
+      "coverage": 272627,
+      "box_visible_bound": 0.41390150785446167,
+      "padded_hull_bound": 0.34639328718185425
+    },
+    {
+      "face": 313,
+      "min_w": -0.6014190410476489,
+      "max_z": 0.20015656693030714,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.5910004774823381,
+      "six_corner_min_near_distance": -0.791155009139354,
+      "low": [
+        0.9832095190218831,
+        -0.602495014301383,
+        11.52000045761587
+      ],
+      "high": [
+        1.1445965651006482,
+        -0.3564511190375352,
+        20.60000036735806
+      ],
+      "coverage": 224964,
+      "box_visible_bound": 0.4891548156738281,
+      "padded_hull_bound": 0.3596775531768799
+    },
+    {
+      "face": 314,
+      "min_w": -0.7045953630513736,
+      "max_z": 0.20017672249331314,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.6893632857838079,
+      "six_corner_min_near_distance": -0.8895370326807408,
+      "low": [
+        0.9332011557512717,
+        -0.707399571634089,
+        11.520000457614723
+      ],
+      "high": [
+        1.144596573678886,
+        -0.35645112391544226,
+        20.600000952450127
+      ],
+      "coverage": 233777,
+      "box_visible_bound": 0.635857105255127,
+      "padded_hull_bound": 0.37786924839019775
+    },
+    {
+      "face": 315,
+      "min_w": -0.704595368326405,
+      "max_z": 0.20017672249434365,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.6893632857838079,
+      "six_corner_min_near_distance": -0.8895370326807408,
+      "low": [
+        0.9332011557512717,
+        -0.7073995772965302,
+        11.520000457614723
+      ],
+      "high": [
+        1.1445965703726824,
+        -0.3564511186999002,
+        20.600000952450127
+      ],
+      "coverage": 432720,
+      "box_visible_bound": 0.635857105255127,
+      "padded_hull_bound": 0.6096181273460388
+    },
+    {
+      "face": 318,
+      "min_w": -0.5210022924156531,
+      "max_z": 0.2001408574651223,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.5157937429157213,
+      "six_corner_min_near_distance": -0.71593358288725,
+      "low": [
+        0.7171935995582355,
+        -0.5504609151602643,
+        11.520000457702714
+      ],
+      "high": [
+        0.8159163311787699,
+        -0.41346421591297433,
+        20.60000095245002
+      ],
+      "coverage": 273283,
+      "box_visible_bound": 0.4151650071144104,
+      "padded_hull_bound": 0.4112342596054077
+    },
+    {
+      "face": 320,
+      "min_w": -0.5240294163204424,
+      "max_z": 0.20014144881578153,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.40856348338382054,
+      "six_corner_min_near_distance": -0.6086823758529463,
+      "low": [
+        0.7171936085087142,
+        -0.5504608845785436,
+        11.520000457702714
+      ],
+      "high": [
+        0.8499440268345927,
+        -0.34668105877295785,
+        20.600000367357953
+      ],
+      "coverage": 217994,
+      "box_visible_bound": 0.4175042510032654,
+      "padded_hull_bound": 0.3878902494907379
+    },
+    {
+      "face": 321,
+      "min_w": -0.5276519680818619,
+      "max_z": 0.20014215648366682,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.34590769292639734,
+      "six_corner_min_near_distance": -0.5460143455452523,
+      "low": [
+        0.7171936112787497,
+        -0.550460885652393,
+        11.520000457715245
+      ],
+      "high": [
+        0.8906644704156411,
+        -0.2739435719116664,
+        20.600000367357953
+      ],
+      "coverage": 245326,
+      "box_visible_bound": 0.42033854126930237,
+      "padded_hull_bound": 0.3752124607563019
+    },
+    {
+      "face": 322,
+      "min_w": -0.5276519952794531,
+      "max_z": 0.20014215648897987,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.2708618048566429,
+      "six_corner_min_near_distance": -0.47095379721143127,
+      "low": [
+        0.7171936060630695,
+        -0.5504609133131977,
+        11.520000457763025
+      ],
+      "high": [
+        0.8906644704156411,
+        -0.2739435676648354,
+        20.6000009524505
+      ],
+      "coverage": 356140,
+      "box_visible_bound": 0.42033854126930237,
+      "padded_hull_bound": 0.3609398603439331
+    },
+    {
+      "face": 325,
+      "min_w": -0.17517753711376072,
+      "max_z": 0.20007330036950693,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.17289784697258503,
+      "six_corner_min_near_distance": -0.3729707020031134,
+      "low": [
+        1.1287664975980156,
+        -0.16378591805010329,
+        11.520000457243155
+      ],
+      "high": [
+        1.2035000171935828,
+        -1.1928261656188634e-08,
+        20.60000036735797
+      ],
+      "coverage": 179492,
+      "box_visible_bound": 0.2503540813922882,
+      "padded_hull_bound": 0.2225072979927063
+    },
+    {
+      "face": 327,
+      "min_w": -0.26529369657875856,
+      "max_z": 0.20009090462108986,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.2617230025432242,
+      "six_corner_min_near_distance": -0.4618132096268699,
+      "low": [
+        1.1142545547345513,
+        -0.25541155173688423,
+        11.520000457243155
+      ],
+      "high": [
+        1.2035000174159858,
+        1.7570531015587412e-09,
+        20.60000036735797
+      ],
+      "coverage": 176910,
+      "box_visible_bound": 0.2791672646999359,
+      "padded_hull_bound": 0.22915104031562805
+    },
+    {
+      "face": 328,
+      "min_w": -0.37986501996536803,
+      "max_z": 0.20011328620518154,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.3746002838419511,
+      "six_corner_min_near_distance": -0.5747125415774449,
+      "low": [
+        1.0970437408275115,
+        -0.3719019803241756,
+        11.520000457485686
+      ],
+      "high": [
+        1.2035000265821267,
+        3.505275835588901e-08,
+        20.60000095245004
+      ],
+      "coverage": 177034,
+      "box_visible_bound": 0.32700735330581665,
+      "padded_hull_bound": 0.23807714879512787
+    },
+    {
+      "face": 329,
+      "min_w": -0.3798650194606542,
+      "max_z": 0.20011328620508295,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.3746002838419511,
+      "six_corner_min_near_distance": -0.5747125415774449,
+      "low": [
+        1.0970437405294884,
+        -0.3719019803241756,
+        11.520000457751246
+      ],
+      "high": [
+        1.2035000213784788,
+        -3.410783264514682e-09,
+        20.600000952450127
+      ],
+      "coverage": 180744,
+      "box_visible_bound": 0.32700735330581665,
+      "padded_hull_bound": 0.32453465461730957
+    },
+    {
+      "face": 332,
+      "min_w": -0.27267453654419815,
+      "max_z": 0.20009234647312385,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.27086181158031697,
+      "six_corner_min_near_distance": -0.47095380393641884,
+      "low": [
+        0.843111643543777,
+        -0.28939442180452457,
+        11.520000457757105
+      ],
+      "high": [
+        0.9107644946118957,
+        -0.15486264456749627,
+        20.6000009524505
+      ],
+      "coverage": 237237,
+      "box_visible_bound": 0.2820599675178528,
+      "padded_hull_bound": 0.28143227100372314
+    },
+    {
+      "face": 334,
+      "min_w": -0.2737176116177189,
+      "max_z": 0.20009255023853015,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.1480273537097061,
+      "six_corner_min_near_distance": -0.3480953502729054,
+      "low": [
+        0.8431116458603597,
+        -0.2893944066765365,
+        11.520000457757105
+      ],
+      "high": [
+        0.9224896819135314,
+        -0.08083293744117685,
+        20.600000367358433
+      ],
+      "coverage": 212499,
+      "box_visible_bound": 0.28243058919906616,
+      "padded_hull_bound": 0.26811376214027405
+    },
+    {
+      "face": 335,
+      "min_w": -0.2749639927114099,
+      "max_z": 0.2000927937199021,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.07626032785760972,
+      "six_corner_min_near_distance": -0.27631430468465823,
+      "low": [
+        0.8431116435538973,
+        -0.2893944078602977,
+        11.520000457701137
+      ],
+      "high": [
+        0.9365000153332949,
+        8.549165496314068e-10,
+        20.600000367358433
+      ],
+      "coverage": 225409,
+      "box_visible_bound": 0.2828747034072876,
+      "padded_hull_bound": 0.2607809603214264
+    },
+    {
+      "face": 336,
+      "min_w": -0.2749640029709203,
+      "max_z": 0.2000927937219063,
+      "unclamped_ratio": null,
+      "six_corner_min_w": 0.009687422692790548,
+      "six_corner_min_near_distance": -0.19034976418412183,
+      "low": [
+        0.8431116437284897,
+        -0.28939441829165813,
+        11.520000457701137
+      ],
+      "high": [
+        0.9365000153332949,
+        8.549165496314068e-10,
+        20.6000009524505
+      ],
+      "coverage": 201382,
+      "box_visible_bound": 0.2828747034072876,
+      "padded_hull_bound": 0.25241804122924805
+    },
+    {
+      "face": 339,
+      "min_w": 0.18596691915172137,
+      "max_z": 0.2000027505602035,
+      "unclamped_ratio": 1.0754848826969112,
+      "six_corner_min_w": 0.1903848271669506,
+      "six_corner_min_near_distance": -0.009617060351996776,
+      "low": [
+        1.0970437409177005,
+        0.20047726842340574,
+        11.520000457736277
+      ],
+      "high": [
+        1.1711008820600208,
+        0.37190196756769145,
+        20.600000952450927
+      ],
+      "coverage": 181240,
+      "box_visible_bound": 0.17709149420261383,
+      "padded_hull_bound": 0.16311471164226532
+    },
+    {
+      "face": 341,
+      "min_w": 0.09455975850812204,
+      "max_z": 0.2000206070097215,
+      "unclamped_ratio": 2.115292548998273,
+      "six_corner_min_w": 0.09897766652535989,
+      "six_corner_min_near_distance": -0.10104207744310512,
+      "low": [
+        1.097043741776105,
+        0.10885163741883383,
+        11.520000457736277
+      ],
+      "high": [
+        1.1856128249234852,
+        0.37190197394551566,
+        20.600000952450927
+      ],
+      "coverage": 234000,
+      "box_visible_bound": 0.19125856459140778,
+      "padded_hull_bound": 0.16701047122478485
+    },
+    {
+      "face": 342,
+      "min_w": -0.014089888457206712,
+      "max_z": 0.20004183179038987,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.014065289314432627,
+      "six_corner_min_near_distance": -0.21410711629936366,
+      "low": [
+        1.0970437412193506,
+        -1.0762868250983646e-10,
+        11.520000457527601
+      ],
+      "high": [
+        1.2035000187903642,
+        0.3719019618180376,
+        20.600000952450927
+      ],
+      "coverage": 246094,
+      "box_visible_bound": 0.21135219931602478,
+      "padded_hull_bound": 0.17202062904834747
+    },
+    {
+      "face": 343,
+      "min_w": -0.014089888457206823,
+      "max_z": 0.20004183179038987,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.014065289314432627,
+      "six_corner_min_near_distance": -0.21410711629936366,
+      "low": [
+        1.0970437389610221,
+        -1.0762868250983646e-10,
+        11.520000457527601
+      ],
+      "high": [
+        1.2035000187903642,
+        0.37190194859329906,
+        20.600000952450927
+      ],
+      "coverage": 214479,
+      "box_visible_bound": 0.21135219931602478,
+      "padded_hull_bound": 0.21135219931602478
+    },
+    {
+      "face": 346,
+      "min_w": 0.009662819073105067,
+      "max_z": 0.20003719168324577,
+      "unclamped_ratio": 20.701752438706915,
+      "six_corner_min_w": 0.009687416118099756,
+      "six_corner_min_near_distance": -0.190349770760097,
+      "low": [
+        0.8670763754182164,
+        -6.8055539439535926e-09,
+        11.520000457644112
+      ],
+      "high": [
+        0.9365000144959487,
+        0.1267196738836493,
+        20.600000952450017
+      ],
+      "coverage": 202383,
+      "box_visible_bound": 0.20672138035297394,
+      "padded_hull_bound": 0.20672138035297394
+    },
+    {
+      "face": 348,
+      "min_w": 0.009662843107683505,
+      "max_z": 0.2000371916785506,
+      "unclamped_ratio": 20.70170094637261,
+      "six_corner_min_w": 0.13280263550302562,
+      "six_corner_min_near_distance": -0.06721050073533455,
+      "low": [
+        0.8553511881165806,
+        1.742207302159843e-08,
+        11.520000457644112
+      ],
+      "high": [
+        0.936500012179366,
+        0.20074938778999704,
+        20.60000036735795
+      ],
+      "coverage": 187789,
+      "box_visible_bound": 0.20672138035297394,
+      "padded_hull_bound": 0.1990492194890976
+    },
+    {
+      "face": 349,
+      "min_w": 0.009662826338518782,
+      "max_z": 0.20003719168182646,
+      "unclamped_ratio": 20.701736873060025,
+      "six_corner_min_w": 0.2066558465088979,
+      "six_corner_min_near_distance": 0.006657137544339747,
+      "low": [
+        0.8431116427064308,
+        5.712490644624052e-10,
+        11.520000457702823
+      ],
+      "high": [
+        0.9365000144858283,
+        0.28939441504396624,
+        20.60000036735795
+      ],
+      "coverage": 162514,
+      "box_visible_bound": 0.20672138035297394,
+      "padded_hull_bound": 0.1946423053741455
+    },
+    {
+      "face": 350,
+      "min_w": 0.009662822607123256,
+      "max_z": 0.2000371916825554,
+      "unclamped_ratio": 20.7017448673142,
+      "six_corner_min_w": 0.28742591110099625,
+      "six_corner_min_near_distance": 0.08744298062218045,
+      "low": [
+        0.8431116427064308,
+        -3.24769200701856e-09,
+        11.520000457760641
+      ],
+      "high": [
+        0.936500014311236,
+        0.28939441504396624,
+        20.60000095245057
+      ],
+      "coverage": 114090,
+      "box_visible_bound": 0.20672138035297394,
+      "padded_hull_bound": 0.1899978220462799
+    },
+    {
+      "face": 468,
+      "min_w": 0.1905698886453986,
+      "max_z": 0.20000185136741583,
+      "unclamped_ratio": 1.0495034576971272,
+      "six_corner_min_w": 0.43563653798147284,
+      "six_corner_min_near_distance": 0.23568256054671083,
+      "low": [
+        -1.2035000149917505,
+        1.1968949147597094e-08,
+        11.520000457485686
+      ],
+      "high": [
+        -1.0970437408275115,
+        0.3719019803241756,
+        20.60000036735797
+      ],
+      "coverage": 118,
+      "box_visible_bound": 0.13764001429080963,
+      "padded_hull_bound": 0.13449956476688385
+    },
+    {
+      "face": 469,
+      "min_w": 0.19056989278184466,
+      "max_z": 0.20000185136660775,
+      "unclamped_ratio": 1.0495034349129344,
+      "six_corner_min_w": 0.5411732842726038,
+      "six_corner_min_near_distance": 0.3412399235113022,
+      "low": [
+        -1.2035000203588304,
+        1.6159149185959132e-08,
+        11.520000457751246
+      ],
+      "high": [
+        -1.0970437405294884,
+        0.3719019803241756,
+        20.600000952450127
+      ],
+      "coverage": 105199,
+      "box_visible_bound": 0.13764001429080963,
+      "padded_hull_bound": 0.13763999938964844
+    },
+    {
+      "face": 475,
+      "min_w": 0.16797970214516078,
+      "max_z": 0.20000626437530689,
+      "unclamped_ratio": 1.1906673343157268,
+      "six_corner_min_w": 0.1718641927388762,
+      "six_corner_min_near_distance": -0.02814131279862106,
+      "low": [
+        -0.9365000153332949,
+        -8.549165196263388e-10,
+        11.520000457701137
+      ],
+      "high": [
+        -0.843111642424683,
+        0.28939440767453317,
+        20.6000009524505
+      ],
+      "coverage": 207740,
+      "box_visible_bound": 0.15658628940582275,
+      "padded_hull_bound": 0.15556207299232483
+    },
+    {
+      "face": 476,
+      "min_w": 0.16797970226114933,
+      "max_z": 0.20000626437528427,
+      "unclamped_ratio": 1.1906673334934532,
+      "six_corner_min_w": 0.1718641927388762,
+      "six_corner_min_near_distance": -0.02814131279862106,
+      "low": [
+        -0.9365000153332949,
+        -8.549165196263388e-10,
+        11.520000457701137
+      ],
+      "high": [
+        -0.8431116437284897,
+        0.28939441829165824,
+        20.6000009524505
+      ],
+      "coverage": 108896,
+      "box_visible_bound": 0.15658628940582275,
+      "padded_hull_bound": 0.15535187721252441
+    },
+    {
+      "face": 486,
+      "min_w": 0.04547959338959873,
+      "max_z": 0.20003019485288842,
+      "unclamped_ratio": 4.398250616166892,
+      "six_corner_min_w": 0.049897500894380276,
+      "six_corner_min_near_distance": -0.15013183091735174,
+      "low": [
+        -0.9365000139167284,
+        -0.1267196738836493,
+        11.520000457644112
+      ],
+      "high": [
+        -0.8670763754182164,
+        4.273385695538858e-09,
+        20.60000036735795
+      ],
+      "coverage": 81789,
+      "box_visible_bound": 0.15457849204540253,
+      "padded_hull_bound": 0.15330785512924194
+    },
+    {
+      "face": 488,
+      "min_w": -0.028373617853344357,
+      "max_z": 0.20004462212673674,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.023955710349048864,
+      "six_corner_min_near_distance": -0.22399946943462928,
+      "low": [
+        -0.9365000130938811,
+        -0.20074938778999704,
+        11.520000457644112
+      ],
+      "high": [
+        -0.8553511881165806,
+        -1.2207308112525833e-08,
+        20.60000036735795
+      ],
+      "coverage": 93126,
+      "box_visible_bound": 0.1555543690919876,
+      "padded_hull_bound": 0.15347115695476532
+    },
+    {
+      "face": 489,
+      "min_w": -0.11664712246643272,
+      "max_z": 0.200061866414469,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.11239215575738148,
+      "six_corner_min_near_distance": -0.31245319096128643,
+      "low": [
+        -0.9365000154142004,
+        -0.28939441504396624,
+        11.520000457702823
+      ],
+      "high": [
+        -0.8431116427064308,
+        4.0445611057150466e-08,
+        20.600000952450017
+      ],
+      "coverage": 24236,
+      "box_visible_bound": 0.15658628940582275,
+      "padded_hull_bound": 0.1536266952753067
+    },
+    {
+      "face": 490,
+      "min_w": -0.11664712245733388,
+      "max_z": 0.20006186641446722,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.11239215575738148,
+      "six_corner_min_near_distance": -0.31245319096128643,
+      "low": [
+        -0.9365000155888087,
+        -0.28939441504396624,
+        11.520000457760641
+      ],
+      "high": [
+        -0.8431116427064308,
+        -1.1242739958266439e-08,
+        20.60000095245057
+      ],
+      "coverage": 91610,
+      "box_visible_bound": 0.15658628940582275,
+      "padded_hull_bound": 0.1544150859117508
+    },
+    {
+      "face": 504,
+      "min_w": -0.38461456192816845,
+      "max_z": 0.20011421403166138,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.3809913975706378,
+      "six_corner_min_near_distance": -0.5811049038147429,
+      "low": [
+        -0.890664474429124,
+        -0.5504609048804481,
+        11.520000457751374
+      ],
+      "high": [
+        -0.7171936019300555,
+        -0.2739435653026787,
+        20.60000095245057
+      ],
+      "coverage": 3648,
+      "box_visible_bound": 1.0,
+      "padded_hull_bound": 1.0
+    },
+    {
+      "face": 549,
+      "min_w": 0.1943203399802056,
+      "max_z": 0.20000111871379142,
+      "unclamped_ratio": 1.0292440921910928,
+      "six_corner_min_w": 0.23838072802979826,
+      "six_corner_min_near_distance": 0.03838821654206556,
+      "low": [
+        1.7962403432715532,
+        0.2701637883704587,
+        11.519993442131574
+      ],
+      "high": [
+        1.8476179265230894,
+        0.342169413438915,
+        20.764999858132548
+      ],
+      "coverage": 178285,
+      "box_visible_bound": 0.17568756639957428,
+      "padded_hull_bound": 0.17354512214660645
+    },
+    {
+      "face": 550,
+      "min_w": 0.19432034446909996,
+      "max_z": 0.2000011187129145,
+      "unclamped_ratio": 1.0292440684107727,
+      "six_corner_min_w": 0.2651534341011017,
+      "six_corner_min_near_distance": 0.06516615267927542,
+      "low": [
+        1.7962403433401697,
+        0.2701637884467249,
+        11.519993470180426
+      ],
+      "high": [
+        1.8476179265230894,
+        0.36714047060514376,
+        23.999999615977078
+      ],
+      "coverage": 133124,
+      "box_visible_bound": 0.17568756639957428,
+      "padded_hull_bound": 0.17224767804145813
+    },
+    {
+      "face": 553,
+      "min_w": -0.4036878911914479,
+      "max_z": 0.2001179400187905,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.4036500907235798,
+      "six_corner_min_near_distance": -0.6037680233580238,
+      "low": [
+        1.7962403434172236,
+        -0.33786136729950206,
+        11.519993442048627
+      ],
+      "high": [
+        1.8476168536394835,
+        -0.2701637899636703,
+        20.765000592862172
+      ],
+      "coverage": 199795,
+      "box_visible_bound": 0.32049545645713806,
+      "padded_hull_bound": 0.31480738520622253
+    },
+    {
+      "face": 554,
+      "min_w": -0.4328435668058779,
+      "max_z": 0.2001236355993793,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.4328141577950413,
+      "six_corner_min_near_distance": -0.6329377876493508,
+      "low": [
+        1.7962403433769942,
+        -0.36750537634742353,
+        11.519993233337205
+      ],
+      "high": [
+        1.8476168534500237,
+        -0.27016378651026274,
+        20.764999758397146
+      ],
+      "coverage": 199650,
+      "box_visible_bound": 0.32049545645713806,
+      "padded_hull_bound": 0.3178817331790924
+    },
+    {
+      "face": 555,
+      "min_w": -0.43283994858508046,
+      "max_z": 0.20012363489255747,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.4328141713797866,
+      "six_corner_min_near_distance": -0.6329378012367499,
+      "low": [
+        1.7962403433769942,
+        -0.36750538260800353,
+        11.519993186356574
+      ],
+      "high": [
+        1.8475760293593375,
+        -0.27016378651026274,
+        24.0000002081595
+      ],
+      "coverage": 184840,
+      "box_visible_bound": 0.32049545645713806,
+      "padded_hull_bound": 0.32026657462120056
+    },
+    {
+      "face": 559,
+      "min_w": -0.3811450982265042,
+      "max_z": 0.2001135362692178,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.3811133224618908,
+      "six_corner_min_near_distance": -0.5812268525236919,
+      "low": [
+        1.7962403433454786,
+        -0.31494147767776737,
+        11.519993413925814
+      ],
+      "high": [
+        1.8476112509518863,
+        0.023564977571368217,
+        20.764999858135603
+      ],
+      "coverage": 216874,
+      "box_visible_bound": 0.32049545645713806,
+      "padded_hull_bound": 0.311877578496933
+    },
+    {
+      "face": 561,
+      "min_w": -0.33711304471475134,
+      "max_z": 0.20010493457832976,
+      "unclamped_ratio": null,
+      "six_corner_min_w": -0.048189559867977794,
+      "six_corner_min_near_distance": -0.24823805305171587,
+      "low": [
+        1.7962403432557903,
+        -0.2701718733095585,
+        11.519993413925814
+      ],
+      "high": [
+        1.8476112509518863,
+        0.07707895338535309,
+        20.764999858135603
+      ],
+      "coverage": 324232,
+      "box_visible_bound": 0.30619898438453674,
+      "padded_hull_bound": 0.27100953459739685
+    },
+    {
+      "face": 562,
+      "min_w": -0.3371130654995492,
+      "max_z": 0.2001049345823901,
+      "unclamped_ratio": null,
+      "six_corner_min_w": 0.004442808514834917,
+      "six_corner_min_near_distance": -0.19559540290079502,
+      "low": [
+        1.7962403433454786,
+        -0.27017189444250833,
+        11.519993413925814
+      ],
+      "high": [
+        1.8476112509518863,
+        0.11911862393071715,
+        20.764999858135603
+      ],
+      "coverage": 303576,
+      "box_visible_bound": 0.30619898438453674,
+      "padded_hull_bound": 0.26525363326072693
+    },
+    {
+      "face": 564,
+      "min_w": -0.3371130543491171,
+      "max_z": 0.20010493458021186,
+      "unclamped_ratio": null,
+      "six_corner_min_w": 0.04578990054606713,
+      "six_corner_min_near_distance": -0.15424023368768264,
+      "low": [
+        1.7962403433454786,
+        -0.2701718831053027,
+        11.519993413925814
+      ],
+      "high": [
+        1.8476112509518863,
+        0.17527028918266296,
+        20.764999858135603
+      ],
+      "coverage": 342404,
+      "box_visible_bound": 0.30619898438453674,
+      "padded_hull_bound": 0.2608760893344879
+    },
+    {
+      "face": 565,
+      "min_w": -0.33711307844391447,
+      "max_z": 0.2001049345849188,
+      "unclamped_ratio": null,
+      "six_corner_min_w": 0.1010165042897262,
+      "six_corner_min_near_distance": -0.09900284139031529,
+      "low": [
+        1.7962403433454786,
+        -0.2701719076036956,
+        11.519993413925814
+      ],
+      "high": [
+        1.8476112509518863,
+        0.27017188729204694,
+        20.764999858135603
+      ],
+      "coverage": 295579,
+      "box_visible_bound": 0.30619898438453674,
+      "padded_hull_bound": 0.25521737337112427
+    },
+    {
+      "face": 566,
+      "min_w": 0.10099074047697654,
+      "max_z": 0.20001935071301935,
+      "unclamped_ratio": 1.9805811867081415,
+      "six_corner_min_w": 0.1010165042897262,
+      "six_corner_min_near_distance": -0.09900284139031529,
+      "low": [
+        1.7962403432557903,
+        0.17527028918266296,
+        11.519993413925814
+      ],
+      "high": [
+        1.8476112509518863,
+        0.2701718975531309,
+        20.765000592859117
+      ],
+      "coverage": 273935,
+      "box_visible_bound": 0.1899445801973343,
+      "padded_hull_bound": 0.18045228719711304
+    },
+    {
+      "face": 568,
+      "min_w": 0.14437580016684914,
+      "max_z": 0.200010875412804,
+      "unclamped_ratio": 1.3853590348220388,
+      "six_corner_min_w": 0.1444015639795988,
+      "six_corner_min_near_distance": -0.05560930640022732,
+      "low": [
+        1.7962403432557903,
+        0.21938206237734903,
+        11.519993413925814
+      ],
+      "high": [
+        1.8476112509518863,
+        0.27289602160453796,
+        20.764999858132548
+      ],
+      "coverage": 294519,
+      "box_visible_bound": 0.18304000794887543,
+      "padded_hull_bound": 0.17822429537773132
+    },
+    {
+      "face": 569,
+      "min_w": 0.19432093425561248,
+      "max_z": 0.2000011185976993,
+      "unclamped_ratio": 1.0292409439734118,
+      "six_corner_min_w": 0.1970339146463067,
+      "six_corner_min_near_distance": -0.0029666739688721244,
+      "low": [
+        1.7962403432557903,
+        0.27016379329694445,
+        11.519993413925814
+      ],
+      "high": [
+        1.8476112509518863,
+        0.31494153859254914,
+        20.764999858132548
+      ],
+      "coverage": 226020,
+      "box_visible_bound": 0.17568747699260712,
+      "padded_hull_bound": 0.17557938396930695
+    }
+  ],
+  "proof_scope": [
+    "Box-visible bounds use the same 2e-5-expanded AABB and camera-frustum intersection. Nonnegative constraint combinations, bounded residuals and an explicit rounding allowance certify z-B*w <= 0 over each nonempty candidate enclosure.",
+    "Candidate bounds are rounded upward and retain the existing 1e-5 depth bias. Empty or uncertified results keep the original bound; no proxy was culled.",
+    "Padded hull is a separate current-model-4 candidate: barycentric tolerance 2e-6, maximum configured Newton residual tolerance, extra 2e-5 padding, accepted base fills and convex shell morph must be included.",
+    "Recorded winners are an independent capture check, not a proof about overwritten/invisible hits; the enclosure certificates address the wider geometric domain.",
+    "This is float64 offline analysis of captured inputs. No replacement float32 shader, runtime visual behavior, future camera/material configurations or GPU speedup was tested.",
+    "Eligibility assumes the standard Direct3D 2x sample pattern and does not simulate evolving in-draw depth, hardware Hi-Z or helper lanes.",
+    "The old 182.09/187.17 ms normal-clock hit pass and the 16.88M counter profile are unchanged; model count reductions are not measured invocation/time reductions."
+  ],
+  "baseline_verification": {
+    "native_raw_files_unchanged": 24,
+    "previous_fingerprints_unchanged": {
+      "scripts/GitDependencies.json": "627fc62526d0dc10f738dcdc7a1ceb7c8f1973feb87f6723f4807bf28a5c2fdc",
+      "Levels/SilPOMTowerBenchmark/SilPOMTowerBenchmark.prefab": "a0894326d0eb68b7328949b1f1829a8021b7293ce16a567e0c2ea8c9148f6e7b",
+      "Levels/SilPOMTowerBenchmark/scene.json": "022b57a423ad8f35f7fcc5a2435cbc3f87fa0c4f0536307621a2bfc6f151f9e6",
+      "Gems/silpom/Tests/Reference/Ryzen5700GMain2f818d8-20261114.json": "d38226389baf34926f8bbbb7429a236db42a5b11c11af47c9b9c7f180c7d7c17",
+      "Gems/silpom/Docs/TowerBenchmarkRyzen5700G-2f818d8.md": "ca64d5b0f010eb06504e1182706357cf7e0b37ad316a9935fa91bc5e21d00bf0"
+    },
+    "no_shader_or_runtime_source_diff_from_start": true,
+    "developer_mode_not_requested": true
+  },
+  "local_evidence_root": "D:\\diversion\\TG\\TGProject\\user\\silpom-depth-bounds-20261114",
+  "analysis_directory": "D:\\diversion\\TG\\TGProject\\user\\silpom-depth-bounds-20261114\\analysis-final",
+  "raw_files": [
+    {
+      "file": "captured-inputs\\depth-bound-probe.json",
+      "bytes": 2266118,
+      "sha256": "e4a9644d121a9625440ca3cdc9d83c7e4d1a37223163c9655d2e68a3426d9e56"
+    },
+    {
+      "file": "analysis-final\\reconstruction.json",
+      "bytes": 39413,
+      "sha256": "78fe5d769e4c8d134d6bbc077bda4fbb8767dd538bebf4fd1cb5563f11856981"
+    },
+    {
+      "file": "analysis-final\\tight-bounds.json",
+      "bytes": 765103,
+      "sha256": "42a576b3a41e0000bb25482a198995952a459908c49372f2cb16c4de6381fb6b"
+    },
+    {
+      "file": "analysis-final\\eligibility.json",
+      "bytes": 1607,
+      "sha256": "40745b24e0ab16ac27a1b83eafd8f07c1012e5b6521317893ca59bc6f469dcdd"
+    },
+    {
+      "file": "analysis-final\\geometry.npz",
+      "bytes": 406978,
+      "sha256": "e85c5887cf2b63c7b157dc5e39b35e97240c600e252f0f11e06da695ec3219be"
+    },
+    {
+      "file": "analysis-final\\candidate-bounds.npz",
+      "bytes": 28990,
+      "sha256": "7f0b21f39f273ee20fc83e762e559379b45e68af149d9f30db3f5b020fb267c6"
+    },
+    {
+      "file": "analysis-final\\face-308-frustum-bound.png",
+      "bytes": 232285,
+      "sha256": "dc3545145a389409a5e21e884ef20390d65259c9f1731b8a4d14ac11f843380b"
+    },
+    {
+      "file": "captured-inputs\\root10-descriptor217.bin",
+      "bytes": 82224,
+      "sha256": "c4afe8950b4d6e8c24a7598bfebb934379cbc2cceeb438166d85f91174c63359"
+    },
+    {
+      "file": "captured-inputs\\root10-descriptor781.bin",
+      "bytes": 16128,
+      "sha256": "285358f4747c3ecb9ce2937b33eaeecbb325185e1a2d37b0328432f1769b0291"
+    },
+    {
+      "file": "captured-inputs\\ViewSrg_SRGConstantBuffer.bin",
+      "bytes": 608,
+      "sha256": "792045777b83d4ace24139c9a132ba4666b62c32c04b8e07f8be6356b0cbc30a"
+    },
+    {
+      "file": "captured-inputs\\ObjectSrg_SRGConstantBuffer.bin",
+      "bytes": 164,
+      "sha256": "c9a1cb3f5ea5aa4c019c6d6d545b4e305bbf902bc7bca69cc7453ef796549fde"
+    },
+    {
+      "file": "captured-inputs\\hit-records-sample-0.bin",
+      "bytes": 14745600,
+      "sha256": "064312599db68082866173429aeea7add5b2262239b293b119a0ac0c413606b1"
+    },
+    {
+      "file": "captured-inputs\\hit-records-sample-1.bin",
+      "bytes": 14745600,
+      "sha256": "713983b5cbdfe9a55940c338f2c221d67707fc893d64fd81a845400030a8ae8f"
+    },
+    {
+      "file": "certificate-verification.json",
+      "bytes": 369,
+      "sha256": "cc559c6f07ba63129a2dfa7a3e28c479b71a2c4e932ab0cd68d242b23b227aed"
+    }
+  ],
+  "independent_certificate_verification": {
+    "box_visible": {
+      "dual_bounds_verified": 168,
+      "near_plane_bound_one": 3,
+      "empty_intersections_verified": 1,
+      "maximum_upper": -2.2312497802712272e-06
+    },
+    "padded_hull_visible": {
+      "dual_bounds_verified": 170,
+      "near_plane_bound_one": 1,
+      "empty_intersections_verified": 1,
+      "maximum_upper": -2.6740943230418305e-06
+    }
+  }
+}
