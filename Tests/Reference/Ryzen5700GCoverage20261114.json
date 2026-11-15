@@ -1,0 +1,623 @@
+{
+  "scope": "CPU raster-footprint reconstruction with pixel-center top-left rule and 8-bit subpixel snapping. Bound comparisons use recorded before/after depth. Does not model in-draw depth evolution, hardware Hi-Z or helper lanes.",
+  "capture_sha256": "1d3609c2e173a7e4bd52e1d584d1cec53b79613c0bdcc70a8bfefdfd20de89e8",
+  "controls": {
+    "Anti-aliasing": 0,
+    "Lighting estimator": 5,
+    "Height-derived normals (off = cheaper)": true,
+    "Level 2 predictor (experimental)": true,
+    "Gather validation (may be cheaper)": true,
+    "R16 height textures (less GPU memory)": true
+  },
+  "event": 464,
+  "before_event": 460,
+  "width": 1280,
+  "height": 720,
+  "proxies": 571,
+  "vertices": 2284,
+  "triangles": 1142,
+  "unique_authored_face_indices": 571,
+  "nonempty_proxies": 172,
+  "zero_coverage_proxies": 399,
+  "sum_proxy_pixel_coverage": 11365822,
+  "viewport_equivalents": 12.332706163194445,
+  "unique_pixels_covered": 921600,
+  "max_overlaps": 36,
+  "overlap_p50": 12.0,
+  "overlap_p95": 26.0,
+  "full_viewport_proxies": 0,
+  "half_viewport_proxies": 0,
+  "nearest_depth_one_proxies": 57,
+  "nearest_depth_one_coverage": 6224491,
+  "eligible_against_before_depth": 11339828,
+  "eligible_against_final_depth": 7219461,
+  "depth_before_nonzero_pixels": 402369,
+  "depth_after_nonzero_pixels": 921141,
+  "unique_pixels_depth_changed": 902414,
+  "depth_before_range": [
+    0.0,
+    0.15264619886875153
+  ],
+  "depth_after_range": [
+    0.0,
+    0.9999991655349731
+  ],
+  "largest_proxies": [
+    {
+      "face": 301,
+      "proxy": 301,
+      "pixels": 391174,
+      "viewport_equivalents": 0.4244509548611111,
+      "depth": 1.0,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 391174,
+      "eligible_against_final_depth": 391174,
+      "nearest_depth_one": true,
+      "screen_min": [
+        -319.30450439453125,
+        -1869.9583625793457
+      ],
+      "screen_max": [
+        772.8538131713867,
+        2134.2763710021973
+      ]
+    },
+    {
+      "face": 308,
+      "proxy": 308,
+      "pixels": 299761,
+      "viewport_equivalents": 0.3252615017361111,
+      "depth": 1.0,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 299761,
+      "eligible_against_final_depth": 299761,
+      "nearest_depth_one": true,
+      "screen_min": [
+        -349.7431945800781,
+        -1152.363338470459
+      ],
+      "screen_max": [
+        577.7663803100586,
+        5939.521064758301
+      ]
+    },
+    {
+      "face": 5,
+      "proxy": 5,
+      "pixels": 220693,
+      "viewport_equivalents": 0.23946723090277777,
+      "depth": 0.713960587978363,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 220693,
+      "eligible_against_final_depth": 220693,
+      "nearest_depth_one": false,
+      "screen_min": [
+        551.8954658508301,
+        -791.8341064453125
+      ],
+      "screen_max": [
+        2070.7846069335938,
+        11573.771896362305
+      ]
+    },
+    {
+      "face": 315,
+      "proxy": 315,
+      "pixels": 216000,
+      "viewport_equivalents": 0.234375,
+      "depth": 1.0,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 216000,
+      "eligible_against_final_depth": 216000,
+      "nearest_depth_one": true,
+      "screen_min": [
+        514.8109722137451,
+        0.0
+      ],
+      "screen_max": [
+        815.4427719116211,
+        720.0
+      ]
+    },
+    {
+      "face": 322,
+      "proxy": 322,
+      "pixels": 178071,
+      "viewport_equivalents": 0.19321940104166666,
+      "depth": 1.0,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 178071,
+      "eligible_against_final_depth": 178071,
+      "nearest_depth_one": true,
+      "screen_min": [
+        160.71163177490234,
+        -825.5937194824219
+      ],
+      "screen_max": [
+        641.828727722168,
+        9443.322372436523
+      ]
+    },
+    {
+      "face": 564,
+      "proxy": 564,
+      "pixels": 171202,
+      "viewport_equivalents": 0.1857660590277778,
+      "depth": 1.0,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 171202,
+      "eligible_against_final_depth": 171202,
+      "nearest_depth_one": true,
+      "screen_min": [
+        909.0675735473633,
+        -661.1377429962158
+      ],
+      "screen_max": [
+        2789.895477294922,
+        14247.762451171875
+      ]
+    },
+    {
+      "face": 561,
+      "proxy": 561,
+      "pixels": 162114,
+      "viewport_equivalents": 0.17590494791666667,
+      "depth": 1.0,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 162114,
+      "eligible_against_final_depth": 162114,
+      "nearest_depth_one": true,
+      "screen_min": [
+        908.8797569274902,
+        -661.2271785736084
+      ],
+      "screen_max": [
+        2779.1265869140625,
+        12519.901428222656
+      ]
+    },
+    {
+      "face": 562,
+      "proxy": 562,
+      "pixels": 151787,
+      "viewport_equivalents": 0.1646994357638889,
+      "depth": 1.0,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 151787,
+      "eligible_against_final_depth": 151787,
+      "nearest_depth_one": true,
+      "screen_min": [
+        908.9598274230957,
+        -660.3117084503174
+      ],
+      "screen_max": [
+        2760.08056640625,
+        13221.563873291016
+      ]
+    },
+    {
+      "face": 565,
+      "proxy": 565,
+      "pixels": 147789,
+      "viewport_equivalents": 0.160361328125,
+      "depth": 1.0,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 147789,
+      "eligible_against_final_depth": 147789,
+      "nearest_depth_one": true,
+      "screen_min": [
+        832.2673225402832,
+        -657.2392272949219
+      ],
+      "screen_max": [
+        2754.891815185547,
+        14948.628387451172
+      ]
+    },
+    {
+      "face": 568,
+      "proxy": 568,
+      "pixels": 147260,
+      "viewport_equivalents": 0.1597873263888889,
+      "depth": 1.0,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 147260,
+      "eligible_against_final_depth": 147260,
+      "nearest_depth_one": true,
+      "screen_min": [
+        799.0700531005859,
+        -307.87506580352783
+      ],
+      "screen_max": [
+        2753.18115234375,
+        16291.557312011719
+      ]
+    },
+    {
+      "face": 297,
+      "proxy": 297,
+      "pixels": 141026,
+      "viewport_equivalents": 0.15302300347222222,
+      "depth": 1.0,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 141026,
+      "eligible_against_final_depth": 141026,
+      "nearest_depth_one": true,
+      "screen_min": [
+        400.4246139526367,
+        -1119.3890762329102
+      ],
+      "screen_max": [
+        721.8859577178955,
+        3325.8389282226562
+      ]
+    },
+    {
+      "face": 566,
+      "proxy": 566,
+      "pixels": 136966,
+      "viewport_equivalents": 0.14861762152777777,
+      "depth": 1.0,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 136966,
+      "eligible_against_final_depth": 136966,
+      "nearest_depth_one": true,
+      "screen_min": [
+        798.1241798400879,
+        -307.47148990631104
+      ],
+      "screen_max": [
+        2740.0057983398438,
+        15543.134307861328
+      ]
+    },
+    {
+      "face": 318,
+      "proxy": 318,
+      "pixels": 136641,
+      "viewport_equivalents": 0.14826497395833332,
+      "depth": 1.0,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 136641,
+      "eligible_against_final_depth": 136641,
+      "nearest_depth_one": true,
+      "screen_min": [
+        -39.31732177734375,
+        -827.6231861114502
+      ],
+      "screen_max": [
+        554.7532081604004,
+        6796.651382446289
+      ]
+    },
+    {
+      "face": 311,
+      "proxy": 311,
+      "pixels": 136311,
+      "viewport_equivalents": 0.14790690104166668,
+      "depth": 1.0,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 136311,
+      "eligible_against_final_depth": 136311,
+      "nearest_depth_one": true,
+      "screen_min": [
+        651.0433197021484,
+        -653.8918304443359
+      ],
+      "screen_max": [
+        1018.7762832641602,
+        7885.46516418457
+      ]
+    },
+    {
+      "face": 304,
+      "proxy": 304,
+      "pixels": 124682,
+      "viewport_equivalents": 0.13528862847222223,
+      "depth": 1.0,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 124682,
+      "eligible_against_final_depth": 124682,
+      "nearest_depth_one": true,
+      "screen_min": [
+        -567.5128936767578,
+        -1155.3909301757812
+      ],
+      "screen_max": [
+        423.9991760253906,
+        3772.0740509033203
+      ]
+    },
+    {
+      "face": 114,
+      "proxy": 114,
+      "pixels": 124076,
+      "viewport_equivalents": 0.13463107638888888,
+      "depth": 0.226874440908432,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 124076,
+      "eligible_against_final_depth": 381,
+      "nearest_depth_one": false,
+      "screen_min": [
+        -731.11572265625,
+        -450.56751251220703
+      ],
+      "screen_max": [
+        310.7545471191406,
+        3970.459327697754
+      ]
+    },
+    {
+      "face": 342,
+      "proxy": 342,
+      "pixels": 123046,
+      "viewport_equivalents": 0.1335134548611111,
+      "depth": 1.0,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 123046,
+      "eligible_against_final_depth": 123046,
+      "nearest_depth_one": true,
+      "screen_min": [
+        706.5445899963379,
+        -212.464599609375
+      ],
+      "screen_max": [
+        1159.2115020751953,
+        15017.612915039062
+      ]
+    },
+    {
+      "face": 321,
+      "proxy": 321,
+      "pixels": 122664,
+      "viewport_equivalents": 0.13309895833333332,
+      "depth": 1.0,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 122664,
+      "eligible_against_final_depth": 122664,
+      "nearest_depth_one": true,
+      "screen_min": [
+        105.94459533691406,
+        -826.1168575286865
+      ],
+      "screen_max": [
+        554.7530555725098,
+        8121.76872253418
+      ]
+    },
+    {
+      "face": 332,
+      "proxy": 332,
+      "pixels": 118611,
+      "viewport_equivalents": 0.128701171875,
+      "depth": 1.0,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 118611,
+      "eligible_against_final_depth": 118611,
+      "nearest_depth_one": true,
+      "screen_min": [
+        280.7783508300781,
+        -558.0845260620117
+      ],
+      "screen_max": [
+        635.7566070556641,
+        10741.184692382812
+      ]
+    },
+    {
+      "face": 341,
+      "proxy": 341,
+      "pixels": 116997,
+      "viewport_equivalents": 0.12694986979166667,
+      "depth": 1.0,
+      "depth_spread": 0.0,
+      "eligible_against_before_depth": 116997,
+      "eligible_against_final_depth": 116997,
+      "nearest_depth_one": true,
+      "screen_min": [
+        706.5446090698242,
+        -212.255859375
+      ],
+      "screen_max": [
+        1121.6531372070312,
+        16183.628997802734
+      ]
+    }
+  ],
+  "date_local": "2026-11-14",
+  "baseline_commit": "8efd8e95159fd3633cf085d2f8ce44f77c526ff6",
+  "renderdoc_profile_commit": "28845c99cc5cdb957487355f52529c3165b8f78e",
+  "branch": "codex/coverage-ryzen-5700g",
+  "gpu": "AMD Radeon(TM) Graphics",
+  "driver": "31.0.21923.11000",
+  "backend": "DX12",
+  "shader_target": "6_2",
+  "pixel_shader": "ResourceId::3172",
+  "vertex_shader": "ResourceId::3171",
+  "measured_ps_invocations": [
+    8432359,
+    8432775,
+    8432615
+  ],
+  "measured_ps_invocations_median": 8432615,
+  "measured_viewport_equivalents": 9.14997287326389,
+  "measured_samples_passed": [
+    1392377,
+    1392377,
+    1392377
+  ],
+  "measured_vs_invocations": [
+    2284,
+    2284,
+    2284
+  ],
+  "rasterizer": {
+    "sampleMask": 4294967295,
+    "scissors": [
+      {
+        "enabled": true,
+        "height": 720,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      }
+    ],
+    "state": {
+      "baseShadingRate": [
+        1,
+        1
+      ],
+      "conservativeRasterization": "ConservativeRaster.Disabled",
+      "cullMode": "CullMode.NoCull",
+      "depthBias": 0.0,
+      "depthBiasClamp": 0.0,
+      "depthClip": true,
+      "fillMode": "FillMode.Solid",
+      "forcedSampleCount": 0,
+      "frontCCW": true,
+      "lineRasterMode": "LineRaster.Bresenham",
+      "shadingRateCombiners": [
+        0,
+        0
+      ],
+      "shadingRateImage": "ResourceId::0",
+      "slopeScaledDepthBias": 0.0
+    },
+    "viewports": [
+      {
+        "enabled": true,
+        "height": 720.0,
+        "maxDepth": 1.0,
+        "minDepth": 0.0,
+        "width": 1280.0,
+        "x": 0.0,
+        "y": 0.0
+      }
+    ]
+  },
+  "depth_stencil_state": {
+    "backFace": {
+      "compareMask": 255,
+      "depthFailOperation": "StencilOperation.Keep",
+      "failOperation": "StencilOperation.Keep",
+      "function": "CompareFunction.AlwaysTrue",
+      "passOperation": "StencilOperation.Keep",
+      "reference": 131,
+      "writeMask": 255
+    },
+    "depthBoundsEnable": false,
+    "depthEnable": true,
+    "depthFunction": "CompareFunction.GreaterEqual",
+    "depthWrites": true,
+    "frontFace": {
+      "compareMask": 255,
+      "depthFailOperation": "StencilOperation.Keep",
+      "failOperation": "StencilOperation.Keep",
+      "function": "CompareFunction.AlwaysTrue",
+      "passOperation": "StencilOperation.Keep",
+      "reference": 131,
+      "writeMask": 255
+    },
+    "maxDepthBounds": 1.0,
+    "minDepthBounds": 0.0,
+    "stencilEnable": false
+  },
+  "depth_texture": {
+    "arraysize": 1,
+    "byteSize": 5308416,
+    "creationFlags": 5,
+    "cubemap": false,
+    "depth": 1,
+    "dimension": 2,
+    "format": {
+      "compByteWidth": 0,
+      "compCount": 2,
+      "compType": "CompType.Typeless",
+      "type": "ResourceFormatType.D32S8"
+    },
+    "height": 720,
+    "memory": "ResourceId::2229",
+    "memoryOffset": 720896,
+    "mips": 1,
+    "msQual": 0,
+    "msSamp": 1,
+    "resourceId": "ResourceId::4964",
+    "type": "TextureType.Texture2D",
+    "width": 1280
+  },
+  "action": {
+    "eventId": 464,
+    "flags": 196610,
+    "numIndices": 3426,
+    "numInstances": 1,
+    "indexOffset": 0,
+    "vertexOffset": 0,
+    "baseVertex": 0,
+    "instanceOffset": 0,
+    "drawIndex": 0
+  },
+  "pixel_shader_output_signature": [
+    {
+      "NoIndex": 4294967295,
+      "channelUsedMask": 0,
+      "compCount": 4,
+      "needSemanticIndex": false,
+      "perPrimitiveRate": false,
+      "regChannelMask": 15,
+      "regIndex": 0,
+      "semanticIdxName": "SV_Target",
+      "semanticIndex": 0,
+      "semanticName": "SV_Target",
+      "stream": 0,
+      "systemValue": "ShaderBuiltin.ColorOutput",
+      "varName": "",
+      "varType": "VarType.UInt"
+    },
+    {
+      "NoIndex": 4294967295,
+      "channelUsedMask": 14,
+      "compCount": 1,
+      "needSemanticIndex": false,
+      "perPrimitiveRate": false,
+      "regChannelMask": 1,
+      "regIndex": 4294967295,
+      "semanticIdxName": "SV_DepthLessEqual",
+      "semanticIndex": 0,
+      "semanticName": "SV_DepthLessEqual",
+      "stream": 0,
+      "systemValue": "ShaderBuiltin.DepthOutputLessEqual",
+      "varName": "",
+      "varType": "VarType.Float"
+    }
+  ],
+  "diagnosis": "Per-authored-face proxy overlap multiplied by conservative nearest-depth bounds that admit many fragments before actual relief-hit validation and depth resolution.",
+  "depth_one_scope": "57 contributing proxies have exact raster z=1; their 6,224,491 pixel positions remain eligible under reverse-Z GreaterEqual even against the completed draw depth.",
+  "limits": "CPU eligibility counts use 8-bit snapped pixel-center rasterization. They do not reproduce in-draw ordering, hierarchical/quad depth rejection, helper lanes, miss-discard counts or per-function costs. They are not a replacement for the measured PS counter.",
+  "counter_source": "D:\\diversion\\TG\\TGProject\\user\\silpom-profile-ryzen-5700g-20261114\\renderdoc-investigation-20261114-184351\\integrated-profile\\profile.json",
+  "counter_source_sha256": "d02a87ca6457c723f61226036803a20028602bde3132042b5f93bb9b6592ca37",
+  "raw_evidence": "D:\\diversion\\TG\\TGProject\\user\\silpom-profile-ryzen-5700g-20261114\\coverage-investigation-20261114-194118",
+  "developer_mode_changed": false,
+  "shader_optimization": false,
+  "raw_hashes": {
+    "coverage-probe.json": {
+      "sha256": "f4716f907cd4b0a2f8eccb899294bab26d89baa8ce5e4b4e268724ef3273af04",
+      "bytes": 21304
+    },
+    "postvs-vertices.bin": {
+      "sha256": "445b785a6383a406327a64b7ee0e28da2b12367cf3325cb3fcd98ab02b29c79e",
+      "bytes": 301488
+    },
+    "postvs-indices.bin": {
+      "sha256": "efea4843c15d7a78e86e6a0f0cad9f599790f99773026ffcb8114da4295608e8",
+      "bytes": 13704
+    },
+    "depth-before.bin": {
+      "sha256": "1684f68a1311e0997fe0f614514d5bcce5fd2dea5708e6395a3bff606ae4c378",
+      "bytes": 7372800
+    },
+    "depth-after.bin": {
+      "sha256": "acd75d500bc57f6d9a4f59b583b843fb48e6c320c3fd5b4a1f189cc245221521",
+      "bytes": 7372800
+    }
+  }
+}
