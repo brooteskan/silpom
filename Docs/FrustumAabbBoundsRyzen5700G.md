@@ -9,7 +9,8 @@ interior comparisons. Height-derived sampling/normals remain **on**.
 
 Implementation: `e4dfed22c37280213b8481e0a71943859f800bff`, on
 `codex/frustum-aabb-ryzen-5700g`, branched from the preserved investigation
-`3623e7d592ee2074415323927071f69adaf0fb61`. Nothing was pushed or merged.
+`3623e7d592ee2074415323927071f69adaf0fb61`. The feature branch is published for
+other-PC testing; main and TG's dependency pin remain unchanged.
 The [compact measurements and provenance](../Tests/Reference/Ryzen5700GFrustumAabb20261115.json)
 include per-repeat statistics, raw timestamp hashes and validation details.
 
@@ -27,10 +28,14 @@ three-dimensional intersection. The search considers all 220 plane triples,
 including newly introduced intersection vertices, rather than retaining only
 original box corners. Reverse-Z depth is maximized over this enclosure.
 
-The search proposes a depth; a separate nonnegative dual combination certifies
-`Z - bound*W <= 0` over the **whole parent unit box**. Its support function
-bounds any residual gradient. Therefore a skipped, nearly singular triple
-cannot alone authorize an unsafe result. Frustum planes expand outward using
+The search proposes a depth. A separate certificate bounds the **augmented**
+expression `R(q) = Z(q) - bound*W(q) + sum(weights[i]*g[i](q))` over the whole
+parent unit box, using its support function to bound the residual gradient.
+On the frustum intersection, `g[i](q) >= 0` and the weights are nonnegative, so
+`Z - bound*W <= R <= 0`. The tighter depth inequality applies to that
+**intersection**, not to offscreen portions of the unclipped box. Therefore a
+skipped, nearly singular triple cannot alone authorize an unsafe result.
+Frustum planes expand outward using
 an absolute-product projection-error allowance (32 float epsilons plus 1e-7).
 The certificate adds another arithmetic allowance (64 epsilons times its
 absolute coefficient magnitude, plus 1e-7). The composed and two-stage hit
@@ -44,8 +49,15 @@ float32 proposal against an independent float64 half-space intersection and
 re-evaluates accepted certificates in float64. **860 cases pass**: 800 randomized
 boxes/transforms (including thin boxes, mirrored/scaled objects and substantial
 translation cancellation), three explicit near/empty cases, and the 57 captured
-boxes. This tests numerical behavior; CPU evaluation does not reproduce every
-DXIL FMA schedule or exhaust every possible camera/material/transform.
+boxes. The review correction explicitly promotes rows, bound, weights, planes
+and error operands to float64 **before arithmetic**, including both products
+that previously retained float32 precision through NumPy scalar promotion.
+The corrected recheck retains all 245 accepted certificates; its minimum
+float64 safety slack is **7.07815e-6**. This is **CPU-only** verification: the
+production shader remains unchanged and float32, including `precise float4`.
+These engineering error allowances and numerical tests do not constitute an
+exhaustive floating-point proof over every compiler/camera/material/transform.
+CPU evaluation does not reproduce every DXIL FMA schedule.
 
 Actual GPU post-VS output from a fresh command-line RenderDoc capture confirms
 **53 of the 57** original depth-1 proxies tighten. Faces **299, 300 and 301**
@@ -80,7 +92,16 @@ records and R32 sample-depth atlases, never a floating-point MSAA resolve:
 | Upper glancing | 1,806,350 | 0 | 0 |
 
 All **5,471,941** valid records match, including face/UV/flags/depth. The entire
-hit/depth atlas payloads also compare bit-identically. Exact backup record/depth
+hit/depth atlas payloads also compare bit-identically: the updated comparison
+retains matching SHA256 hashes and equality results under each view's
+`atlas_payload_identity`, over all four atlas columns including unused ones.
+Image equality now gates the overall result for **every** view. Eight regression
+tests cover one-pixel changes in all five original images, real sample planes,
+payload evidence and float64 cancellation cases. A real CLI negative fixture
+with one changed exterior pixel and unchanged atlas inputs returns **exit 1**.
+Full-payload identity is additional diagnostic evidence; semantic sample gates
+cover real sample planes and valid winners, so undefined unused texels are not
+treated as visible output. Exact backup record/depth
 checks have zero mismatches (17 / 34,372 / 58,948 backup samples respectively).
 Exterior, lower facing, both glancing views and Ctrl-G have **zero changed image
 pixels**. Manual inspection confirms visible tower surfaces and an illuminated
@@ -202,6 +223,58 @@ healthy counter datasets. Its `finally` restored the prior Windows setting;
 an independent registry check confirms Developer Mode's value is **absent/off**.
 No further administrator prompt or counter rerun was needed to recover data.
 
+## Review follow-up and affected-route coverage
+
+The three review findings are corrected without changing production shader
+source or adding GPU float64. The image gate now rejects differences in every
+view; the CPU certificate recheck promotes every operand before arithmetic;
+the augmented-expression proof and full-payload evidence are explicit above.
+
+Matched runs also compare the original-bound shader reference at `18c33bb`
+with the unchanged `e4dfed2` shader implementation at **1x, 2x and 4x**, using
+the same source engine, DX12 SM 6.2, Radeon driver, 1280x720 viewport, saved
+scene/lighting/estimators and runtime height-derived sampling **on**. Each mode
+uses a separate startup sample-count override; Current default stays selected.
+No recovery/quality controls were changed. This validates the startup sample
+routes and Ctrl-G, not a live AA-selector transition or other scenes/materials.
+
+The committed [camera path](../Tests/Reference/TowerBenchmarkNearPlanePath.json)
+translates the upper-glancing camera 0.70m along its forward vector through
+29 rendered steps. Eight stops have exact sample readbacks and images. The
+captured-box reference for face 308 goes from reverse depth 0.327 to near-plane
+contact (1.0), exercising the transition from a tighter bound to the near-plane
+fallback. The four static views and Ctrl-G are also checked in each mode.
+
+| Matched mode | Identical images | Real sample-plane readbacks | Unchanged valid records across poses | Image/record/depth differences |
+| --- | ---: | ---: | ---: | ---: |
+| 1x | 13 | 12 | 10,005,410 | 0 |
+| 2x | 13 | 24 | 20,010,654 | 0 |
+| 4x | 13 | 48 | 40,000,291 | 0 |
+
+Every paired image and real-sample record/depth comparison passes. Complete
+four-column atlas payload hashes match too. These counts span multiple camera
+poses; they are not unique visible pixels. The wide exterior camera uses a 1%
+minimum hit-occupancy floor because most of its image is HDRI/background;
+interior/movement views retain the 25% floor, and matched equality allows zero
+lost/gained samples. Editor/game sample states, normals-on controls, original
+level bytes and renderer error checks pass. Existing contour artifacts remain
+identical to the matching reference at each sample count.
+
+The reference runs used a clean detached checkout; the profiling branch was
+preserved and restored. AssetProcessorBatch processed 380 reference assets and
+570 restored-candidate assets, with zero failures and clean readiness checks.
+All 20 restored compiled hit-depth products match the pre-reference candidate
+exactly, and all 82 preserved source/capture hashes remain unchanged. These are
+**correctness captures**, with no new performance measurements: the original
+2x timing/counter tables above are preserved.
+
+Raw runs, comparison JSON, renderer/build logs and the one-pixel negative CLI
+fixture are in `TGProject/user/silpom-review-validation-20261115`. The compact
+JSON's `validation_review` contains full per-view equality evidence, source and
+launch identities, and raw hashes. This extends coverage for this fixture on
+this GPU/SM target; it does not establish an exhaustive guarantee for every
+implicit-hit variant, compiler, transform or camera path.
+
 ## Hardware, engine and preservation
 
 - CPU: AMD Ryzen 7 5700G, 8 cores / 16 threads.
@@ -236,7 +309,7 @@ Diversion main remains clean at **dv.commit.73**. SILPOM main/origin-main remain
 `e9684244b85e878b445606164b157b16438398d4`. All **68 preserved baseline files**,
 including old capture data/images, both source scene references and the
 dependency manifest, retain their SHA256 hashes. No reset, merge, repin, scene
-save, default change or publication occurred.
+save or default change occurred. Publication is limited to the profiling branch.
 
 ## Reproduction and local raw files
 
@@ -273,6 +346,7 @@ $env:TG_SILPOM_ESTIMATOR_OUTPUT = "$project/user/new-frustum-visuals"
 New-Item -ItemType Directory $env:TG_SILPOM_ESTIMATOR_OUTPUT
 $env:TG_SILPOM_TOWER_SAMPLES = '2'
 $env:TG_SILPOM_TOWER_RENDERDOC_VIEW = ''
+$env:TG_SILPOM_TOWER_CAMERA_PATH = ''
 $env:TG_SILPOM_MSAA_TIMING = '0'
 $env:TG_SILPOM_TOWER_TIMING_ONLY = '0'
 $editorArguments = @("--project-path=$project", "--engine-path=$engine", "--project-build-path=$build",
@@ -310,3 +384,19 @@ distinguishes successful data collection from the wrapper's exit status.
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Invoke-TowerRenderDocProfile.ps1 -ConfigPath "$project/user/silpom-frustum-aabb-20261115/counter-config-retry.json" -TemporaryDeveloperMode -TimeoutSeconds 300
 ```
+
+For the affected-route checks, use separate fresh outputs for each sample count,
+timing disabled, and set the following before the normal Editor launch command:
+
+```powershell
+$env:TG_SILPOM_TOWER_CAMERA_PATH = "$project/Gems/silpom/Tests/Reference/TowerBenchmarkNearPlanePath.json"
+# Set TG_SILPOM_TOWER_SAMPLES and the startup r_multiSampleCount to 1, 2 or 4.
+# Keep TG_SILPOM_MSAA_TIMING=0 and TG_SILPOM_TOWER_TIMING_ONLY=0.
+```
+
+Use the same updated harness for reference/candidate runs (the retained raw-root
+`harness` snapshot and `Run-Routes.ps1` do this across the detached reference).
+Run `TowerBenchmarkVisualTests.py` on both outputs and `compare_tower_bounds.py`
+on each matched pair. The latter checks all real sample planes selected by
+metadata and returns a nonzero exit on any image difference. Run the regression
+suite with `python -m unittest discover -s Tests -p test_tower_validation_regressions.py -v`.

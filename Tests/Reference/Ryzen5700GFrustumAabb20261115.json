@@ -1392,16 +1392,36 @@
     "passed": true,
     "before": "D:\\diversion\\TG\\TGProject\\user\\silpom-rebenchmark-2f818d8-20261114\\visuals-2x-20261114-205859",
     "after": "D:\\diversion\\TG\\TGProject\\user\\silpom-frustum-aabb-20261115\\visuals-2x-20261115-002353",
+    "samples": 2,
+    "whole_atlas_payloads_identical": true,
     "views": {
       "exterior": {
         "image_changed_pixels": 0,
         "image_max_channel_delta": 0,
-        "image_mean_absolute_delta": 0.0
+        "image_mean_absolute_delta": 0.0,
+        "image_equal": true,
+        "passed": true
       },
       "lower-facing": {
         "image_changed_pixels": 0,
         "image_max_channel_delta": 0,
         "image_mean_absolute_delta": 0.0,
+        "image_equal": true,
+        "passed": true,
+        "atlas_payload_identity": {
+          "hit_records": {
+            "bytes": 58982400,
+            "baseline_sha256": "19076d0ebb3e0b7fbc6de5e31818a8ca0691d7ef802f5b174229ee2fd5a7f95e",
+            "candidate_sha256": "19076d0ebb3e0b7fbc6de5e31818a8ca0691d7ef802f5b174229ee2fd5a7f95e",
+            "equal": true
+          },
+          "depth": {
+            "bytes": 14745600,
+            "baseline_sha256": "2e27a1ab7a4885a3491c5a3428acd92b8e66026f41928284214a5e0200678bca",
+            "candidate_sha256": "2e27a1ab7a4885a3491c5a3428acd92b8e66026f41928284214a5e0200678bca",
+            "equal": true
+          }
+        },
         "samples": [
           {
             "sample": 0,
@@ -1441,6 +1461,22 @@
         "image_changed_pixels": 0,
         "image_max_channel_delta": 0,
         "image_mean_absolute_delta": 0.0,
+        "image_equal": true,
+        "passed": true,
+        "atlas_payload_identity": {
+          "hit_records": {
+            "bytes": 58982400,
+            "baseline_sha256": "271e6ad840a664bb82a3dcc987f1e48a79ca3a8b8d84ec45de312e462b2092ce",
+            "candidate_sha256": "271e6ad840a664bb82a3dcc987f1e48a79ca3a8b8d84ec45de312e462b2092ce",
+            "equal": true
+          },
+          "depth": {
+            "bytes": 14745600,
+            "baseline_sha256": "ff23cac4d89cd40b8d658ccecbc5748e7b275147d9df1b8b7fb420d0cbc9809f",
+            "candidate_sha256": "ff23cac4d89cd40b8d658ccecbc5748e7b275147d9df1b8b7fb420d0cbc9809f",
+            "equal": true
+          }
+        },
         "samples": [
           {
             "sample": 0,
@@ -1480,6 +1516,22 @@
         "image_changed_pixels": 0,
         "image_max_channel_delta": 0,
         "image_mean_absolute_delta": 0.0,
+        "image_equal": true,
+        "passed": true,
+        "atlas_payload_identity": {
+          "hit_records": {
+            "bytes": 58982400,
+            "baseline_sha256": "b23cbb919b46e97c459402470e589e34111646ce0c1ee0cec8bad1396a2b1a4b",
+            "candidate_sha256": "b23cbb919b46e97c459402470e589e34111646ce0c1ee0cec8bad1396a2b1a4b",
+            "equal": true
+          },
+          "depth": {
+            "bytes": 14745600,
+            "baseline_sha256": "6aa43d14631c6b21b79d5c45946e43fdb8ae2db486bad6e61ccde0306a18ee3e",
+            "candidate_sha256": "6aa43d14631c6b21b79d5c45946e43fdb8ae2db486bad6e61ccde0306a18ee3e",
+            "equal": true
+          }
+        },
         "samples": [
           {
             "sample": 0,
@@ -1518,7 +1570,9 @@
       "gameplay": {
         "image_changed_pixels": 0,
         "image_max_channel_delta": 0,
-        "image_mean_absolute_delta": 0.0
+        "image_mean_absolute_delta": 0.0,
+        "image_equal": true,
+        "passed": true
       }
     }
   },
@@ -1835,7 +1889,9 @@
     "passed": true,
     "cases": 860,
     "certified": 245,
-    "captured_tightened": 53
+    "captured_tightened": 53,
+    "certificate_reference_dtype": "float64",
+    "minimum_certificate_safety_slack": 7.078146817071618e-06
   },
   "timing_integrity": {
     "passed": true,
@@ -2356,5 +2412,2467 @@
     "Gather validation (may be cheaper)": true,
     "R16 height textures (less GPU memory)": true,
     "Anti-aliasing": 0
+  },
+  "validation_review": {
+    "date": "2026-11-15 America/Los_Angeles",
+    "raw_root": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115",
+    "shader_unchanged": true,
+    "gpu_precision": "float32",
+    "cpu_certificate_precision": "float64 before arithmetic",
+    "regression_test_count": 8,
+    "one_pixel_negative_cli_exit": 1,
+    "negative_fixture_whole_atlas_inputs_unchanged": true,
+    "preserved_files": {
+      "checked": 82,
+      "changed": []
+    },
+    "compiled_products": {
+      "checked": 20,
+      "changed": [],
+      "sha256": {
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepth-nomsaa_dx12_0.azshadervariant": "08da407fb0b21c4f43dacbbba36aec2d67c057ca35b95cf41d0070ed0909431e",
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepthbounds-nomsaa_dx12_0.azshadervariant": "d1cff33c2d8911a9d3f9a96ea13455a2acce22525551df61044c95578907afde",
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepthbounds_dx12_0.azshadervariant": "d1cff33c2d8911a9d3f9a96ea13455a2acce22525551df61044c95578907afde",
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepthlearnedproxy-nomsaa_dx12_0.azshadervariant": "f6ab6e0178336caa73e496ab9ac3d176fd46490491224fd0ee2abc4409b884a8",
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepthlearnedproxy_dx12_0.azshadervariant": "f6ab6e0178336caa73e496ab9ac3d176fd46490491224fd0ee2abc4409b884a8",
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepthlodnear-nomsaa_dx12_0.azshadervariant": "0ce84ab9cba5cbf2c524e7dacdef32adf1416368c015d98ec8985e03b7f1319b",
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepthlodnearwall-nomsaa_dx12_0.azshadervariant": "0ce84ab9cba5cbf2c524e7dacdef32adf1416368c015d98ec8985e03b7f1319b",
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepthlodnearwall_dx12_0.azshadervariant": "05aa0b74beee870b0327fe4c6b63ef4f0755be7f7647968796e7fb9866389965",
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepthlodnear_dx12_0.azshadervariant": "55d7d73d7c7ab4673df34196a163421f25d8cb79432171006385ce29a7bd071a",
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepthlodshell-nomsaa_dx12_0.azshadervariant": "518eeaa60263acfcbb9c4664b83fbad7c7c414499297451b6b5fe0baeec23cfe",
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepthlodshell_dx12_0.azshadervariant": "3f186a012990b4680e7904d001bdf06981b49f92fa6f045611bc8579ca9ce5b1",
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepthneural-nomsaa_dx12_0.azshadervariant": "5524191d826cae4767f412d163ad7fd54b3002a5455a4a785d5f81130f83e6f0",
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepthneuralcache-nomsaa_dx12_0.azshadervariant": "02f1c7d602c0bfff11e239a02dfd18693edf8435b6b719453405a6f08024850f",
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepthneuralcache_dx12_0.azshadervariant": "02f1c7d602c0bfff11e239a02dfd18693edf8435b6b719453405a6f08024850f",
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepthneural_dx12_0.azshadervariant": "5524191d826cae4767f412d163ad7fd54b3002a5455a4a785d5f81130f83e6f0",
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepthproxy-nomsaa_dx12_0.azshadervariant": "2543be861dc23c064d83593f684e2993d51506d41e15d785babe3df7c50b07c3",
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepthproxy_dx12_0.azshadervariant": "75a1143ab1520a39c0f839e658a132143937a0059a19301374bc5e1819fd212e",
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepthwallbackup-nomsaa_dx12_0.azshadervariant": "9c3962a547cfcb607d46b4949db1a06d7a66eaa0200a6bd6fdda90732b09f0b1",
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepthwallbackup_dx12_0.azshadervariant": "9c3962a547cfcb607d46b4949db1a06d7a66eaa0200a6bd6fdda90732b09f0b1",
+        "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitdepth_dx12_0.azshadervariant": "08da407fb0b21c4f43dacbbba36aec2d67c057ca35b95cf41d0070ed0909431e"
+      }
+    },
+    "original_native_timing_metrics_unchanged": true,
+    "baseline_reference": "18c33bbaa1e4db68e7dfa56e47a5ecbedbea67fc",
+    "validation_code_commits": [
+      "f4ecb5b6be1f23d7632ec767290abd4ddd6f180e",
+      "877ce14ac48d16e2c9790f1cc5683ebfb356424e"
+    ],
+    "camera_path": "Tests/Reference/TowerBenchmarkNearPlanePath.json",
+    "camera_path_description": "0.70m along upper-glancing forward vector, 29 steps and eight exact readback stops; face 308 crosses from depth 0.327 to near-plane contact.",
+    "additional_timings_collected": false,
+    "routes": {
+      "1": {
+        "baseline": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\baseline-1x-20261115-074215",
+        "candidate": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\candidate-1x-20261115-072401",
+        "images": 13,
+        "static_views": 4,
+        "movement_stops": 8,
+        "rendered_movement_steps": 29,
+        "record_capture_views": 12,
+        "real_sample_planes": 12,
+        "depth_sample_positions": 11059200,
+        "unchanged_valid_records": 10005410,
+        "image_changed_pixels": 0,
+        "records_or_depth_differences": 0,
+        "whole_payloads_identical": true,
+        "observed_camera_sequences_equal": true,
+        "baseline_launch": {
+          "phase": "baseline",
+          "samples": 1,
+          "source_commit": "18c33bbaa1e4db68e7dfa56e47a5ecbedbea67fc",
+          "output": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\baseline-1x-20261115-074215",
+          "start_utc": "2026-11-15T15:42:15.9768299Z",
+          "arguments": [
+            "--project-path=D:\\diversion\\TG\\TGProject",
+            "--engine-path=D:\\engines\\o3de-tg-profile",
+            "--project-build-path=D:\\diversion\\TG\\TGProject\\build\\profile-5700g-sm6_2",
+            "--rhi=dx12",
+            "--regset=/O3DE/Autoexec/ConsoleCommands/r_multiSampleCount=1",
+            "--runpython",
+            "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\harness\\TowerBenchmarkEditorSmoke.py"
+          ],
+          "shader_sha256": {
+            "Assets\\Materials\\Pipelines\\MainPipeline\\SilPOMHitDepth.azsli": "DC01A2EADE525C83AD39688286FFEF1630D9167F76B49EF35A59FE9454A7E676"
+          }
+        },
+        "candidate_launch": {
+          "phase": "candidate",
+          "samples": 1,
+          "source_commit": "f4ecb5b6be1f23d7632ec767290abd4ddd6f180e",
+          "output": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\candidate-1x-20261115-072401",
+          "start_utc": "2026-11-15T15:24:02.0732783Z",
+          "arguments": [
+            "--project-path=D:\\diversion\\TG\\TGProject",
+            "--engine-path=D:\\engines\\o3de-tg-profile",
+            "--project-build-path=D:\\diversion\\TG\\TGProject\\build\\profile-5700g-sm6_2",
+            "--rhi=dx12",
+            "--regset=/O3DE/Autoexec/ConsoleCommands/r_multiSampleCount=1",
+            "--runpython",
+            "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\harness\\TowerBenchmarkEditorSmoke.py"
+          ],
+          "shader_sha256": {
+            "Assets\\Shaders\\SilPOM\\FrustumDepthBound.azsli": "17816901F116F4C4DF171A48EC3465D5DA31B4F3E64D05483042FC74359CB107",
+            "Assets\\Materials\\Pipelines\\MainPipeline\\SilPOMHitDepth.azsli": "18CE3E46D023B710357072986ABF765E5F5E796FF232AF2E807B75F00C902375"
+          }
+        },
+        "comparison": {
+          "passed": true,
+          "before": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\baseline-1x-20261115-074215",
+          "after": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\candidate-1x-20261115-072401",
+          "samples": 1,
+          "whole_atlas_payloads_identical": true,
+          "views": {
+            "exterior": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "aebfd5423e42fdfe1c4e121e7aa9b2b67997b00774adfe535df270b92d30e310",
+                  "candidate_sha256": "aebfd5423e42fdfe1c4e121e7aa9b2b67997b00774adfe535df270b92d30e310",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "c77aaea2f326282b3e8d09625d00ac6ad3dc5af59197d3ba166a78307aa0e038",
+                  "candidate_sha256": "c77aaea2f326282b3e8d09625d00ac6ad3dc5af59197d3ba166a78307aa0e038",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 34793,
+                  "candidate_valid": 34793,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "lower-glancing": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "ca50b1b2256aa328761c4c634b597fb207e1bcb507ccb6d8d7357b3b1370a7e2",
+                  "candidate_sha256": "ca50b1b2256aa328761c4c634b597fb207e1bcb507ccb6d8d7357b3b1370a7e2",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "f8110ab10658b7aa225c1b99c406661c5ddf85c18480343411a1a39903875c1e",
+                  "candidate_sha256": "f8110ab10658b7aa225c1b99c406661c5ddf85c18480343411a1a39903875c1e",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 911204,
+                  "candidate_valid": 911204,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "lower-facing": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "ee49806603f01c293ff6a17932f082e2ee378eaec54e47b89775d6f06beee42f",
+                  "candidate_sha256": "ee49806603f01c293ff6a17932f082e2ee378eaec54e47b89775d6f06beee42f",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "ab2e7e9d2a5975f9858e4fe9b40c91bd02038508ffc6b29d6b741713a812f769",
+                  "candidate_sha256": "ab2e7e9d2a5975f9858e4fe9b40c91bd02038508ffc6b29d6b741713a812f769",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 921599,
+                  "candidate_valid": 921599,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "upper-glancing": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "35db94434a95822d9854700fba7be13a99ac2bfe7ec77c583d7836015bfc0f4c",
+                  "candidate_sha256": "35db94434a95822d9854700fba7be13a99ac2bfe7ec77c583d7836015bfc0f4c",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "f147d54fa8def4b4f5ed94d78c190ea9f941562c016ec62b757747a7c2a7e578",
+                  "candidate_sha256": "f147d54fa8def4b4f5ed94d78c190ea9f941562c016ec62b757747a7c2a7e578",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 903187,
+                  "candidate_valid": 903187,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-00": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "f02fc32b459a8108b07e3397b0edf281e6a29cc79875ff9d6bda133c49e5386d",
+                  "candidate_sha256": "f02fc32b459a8108b07e3397b0edf281e6a29cc79875ff9d6bda133c49e5386d",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "d0640b242676e96b352645dea45d46c50e58701f39deaff368c9873d889f2b40",
+                  "candidate_sha256": "d0640b242676e96b352645dea45d46c50e58701f39deaff368c9873d889f2b40",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 889142,
+                  "candidate_valid": 889142,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-04": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "ec89b090bca987e744b7cdbb4e3a0493b56c13a3d3fd87dcac36a86c973650c3",
+                  "candidate_sha256": "ec89b090bca987e744b7cdbb4e3a0493b56c13a3d3fd87dcac36a86c973650c3",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "c1812d7722b5cc8339816f8c6ee998b810fbb3c3fa496905b14e747e2d7b7857",
+                  "candidate_sha256": "c1812d7722b5cc8339816f8c6ee998b810fbb3c3fa496905b14e747e2d7b7857",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 892604,
+                  "candidate_valid": 892604,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-08": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "d2de78b9c05cc7442b3f2b1a7d23320c0f5caa5f528468e029c3790794646852",
+                  "candidate_sha256": "d2de78b9c05cc7442b3f2b1a7d23320c0f5caa5f528468e029c3790794646852",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "371f92fb0d2e57d91b28d906bc708de8d771cb37a28a1108f223b945fb625504",
+                  "candidate_sha256": "371f92fb0d2e57d91b28d906bc708de8d771cb37a28a1108f223b945fb625504",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 896127,
+                  "candidate_valid": 896127,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-12": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "3e8f4e9af8bc0a6ee62a175d50d04488ad497d20c5d24abbc8b8b1f908f08e97",
+                  "candidate_sha256": "3e8f4e9af8bc0a6ee62a175d50d04488ad497d20c5d24abbc8b8b1f908f08e97",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "6a5d7486a510a46ecae4539cd61b827bf5aa947c92c460a5a7050416b0c20e08",
+                  "candidate_sha256": "6a5d7486a510a46ecae4539cd61b827bf5aa947c92c460a5a7050416b0c20e08",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 900659,
+                  "candidate_valid": 900659,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-16": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "d2cf1ccfdf712664a434c9da7a54fafaec974af35fea022f3004856d855e57ab",
+                  "candidate_sha256": "d2cf1ccfdf712664a434c9da7a54fafaec974af35fea022f3004856d855e57ab",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "2310725910be66255a6ecdaf794c515b5a57e316634e3a88b4c4a4e7e9e8af0d",
+                  "candidate_sha256": "2310725910be66255a6ecdaf794c515b5a57e316634e3a88b4c4a4e7e9e8af0d",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 905939,
+                  "candidate_valid": 905939,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-20": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "c2c9098a1226620dd62b1963c8ff389a0546fd57b3e749f60af9098f22987fce",
+                  "candidate_sha256": "c2c9098a1226620dd62b1963c8ff389a0546fd57b3e749f60af9098f22987fce",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "ff9a6d32ab940046990d67d8db6e1c49753781cb8c0b1a3c77a0e2e0d183c3c7",
+                  "candidate_sha256": "ff9a6d32ab940046990d67d8db6e1c49753781cb8c0b1a3c77a0e2e0d183c3c7",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 912501,
+                  "candidate_valid": 912501,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-24": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "b956d5f3a7003eebee289dbacae74aa1747387232cb326c06072858a7863d806",
+                  "candidate_sha256": "b956d5f3a7003eebee289dbacae74aa1747387232cb326c06072858a7863d806",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "8de72fbe12e97e0cb947fd071339b3b09bbd7356543015745e248eeb94f7162d",
+                  "candidate_sha256": "8de72fbe12e97e0cb947fd071339b3b09bbd7356543015745e248eeb94f7162d",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 919288,
+                  "candidate_valid": 919288,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-28": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "85b3bde789e266ef2542e21457bcba806e5330cebe1475887222b4763f26ef60",
+                  "candidate_sha256": "85b3bde789e266ef2542e21457bcba806e5330cebe1475887222b4763f26ef60",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "2ca2a31f1fe29f5b0451680b84b7bb2f6a0cba99babdbc9340f4c4d43361e462",
+                  "candidate_sha256": "2ca2a31f1fe29f5b0451680b84b7bb2f6a0cba99babdbc9340f4c4d43361e462",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 918367,
+                  "candidate_valid": 918367,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "gameplay": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true
+            }
+          }
+        }
+      },
+      "2": {
+        "baseline": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\baseline-2x-20261115-075434",
+        "candidate": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\candidate-2x-20261115-080413",
+        "images": 13,
+        "static_views": 4,
+        "movement_stops": 8,
+        "rendered_movement_steps": 29,
+        "record_capture_views": 12,
+        "real_sample_planes": 24,
+        "depth_sample_positions": 22118400,
+        "unchanged_valid_records": 20010654,
+        "image_changed_pixels": 0,
+        "records_or_depth_differences": 0,
+        "whole_payloads_identical": true,
+        "observed_camera_sequences_equal": true,
+        "baseline_launch": {
+          "phase": "baseline",
+          "samples": 2,
+          "source_commit": "18c33bbaa1e4db68e7dfa56e47a5ecbedbea67fc",
+          "output": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\baseline-2x-20261115-075434",
+          "start_utc": "2026-11-15T15:54:34.9304473Z",
+          "arguments": [
+            "--project-path=D:\\diversion\\TG\\TGProject",
+            "--engine-path=D:\\engines\\o3de-tg-profile",
+            "--project-build-path=D:\\diversion\\TG\\TGProject\\build\\profile-5700g-sm6_2",
+            "--rhi=dx12",
+            "--regset=/O3DE/Autoexec/ConsoleCommands/r_multiSampleCount=2",
+            "--runpython",
+            "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\harness\\TowerBenchmarkEditorSmoke.py"
+          ],
+          "shader_sha256": {
+            "Assets\\Materials\\Pipelines\\MainPipeline\\SilPOMHitDepth.azsli": "DC01A2EADE525C83AD39688286FFEF1630D9167F76B49EF35A59FE9454A7E676"
+          }
+        },
+        "candidate_launch": {
+          "phase": "candidate",
+          "samples": 2,
+          "source_commit": "877ce14ac48d16e2c9790f1cc5683ebfb356424e",
+          "output": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\candidate-2x-20261115-080413",
+          "start_utc": "2026-11-15T16:04:13.2465480Z",
+          "arguments": [
+            "--project-path=D:\\diversion\\TG\\TGProject",
+            "--engine-path=D:\\engines\\o3de-tg-profile",
+            "--project-build-path=D:\\diversion\\TG\\TGProject\\build\\profile-5700g-sm6_2",
+            "--rhi=dx12",
+            "--regset=/O3DE/Autoexec/ConsoleCommands/r_multiSampleCount=2",
+            "--runpython",
+            "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\harness\\TowerBenchmarkEditorSmoke.py"
+          ],
+          "shader_sha256": {
+            "Assets\\Shaders\\SilPOM\\FrustumDepthBound.azsli": "17816901F116F4C4DF171A48EC3465D5DA31B4F3E64D05483042FC74359CB107",
+            "Assets\\Materials\\Pipelines\\MainPipeline\\SilPOMHitDepth.azsli": "18CE3E46D023B710357072986ABF765E5F5E796FF232AF2E807B75F00C902375"
+          }
+        },
+        "comparison": {
+          "passed": true,
+          "before": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\baseline-2x-20261115-075434",
+          "after": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\candidate-2x-20261115-080413",
+          "samples": 2,
+          "whole_atlas_payloads_identical": true,
+          "views": {
+            "exterior": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "891d7e1719c1ccb6e26623b1ff25890bfb084e14abfccb8110527d9895f11fd1",
+                  "candidate_sha256": "891d7e1719c1ccb6e26623b1ff25890bfb084e14abfccb8110527d9895f11fd1",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "f0d506e4fb5974acd962a33736cf011edc8823c507f526a9cffe1efec6661bfe",
+                  "candidate_sha256": "f0d506e4fb5974acd962a33736cf011edc8823c507f526a9cffe1efec6661bfe",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 34790,
+                  "candidate_valid": 34790,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 34795,
+                  "candidate_valid": 34795,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "lower-glancing": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "271e6ad840a664bb82a3dcc987f1e48a79ca3a8b8d84ec45de312e462b2092ce",
+                  "candidate_sha256": "271e6ad840a664bb82a3dcc987f1e48a79ca3a8b8d84ec45de312e462b2092ce",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "ff23cac4d89cd40b8d658ccecbc5748e7b275147d9df1b8b7fb420d0cbc9809f",
+                  "candidate_sha256": "ff23cac4d89cd40b8d658ccecbc5748e7b275147d9df1b8b7fb420d0cbc9809f",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 911171,
+                  "candidate_valid": 911171,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 911229,
+                  "candidate_valid": 911229,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "lower-facing": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "19076d0ebb3e0b7fbc6de5e31818a8ca0691d7ef802f5b174229ee2fd5a7f95e",
+                  "candidate_sha256": "19076d0ebb3e0b7fbc6de5e31818a8ca0691d7ef802f5b174229ee2fd5a7f95e",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "2e27a1ab7a4885a3491c5a3428acd92b8e66026f41928284214a5e0200678bca",
+                  "candidate_sha256": "2e27a1ab7a4885a3491c5a3428acd92b8e66026f41928284214a5e0200678bca",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 921596,
+                  "candidate_valid": 921596,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 921595,
+                  "candidate_valid": 921595,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "upper-glancing": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "b23cbb919b46e97c459402470e589e34111646ce0c1ee0cec8bad1396a2b1a4b",
+                  "candidate_sha256": "b23cbb919b46e97c459402470e589e34111646ce0c1ee0cec8bad1396a2b1a4b",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "6aa43d14631c6b21b79d5c45946e43fdb8ae2db486bad6e61ccde0306a18ee3e",
+                  "candidate_sha256": "6aa43d14631c6b21b79d5c45946e43fdb8ae2db486bad6e61ccde0306a18ee3e",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 903170,
+                  "candidate_valid": 903170,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 903180,
+                  "candidate_valid": 903180,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-00": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "5822c5b1fbce1d590fd4b341c4ee3414102990e48cb6eb4bba0b8f1c82725a75",
+                  "candidate_sha256": "5822c5b1fbce1d590fd4b341c4ee3414102990e48cb6eb4bba0b8f1c82725a75",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "e306dd447091e555f05d2edff2eafd7ab9f5e22b1f9a702dc224350ab16541d7",
+                  "candidate_sha256": "e306dd447091e555f05d2edff2eafd7ab9f5e22b1f9a702dc224350ab16541d7",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 889144,
+                  "candidate_valid": 889144,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 889130,
+                  "candidate_valid": 889130,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-04": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "a888e5d59728f5d8e61721286ff4e5b08bdac309e1c6e9188086b670863429ec",
+                  "candidate_sha256": "a888e5d59728f5d8e61721286ff4e5b08bdac309e1c6e9188086b670863429ec",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "8e00a4d8ad608e459d19114d5e628c271cfe5e1c303cc6414ee073d92129ca4e",
+                  "candidate_sha256": "8e00a4d8ad608e459d19114d5e628c271cfe5e1c303cc6414ee073d92129ca4e",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 892610,
+                  "candidate_valid": 892610,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 892592,
+                  "candidate_valid": 892592,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-08": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "6ae5a463b909be866e48d73599692c844b67188347a37fcc3b4ef738c183b4e0",
+                  "candidate_sha256": "6ae5a463b909be866e48d73599692c844b67188347a37fcc3b4ef738c183b4e0",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "99c551eac39b2f05b9d74a9e2baad7a375f9cb17537054f4b5c23d0425568a85",
+                  "candidate_sha256": "99c551eac39b2f05b9d74a9e2baad7a375f9cb17537054f4b5c23d0425568a85",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 896104,
+                  "candidate_valid": 896104,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 896122,
+                  "candidate_valid": 896122,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-12": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "a50545c574af6a8eb6cee783fae553bd9a8c6d1ff5eb3375a254a75c573acfd0",
+                  "candidate_sha256": "a50545c574af6a8eb6cee783fae553bd9a8c6d1ff5eb3375a254a75c573acfd0",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "317aee91461564bc8712a2a417b326d0b9e954c3cf167f6a3cec847b042c85af",
+                  "candidate_sha256": "317aee91461564bc8712a2a417b326d0b9e954c3cf167f6a3cec847b042c85af",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 900642,
+                  "candidate_valid": 900642,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 900654,
+                  "candidate_valid": 900654,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-16": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "bed683e31864fd90b0f2d1cda943b93c2e8ccb2c01b500d6325dd57b33ba4d06",
+                  "candidate_sha256": "bed683e31864fd90b0f2d1cda943b93c2e8ccb2c01b500d6325dd57b33ba4d06",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "1951d54ba8184a70d4eafa6c634a0c135ee852e1b7c9610f6b4fa13a50fb3e02",
+                  "candidate_sha256": "1951d54ba8184a70d4eafa6c634a0c135ee852e1b7c9610f6b4fa13a50fb3e02",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 905934,
+                  "candidate_valid": 905934,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 905967,
+                  "candidate_valid": 905967,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-20": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "ac007a5cd6555dcfafcac3f5759c6e223ef2cd149e53f4144d6c379415954aa9",
+                  "candidate_sha256": "ac007a5cd6555dcfafcac3f5759c6e223ef2cd149e53f4144d6c379415954aa9",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "1b98a6c48b2110f870fa936b88db19dc1f3344989fd98cb67fa9d36a54d5250c",
+                  "candidate_sha256": "1b98a6c48b2110f870fa936b88db19dc1f3344989fd98cb67fa9d36a54d5250c",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 912479,
+                  "candidate_valid": 912479,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 912520,
+                  "candidate_valid": 912520,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-24": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "27877e7ace6db6ab77753270f6061a0f296e1d13de38ae54107a833470df4ce0",
+                  "candidate_sha256": "27877e7ace6db6ab77753270f6061a0f296e1d13de38ae54107a833470df4ce0",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "9e3f2ec54a21a1fcc4d49343c1dfd48fea6b43f15090fe4c10542c6ca35ec277",
+                  "candidate_sha256": "9e3f2ec54a21a1fcc4d49343c1dfd48fea6b43f15090fe4c10542c6ca35ec277",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 919282,
+                  "candidate_valid": 919282,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 919319,
+                  "candidate_valid": 919319,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-28": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "a96d3a1982dddf6aed0266426914fe5d62da24306bda4dd5c8ff689a87501be9",
+                  "candidate_sha256": "a96d3a1982dddf6aed0266426914fe5d62da24306bda4dd5c8ff689a87501be9",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "bfd032ea53fc934bf905b1cbdc2385ac50a3b58be85cf2f2776d9b5a7eb13dd4",
+                  "candidate_sha256": "bfd032ea53fc934bf905b1cbdc2385ac50a3b58be85cf2f2776d9b5a7eb13dd4",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 918298,
+                  "candidate_valid": 918298,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 918331,
+                  "candidate_valid": 918331,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "gameplay": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true
+            }
+          }
+        }
+      },
+      "4": {
+        "baseline": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\baseline-4x-20261115-074553",
+        "candidate": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\candidate-4x-20261115-072815",
+        "images": 13,
+        "static_views": 4,
+        "movement_stops": 8,
+        "rendered_movement_steps": 29,
+        "record_capture_views": 12,
+        "real_sample_planes": 48,
+        "depth_sample_positions": 44236800,
+        "unchanged_valid_records": 40000291,
+        "image_changed_pixels": 0,
+        "records_or_depth_differences": 0,
+        "whole_payloads_identical": true,
+        "observed_camera_sequences_equal": true,
+        "baseline_launch": {
+          "phase": "baseline",
+          "samples": 4,
+          "source_commit": "18c33bbaa1e4db68e7dfa56e47a5ecbedbea67fc",
+          "output": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\baseline-4x-20261115-074553",
+          "start_utc": "2026-11-15T15:45:53.1214462Z",
+          "arguments": [
+            "--project-path=D:\\diversion\\TG\\TGProject",
+            "--engine-path=D:\\engines\\o3de-tg-profile",
+            "--project-build-path=D:\\diversion\\TG\\TGProject\\build\\profile-5700g-sm6_2",
+            "--rhi=dx12",
+            "--regset=/O3DE/Autoexec/ConsoleCommands/r_multiSampleCount=4",
+            "--runpython",
+            "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\harness\\TowerBenchmarkEditorSmoke.py"
+          ],
+          "shader_sha256": {
+            "Assets\\Materials\\Pipelines\\MainPipeline\\SilPOMHitDepth.azsli": "DC01A2EADE525C83AD39688286FFEF1630D9167F76B49EF35A59FE9454A7E676"
+          }
+        },
+        "candidate_launch": {
+          "phase": "candidate",
+          "samples": 4,
+          "source_commit": "f4ecb5b6be1f23d7632ec767290abd4ddd6f180e",
+          "output": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\candidate-4x-20261115-072815",
+          "start_utc": "2026-11-15T15:28:15.2830092Z",
+          "arguments": [
+            "--project-path=D:\\diversion\\TG\\TGProject",
+            "--engine-path=D:\\engines\\o3de-tg-profile",
+            "--project-build-path=D:\\diversion\\TG\\TGProject\\build\\profile-5700g-sm6_2",
+            "--rhi=dx12",
+            "--regset=/O3DE/Autoexec/ConsoleCommands/r_multiSampleCount=4",
+            "--runpython",
+            "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\harness\\TowerBenchmarkEditorSmoke.py"
+          ],
+          "shader_sha256": {
+            "Assets\\Shaders\\SilPOM\\FrustumDepthBound.azsli": "17816901F116F4C4DF171A48EC3465D5DA31B4F3E64D05483042FC74359CB107",
+            "Assets\\Materials\\Pipelines\\MainPipeline\\SilPOMHitDepth.azsli": "18CE3E46D023B710357072986ABF765E5F5E796FF232AF2E807B75F00C902375"
+          }
+        },
+        "comparison": {
+          "passed": true,
+          "before": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\baseline-4x-20261115-074553",
+          "after": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\candidate-4x-20261115-072815",
+          "samples": 4,
+          "whole_atlas_payloads_identical": true,
+          "views": {
+            "exterior": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "503c7f3a0de354938f03e0a26a68d1774199d3c2c0e1615f5eaed904901a9150",
+                  "candidate_sha256": "503c7f3a0de354938f03e0a26a68d1774199d3c2c0e1615f5eaed904901a9150",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "0306f48af0ab437ee8c82a44166d30bdd411c73cb7c2fca11e2487f4994d87ba",
+                  "candidate_sha256": "0306f48af0ab437ee8c82a44166d30bdd411c73cb7c2fca11e2487f4994d87ba",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 34768,
+                  "candidate_valid": 34768,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 34788,
+                  "candidate_valid": 34788,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 2,
+                  "baseline_valid": 34788,
+                  "candidate_valid": 34788,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 3,
+                  "baseline_valid": 34772,
+                  "candidate_valid": 34772,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "lower-glancing": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "59bfe63bbf72bc5d016632fcee83ae3142f18703804acbd7dd86dccd3c35fc28",
+                  "candidate_sha256": "59bfe63bbf72bc5d016632fcee83ae3142f18703804acbd7dd86dccd3c35fc28",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "5d7bcadf7518bb25d40e3f5601724aa8e42b64541ec91cbfe8348173ca097bfb",
+                  "candidate_sha256": "5d7bcadf7518bb25d40e3f5601724aa8e42b64541ec91cbfe8348173ca097bfb",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 911174,
+                  "candidate_valid": 911174,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 911147,
+                  "candidate_valid": 911147,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 2,
+                  "baseline_valid": 911111,
+                  "candidate_valid": 911111,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 3,
+                  "baseline_valid": 911078,
+                  "candidate_valid": 911078,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "lower-facing": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "0198ac8a2ccee3fdee0984cf4a410c966258abf10652cc38ff155332b63da291",
+                  "candidate_sha256": "0198ac8a2ccee3fdee0984cf4a410c966258abf10652cc38ff155332b63da291",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "f1282d9ac4d4c737e00ef48588b804ff5fb9c1a547c73b38364ce51cbac46516",
+                  "candidate_sha256": "f1282d9ac4d4c737e00ef48588b804ff5fb9c1a547c73b38364ce51cbac46516",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 921588,
+                  "candidate_valid": 921588,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 921591,
+                  "candidate_valid": 921591,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 2,
+                  "baseline_valid": 921588,
+                  "candidate_valid": 921588,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 3,
+                  "baseline_valid": 921587,
+                  "candidate_valid": 921587,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "upper-glancing": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "e1cec3002f4c8787615fcbc92aceb1806d52ccb191357951fccf61c3d48200b2",
+                  "candidate_sha256": "e1cec3002f4c8787615fcbc92aceb1806d52ccb191357951fccf61c3d48200b2",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "2a51fa16a5eb371cd44a069c0544e27c8d672e55d8cc103b15196243f47ae9fe",
+                  "candidate_sha256": "2a51fa16a5eb371cd44a069c0544e27c8d672e55d8cc103b15196243f47ae9fe",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 902975,
+                  "candidate_valid": 902975,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 902963,
+                  "candidate_valid": 902963,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 2,
+                  "baseline_valid": 902950,
+                  "candidate_valid": 902950,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 3,
+                  "baseline_valid": 902971,
+                  "candidate_valid": 902971,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-00": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "a3c7ccebd2835139af237f11bc6bbe67a3db6528f77435a95aa3902ee88de768",
+                  "candidate_sha256": "a3c7ccebd2835139af237f11bc6bbe67a3db6528f77435a95aa3902ee88de768",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "c60056bef268ccfe1a9404959a50d1e57d1b76ee220c21e0d0210bc94e2a4589",
+                  "candidate_sha256": "c60056bef268ccfe1a9404959a50d1e57d1b76ee220c21e0d0210bc94e2a4589",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 888847,
+                  "candidate_valid": 888847,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 888817,
+                  "candidate_valid": 888817,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 2,
+                  "baseline_valid": 888791,
+                  "candidate_valid": 888791,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 3,
+                  "baseline_valid": 888853,
+                  "candidate_valid": 888853,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-04": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "ddb8cc864183ba9191ea7a69b7a7acd82e04ef688da56c893f1776669b6df846",
+                  "candidate_sha256": "ddb8cc864183ba9191ea7a69b7a7acd82e04ef688da56c893f1776669b6df846",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "5555967597bf92d661347fa3e5387cd6cbd130acaf237c4005a0453a530eb683",
+                  "candidate_sha256": "5555967597bf92d661347fa3e5387cd6cbd130acaf237c4005a0453a530eb683",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 892340,
+                  "candidate_valid": 892340,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 892317,
+                  "candidate_valid": 892317,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 2,
+                  "baseline_valid": 892348,
+                  "candidate_valid": 892348,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 3,
+                  "baseline_valid": 892346,
+                  "candidate_valid": 892346,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-08": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "4ace97ce13aca345d89e7707ff938983df424047ecae266a4c169b375406d4e0",
+                  "candidate_sha256": "4ace97ce13aca345d89e7707ff938983df424047ecae266a4c169b375406d4e0",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "48535c1c82682ae1a55ca4b8ec05311c424423fdc3db10ec85e3ffd2bf506b97",
+                  "candidate_sha256": "48535c1c82682ae1a55ca4b8ec05311c424423fdc3db10ec85e3ffd2bf506b97",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 895903,
+                  "candidate_valid": 895903,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 895892,
+                  "candidate_valid": 895892,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 2,
+                  "baseline_valid": 895896,
+                  "candidate_valid": 895896,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 3,
+                  "baseline_valid": 895879,
+                  "candidate_valid": 895879,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-12": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "3ed92f5998b55a9e0f8b814ccb5b7bf18d2176245da2dbe72ffb6eeceaa57227",
+                  "candidate_sha256": "3ed92f5998b55a9e0f8b814ccb5b7bf18d2176245da2dbe72ffb6eeceaa57227",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "edd3425cac6bdb2f756502a310400f81e0dcbec028929e4a6943c2c12e953323",
+                  "candidate_sha256": "edd3425cac6bdb2f756502a310400f81e0dcbec028929e4a6943c2c12e953323",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 900426,
+                  "candidate_valid": 900426,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 900411,
+                  "candidate_valid": 900411,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 2,
+                  "baseline_valid": 900401,
+                  "candidate_valid": 900401,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 3,
+                  "baseline_valid": 900408,
+                  "candidate_valid": 900408,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-16": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "21357bd4ec94e743ed7093dc89fc4863a757c644353ac965e7b329127b4aa5ff",
+                  "candidate_sha256": "21357bd4ec94e743ed7093dc89fc4863a757c644353ac965e7b329127b4aa5ff",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "d241f8cc551d28e27fa48afdc4cb635ff1259e30a4d8ae702f6819facabafb22",
+                  "candidate_sha256": "d241f8cc551d28e27fa48afdc4cb635ff1259e30a4d8ae702f6819facabafb22",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 905726,
+                  "candidate_valid": 905726,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 905747,
+                  "candidate_valid": 905747,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 2,
+                  "baseline_valid": 905703,
+                  "candidate_valid": 905703,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 3,
+                  "baseline_valid": 905711,
+                  "candidate_valid": 905711,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-20": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "eeb5e16034c615a33094f0e487b6ee7ed4d40bf647dd2016be5cbb253c162424",
+                  "candidate_sha256": "eeb5e16034c615a33094f0e487b6ee7ed4d40bf647dd2016be5cbb253c162424",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "81e48cc74a9460fa43a98331f1444d61d0870d2fa84b7b828eebdcf8b6f22709",
+                  "candidate_sha256": "81e48cc74a9460fa43a98331f1444d61d0870d2fa84b7b828eebdcf8b6f22709",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 912344,
+                  "candidate_valid": 912344,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 912340,
+                  "candidate_valid": 912340,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 2,
+                  "baseline_valid": 912333,
+                  "candidate_valid": 912333,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 3,
+                  "baseline_valid": 912316,
+                  "candidate_valid": 912316,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-24": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "ef6a1eff0282dc5f3bae3694360f477127596c11cf375e224e053013c4a07800",
+                  "candidate_sha256": "ef6a1eff0282dc5f3bae3694360f477127596c11cf375e224e053013c4a07800",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "1ba396f5b401562480a60139d29999a0b037057fe0f0c30149790ec2b5a115b1",
+                  "candidate_sha256": "1ba396f5b401562480a60139d29999a0b037057fe0f0c30149790ec2b5a115b1",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 918334,
+                  "candidate_valid": 918334,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 918320,
+                  "candidate_valid": 918320,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 2,
+                  "baseline_valid": 918291,
+                  "candidate_valid": 918291,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 3,
+                  "baseline_valid": 918311,
+                  "candidate_valid": 918311,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "movement-28": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true,
+              "atlas_payload_identity": {
+                "hit_records": {
+                  "bytes": 58982400,
+                  "baseline_sha256": "8c1c06ddd664deadfc8c67cbdb09edad1fab6df65da4c883532272592e5f6f3f",
+                  "candidate_sha256": "8c1c06ddd664deadfc8c67cbdb09edad1fab6df65da4c883532272592e5f6f3f",
+                  "equal": true
+                },
+                "depth": {
+                  "bytes": 14745600,
+                  "baseline_sha256": "63c4327f31cb80e6e4e8c4800585942db76e3f3fd9c5f69360deab65a907c530",
+                  "candidate_sha256": "63c4327f31cb80e6e4e8c4800585942db76e3f3fd9c5f69360deab65a907c530",
+                  "equal": true
+                }
+              },
+              "samples": [
+                {
+                  "sample": 0,
+                  "baseline_valid": 915781,
+                  "candidate_valid": 915781,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 1,
+                  "baseline_valid": 915783,
+                  "candidate_valid": 915783,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 2,
+                  "baseline_valid": 915765,
+                  "candidate_valid": 915765,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                },
+                {
+                  "sample": 3,
+                  "baseline_valid": 915772,
+                  "candidate_valid": 915772,
+                  "lost": 0,
+                  "gained": 0,
+                  "changed_winner_records": 0,
+                  "changed_depth_bits": 0,
+                  "changed_record_components": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "passed": true
+                }
+              ]
+            },
+            "gameplay": {
+              "image_changed_pixels": 0,
+              "image_max_channel_delta": 0,
+              "image_mean_absolute_delta": 0.0,
+              "image_equal": true,
+              "passed": true
+            }
+          }
+        }
+      }
+    },
+    "raw_sha256": {
+      "numerical-validation.json": "4249992b39433001addcf0abca1dbc37b9f35dc0d9fe8381569aaf0510bcf1a7",
+      "visual-comparison-2x.json": "5c4974f78621f1532bdb96eea93dcc5c46547fd2ab8404d79e5d415b6175ae68",
+      "negative-image-gate.json": "257a68a17c6468b63c2a5f259aeb0fcde599ce047d542eb0766eb691b52fcc89",
+      "camera-path.json": "9f9261484f4abb2201f19fe9e32493813533a0d5bf9c06186e5803dcb60c5529",
+      "comparison-1x.json": "c92ef1c668b2dfb83e00dd653b3bc9dad4e66e1d03f9dcca18525d98cf187781",
+      "comparison-2x.json": "bbd530509ea78df1942a43cc9e0a992ba1a905cb7cbeb1be2e59b8edb5bef47b",
+      "comparison-4x.json": "05d720fa5d6d4b1056e80aa3f4bdc01956cfefd949561b9c5ceabfef637f709d"
+    },
+    "post_run_checks": {
+      "renderer_binding_assertion_or_device_lost_errors": [],
+      "engine_bundle_verified": true,
+      "asset_readiness": {
+        "ready": true,
+        "stale_products": [],
+        "failed_jobs": []
+      },
+      "developer_mode": {
+        "value_present": false,
+        "value": null
+      },
+      "total_identical_images": 39,
+      "total_real_sample_planes": 84,
+      "total_depth_sample_positions": 77414400,
+      "total_unchanged_valid_records": 70016355
+    }
   }
 }
