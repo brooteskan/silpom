@@ -13,6 +13,8 @@ def validate(folder):
     assert result['passed'] and result['restored'] and result['gameplay_visible']
     assert result['saved_level_unchanged'] and result['vue_live_link_unchanged']
     assert result['controls'].get('Height-derived normals (off = cheaper)') is True,'Height-derived normals must remain enabled'
+    samples=int(result.get('samples',1))
+    assert samples in (1,2)
     captures={}
     for name in ('exterior','lower-facing','lower-glancing','upper-glancing','gameplay'):
         rgba=np.array(Image.open(folder/(name+'.png')).convert('RGBA'))
@@ -25,12 +27,26 @@ def validate(folder):
     for name in ('lower-facing','lower-glancing','upper-glancing'):
         raw=(folder/(name+'-hit.dds')).read_bytes()
         assert raw[:4]==b'DDS ' and struct.unpack_from('<I',raw,128)[0]==3
-        hits=np.frombuffer(raw,dtype='<u4',offset=148).reshape(-1,4)
+        if samples==2:
+            height,width=struct.unpack_from('<II',raw,12)
+            assert (height,width)==(720,5120),(height,width)
+            hits=np.frombuffer(raw,dtype='<u4',offset=148).reshape(height,1280,4,4)[:,:,:samples,:]
+            depth=(folder/(name+'-depth.dds')).read_bytes()
+            assert struct.unpack_from('<I',depth,128)[0]==41
+            depth_bits=np.frombuffer(depth,dtype='<u4',offset=148).reshape(height,1280,4)[:,:,:samples]
+            backup=((hits[...,3]&3)==1)&((hits[...,2]&0xc0000000)==0xc0000000)
+            mismatches=int(np.count_nonzero(backup&((hits[...,2]&0x3fffffff)!=depth_bits)))
+            captures[name]['backup_depth_mismatches']=mismatches
+            captures[name]['backup_samples']=int(np.count_nonzero(backup))
+            assert mismatches==0,(name,'Backup hit/depth equality failed',mismatches)
+            hits=hits.reshape(-1,4)
+        else:
+            hits=np.frombuffer(raw,dtype='<u4',offset=148).reshape(-1,4)
         valid=int(np.count_nonzero((hits[:,3]&3)==1))
-        assert valid>1280*720*.25,(name,'Tower hit coverage missing',valid)
+        assert valid>1280*720*samples*.25,(name,'Tower hit coverage missing',valid)
         captures[name]['valid_hit_samples']=valid
     return {'passed':True,'scene_sha256':result['scene_sha256'],
-        'width':1280,'height':720,'samples':1,'gameplay_visible':True,
+        'width':1280,'height':720,'samples':samples,'gameplay_visible':True,
         'saved_tower_controls':result['controls'],'vue_live_link_unchanged':True,
         'requested_overrides':result.get('requested_overrides',{}),
         'saved_height_derived_normals':result.get('saved_height_derived_normals'),

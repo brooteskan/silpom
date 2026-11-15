@@ -1,5 +1,8 @@
 # Portable tower benchmark
 
+The [2026-11-14 main rebenchmark](TowerBenchmarkRyzen5700G-2f818d8.md) records
+the validated 2x project default on `2f818d8` and a separate matched 1x run.
+
 Open `Levels/SilPOMTowerBenchmark/SilPOMTowerBenchmark.prefab` in TGProject.
 The scene contains the saved VueLiveLink tower at the origin, a small ground
 plane, a directional sun and the engine's daylight HDRI sky/environment light.
@@ -15,8 +18,9 @@ cameras reproduce the lower facing and lower/upper glancing views used for
 edge comparisons. They are editor-only. Ctrl-G starts the exterior fly camera;
 use the normal fly-camera controls to move around or through the tower.
 
-The saved AA choice remains **Current default**. The tower's SilPOM component
-still exposes the existing estimator and AA selectors. Start comparisons at
+The saved AA choice remains **Current default**. Current main controls AA
+renderer-wide through `r_silpomAntiAliasing`; value 0 retains the project's
+2x default. The tower component retains its estimator controls. Start comparisons at
 1280×720 with the saved configuration, and record the actual GPU/driver on the
 Ryzen 7 5700G machine. This scene does not impose machine-wide renderer options
 or claim a measured speedup on that hardware.

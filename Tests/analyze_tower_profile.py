@@ -15,6 +15,8 @@ def analyze(folder):
     assert status['passed'] and status['restored'] and status['timing_only']
     assert status['saved_level_unchanged'] and status['vue_live_link_unchanged']
     assert status['controls'].get('Height-derived normals (off = cheaper)') is True,'Height-derived normals must remain enabled'
+    samples=int(status.get('samples',1))
+    assert samples in (1,2)
     report = {
         'scene_sha256': status['scene_sha256'],
         'saved_controls': status['controls'],
@@ -36,7 +38,7 @@ def analyze(folder):
         for path in files:
             raw = json.loads(path.read_text())
             assert raw['frames'] == raw['requested'] == 120, path
-            assert raw['depth_attachment'] == {'width': 1280, 'height': 720, 'msaa': 1}, path
+            assert raw['depth_attachment'] == {'width': 1280, 'height': 720, 'msaa': samples}, path
             devices.add(raw['hardware'])
             checked = summarize_capture(raw)
             spans = raw['graphics_span_ns']
@@ -75,7 +77,7 @@ def analyze(folder):
         report['views'][view] = {'captures': captures, 'pooled': metrics,
                                  'repeat_median_ranges': repeat_median_ranges}
     assert len(devices) == 1, ('Rendering device changed', devices)
-    report.update(hardware=devices.pop(), resolution=[1280, 720], samples=1)
+    report.update(hardware=devices.pop(), resolution=[1280, 720], samples=samples)
     return report
 
 

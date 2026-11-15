@@ -1,0 +1,2083 @@
+{
+  "date_local": "2026-11-14",
+  "status": "Updated main benchmark; validated 2x project default and matched 1x; no shader optimization",
+  "upstream_main": "2f818d87cd29663fab360cc7ccde06e117c257cf",
+  "profiling_build_commit": "e39e59db82ec0cc3570700281b0515f970492678",
+  "branch": "codex/benchmark-main-2f818d8",
+  "diversion_main": "dv.commit.73",
+  "unchanged_tg_silpom_pin": "e9684244b85e878b445606164b157b16438398d4",
+  "dependency_manifest_sha256": "627fc62526d0dc10f738dcdc7a1ceb7c8f1973feb87f6723f4807bf28a5c2fdc",
+  "bundle": "tg-o3de-20261114",
+  "patch_hash_encoding": "sha256; CRLF normalized to LF; all patched files are text",
+  "components": [
+    {
+      "name": "engine",
+      "base": "061180bf24f1666eb30315b35da292eb14f4659c",
+      "patch_sha256": "3dd9ed2e11485f7592f7462e7da850b154ca30c1159994b1ca6f0fcfec7877f3"
+    },
+    {
+      "name": "terrain-compositor",
+      "base": "ee6887b4b743047f7dece1b179c0cf30cb281880",
+      "patch_sha256": "dab37b902de3e3ca417531b6b08d9fed59c20dc02382c12426b3500a89137841"
+    }
+  ],
+  "scene_sha256": "a0894326d0eb68b7328949b1f1829a8021b7293ce16a567e0c2ea8c9148f6e7b",
+  "tower_configuration_sha256": "0584f1064982f7229d13ca9c426eb847cb655d31390895b8ce5e2d90ae1714ee",
+  "effective_tower_configuration_sha256": "b76f275b9af10b14731ac7dc5115e1e29eb6edb11cebd57cd05e22b3b32ec67e",
+  "runtime_controls": {
+    "Anti-aliasing": 0,
+    "Lighting estimator": 5,
+    "Height-derived normals (off = cheaper)": true,
+    "Level 2 predictor (experimental)": true,
+    "Gather validation (may be cheaper)": true,
+    "R16 height textures (less GPU memory)": true
+  },
+  "requested_overrides": {
+    "UseHeightDerivedNormals": true
+  },
+  "saved_height_derived_normals": false,
+  "hardware": {
+    "cpu": "AMD Ryzen 7 5700G",
+    "cores": 8,
+    "logical_processors": 16,
+    "active_rendering_gpu": "AMD Radeon(TM) Graphics",
+    "pci_vendor": "1002",
+    "pci_device": "1638",
+    "driver": "31.0.21923.11000",
+    "driver_date_utc": "2025-07-01",
+    "ram_gib": 32,
+    "ram_modules": "2 x 16 GiB G.Skill F4-3200C16-16GVK",
+    "ram_slots": [
+      "DIMM_A1",
+      "DIMM_B1"
+    ],
+    "configured_memory_mt_s": 2133,
+    "dxgi_dedicated_video_bytes": 519847936,
+    "dxgi_shared_system_bytes": 16839022592,
+    "highest_reported_shader_model": "6.7",
+    "native_16bit_shader_ops": true,
+    "os": "Windows 11 Pro 10.0.26300",
+    "power_plan": "Balanced (unchanged)"
+  },
+  "rendering": {
+    "backend": "DX12",
+    "shader_target": "6_2",
+    "resolution": [
+      1280,
+      720
+    ],
+    "primary_sample_count": 2,
+    "comparison_sample_count": 1,
+    "aa": "Renderer-wide Current default, r_silpomAntiAliasing=0; SMAA disabled",
+    "sample_selection": "Process-start r_multiSampleCount=2 matches project default; 1 is a separate forced comparison"
+  },
+  "build": {
+    "cmake": "4.3.1",
+    "generator": "Visual Studio 18 2026",
+    "msvc": "19.51.36260.0",
+    "windows_sdk": "10.0.26100",
+    "parallel": 4,
+    "native_targets": "All bundle build targets succeeded",
+    "asset_processor_batch": {
+      "exit_code": 0,
+      "processed": 627,
+      "failed": 0
+    },
+    "aggregate_verify_only": "95 of 95 file hashes match",
+    "asset_readiness": {
+      "ready": true,
+      "stale_products": [],
+      "failed_jobs": []
+    },
+    "record": {
+      "bundle": "tg-o3de-20261114",
+      "engine_base": "061180bf24f1666eb30315b35da292eb14f4659c",
+      "engine_patch_sha256": "3dd9ed2e11485f7592f7462e7da850b154ca30c1159994b1ca6f0fcfec7877f3",
+      "silpom_commit": "e39e59db82ec0cc3570700281b0515f970492678",
+      "dx12_shader_model": "6_2",
+      "engine_path": "D:\\engines\\o3de-tg-profile",
+      "project_path": "D:\\diversion\\TG\\TGProject",
+      "build_path": "D:\\diversion\\TG\\TGProject\\build\\profile-5700g-sm6_2",
+      "completed_utc": "2026-11-15T04:55:31.5065737Z"
+    },
+    "inspection_cache_refresh": {
+      "exit_code": 0,
+      "processed": 540,
+      "failed": 0,
+      "reason": "Three unchanged diagnostic shader products predated the checkout timestamp; preserved and regenerated"
+    }
+  },
+  "method": {
+    "cameras": "Levels/SilPOMTowerBenchmark/scene.json",
+    "captures_per_view": 3,
+    "frames_per_capture": 120,
+    "frames_per_view": 360,
+    "warmup": "90 frames on camera selection; 120 + 30 frames before each capture; native capture discards 16 warm-up samples",
+    "interval_exclusions": "No screenshots, attachment readbacks, inspection atlases, gameplay or shader builds during timestamp capture intervals",
+    "graphics_span_scope": "First-to-last graphics-pass timestamp span, including queue gaps; not GPU busy time or FPS.",
+    "cpu_scope": "RHI frame-to-frame period at timestamp collection, including waits; delayed GPU readbacks are not paired CPU/GPU frames. Zero means unavailable. Capture wall time is not CPU frame time.",
+    "percentile": "analyze_planar_ab.distribution: linear interpolation at (n-1)*p",
+    "limitations": "Leaf GPU intervals measure elapsed pass duration, not shader-instruction busy cycles. No continuous GPU-busy metric, CPU-busy metric or FPS claim. SM6.7 and 4x MSAA were not compared."
+  },
+  "instrumentation": "Retained PlanarBenchmark CPU-frame-period telemetry is the only native source delta from upstream main; Assets tree is identical",
+  "harness_sha256": {
+    "Tests\\TowerBenchmarkEditorSmoke.py": "856ed740ff8db9332e2811b46f5efa7c31146f4d306b664d80e9d8823465116d",
+    "Tests\\TowerBenchmarkVisualTests.py": "d3c38e6506545fb0b304a326d3a54dde1b2b70e11c7a707ac7f409f521dba82f",
+    "Tests\\analyze_tower_profile.py": "190d88bcd55a612100604eca9eff78f612bf4bbf2ec74ab2f96ec67d4b79ae22"
+  },
+  "local_evidence_root": "D:\\diversion\\TG\\TGProject\\user\\silpom-rebenchmark-2f818d8-20261114",
+  "validation_notes": [
+    "Both EditorSmoke and VisualTests pass at both sample counts; four Editor views and Ctrl-G manually reviewed",
+    "Interior column visibly illuminated; no newly black wall panels; fine grazing contour aliasing/cutouts also occur in the historical 1x reference",
+    "2x backup record/depth comparisons have zero mismatches in all three interior cameras",
+    "No device-loss, renderer binding or Trace::Assert messages in the four run logs",
+    "Ctrl-G retains the unrelated missing Yarn BuildCredits.ps1 error; tower rendering passes",
+    "TG73 lacks Editor/Scripts/rendering_controls.py; separate settings-pane smoke not run; AA validated through native cvar/state",
+    "Asset Processor idle before timing runs; no inspector passes, PNG or DDS captures in timing directories",
+    "SM6.7, 4x MSAA, RenderDoc counters, GPU instruction profiling, GPU busy time and CPU busy time not measured",
+    "Developer Mode remained off; no RenderDoc injection or stable-power-state clock mode"
+  ],
+  "runs": {
+    "2": {
+      "sample_count": 2,
+      "aa_state": [
+        2,
+        0,
+        0
+      ],
+      "visual_directory": "visuals-2x-20261114-205859",
+      "timing_directory": "timings-2x-20261114-210459",
+      "visual_validation": {
+        "passed": true,
+        "scene_sha256": "a0894326d0eb68b7328949b1f1829a8021b7293ce16a567e0c2ea8c9148f6e7b",
+        "width": 1280,
+        "height": 720,
+        "samples": 2,
+        "gameplay_visible": true,
+        "saved_tower_controls": {
+          "Lighting estimator": 5,
+          "Height-derived normals (off = cheaper)": true,
+          "Level 2 predictor (experimental)": true,
+          "Gather validation (may be cheaper)": true,
+          "R16 height textures (less GPU memory)": true,
+          "Anti-aliasing": 0
+        },
+        "vue_live_link_unchanged": true,
+        "requested_overrides": {
+          "UseHeightDerivedNormals": true
+        },
+        "saved_height_derived_normals": false,
+        "effective_tower_configuration_sha256": "b76f275b9af10b14731ac7dc5115e1e29eb6edb11cebd57cd05e22b3b32ec67e",
+        "target_5700g_performance_measured": false,
+        "captures": {
+          "exterior": {
+            "rgba_sha256": "af29f800bd923cfe987678095e3a9563d00ab29042f55cf262d583e493768d99",
+            "mean_rgb": 96.672,
+            "contrast": 53.896
+          },
+          "lower-facing": {
+            "rgba_sha256": "c707cccb47c57fd710a295227c9857cd09b57c6d640ddf4466ac031e65edf7b1",
+            "mean_rgb": 101.563,
+            "contrast": 49.422,
+            "backup_depth_mismatches": 0,
+            "backup_samples": 17,
+            "valid_hit_samples": 1843191
+          },
+          "lower-glancing": {
+            "rgba_sha256": "34fc3994a0a2389b467c65cd83f9c3e5ff820090ead164905ba0ae01702ae3a6",
+            "mean_rgb": 83.179,
+            "contrast": 65.924,
+            "backup_depth_mismatches": 0,
+            "backup_samples": 34372,
+            "valid_hit_samples": 1822400
+          },
+          "upper-glancing": {
+            "rgba_sha256": "92eb95cd80f3d687d15c45bc179ef5ccdb70a0dafe3a897ea8eb6e7c16903bbd",
+            "mean_rgb": 82.092,
+            "contrast": 62.045,
+            "backup_depth_mismatches": 0,
+            "backup_samples": 58948,
+            "valid_hit_samples": 1806350
+          },
+          "gameplay": {
+            "rgba_sha256": "adcca8ef3b23e01462809909d5bd5c3c1e6b9b5691964d443655eff60b331ef1",
+            "mean_rgb": 89.264,
+            "contrast": 51.458
+          }
+        }
+      },
+      "views": {
+        "exterior": {
+          "pooled": {
+            "hit_generation": {
+              "count": 360,
+              "median_ms": 19.2775,
+              "p95_ms": 19.448050000000002,
+              "min_ms": 19.031,
+              "max_ms": 19.764
+            },
+            "silpom_forward_shading": {
+              "count": 360,
+              "median_ms": 25.2295,
+              "p95_ms": 30.6367,
+              "min_ms": 22.271,
+              "max_ms": 31.465
+            },
+            "graphics_pass_span": {
+              "count": 360,
+              "median_ms": 64.6055,
+              "p95_ms": 70.10640000000001,
+              "min_ms": 61.053,
+              "max_ms": 80.486
+            },
+            "cpu_frame_period": {
+              "count": 360,
+              "median_ms": 64.95060000000001,
+              "p95_ms": 70.46135,
+              "min_ms": 61.4952,
+              "max_ms": 80.8052
+            }
+          },
+          "repeat_median_ranges": {
+            "hit_generation": {
+              "min_ms": 19.276,
+              "max_ms": 19.2785
+            },
+            "silpom_forward_shading": {
+              "min_ms": 25.153,
+              "max_ms": 25.295
+            },
+            "graphics_pass_span": {
+              "min_ms": 64.5745,
+              "max_ms": 64.637
+            },
+            "cpu_frame_period": {
+              "min_ms": 64.9247,
+              "max_ms": 65.00245000000001
+            }
+          },
+          "captures": [
+            {
+              "file": "gpu-exterior-1.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 19.276,
+                "p95_ms": 19.45765,
+                "min_ms": 19.031,
+                "max_ms": 19.666
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 25.295,
+                "p95_ms": 30.61685,
+                "min_ms": 22.271,
+                "max_ms": 31.422
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 64.5925,
+                "p95_ms": 69.90135,
+                "min_ms": 61.701,
+                "max_ms": 73.262
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 64.9511,
+                "p95_ms": 70.297635,
+                "min_ms": 62.0883,
+                "max_ms": 73.6424
+              },
+              "partial_passes": []
+            },
+            {
+              "file": "gpu-exterior-2.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 19.2785,
+                "p95_ms": 19.416050000000002,
+                "min_ms": 19.055,
+                "max_ms": 19.583
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 25.259,
+                "p95_ms": 30.76895,
+                "min_ms": 22.318,
+                "max_ms": 31.315
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 64.5745,
+                "p95_ms": 70.32645,
+                "min_ms": 61.053,
+                "max_ms": 80.486
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 64.9247,
+                "p95_ms": 70.77835,
+                "min_ms": 61.4952,
+                "max_ms": 80.8052
+              },
+              "partial_passes": []
+            },
+            {
+              "file": "gpu-exterior-3.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 19.278,
+                "p95_ms": 19.449,
+                "min_ms": 19.087,
+                "max_ms": 19.764
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 25.153,
+                "p95_ms": 30.23015,
+                "min_ms": 22.455,
+                "max_ms": 31.465
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 64.637,
+                "p95_ms": 69.70665,
+                "min_ms": 61.775,
+                "max_ms": 70.852
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 65.00245000000001,
+                "p95_ms": 70.07391000000001,
+                "min_ms": 61.871,
+                "max_ms": 71.3603
+              },
+              "partial_passes": []
+            }
+          ],
+          "largest_leaf_passes": [
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.SilPOMHitForward",
+              "count": 360,
+              "median_ms": 25.2295,
+              "p95_ms": 30.6367,
+              "min_ms": 22.271,
+              "max_ms": 31.465
+            },
+            {
+              "path": "Root.MainPipeline_0.DepthPrePass.SilPOMHitDepth",
+              "count": 360,
+              "median_ms": 19.2775,
+              "p95_ms": 19.448050000000002,
+              "min_ms": 19.031,
+              "max_ms": 19.764
+            },
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.Forward",
+              "count": 360,
+              "median_ms": 4.126,
+              "p95_ms": 4.24,
+              "min_ms": 3.212,
+              "max_ms": 4.438
+            },
+            {
+              "path": "Root.MainPipeline_0.Shadows.FullscreenShadowPass",
+              "count": 360,
+              "median_ms": 1.091,
+              "p95_ms": 1.094,
+              "min_ms": 1.088,
+              "max_ms": 1.146
+            },
+            {
+              "path": "Root.MainPipeline_0.DepthPrePass.SilPOMClassifyWallHoles",
+              "count": 360,
+              "median_ms": 1.045,
+              "p95_ms": 1.069,
+              "min_ms": 1.033,
+              "max_ms": 1.542
+            },
+            {
+              "path": "Root.MainPipeline_0.EditorModeFeedback.EntitySelectionPass.EntitySelectionTemplateChildPass0_EditorModeOutlineTemplate",
+              "count": 360,
+              "median_ms": 0.862,
+              "p95_ms": 0.875,
+              "min_ms": 0.85,
+              "max_ms": 0.903
+            },
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.SubsurfaceScatteringPass",
+              "count": 360,
+              "median_ms": 0.665,
+              "p95_ms": 0.693,
+              "min_ms": 0.654,
+              "max_ms": 0.782
+            }
+          ]
+        },
+        "lower-facing": {
+          "pooled": {
+            "hit_generation": {
+              "count": 360,
+              "median_ms": 79.7,
+              "p95_ms": 80.17505,
+              "min_ms": 79.064,
+              "max_ms": 80.724
+            },
+            "silpom_forward_shading": {
+              "count": 360,
+              "median_ms": 100.1335,
+              "p95_ms": 104.15765,
+              "min_ms": 97.093,
+              "max_ms": 109.991
+            },
+            "graphics_pass_span": {
+              "count": 360,
+              "median_ms": 200.308,
+              "p95_ms": 205.15689999999998,
+              "min_ms": 196.942,
+              "max_ms": 215.063
+            },
+            "cpu_frame_period": {
+              "count": 360,
+              "median_ms": 200.9408,
+              "p95_ms": 205.961455,
+              "min_ms": 197.411,
+              "max_ms": 215.5549
+            }
+          },
+          "repeat_median_ranges": {
+            "hit_generation": {
+              "min_ms": 79.697,
+              "max_ms": 79.7065
+            },
+            "silpom_forward_shading": {
+              "min_ms": 99.92699999999999,
+              "max_ms": 100.3475
+            },
+            "graphics_pass_span": {
+              "min_ms": 200.159,
+              "max_ms": 200.4155
+            },
+            "cpu_frame_period": {
+              "min_ms": 200.7875,
+              "max_ms": 200.96544999999998
+            }
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-facing-1.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 79.7065,
+                "p95_ms": 80.1995,
+                "min_ms": 79.064,
+                "max_ms": 80.51
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 99.9975,
+                "p95_ms": 104.1494,
+                "min_ms": 97.093,
+                "max_ms": 106.659
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 200.159,
+                "p95_ms": 204.9449,
+                "min_ms": 197.068,
+                "max_ms": 209.436
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 200.7875,
+                "p95_ms": 205.47573,
+                "min_ms": 197.7437,
+                "max_ms": 210.0841
+              },
+              "partial_passes": []
+            },
+            {
+              "file": "gpu-lower-facing-2.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 79.70400000000001,
+                "p95_ms": 80.07605,
+                "min_ms": 79.22,
+                "max_ms": 80.272
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 100.3475,
+                "p95_ms": 103.83749999999999,
+                "min_ms": 97.551,
+                "max_ms": 109.991
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 200.328,
+                "p95_ms": 205.55075,
+                "min_ms": 197.27,
+                "max_ms": 215.063
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 200.96544999999998,
+                "p95_ms": 206.45335500000002,
+                "min_ms": 197.7377,
+                "max_ms": 215.5549
+              },
+              "partial_passes": []
+            },
+            {
+              "file": "gpu-lower-facing-3.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 79.697,
+                "p95_ms": 80.10265,
+                "min_ms": 79.122,
+                "max_ms": 80.724
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 99.92699999999999,
+                "p95_ms": 104.2187,
+                "min_ms": 97.474,
+                "max_ms": 105.601
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 200.4155,
+                "p95_ms": 205.05885,
+                "min_ms": 196.942,
+                "max_ms": 206.636
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 200.9464,
+                "p95_ms": 205.62744999999998,
+                "min_ms": 197.411,
+                "max_ms": 207.288
+              },
+              "partial_passes": []
+            }
+          ],
+          "largest_leaf_passes": [
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.SilPOMHitForward",
+              "count": 360,
+              "median_ms": 100.1335,
+              "p95_ms": 104.15765,
+              "min_ms": 97.093,
+              "max_ms": 109.991
+            },
+            {
+              "path": "Root.MainPipeline_0.DepthPrePass.SilPOMHitDepth",
+              "count": 360,
+              "median_ms": 79.7,
+              "p95_ms": 80.17505,
+              "min_ms": 79.064,
+              "max_ms": 80.724
+            },
+            {
+              "path": "Root.MainPipeline_0.DepthPrePass.SilPOMClassifyWallHoles",
+              "count": 360,
+              "median_ms": 1.789,
+              "p95_ms": 1.877,
+              "min_ms": 1.769,
+              "max_ms": 2.722
+            },
+            {
+              "path": "Root.MainPipeline_0.Shadows.FullscreenShadowPass",
+              "count": 360,
+              "median_ms": 1.209,
+              "p95_ms": 1.211,
+              "min_ms": 1.207,
+              "max_ms": 1.217
+            },
+            {
+              "path": "Root.MainPipeline_0.EditorModeFeedback.EntitySelectionPass.EntitySelectionTemplateChildPass0_EditorModeOutlineTemplate",
+              "count": 360,
+              "median_ms": 0.861,
+              "p95_ms": 0.89705,
+              "min_ms": 0.848,
+              "max_ms": 0.931
+            },
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.DiffuseGlobalIlluminationPass.DiffuseCompositePass",
+              "count": 360,
+              "median_ms": 0.7675000000000001,
+              "p95_ms": 0.83915,
+              "min_ms": 0.687,
+              "max_ms": 1.245
+            },
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.ReflectionsPass.ReflectionGlobalFullscreenPass",
+              "count": 360,
+              "median_ms": 0.7535000000000001,
+              "p95_ms": 0.82,
+              "min_ms": 0.699,
+              "max_ms": 1.193
+            }
+          ]
+        },
+        "lower-glancing": {
+          "pooled": {
+            "hit_generation": {
+              "count": 360,
+              "median_ms": 125.4375,
+              "p95_ms": 125.7256,
+              "min_ms": 124.747,
+              "max_ms": 126.075
+            },
+            "silpom_forward_shading": {
+              "count": 360,
+              "median_ms": 105.38300000000001,
+              "p95_ms": 108.94775,
+              "min_ms": 102.507,
+              "max_ms": 117.516
+            },
+            "graphics_pass_span": {
+              "count": 360,
+              "median_ms": 251.952,
+              "p95_ms": 257.52405,
+              "min_ms": 248.723,
+              "max_ms": 275.016
+            },
+            "cpu_frame_period": {
+              "count": 360,
+              "median_ms": 252.6262,
+              "p95_ms": 258.26626999999996,
+              "min_ms": 249.3649,
+              "max_ms": 275.658
+            }
+          },
+          "repeat_median_ranges": {
+            "hit_generation": {
+              "min_ms": 125.4055,
+              "max_ms": 125.45349999999999
+            },
+            "silpom_forward_shading": {
+              "min_ms": 105.105,
+              "max_ms": 105.8175
+            },
+            "graphics_pass_span": {
+              "min_ms": 251.418,
+              "max_ms": 252.2705
+            },
+            "cpu_frame_period": {
+              "min_ms": 252.05235,
+              "max_ms": 252.94185
+            }
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-glancing-1.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 125.443,
+                "p95_ms": 125.72,
+                "min_ms": 124.865,
+                "max_ms": 126.075
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 105.8175,
+                "p95_ms": 109.25005,
+                "min_ms": 102.794,
+                "max_ms": 109.394
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 252.1505,
+                "p95_ms": 257.2645,
+                "min_ms": 248.919,
+                "max_ms": 266.6
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 252.82065,
+                "p95_ms": 257.86228,
+                "min_ms": 249.5017,
+                "max_ms": 267.2918
+              },
+              "partial_passes": []
+            },
+            {
+              "file": "gpu-lower-glancing-2.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 125.4055,
+                "p95_ms": 125.6914,
+                "min_ms": 124.747,
+                "max_ms": 125.974
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 105.105,
+                "p95_ms": 108.1289,
+                "min_ms": 102.609,
+                "max_ms": 110.111
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 251.418,
+                "p95_ms": 255.32399999999998,
+                "min_ms": 248.73,
+                "max_ms": 263.231
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 252.05235,
+                "p95_ms": 256.001595,
+                "min_ms": 249.3837,
+                "max_ms": 263.8579
+              },
+              "partial_passes": []
+            },
+            {
+              "file": "gpu-lower-glancing-3.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 125.45349999999999,
+                "p95_ms": 125.72595,
+                "min_ms": 124.806,
+                "max_ms": 126.026
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 105.4495,
+                "p95_ms": 109.20875,
+                "min_ms": 102.507,
+                "max_ms": 117.516
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 252.2705,
+                "p95_ms": 259.53075,
+                "min_ms": 248.723,
+                "max_ms": 275.016
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 252.94185,
+                "p95_ms": 260.292795,
+                "min_ms": 249.3649,
+                "max_ms": 275.658
+              },
+              "partial_passes": []
+            }
+          ],
+          "largest_leaf_passes": [
+            {
+              "path": "Root.MainPipeline_0.DepthPrePass.SilPOMHitDepth",
+              "count": 360,
+              "median_ms": 125.4375,
+              "p95_ms": 125.7256,
+              "min_ms": 124.747,
+              "max_ms": 126.075
+            },
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.SilPOMHitForward",
+              "count": 360,
+              "median_ms": 105.38300000000001,
+              "p95_ms": 108.94775,
+              "min_ms": 102.507,
+              "max_ms": 117.516
+            },
+            {
+              "path": "Root.MainPipeline_0.DepthPrePass.SilPOMClassifyWallHoles",
+              "count": 360,
+              "median_ms": 1.992,
+              "p95_ms": 2.0452,
+              "min_ms": 1.966,
+              "max_ms": 2.292
+            },
+            {
+              "path": "Root.MainPipeline_0.Shadows.FullscreenShadowPass",
+              "count": 360,
+              "median_ms": 1.212,
+              "p95_ms": 1.214,
+              "min_ms": 1.21,
+              "max_ms": 1.221
+            },
+            {
+              "path": "Root.MainPipeline_0.EditorModeFeedback.EntitySelectionPass.EntitySelectionTemplateChildPass0_EditorModeOutlineTemplate",
+              "count": 360,
+              "median_ms": 0.8685,
+              "p95_ms": 0.89005,
+              "min_ms": 0.856,
+              "max_ms": 0.959
+            },
+            {
+              "path": "Root.MainPipeline_0.DepthPrePass.SilPOMHitDepthWallBackup",
+              "count": 360,
+              "median_ms": 0.777,
+              "p95_ms": 0.779,
+              "min_ms": 0.776,
+              "max_ms": 0.787
+            },
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.DiffuseGlobalIlluminationPass.DiffuseCompositePass",
+              "count": 360,
+              "median_ms": 0.726,
+              "p95_ms": 0.9313000000000001,
+              "min_ms": 0.711,
+              "max_ms": 1.259
+            }
+          ]
+        },
+        "upper-glancing": {
+          "pooled": {
+            "hit_generation": {
+              "count": 360,
+              "median_ms": 182.09,
+              "p95_ms": 187.16604999999998,
+              "min_ms": 179.185,
+              "max_ms": 187.533
+            },
+            "silpom_forward_shading": {
+              "count": 360,
+              "median_ms": 90.42949999999999,
+              "p95_ms": 92.16545,
+              "min_ms": 88.007,
+              "max_ms": 98.713
+            },
+            "graphics_pass_span": {
+              "count": 360,
+              "median_ms": 296.1435,
+              "p95_ms": 301.36365,
+              "min_ms": 289.923,
+              "max_ms": 307.617
+            },
+            "cpu_frame_period": {
+              "count": 360,
+              "median_ms": 296.9018,
+              "p95_ms": 302.064205,
+              "min_ms": 290.6346,
+              "max_ms": 308.4449
+            }
+          },
+          "repeat_median_ranges": {
+            "hit_generation": {
+              "min_ms": 182.0585,
+              "max_ms": 183.52300000000002
+            },
+            "silpom_forward_shading": {
+              "min_ms": 90.3195,
+              "max_ms": 90.536
+            },
+            "graphics_pass_span": {
+              "min_ms": 296.005,
+              "max_ms": 296.2255
+            },
+            "cpu_frame_period": {
+              "min_ms": 296.73845,
+              "max_ms": 297.0586
+            }
+          },
+          "captures": [
+            {
+              "file": "gpu-upper-glancing-1.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 183.52300000000002,
+                "p95_ms": 187.21975,
+                "min_ms": 179.352,
+                "max_ms": 187.331
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 90.536,
+                "p95_ms": 92.2744,
+                "min_ms": 88.007,
+                "max_ms": 98.713
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 296.2255,
+                "p95_ms": 301.60544999999996,
+                "min_ms": 290.728,
+                "max_ms": 304.744
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 297.0586,
+                "p95_ms": 302.301825,
+                "min_ms": 291.3368,
+                "max_ms": 305.6554
+              },
+              "partial_passes": []
+            },
+            {
+              "file": "gpu-upper-glancing-2.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 182.075,
+                "p95_ms": 187.13830000000002,
+                "min_ms": 179.243,
+                "max_ms": 187.304
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 90.3195,
+                "p95_ms": 91.91755,
+                "min_ms": 88.292,
+                "max_ms": 92.253
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 296.151,
+                "p95_ms": 300.87145,
+                "min_ms": 290.612,
+                "max_ms": 307.617
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 296.97735,
+                "p95_ms": 301.73389000000003,
+                "min_ms": 291.3703,
+                "max_ms": 308.4449
+              },
+              "partial_passes": []
+            },
+            {
+              "file": "gpu-upper-glancing-3.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 182.0585,
+                "p95_ms": 187.1681,
+                "min_ms": 179.185,
+                "max_ms": 187.533
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 90.4055,
+                "p95_ms": 92.2949,
+                "min_ms": 88.627,
+                "max_ms": 97.132
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 296.005,
+                "p95_ms": 301.5602,
+                "min_ms": 289.923,
+                "max_ms": 303.835
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 296.73845,
+                "p95_ms": 302.34083,
+                "min_ms": 290.6346,
+                "max_ms": 304.5902
+              },
+              "partial_passes": []
+            }
+          ],
+          "largest_leaf_passes": [
+            {
+              "path": "Root.MainPipeline_0.DepthPrePass.SilPOMHitDepth",
+              "count": 360,
+              "median_ms": 182.09,
+              "p95_ms": 187.16604999999998,
+              "min_ms": 179.185,
+              "max_ms": 187.533
+            },
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.SilPOMHitForward",
+              "count": 360,
+              "median_ms": 90.42949999999999,
+              "p95_ms": 92.16545,
+              "min_ms": 88.007,
+              "max_ms": 98.713
+            },
+            {
+              "path": "Root.MainPipeline_0.DepthPrePass.SilPOMClassifyWallHoles",
+              "count": 360,
+              "median_ms": 2.018,
+              "p95_ms": 2.0711000000000004,
+              "min_ms": 1.997,
+              "max_ms": 2.909
+            },
+            {
+              "path": "Root.MainPipeline_0.Shadows.FullscreenShadowPass",
+              "count": 360,
+              "median_ms": 1.213,
+              "p95_ms": 1.215,
+              "min_ms": 1.211,
+              "max_ms": 1.223
+            },
+            {
+              "path": "Root.MainPipeline_0.EditorModeFeedback.EntitySelectionPass.EntitySelectionTemplateChildPass0_EditorModeOutlineTemplate",
+              "count": 360,
+              "median_ms": 0.87,
+              "p95_ms": 0.9021,
+              "min_ms": 0.857,
+              "max_ms": 0.952
+            },
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.Forward",
+              "count": 360,
+              "median_ms": 0.843,
+              "p95_ms": 0.86105,
+              "min_ms": 0.823,
+              "max_ms": 0.893
+            },
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.DiffuseGlobalIlluminationPass.DiffuseCompositePass",
+              "count": 360,
+              "median_ms": 0.785,
+              "p95_ms": 0.8862500000000001,
+              "min_ms": 0.71,
+              "max_ms": 1.068
+            }
+          ]
+        }
+      }
+    },
+    "1": {
+      "sample_count": 1,
+      "aa_state": [
+        1,
+        0,
+        0
+      ],
+      "visual_directory": "visuals-1x-20261114-210245",
+      "timing_directory": "timings-1x-20261114-211916",
+      "visual_validation": {
+        "passed": true,
+        "scene_sha256": "a0894326d0eb68b7328949b1f1829a8021b7293ce16a567e0c2ea8c9148f6e7b",
+        "width": 1280,
+        "height": 720,
+        "samples": 1,
+        "gameplay_visible": true,
+        "saved_tower_controls": {
+          "Lighting estimator": 5,
+          "Height-derived normals (off = cheaper)": true,
+          "Level 2 predictor (experimental)": true,
+          "Gather validation (may be cheaper)": true,
+          "R16 height textures (less GPU memory)": true,
+          "Anti-aliasing": 0
+        },
+        "vue_live_link_unchanged": true,
+        "requested_overrides": {
+          "UseHeightDerivedNormals": true
+        },
+        "saved_height_derived_normals": false,
+        "effective_tower_configuration_sha256": "b76f275b9af10b14731ac7dc5115e1e29eb6edb11cebd57cd05e22b3b32ec67e",
+        "target_5700g_performance_measured": false,
+        "captures": {
+          "exterior": {
+            "rgba_sha256": "474282b793b2b808396fa473bd4891f1e753c1672fa720bfde16b709f59eaf17",
+            "mean_rgb": 96.649,
+            "contrast": 53.935
+          },
+          "lower-facing": {
+            "rgba_sha256": "1b58dd4848ab4014a8396e2622a11785ad9c90e3a8e142962bb151804ecd157b",
+            "mean_rgb": 101.577,
+            "contrast": 49.455,
+            "valid_hit_samples": 921599
+          },
+          "lower-glancing": {
+            "rgba_sha256": "8ca699e6bb8c4931331d1c6266d5111df494ba591709d3a043263446f004eabb",
+            "mean_rgb": 83.179,
+            "contrast": 65.963,
+            "valid_hit_samples": 911204
+          },
+          "upper-glancing": {
+            "rgba_sha256": "cfc543251c7a160b5ddbd42155b5c26cecabfdecd4ee0a99159fb3cf73c05b12",
+            "mean_rgb": 82.101,
+            "contrast": 62.081,
+            "valid_hit_samples": 903187
+          },
+          "gameplay": {
+            "rgba_sha256": "23f566d8fed8666448cdc7ad3a4fe13d8838a89040fe6a6d60388a96e22a779a",
+            "mean_rgb": 89.237,
+            "contrast": 51.516
+          }
+        }
+      },
+      "views": {
+        "exterior": {
+          "pooled": {
+            "hit_generation": {
+              "count": 360,
+              "median_ms": 10.9455,
+              "p95_ms": 11.063450000000001,
+              "min_ms": 10.592,
+              "max_ms": 11.212
+            },
+            "silpom_forward_shading": {
+              "count": 360,
+              "median_ms": 11.933499999999999,
+              "p95_ms": 14.184249999999999,
+              "min_ms": 11.293,
+              "max_ms": 14.394
+            },
+            "graphics_pass_span": {
+              "count": 360,
+              "median_ms": 38.176500000000004,
+              "p95_ms": 40.42405,
+              "min_ms": 37.307,
+              "max_ms": 43.805
+            },
+            "cpu_frame_period": {
+              "count": 360,
+              "median_ms": 38.5326,
+              "p95_ms": 40.743375,
+              "min_ms": 37.4975,
+              "max_ms": 44.1643
+            }
+          },
+          "repeat_median_ranges": {
+            "hit_generation": {
+              "min_ms": 10.940999999999999,
+              "max_ms": 10.9555
+            },
+            "silpom_forward_shading": {
+              "min_ms": 11.869499999999999,
+              "max_ms": 11.972000000000001
+            },
+            "graphics_pass_span": {
+              "min_ms": 38.113,
+              "max_ms": 38.2425
+            },
+            "cpu_frame_period": {
+              "min_ms": 38.430099999999996,
+              "max_ms": 38.618750000000006
+            }
+          },
+          "captures": [
+            {
+              "file": "gpu-exterior-1.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 10.9555,
+                "p95_ms": 11.056099999999999,
+                "min_ms": 10.62,
+                "max_ms": 11.122
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 11.963000000000001,
+                "p95_ms": 14.188099999999999,
+                "min_ms": 11.296,
+                "max_ms": 14.384
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 38.158,
+                "p95_ms": 40.48665,
+                "min_ms": 37.399,
+                "max_ms": 40.643
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 38.430099999999996,
+                "p95_ms": 40.773205,
+                "min_ms": 37.5265,
+                "max_ms": 41.1581
+              },
+              "partial_passes": []
+            },
+            {
+              "file": "gpu-exterior-2.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 10.9435,
+                "p95_ms": 11.0922,
+                "min_ms": 10.592,
+                "max_ms": 11.212
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 11.972000000000001,
+                "p95_ms": 14.1839,
+                "min_ms": 11.388,
+                "max_ms": 14.394
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 38.2425,
+                "p95_ms": 40.424749999999996,
+                "min_ms": 37.392,
+                "max_ms": 43.805
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 38.618750000000006,
+                "p95_ms": 40.816280000000006,
+                "min_ms": 37.4975,
+                "max_ms": 44.1643
+              },
+              "partial_passes": []
+            },
+            {
+              "file": "gpu-exterior-3.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 10.940999999999999,
+                "p95_ms": 11.06205,
+                "min_ms": 10.626,
+                "max_ms": 11.149
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 11.869499999999999,
+                "p95_ms": 14.17475,
+                "min_ms": 11.293,
+                "max_ms": 14.376
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 38.113,
+                "p95_ms": 40.39345,
+                "min_ms": 37.307,
+                "max_ms": 42.956
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 38.5136,
+                "p95_ms": 40.7162,
+                "min_ms": 37.5872,
+                "max_ms": 43.0623
+              },
+              "partial_passes": []
+            }
+          ],
+          "largest_leaf_passes": [
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.SilPOMHitForward",
+              "count": 360,
+              "median_ms": 11.933499999999999,
+              "p95_ms": 14.184249999999999,
+              "min_ms": 11.293,
+              "max_ms": 14.394
+            },
+            {
+              "path": "Root.MainPipeline_0.DepthPrePass.SilPOMHitDepth",
+              "count": 360,
+              "median_ms": 10.9455,
+              "p95_ms": 11.063450000000001,
+              "min_ms": 10.592,
+              "max_ms": 11.212
+            },
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.Forward",
+              "count": 360,
+              "median_ms": 3.4825,
+              "p95_ms": 3.587,
+              "min_ms": 2.836,
+              "max_ms": 3.622
+            },
+            {
+              "path": "Root.MainPipeline_0.Shadows.FullscreenShadowPass",
+              "count": 360,
+              "median_ms": 1.09,
+              "p95_ms": 1.094,
+              "min_ms": 1.087,
+              "max_ms": 1.101
+            },
+            {
+              "path": "Root.MainPipeline_0.EditorModeFeedback.EntitySelectionPass.EntitySelectionTemplateChildPass0_EditorModeOutlineTemplate",
+              "count": 360,
+              "median_ms": 0.86,
+              "p95_ms": 0.87,
+              "min_ms": 0.848,
+              "max_ms": 0.895
+            },
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.DiffuseSpecularMergePass",
+              "count": 360,
+              "median_ms": 0.633,
+              "p95_ms": 0.6671,
+              "min_ms": 0.622,
+              "max_ms": 0.718
+            },
+            {
+              "path": "Root.MainPipeline_0.PostProcessPass.LightAdaptation.DisplayMapperPass.AcesOutputTransform",
+              "count": 360,
+              "median_ms": 0.583,
+              "p95_ms": 0.59505,
+              "min_ms": 0.571,
+              "max_ms": 0.877
+            }
+          ]
+        },
+        "lower-facing": {
+          "pooled": {
+            "hit_generation": {
+              "count": 360,
+              "median_ms": 47.679,
+              "p95_ms": 48.190149999999996,
+              "min_ms": 47.238,
+              "max_ms": 48.968
+            },
+            "silpom_forward_shading": {
+              "count": 360,
+              "median_ms": 49.802499999999995,
+              "p95_ms": 51.259100000000004,
+              "min_ms": 48.439,
+              "max_ms": 54.371
+            },
+            "graphics_pass_span": {
+              "count": 360,
+              "median_ms": 112.1155,
+              "p95_ms": 114.7354,
+              "min_ms": 109.938,
+              "max_ms": 120.882
+            },
+            "cpu_frame_period": {
+              "count": 360,
+              "median_ms": 112.4882,
+              "p95_ms": 115.23892,
+              "min_ms": 110.2732,
+              "max_ms": 121.2631
+            }
+          },
+          "repeat_median_ranges": {
+            "hit_generation": {
+              "min_ms": 47.665,
+              "max_ms": 47.739
+            },
+            "silpom_forward_shading": {
+              "min_ms": 49.676,
+              "max_ms": 49.8855
+            },
+            "graphics_pass_span": {
+              "min_ms": 112.10249999999999,
+              "max_ms": 112.1455
+            },
+            "cpu_frame_period": {
+              "min_ms": 112.47194999999999,
+              "max_ms": 112.50450000000001
+            }
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-facing-1.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 47.665,
+                "p95_ms": 48.2523,
+                "min_ms": 47.246,
+                "max_ms": 48.968
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 49.676,
+                "p95_ms": 51.2162,
+                "min_ms": 48.704,
+                "max_ms": 51.748
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 112.10249999999999,
+                "p95_ms": 115.98169999999999,
+                "min_ms": 110.257,
+                "max_ms": 120.882
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 112.47194999999999,
+                "p95_ms": 116.37831,
+                "min_ms": 110.6269,
+                "max_ms": 121.1415
+              },
+              "partial_passes": []
+            },
+            {
+              "file": "gpu-lower-facing-2.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 47.667500000000004,
+                "p95_ms": 48.0807,
+                "min_ms": 47.238,
+                "max_ms": 48.467
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 49.8855,
+                "p95_ms": 51.42575,
+                "min_ms": 48.439,
+                "max_ms": 54.371
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 112.125,
+                "p95_ms": 114.93755,
+                "min_ms": 110.301,
+                "max_ms": 120.874
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 112.49164999999999,
+                "p95_ms": 115.31752,
+                "min_ms": 110.7774,
+                "max_ms": 121.2631
+              },
+              "partial_passes": []
+            },
+            {
+              "file": "gpu-lower-facing-3.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 47.739,
+                "p95_ms": 48.1677,
+                "min_ms": 47.244,
+                "max_ms": 48.388
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 49.8015,
+                "p95_ms": 51.259100000000004,
+                "min_ms": 48.542,
+                "max_ms": 51.756
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 112.1455,
+                "p95_ms": 114.25614999999999,
+                "min_ms": 109.938,
+                "max_ms": 118.645
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 112.50450000000001,
+                "p95_ms": 114.6122,
+                "min_ms": 110.2732,
+                "max_ms": 119.0793
+              },
+              "partial_passes": []
+            }
+          ],
+          "largest_leaf_passes": [
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.SilPOMHitForward",
+              "count": 360,
+              "median_ms": 49.802499999999995,
+              "p95_ms": 51.259100000000004,
+              "min_ms": 48.439,
+              "max_ms": 54.371
+            },
+            {
+              "path": "Root.MainPipeline_0.DepthPrePass.SilPOMHitDepth",
+              "count": 360,
+              "median_ms": 47.679,
+              "p95_ms": 48.190149999999996,
+              "min_ms": 47.238,
+              "max_ms": 48.968
+            },
+            {
+              "path": "Root.MainPipeline_0.Shadows.FullscreenShadowPass",
+              "count": 360,
+              "median_ms": 1.208,
+              "p95_ms": 1.21,
+              "min_ms": 1.207,
+              "max_ms": 1.212
+            },
+            {
+              "path": "Root.MainPipeline_0.EditorModeFeedback.EntitySelectionPass.EntitySelectionTemplateChildPass0_EditorModeOutlineTemplate",
+              "count": 360,
+              "median_ms": 0.8585,
+              "p95_ms": 0.88405,
+              "min_ms": 0.846,
+              "max_ms": 0.944
+            },
+            {
+              "path": "Root.MainPipeline_0.DepthPrePass.SilPOMClassifyWallHoles",
+              "count": 360,
+              "median_ms": 0.664,
+              "p95_ms": 0.71205,
+              "min_ms": 0.653,
+              "max_ms": 0.782
+            },
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.DiffuseSpecularMergePass",
+              "count": 360,
+              "median_ms": 0.628,
+              "p95_ms": 0.7011499999999999,
+              "min_ms": 0.619,
+              "max_ms": 0.785
+            },
+            {
+              "path": "Root.MainPipeline_0.PostProcessPass.LightAdaptation.DisplayMapperPass.AcesOutputTransform",
+              "count": 360,
+              "median_ms": 0.6,
+              "p95_ms": 0.62605,
+              "min_ms": 0.587,
+              "max_ms": 0.681
+            }
+          ]
+        },
+        "lower-glancing": {
+          "pooled": {
+            "hit_generation": {
+              "count": 360,
+              "median_ms": 75.5455,
+              "p95_ms": 76.60915,
+              "min_ms": 74.891,
+              "max_ms": 77.382
+            },
+            "silpom_forward_shading": {
+              "count": 360,
+              "median_ms": 52.287,
+              "p95_ms": 53.835950000000004,
+              "min_ms": 50.423,
+              "max_ms": 59.221
+            },
+            "graphics_pass_span": {
+              "count": 360,
+              "median_ms": 143.8625,
+              "p95_ms": 146.73540000000003,
+              "min_ms": 140.654,
+              "max_ms": 154.793
+            },
+            "cpu_frame_period": {
+              "count": 360,
+              "median_ms": 144.28345000000002,
+              "p95_ms": 147.203355,
+              "min_ms": 141.0824,
+              "max_ms": 155.5792
+            }
+          },
+          "repeat_median_ranges": {
+            "hit_generation": {
+              "min_ms": 75.49549999999999,
+              "max_ms": 75.6385
+            },
+            "silpom_forward_shading": {
+              "min_ms": 52.26649999999999,
+              "max_ms": 52.3175
+            },
+            "graphics_pass_span": {
+              "min_ms": 143.84449999999998,
+              "max_ms": 143.8995
+            },
+            "cpu_frame_period": {
+              "min_ms": 144.26729999999998,
+              "max_ms": 144.29415
+            }
+          },
+          "captures": [
+            {
+              "file": "gpu-lower-glancing-1.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 75.6385,
+                "p95_ms": 76.6293,
+                "min_ms": 74.907,
+                "max_ms": 76.923
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 52.28,
+                "p95_ms": 54.142450000000004,
+                "min_ms": 50.423,
+                "max_ms": 59.221
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 143.84449999999998,
+                "p95_ms": 147.1241,
+                "min_ms": 140.654,
+                "max_ms": 154.793
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 144.26729999999998,
+                "p95_ms": 148.191845,
+                "min_ms": 141.0824,
+                "max_ms": 155.5792
+              },
+              "partial_passes": []
+            },
+            {
+              "file": "gpu-lower-glancing-2.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 75.52600000000001,
+                "p95_ms": 76.60535,
+                "min_ms": 74.916,
+                "max_ms": 77.055
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 52.3175,
+                "p95_ms": 53.48305,
+                "min_ms": 50.661,
+                "max_ms": 54.168
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 143.8995,
+                "p95_ms": 146.14974999999998,
+                "min_ms": 141.661,
+                "max_ms": 149.171
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 144.29415,
+                "p95_ms": 146.50564500000002,
+                "min_ms": 142.1805,
+                "max_ms": 149.6573
+              },
+              "partial_passes": []
+            },
+            {
+              "file": "gpu-lower-glancing-3.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 75.49549999999999,
+                "p95_ms": 76.48830000000001,
+                "min_ms": 74.891,
+                "max_ms": 77.382
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 52.26649999999999,
+                "p95_ms": 53.778,
+                "min_ms": 51.039,
+                "max_ms": 54.661
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 143.88,
+                "p95_ms": 146.7583,
+                "min_ms": 142.014,
+                "max_ms": 150.495
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 144.28775000000002,
+                "p95_ms": 147.20635000000001,
+                "min_ms": 142.4758,
+                "max_ms": 150.94
+              },
+              "partial_passes": []
+            }
+          ],
+          "largest_leaf_passes": [
+            {
+              "path": "Root.MainPipeline_0.DepthPrePass.SilPOMHitDepth",
+              "count": 360,
+              "median_ms": 75.5455,
+              "p95_ms": 76.60915,
+              "min_ms": 74.891,
+              "max_ms": 77.382
+            },
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.SilPOMHitForward",
+              "count": 360,
+              "median_ms": 52.287,
+              "p95_ms": 53.835950000000004,
+              "min_ms": 50.423,
+              "max_ms": 59.221
+            },
+            {
+              "path": "Root.MainPipeline_0.Shadows.FullscreenShadowPass",
+              "count": 360,
+              "median_ms": 1.212,
+              "p95_ms": 1.213,
+              "min_ms": 1.209,
+              "max_ms": 1.222
+            },
+            {
+              "path": "Root.MainPipeline_0.EditorModeFeedback.EntitySelectionPass.EntitySelectionTemplateChildPass0_EditorModeOutlineTemplate",
+              "count": 360,
+              "median_ms": 0.869,
+              "p95_ms": 0.89905,
+              "min_ms": 0.854,
+              "max_ms": 0.954
+            },
+            {
+              "path": "Root.MainPipeline_0.DepthPrePass.SilPOMClassifyWallHoles",
+              "count": 360,
+              "median_ms": 0.734,
+              "p95_ms": 0.7691,
+              "min_ms": 0.72,
+              "max_ms": 0.986
+            },
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.DiffuseSpecularMergePass",
+              "count": 360,
+              "median_ms": 0.657,
+              "p95_ms": 0.72905,
+              "min_ms": 0.648,
+              "max_ms": 0.797
+            },
+            {
+              "path": "Root.MainPipeline_0.Shadows.Cascades.0",
+              "count": 360,
+              "median_ms": 0.655,
+              "p95_ms": 0.68605,
+              "min_ms": 0.638,
+              "max_ms": 0.763
+            }
+          ]
+        },
+        "upper-glancing": {
+          "pooled": {
+            "hit_generation": {
+              "count": 360,
+              "median_ms": 114.09700000000001,
+              "p95_ms": 115.7126,
+              "min_ms": 111.85,
+              "max_ms": 117.065
+            },
+            "silpom_forward_shading": {
+              "count": 360,
+              "median_ms": 45.033500000000004,
+              "p95_ms": 45.74965,
+              "min_ms": 44.231,
+              "max_ms": 49.584
+            },
+            "graphics_pass_span": {
+              "count": 360,
+              "median_ms": 175.1525,
+              "p95_ms": 178.0723,
+              "min_ms": 172.15,
+              "max_ms": 185.214
+            },
+            "cpu_frame_period": {
+              "count": 360,
+              "median_ms": 175.7517,
+              "p95_ms": 178.72368,
+              "min_ms": 172.8255,
+              "max_ms": 185.8757
+            }
+          },
+          "repeat_median_ranges": {
+            "hit_generation": {
+              "min_ms": 113.9935,
+              "max_ms": 114.1645
+            },
+            "silpom_forward_shading": {
+              "min_ms": 45.0305,
+              "max_ms": 45.062
+            },
+            "graphics_pass_span": {
+              "min_ms": 174.971,
+              "max_ms": 175.324
+            },
+            "cpu_frame_period": {
+              "min_ms": 175.47609999999997,
+              "max_ms": 175.8275
+            }
+          },
+          "captures": [
+            {
+              "file": "gpu-upper-glancing-1.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 114.0335,
+                "p95_ms": 115.76885,
+                "min_ms": 112.234,
+                "max_ms": 116.399
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 45.033,
+                "p95_ms": 45.815,
+                "min_ms": 44.231,
+                "max_ms": 49.584
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 174.971,
+                "p95_ms": 177.95705,
+                "min_ms": 173.048,
+                "max_ms": 181.498
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 175.47609999999997,
+                "p95_ms": 178.587165,
+                "min_ms": 173.4198,
+                "max_ms": 182.448
+              },
+              "partial_passes": []
+            },
+            {
+              "file": "gpu-upper-glancing-2.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 113.9935,
+                "p95_ms": 115.75059999999999,
+                "min_ms": 112.383,
+                "max_ms": 117.065
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 45.0305,
+                "p95_ms": 45.60725,
+                "min_ms": 44.439,
+                "max_ms": 46.3
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 175.14350000000002,
+                "p95_ms": 178.08205,
+                "min_ms": 172.932,
+                "max_ms": 184.002
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 175.74200000000002,
+                "p95_ms": 178.599905,
+                "min_ms": 173.3391,
+                "max_ms": 184.4839
+              },
+              "partial_passes": []
+            },
+            {
+              "file": "gpu-upper-glancing-3.json",
+              "hit_generation": {
+                "count": 120,
+                "median_ms": 114.1645,
+                "p95_ms": 115.47319999999999,
+                "min_ms": 111.85,
+                "max_ms": 116.26
+              },
+              "silpom_forward_shading": {
+                "count": 120,
+                "median_ms": 45.062,
+                "p95_ms": 45.6622,
+                "min_ms": 44.347,
+                "max_ms": 46.268
+              },
+              "graphics_pass_span": {
+                "count": 120,
+                "median_ms": 175.324,
+                "p95_ms": 178.04665,
+                "min_ms": 172.15,
+                "max_ms": 185.214
+              },
+              "cpu_frame_period": {
+                "count": 120,
+                "median_ms": 175.8275,
+                "p95_ms": 178.72477999999998,
+                "min_ms": 172.8255,
+                "max_ms": 185.8757
+              },
+              "partial_passes": []
+            }
+          ],
+          "largest_leaf_passes": [
+            {
+              "path": "Root.MainPipeline_0.DepthPrePass.SilPOMHitDepth",
+              "count": 360,
+              "median_ms": 114.09700000000001,
+              "p95_ms": 115.7126,
+              "min_ms": 111.85,
+              "max_ms": 117.065
+            },
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.SilPOMHitForward",
+              "count": 360,
+              "median_ms": 45.033500000000004,
+              "p95_ms": 45.74965,
+              "min_ms": 44.231,
+              "max_ms": 49.584
+            },
+            {
+              "path": "Root.MainPipeline_0.Shadows.FullscreenShadowPass",
+              "count": 360,
+              "median_ms": 1.212,
+              "p95_ms": 1.214,
+              "min_ms": 1.21,
+              "max_ms": 1.219
+            },
+            {
+              "path": "Root.MainPipeline_0.EditorModeFeedback.EntitySelectionPass.EntitySelectionTemplateChildPass0_EditorModeOutlineTemplate",
+              "count": 360,
+              "median_ms": 0.868,
+              "p95_ms": 0.891,
+              "min_ms": 0.855,
+              "max_ms": 0.934
+            },
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.Forward",
+              "count": 360,
+              "median_ms": 0.843,
+              "p95_ms": 0.86005,
+              "min_ms": 0.835,
+              "max_ms": 0.909
+            },
+            {
+              "path": "Root.MainPipeline_0.DepthPrePass.SilPOMClassifyWallHoles",
+              "count": 360,
+              "median_ms": 0.755,
+              "p95_ms": 0.775,
+              "min_ms": 0.742,
+              "max_ms": 0.867
+            },
+            {
+              "path": "Root.MainPipeline_0.OpaquePass.DiffuseSpecularMergePass",
+              "count": 360,
+              "median_ms": 0.66,
+              "p95_ms": 0.734,
+              "min_ms": 0.65,
+              "max_ms": 0.841
+            }
+          ]
+        }
+      }
+    }
+  },
+  "comparison_to_previous_1x": {
+    "reference": "Tests/Reference/Ryzen5700G20261114.json",
+    "median_change_percent": {
+      "exterior": {
+        "hit_generation": -0.3641163351690957,
+        "silpom_forward_shading": -13.712942877801893,
+        "graphics_pass_span": -4.985129232568852,
+        "cpu_frame_period": -5.376687351585496
+      },
+      "lower-facing": {
+        "hit_generation": 0.16491423409419337,
+        "silpom_forward_shading": 1.990559179201501,
+        "graphics_pass_span": 1.7686784608821116,
+        "cpu_frame_period": 1.5519212704981467
+      },
+      "lower-glancing": {
+        "hit_generation": -1.0284224523617658,
+        "silpom_forward_shading": 1.1256164780969025,
+        "graphics_pass_span": 0.729939784343947,
+        "cpu_frame_period": 0.5594478701846928
+      },
+      "upper-glancing": {
+        "hit_generation": -0.2639883215762362,
+        "silpom_forward_shading": 2.297714778974158,
+        "graphics_pass_span": 0.5693008193567994,
+        "cpu_frame_period": 0.4444373322787243
+      }
+    }
+  },
+  "raw_files": [
+    {
+      "file": "timings-2x-20261114-210459\\gpu-exterior-1.json",
+      "bytes": 682257,
+      "sha256": "fc9651e5c54a0755860db5eef4112b7aa9d34d5edde4aed7d54f5c547797e730"
+    },
+    {
+      "file": "timings-2x-20261114-210459\\gpu-exterior-2.json",
+      "bytes": 682279,
+      "sha256": "84c467390c54f386a045040201009fc4a757c1768a6afcad7175416bd4158a31"
+    },
+    {
+      "file": "timings-2x-20261114-210459\\gpu-exterior-3.json",
+      "bytes": 682227,
+      "sha256": "cf2cb1aa8e481167a8009bfab39fac49fef8eb16af3871b3e9bdb584c822ba17"
+    },
+    {
+      "file": "timings-2x-20261114-210459\\gpu-lower-facing-1.json",
+      "bytes": 683634,
+      "sha256": "11f18f69155be8a462e324d29b61cb5b06983442f00b8f8982bc896a06d90f16"
+    },
+    {
+      "file": "timings-2x-20261114-210459\\gpu-lower-facing-2.json",
+      "bytes": 683675,
+      "sha256": "dc8eaf3cdd1f369f41622388b3f00f54bd2a33204182f51fc7c7ab6c126eb308"
+    },
+    {
+      "file": "timings-2x-20261114-210459\\gpu-lower-facing-3.json",
+      "bytes": 683606,
+      "sha256": "eee0ce8fdde4603119f46ba360bb15935eed297ef5c5489be6fb312072953e07"
+    },
+    {
+      "file": "timings-2x-20261114-210459\\gpu-lower-glancing-1.json",
+      "bytes": 683673,
+      "sha256": "b735045e1dca5eee4eb72677f663a4e7299df52041bca2bb690979c283d1b851"
+    },
+    {
+      "file": "timings-2x-20261114-210459\\gpu-lower-glancing-2.json",
+      "bytes": 683673,
+      "sha256": "95e4ce0f7b480a4d301c1a9028b07061f807e63459f642bcec01cc2417b1759c"
+    },
+    {
+      "file": "timings-2x-20261114-210459\\gpu-lower-glancing-3.json",
+      "bytes": 683778,
+      "sha256": "5991e985197cfc30bcc425e7fb994fce5ee4beb791c42550a6ba988c5f723a5d"
+    },
+    {
+      "file": "timings-2x-20261114-210459\\gpu-upper-glancing-1.json",
+      "bytes": 684010,
+      "sha256": "49ced94dc75ac7b6d59f58083fcd5f7e9b0267cb00a6727fcbea39e83e864629"
+    },
+    {
+      "file": "timings-2x-20261114-210459\\gpu-upper-glancing-2.json",
+      "bytes": 683999,
+      "sha256": "91ea18892a64e61fb189638401a382f636fbc8c326e7366c7b8c10cebc06a794"
+    },
+    {
+      "file": "timings-2x-20261114-210459\\gpu-upper-glancing-3.json",
+      "bytes": 683972,
+      "sha256": "aa73dec68c882962d3f7add071e3372daa002e41e350ebd62b75f22f600e1292"
+    },
+    {
+      "file": "timings-1x-20261114-211916\\gpu-exterior-1.json",
+      "bytes": 630659,
+      "sha256": "1588c7872a85bcd5d55908cb2892a890b70ef8ceed14b6614792b817dda6aec1"
+    },
+    {
+      "file": "timings-1x-20261114-211916\\gpu-exterior-2.json",
+      "bytes": 630663,
+      "sha256": "3e8c62fa082114bd286ada53b294d0bceb7f4d87416440fcae9962a8dc9d8310"
+    },
+    {
+      "file": "timings-1x-20261114-211916\\gpu-exterior-3.json",
+      "bytes": 630722,
+      "sha256": "c83735f3486ab07a679caa825b6b91038f6ab94a3d47bb0ad3605bd6f0fac045"
+    },
+    {
+      "file": "timings-1x-20261114-211916\\gpu-lower-facing-1.json",
+      "bytes": 632498,
+      "sha256": "0864ef520991b684c00b7197495b3b6a016575c3af5d73730d8a48b8f588c665"
+    },
+    {
+      "file": "timings-1x-20261114-211916\\gpu-lower-facing-2.json",
+      "bytes": 632500,
+      "sha256": "ff83739100c3f2d3299d5df9472db4223099bfd417bfe0961406a6874024f633"
+    },
+    {
+      "file": "timings-1x-20261114-211916\\gpu-lower-facing-3.json",
+      "bytes": 632458,
+      "sha256": "9a7a9312aba1bc3526c4cd3849b37d37cab3d5ae78b8d6940afe27cec20fd5de"
+    },
+    {
+      "file": "timings-1x-20261114-211916\\gpu-lower-glancing-1.json",
+      "bytes": 632584,
+      "sha256": "d246ee1b3d86210f65a3923b8291d7687e552a664bdcd47f8a6d21a745f5f18d"
+    },
+    {
+      "file": "timings-1x-20261114-211916\\gpu-lower-glancing-2.json",
+      "bytes": 632687,
+      "sha256": "361dd6c0175716830b6d4a4760b70504c74c37d433892e4268933df2a9edc97d"
+    },
+    {
+      "file": "timings-1x-20261114-211916\\gpu-lower-glancing-3.json",
+      "bytes": 632654,
+      "sha256": "766f3bc812e0c5e0a4fa3b1867866dd27d8748f176ab4e743b3022b700436586"
+    },
+    {
+      "file": "timings-1x-20261114-211916\\gpu-upper-glancing-1.json",
+      "bytes": 632876,
+      "sha256": "67d5215b9a0936295a75b91320919527d1f7e2814dd9f4dc022ab6a962d3ebc7"
+    },
+    {
+      "file": "timings-1x-20261114-211916\\gpu-upper-glancing-2.json",
+      "bytes": 632855,
+      "sha256": "908679ac1f7ba3ec1cf43d78934e355b87cf29d6444798a6731b767806e28a00"
+    },
+    {
+      "file": "timings-1x-20261114-211916\\gpu-upper-glancing-3.json",
+      "bytes": 632844,
+      "sha256": "5dcdab5afd6f8073abb8918ad2174998ae22ad1f108a4aa40cadf90065327b67"
+    }
+  ],
+  "two_x_vs_current_one_x_graphics_span_median_ratio": {
+    "exterior": 1.6922845205820334,
+    "lower-facing": 1.786621831950087,
+    "lower-glancing": 1.7513389521244243,
+    "upper-glancing": 1.690775181627439
+  }
+}

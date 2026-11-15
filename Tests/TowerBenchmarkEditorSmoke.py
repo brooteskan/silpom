@@ -33,8 +33,11 @@ def main():
     cfg=fixture['tower_configuration']
     state=silpom.SilPomMeshRequestBus(bus.Event,'GetAntiAliasingState',tower)
     result['initial_aa_state']=[int(state.x),int(state.y),int(state.z)]
+    samples=int(os.environ.get('TG_SILPOM_TOWER_SAMPLES',str(int(state.x))))
+    assert samples in (1,2),samples
+    result['samples']=samples
     result['initial_renderer_cvars']={name:str(general.get_cvar(name)) for name in
-        ('r_multiSampleCount','r_antiAliasing','r_silpomReuseDepthHits','r_silpomMsaa4')}
+        ('r_multiSampleCount','r_antiAliasing','r_silpomAntiAliasing','r_silpomReuseDepthHits','r_silpomMsaa4')}
     result['initial_tower_status']=str(silpom.SilPomMeshRequestBus(bus.Event,'GetStatus',tower))
     result['initial_profile_controls']={p:str(read(component,p)) for p in props
         if p.endswith('|Neural model') or 'Relief depth multiplier' in p}
@@ -49,7 +52,7 @@ def main():
     if not read(component,normals):
         write(component,normals,True)
     ready()
-    expected={'Anti-aliasing':0,'Lighting estimator':5,
+    expected={'Lighting estimator':5,
         'Height-derived normals (off = cheaper)':True,
         'Level 2 predictor (experimental)':cfg['UseLevelTwoPredictor'],
         'Gather validation (may be cheaper)':cfg['UseValidationGather'],
@@ -59,8 +62,16 @@ def main():
         path=next(p for p in props if p.endswith('|'+label))
         actual=read(component,path);assert actual==value,(label,actual,value)
         result['controls'][label]=actual
+    aa_path=next((p for p in props if p.endswith('|Anti-aliasing')),None)
+    if aa_path:
+        assert read(component,aa_path)==0
+        result['aa_control_scope']='legacy component'
+    else:
+        assert int(general.get_cvar('r_silpomAntiAliasing'))==0
+        result['aa_control_scope']='renderer-wide project default'
+    result['controls']['Anti-aliasing']=0
     result['tower_status']=str(silpom.SilPomMeshRequestBus(bus.Event,'GetStatus',tower))
-    assert [int(x) for x in (lambda v:(v.x,v.y,v.z))(silpom.SilPomMeshRequestBus(bus.Event,'GetAntiAliasingState',tower))]==[1,0,0]
+    assert [int(x) for x in (lambda v:(v.x,v.y,v.z))(silpom.SilPomMeshRequestBus(bus.Event,'GetAntiAliasingState',tower))]==[samples,0,0]
     general.set_viewport_expansion_policy('FixedSize');general.set_viewport_size(1280,720)
     general.close_pane('Console')
     if timing_only or renderdoc_view:command('r_silpomMsaaInspect',0)
@@ -76,7 +87,18 @@ def main():
             result['renderdoc']=capture_frame(OUTPUT,name,general)
         elif not timing_only:
             screenshot(OUTPUT/(name+'.png'))
-            if name!='exterior':capture_hit(OUTPUT/(name+'-hit.dds'))
+            if name!='exterior':
+                if samples==1:
+                    capture_hit(OUTPUT/(name+'-hit.dds'))
+                else:
+                    # Exact integer records/depth from the existing 4W sample
+                    # atlas; generic float MSAA resolves corrupt ownership bits.
+                    command('r_silpomMsaaInspect',1);general.idle_wait_frames(12)
+                    hierarchy=['Root','MainPipeline_0','DepthPrePass','SilPOMInspectFinal']
+                    capture(OUTPUT/(name+'-hit.dds'),'Records',hierarchy)
+                    capture(OUTPUT/(name+'-depth.dds'),'SampleDepth',hierarchy)
+                    result['hit_capture_layout']='four-columns-per-pixel sample atlas'
+                    command('r_silpomMsaaInspect',0);general.idle_wait_frames(12)
         if timing:
             for repeat in range(repeats):gpu_cost(f'{name}-{repeat+1}')
     if timing_only or renderdoc_view:
@@ -92,6 +114,9 @@ def main():
     assert general.is_in_game_mode()
     runtime=general.find_game_entity('Irish Fieldstone Tower (Open Shaft)');assert runtime.IsValid()
     assert silpom.SilPomMeshRequestBus(bus.Event,'IsReady',runtime)
+    runtime_state=silpom.SilPomMeshRequestBus(bus.Event,'GetAntiAliasingState',runtime)
+    result['gameplay_aa_state']=[int(runtime_state.x),int(runtime_state.y),int(runtime_state.z)]
+    assert result['gameplay_aa_state']==[samples,0,0]
     screenshot(OUTPUT/'gameplay.png')
     general.exit_game_mode();general.idle_enable(True);general.idle_wait(3.0);ready()
     renderer_clean()
