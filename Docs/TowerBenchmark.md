@@ -25,10 +25,18 @@ or claim a measured speedup on that hardware.
 
 Pull Diversion **main**, including `Assets/SilPOMLearned` and the tower source
 assets. Restore the Git gem revisions recorded in
-`TGProject/scripts/GitDependencies.json` and build the SilPOM modules for that
-PC's existing O3DE build. Allow Asset Processor to finish before opening the
-scene. Use an engine build and shader target supported by the target GPU and
-driver; the scene itself does not select or upgrade the engine's shader target.
+`TGProject/scripts/GitDependencies.json`. The current gem requires TG's patched
+O3DE APIs; a stock installed SDK is insufficient. Apply the complete frozen
+engine integration in `TGProject/EngineIntegration/O3DE`, mirrored in this
+repository at [Integration/O3DE](../Integration/O3DE/README.md), then rebuild
+the source engine, project modules and shader assets using its profiling build
+script. The bundle includes the other-PC handoff and verifies exact revisions
+and file hashes. Keep the SILPOM implementation pin at `e968424` for the initial
+comparison. Allow Asset Processor to finish before opening the scene. Use an
+engine build and shader target supported by the actual GPU and driver; the
+scene itself does not select or upgrade the engine's shader target. The original
+visual reference used SM 6.7; the full SM 6.2 compatibility run must be validated
+on the profiling PC before timings.
 
 GitHub contains the frozen scene, configuration manifest and installer in the
 SilPOM repository; the large tower textures, meshes and learned source assets

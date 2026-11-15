@@ -1,0 +1,51 @@
+#pragma once
+
+#if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
+#define EvaluateSurface EvaluateSurface_TerrainSkirt
+#endif
+#include <Atom/Feature/Common/Assets/Materials/Types/StandardPBR.azsli>
+
+#if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
+#include <TerrainCompositor/TerrainGroundSampling.azsli>
+
+Surface EvaluateSurface_TerrainSkirt(VsOutput input, VsSystemValues systemValues, PixelGeometryData geometry, const MaterialParameters p)
+{
+    float4 uvDerivatives = float4(ddx(input.uvs[0]), ddy(input.uvs[0]));
+    Surface surface = EvaluateSurface_StandardPBR(input, systemValues, geometry, p, uvDerivatives, true);
+#if FORCE_OPAQUE
+    float2 dx = ddx(surface.position.xy);
+    float2 dy = ddy(surface.position.xy);
+    if (p.m_terrainBlend_colorTexture >= 0)
+    {
+        TC_GroundParameters ground;
+        ground.m_colorTexture = p.m_terrainBlend_colorTexture;
+        ground.m_normalTexture = p.m_terrainBlend_normalTexture;
+        ground.m_textureScale = p.m_terrainBlend_textureScale;
+        ground.m_normalStrength = p.m_terrainBlend_normalStrength;
+        ground.m_colorTint = p.m_terrainBlend_colorTint;
+        ground.m_roughness = p.m_terrainBlend_roughness;
+        ground.m_specularFactor = p.m_terrainBlend_specularFactor;
+        ground.m_ambientOcclusion = p.m_terrainBlend_ambientOcclusion;
+        TC_GroundChannels sampled = TC_SampleGroundGrad(surface.position, float3(0, 0, 1), ground,
+            p.m_terrainBlend_stochasticTiling, dx, dy);
+
+        // Use one continuous terrain sample on the whole skirt. Only the
+        // normals fade to the terrain at the perimeter, preserving the mound.
+        surface.albedo = sampled.baseColor;
+        surface.specularF0 = half3(.08, .08, .08) * sampled.specularFactor;
+        surface.roughnessLinear = sampled.roughness;
+        surface.CalculateRoughnessA();
+        surface.diffuseAmbientOcclusion = sampled.ambientOcclusion;
+        surface.specularOcclusion = 1;
+        if (p.m_terrainBlend_distance > 0)
+        {
+            half weight = half(1 - smoothstep(0, p.m_terrainBlend_distance,
+                max(0, surface.position.z - p.m_terrainBlend_groundHeight)));
+            surface.normal = normalize(lerp(half3(surface.normal), sampled.normal, weight));
+            surface.vertexNormal = normalize(lerp(half3(surface.vertexNormal), half3(0, 0, 1), weight));
+        }
+    }
+#endif
+    return surface;
+}
+#endif

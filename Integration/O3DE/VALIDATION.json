@@ -1,0 +1,25 @@
+{
+  "bundle": "tg-o3de-20261114",
+  "engine_base": "061180bf24f1666eb30315b35da292eb14f4659c",
+  "engine_files": 91,
+  "terrain_integration_files": 4,
+  "passed": true,
+  "checks": [
+    "lf: read-only preflight and pristine verification refusal",
+    "lf: cross-component conflict refused without mutation",
+    "PowerShell SM 6.2 build/asset plan; no file or engine-selection changes",
+    "lf: complete application, all 95 output hashes, idempotent reapplication",
+    "lf: post-install local edit refused and preserved",
+    "lf: patch integrity failure refused without mutation",
+    "crlf: read-only preflight and pristine verification refusal",
+    "crlf: cross-component conflict refused without mutation",
+    "crlf: complete application, all 95 output hashes, idempotent reapplication",
+    "crlf: post-install local edit refused and preserved",
+    "crlf: patch integrity failure refused without mutation"
+  ],
+  "limitations": [
+    "No O3DE rebuild performed by packaging validation.",
+    "Original visual reference used DX12 SM 6.7.",
+    "Full tower SM 6.2 and Ryzen GPU profiling must be validated on the other PC."
+  ]
+}
