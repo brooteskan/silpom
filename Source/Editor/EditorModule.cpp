@@ -102,12 +102,6 @@ public:
                     ->Attribute(AZ::Edit::Attributes::Visibility,AZ::Edit::PropertyVisibility::ShowChildrenOnly);
                 edit->Class<MeshConfig>("Mesh settings","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_surface,"Mesh surface","Export .fbx and .silpom.json together; select the compiled .silpommesh")
-                    ->DataElement(AZ::Edit::UIHandlers::ComboBox,&MeshConfig::m_antiAliasing,"Anti-aliasing",
-                        "Compare scene AA without changing tower quality or lighting. Current default restores the settings active before comparison. SMAA and TAA use one sample. Experimental 4x MSAA costs more GPU time and uses a different coverage-repair policy. The selection carries into Ctrl-G gameplay. Latest explicit selection wins across meshes.")
-                    ->EnumAttribute(AntiAliasing::CurrentDefault,"Current default (unchanged)")
-                    ->EnumAttribute(AntiAliasing::SMAA,"SMAA")
-                    ->EnumAttribute(AntiAliasing::TAA,"TAA")
-                    ->EnumAttribute(AntiAliasing::MSAA4,"4x MSAA (experimental)")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_materials,"Materials","One assignment per authored material identity")
                     ->DataElement(AZ::Edit::UIHandlers::Slider,&MeshConfig::m_reliefDepthMultiplier,"Relief depth multiplier",
                         "Scales the displacement of all trained profiles together. 0 is flat and 1 uses the authored depths.")
@@ -173,7 +167,7 @@ public:
                     ->Attribute(AZ::Edit::Attributes::Min,.9f)->Attribute(AZ::Edit::Attributes::Max,.99999f)
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_spiralLightShadowSteps,"Spiral-light shadow samples (lower = cheaper)","Samples per spiral-light shadow ray. 0 disables these local shadows while retaining the light. Only affects materials receiving spiral light.")
                     ->Attribute(AZ::Edit::Attributes::Min,0)->Attribute(AZ::Edit::Attributes::Max,64)
-                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useHeightDerivedNormals,"Height-derived normals (off = cheaper)","Calculate lighting normals from the displacement height gradient. Off uses the face normal and retains the material normal map. Does not disable intersection validation.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useHeightDerivedNormals,"Height-derived normals (off = cheaper)","Calculate lighting normals from the displacement height gradient. Off uses a constant normal per mesh face and retains the material normal map; curved surfaces can show lighting seams along face boundaries. Does not disable intersection validation.")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_neuralDirectionalVisibility,"Neural directional visibility (off = cheaper)","Enable neural-only local visibility for directional lights on detailed surfaces, including shared 4B. Independent of legacy relief steps, which stay 0 on trained profiles. Uses the fixed trained descriptor schedule 16; no marching. Default off preserves previous behavior.")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_proxyDirectionalResponse,"Learned proxy directional response (off = cheaper)","Enable the joint learned local-visibility / diffuse-specular correction for directional lights on 5A/5B proxies. Independent of legacy steps and near visibility. The frozen model combines visibility and reflectance; this switch controls both. External scene-shadow toggles do not disable this intrinsic response. Spiral lights retain their separate schedule. Requires neural-only mode; default off preserves previous behavior.")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_reliefShadowSteps,"Relief shadow steps","Legacy local directional shadows: 0 disables, 1-64 samples. Trained profiles require 0; enable the separate learned directional controls instead. External shadows use the base mesh.")

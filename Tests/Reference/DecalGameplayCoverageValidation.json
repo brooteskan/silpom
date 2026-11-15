@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "views": {
+    "inside": {
+      "interior_wall_pixels": 641015,
+      "missing_before": 147,
+      "missing_after": 0,
+      "recovered": 147,
+      "single_sample_hits_unchanged": true,
+      "backup_depth_mismatches": 0
+    },
+    "outside": {
+      "interior_wall_pixels": 349484,
+      "missing_before": 53,
+      "missing_after": 0,
+      "recovered": 53,
+      "single_sample_hits_unchanged": true,
+      "backup_depth_mismatches": 0
+    }
+  }
+}

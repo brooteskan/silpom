@@ -152,11 +152,20 @@ uint4 ShellHit(SilPomShellVertex IN)
 }
 
 #if SILPOM_WALL_BACKUP_SHELL
-uint4 PixelShader(SilPomShellVertex IN) : SV_Target0
+struct SilPomWallBackupOutput
 {
-    // Raster depth can be tested before shading. A strict comparison keeps
-    // hits already published at the same depth by either earlier fill path.
-    return ShellHit(IN);
+    uint4 hit : SV_Target0;
+    precise float depth : SV_Depth;
+};
+SilPomWallBackupOutput PixelShader(SilPomShellVertex IN)
+{
+    SilPomWallBackupOutput output;
+    output.hit=ShellHit(IN);
+    // Hardware raster depth can round differently from the interpolated
+    // sample depth recorded by ShellHit. Publish one identical value to both
+    // targets, or the depth-equal forward pass leaves covered samples black.
+    output.depth=asfloat(output.hit.z&SP_HIT_RECORD_DEPTH);
+    return output;
 }
 #else
 PsOutput PixelShader(SilPomShellVertex IN,uint sampleIndex:SV_SampleIndex)

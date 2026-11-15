@@ -63,7 +63,7 @@ class Check(QtCore.QObject):
     def advance(self):
         try:
             self.pulses += 1
-            assert time.monotonic()-self.started < 30, "Event-loop check timed out"
+            assert time.monotonic()-self.started < 60, "Event-loop check timed out"
             size = general.get_viewport_size()
             x, y = int(size.x)//2, int(size.y)//2
             if self.step == 0:
@@ -79,19 +79,64 @@ class Check(QtCore.QObject):
             elif self.step == 1:
                 result["stage"] = "checking stamp and focus"
                 assert silpom.DecalPaintRequestBus(bus.Event, "GetDabCount", self.canvas) == 1
+                general.undo()
+                self.step = 2
+            elif self.step == 2:
+                result["stage"] = "painting after stroke undo"
+                assert silpom.DecalPaintRequestBus(bus.Event, "GetDabCount", self.canvas) == 0
+                click(self.viewport, x+30, y)
+                self.step = 3
+            elif self.step == 3:
+                assert silpom.DecalPaintRequestBus(bus.Event, "GetDabCount", self.canvas) == 1
+                general.undo()
+                self.step = 4
+            elif self.step == 4:
+                assert silpom.DecalPaintRequestBus(bus.Event, "GetDabCount", self.canvas) == 0
+                general.undo()  # Undo creation of the empty canvas too.
+                self.step = 5
+            elif self.step == 5:
+                result["stage"] = "refreshing preview without a canvas"
+                combo = self.panel.findChild(QtWidgets.QComboBox, "PaintCanvas")
+                result["canvas_choices_after_undo"] = [combo.itemText(i) for i in range(combo.count())]
+                result["picker_after_canvas_undo"] = silpom.DecalPainterBus(bus.Broadcast, "GetPickerStatus")
+                flush()
+                if self.panel.findChild(QtWidgets.QComboBox, "PaintCanvas").count() != 0:
+                    return
+                # Camera motion rejects the old depth snapshot. Recovery must
+                # request a new one even while no paint document exists.
+                eye = general.get_current_view_position()
+                self.step = 6
+                general.set_current_view_position(eye.x+.1,eye.y,eye.z)
+            elif self.step == 6:
+                result["picker_without_canvas_after_camera_move"] = silpom.DecalPainterBus(bus.Broadcast, "GetPickerStatus")
+                flush()
+                if silpom.DecalPainterBus(bus.Broadcast, "PickVisiblePixel", x, y).GetLength() < 1:
+                    return
+                click(self.viewport, x, y)
+                self.step = 7
+            elif self.step == 7:
+                result["stage"] = "painting after canvas undo"
+                query = entity.SearchFilter()
+                query.names = ["Decal Paint"]
+                canvases = entity.SearchBus(bus.Broadcast, "SearchEntities", query)
+                assert len(canvases) == 1
+                assert canvases[0] != self.canvas
+                self.canvas = canvases[0]
+                assert silpom.DecalPaintRequestBus(bus.Event, "GetDabCount", self.canvas) == 1
+                result["paint_after_stroke_and_canvas_undo"] = True
                 self.arm.setChecked(False)
                 # Exercise the ordinary viewport click path too (including its collider query).
                 click(self.viewport, x+30, y)
-                self.step = 2
-            elif self.step == 2:
+                self.step = 8
+            elif self.step == 8:
                 result["stage"] = "capturing rendered frame"
                 request = atom.FrameCaptureRequestBus(bus.Broadcast, "CaptureScreenshot", str(output / "normal_event_loop.png"))
                 assert request.IsSuccess()
                 self.capture_handler = atom.FrameCaptureNotificationBusHandler()
                 self.capture_handler.connect(request.GetValue())
                 self.capture_handler.add_callback("OnFrameCaptureFinished", lambda args: self.capture_done.update(success=args[0] == atom.FrameCaptureResult_Success))
-                self.step = 3
-            elif self.step == 3:
+                self.step = 9
+            elif self.step == 9:
                 if not self.capture_done:
                     return
                 assert self.capture_done["success"]

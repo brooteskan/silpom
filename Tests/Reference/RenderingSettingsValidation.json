@@ -1,0 +1,77 @@
+{
+  "passed": true,
+  "baseline_samples": 2,
+  "selections": [
+    {
+      "mode": 1,
+      "state": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "mode": 2,
+      "state": [
+        1,
+        2,
+        0
+      ]
+    },
+    {
+      "mode": 4,
+      "state": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "mode": 3,
+      "state": [
+        4,
+        0,
+        0
+      ]
+    },
+    {
+      "mode": 0,
+      "state": [
+        2,
+        0,
+        0
+      ]
+    }
+  ],
+  "mesh_independent": true,
+  "gameplay_samples": [
+    2,
+    4
+  ],
+  "saved_level_unchanged": true,
+  "height_derived_normals": true,
+  "default_restored_png_sha256": "8797ac4b60d7f6f32822beb449f54c22cd96dfb14572f341b5fbfff23beb8315",
+  "camera": {
+    "position": [
+      589.59814453125,
+      844.722412109375,
+      3.970928907394409
+    ],
+    "rotation": [
+      -18.474597930908203,
+      15.173821449279785,
+      -38.076473236083984
+    ],
+    "viewport_size": [
+      1121,
+      839
+    ]
+  },
+  "renderer_assertions": 0,
+  "renderer_binding_errors": 0,
+  "existing_unbaked_probe_grid_errors": 32,
+  "performance_measured": false,
+  "installed_startup_verified": true,
+  "saved_normals_enabled": true,
+  "installed_pixels_match_staged": true
+}

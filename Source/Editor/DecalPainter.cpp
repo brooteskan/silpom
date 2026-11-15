@@ -4,6 +4,7 @@
 #include <SilPOM/DecalPaintMath.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Asset/AssetManager.h>
+#include <AzCore/Utils/Utils.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/Json/JsonUtils.h>
@@ -39,6 +40,11 @@
 #include <QDoubleSpinBox>
 #include <QEvent>
 #include <QFileDialog>
+#include <QDirIterator>
+#include <QFileInfo>
+#include <QIcon>
+#include <QPainter>
+#include <QStyledItemDelegate>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QInputDialog>
@@ -53,6 +59,7 @@
 #include <QScrollArea>
 #include <QSignalBlocker>
 #include <QTabletEvent>
+#include <QTimer>
 #include <QTreeWidget>
 #include <QVBoxLayout>
 #include <QElapsedTimer>
@@ -85,6 +92,27 @@ AZ::ComponentDescriptor* CreateEditorPaintDescriptor() { return EditorPaintCompo
 namespace
 {
 constexpr const char* PaneName="Decal Painter";
+class DecalLibraryDelegate final : public QStyledItemDelegate
+{
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+    void paint(QPainter* painter,const QStyleOptionViewItem& option,const QModelIndex& index) const override
+    {
+        painter->save();
+        painter->setClipRect(option.rect);
+        const bool selected=option.state.testFlag(QStyle::State_Selected);
+        painter->fillRect(option.rect,option.palette.brush(selected?QPalette::Highlight:QPalette::Base));
+        // Keep the complete square thumbnail independent of Editor item styling.
+        const auto icon=qvariant_cast<QIcon>(index.data(Qt::DecorationRole));
+        const auto pixmap=icon.pixmap(QSize(80,80));
+        const QRect imageRect(option.rect.center().x()-40,option.rect.top()+6,80,80);
+        painter->drawPixmap(imageRect,pixmap);
+        painter->setPen(option.palette.color(selected?QPalette::HighlightedText:QPalette::Text));
+        painter->drawText(option.rect.adjusted(4,90,-4,-2),Qt::AlignHCenter|Qt::AlignTop|Qt::TextWordWrap,index.data().toString());
+        painter->restore();
+    }
+    QSize sizeHint(const QStyleOptionViewItem&,const QModelIndex&) const override {return QSize(130,130);}
+};
 class Painter;
 QPointer<QWidget> g_painter;
 struct DepthFrame
@@ -183,6 +211,8 @@ private:
     void Edit(const char*,const AZStd::function<void(PaintConfig&)>&);
     void ReadBrush(PaintStroke&) const;
     void LoadBrush(const PaintStroke&);
+    void RefreshLibrary();
+    void SyncLibrary();
     void Begin(QPointF,float);
     void Move(QPointF,float);
     void Finish(bool cancel=false);
@@ -213,6 +243,7 @@ private:
     PaintMath::StrokeSampler m_sampler;
     AZ::u64 m_activeStrokeId=0;
     bool m_drawing=false,m_break=true,m_refreshing=false,m_requestDepth=false,m_hasCursor=false;
+    bool m_pendingCanvas=false,m_pendingContact=false;
     AZ::Vector3 m_cursor=AZ::Vector3::CreateZero(),m_normal=AZ::Vector3::CreateAxisZ();
     QElapsedTimer m_clock;
     qint64 m_lastCapture=-1000,m_lastPen=-1000,m_lastCanvasRefresh=-1000;
@@ -225,6 +256,8 @@ private:
     QLineEdit *m_material=nullptr,*m_name=nullptr;
     QTreeWidget* m_tree=nullptr;
     QListWidget* m_points=nullptr;
+    QListWidget* m_library=nullptr;
+    QLineEdit* m_librarySearch=nullptr;
     QLabel *m_status=nullptr,*m_pen=nullptr;
     QPushButton* m_colorButton=nullptr;
     AZ::Color m_color=AZ::Color(.18f,.12f,.07f,1.f);
@@ -277,6 +310,29 @@ Painter::Painter(QWidget* parent):QWidget(parent)
     auto* presetRow=new QHBoxLayout();form->addRow("Round presets",presetRow);
     for(const auto& pair:{qMakePair(QString("Soft"),QString("soft_round")),qMakePair(QString("Hard"),QString("hard_round"))})
     {auto* b=new QPushButton(pair.first,contents);presetRow->addWidget(b);connect(b,&QPushButton::clicked,this,[this,path=pair.second]{m_material->setText("materials/decalpaint/"+path+".azmaterial");});}
+    auto* libraryGroup=new QGroupBox("Decal library",contents);form->addRow(libraryGroup);
+    auto* libraryLayout=new QVBoxLayout(libraryGroup);
+    auto* libraryRow=new QHBoxLayout();libraryLayout->addLayout(libraryRow);
+    m_librarySearch=new QLineEdit(contents);m_librarySearch->setObjectName("DecalLibrarySearch");
+    m_librarySearch->setPlaceholderText("Search decals…");libraryRow->addWidget(m_librarySearch);
+    auto* refreshLibrary=new QPushButton("Refresh",contents);refreshLibrary->setObjectName("RefreshDecalLibrary");libraryRow->addWidget(refreshLibrary);
+    m_library=new QListWidget(contents);m_library->setObjectName("DecalLibrary");
+    m_library->setItemDelegate(new DecalLibraryDelegate(m_library));
+    m_library->setViewMode(QListView::IconMode);m_library->setResizeMode(QListView::Adjust);
+    m_library->setMovement(QListView::Static);m_library->setIconSize(QSize(80,80));m_library->setGridSize(QSize(130,130));
+    m_library->setMinimumHeight(280);libraryLayout->addWidget(m_library);
+    auto* libraryHint=new QLabel("Select a decal for new paint. Use Apply brush settings to change a selected stroke.",contents);
+    libraryHint->setWordWrap(true);libraryLayout->addWidget(libraryHint);
+    connect(refreshLibrary,&QPushButton::clicked,this,[this]{RefreshLibrary();});
+    connect(m_librarySearch,&QLineEdit::textChanged,this,[this](const QString& query)
+    {for(int i=0;i<m_library->count();++i){auto* item=m_library->item(i);item->setHidden(!item->text().contains(query,Qt::CaseInsensitive));}});
+    connect(m_library,&QListWidget::itemClicked,this,[this](QListWidgetItem* item)
+    {
+        Finish();m_material->setText(item->data(Qt::UserRole).toString());
+        // Textured stamps retain their authored colors instead of the round brush's brown tint.
+        m_color=AZ::Color::CreateOne();m_opacity->setValue(1);m_normalOpacity->setValue(item->data(Qt::UserRole+1).toBool()?1:0);
+    });
+    connect(m_material,&QLineEdit::textChanged,this,[this]{SyncLibrary();});
     auto spin=[&](const char* name,const char* title,double low,double high,double value,double step)
     {auto* s=new QDoubleSpinBox(contents);s->setObjectName(name);s->setRange(low,high);s->setDecimals(3);s->setSingleStep(step);s->setValue(value);form->addRow(title,s);return s;};
     m_size=spin("BrushDiameter","Diameter (m)",.005,100,.3,.05);
@@ -314,6 +370,7 @@ Painter::Painter(QWidget* parent):QWidget(parent)
         {const bool start=s->m_points[point].m_start;s->m_points.erase(s->m_points.begin()+point);if(start&&size_t(point)<s->m_points.size())s->m_points[point].m_start=true;}});});
     m_pen=new QLabel("Input: mouse. Pen pressure appears here when tablet events arrive.",contents);m_pen->setObjectName("TabletStatus");m_pen->setWordWrap(true);layout->addWidget(m_pen);
     layout->addStretch();
+    RefreshLibrary();
     qApp->installEventFilter(this);AZ::TickBus::Handler::BusConnect();
     m_device=AZ::RHI::RHISystemInterface::Get()->GetDevice();AZ::RHI::FrameEventBus::Handler::BusConnect(m_device.get());RefreshCanvases();
 }
@@ -322,6 +379,41 @@ Painter::~Painter()
     Finish();qApp->removeEventFilter(this);AZ::TickBus::Handler::BusDisconnect();
     AZ::RHI::FrameEventBus::Handler::BusDisconnect();m_device=nullptr;
     AZ::RPI::SceneNotificationBus::Handler::BusDisconnect();AzFramework::ViewportDebugDisplayEventBus::Handler::BusDisconnect();
+}
+void Painter::SyncLibrary()
+{
+    if(!m_library)return;
+    QSignalBlocker block(m_library);m_library->clearSelection();m_library->setCurrentRow(-1);
+    for(int i=0;i<m_library->count();++i)if(m_library->item(i)->data(Qt::UserRole).toString().compare(m_material->text(),Qt::CaseInsensitive)==0)
+    {m_library->setCurrentRow(i);break;}
+}
+void Painter::RefreshLibrary()
+{
+    m_library->clear();
+    // Gem Assets is a scan root; project sources are relative to the project root.
+    const auto gem=AZ::Utils::GetGemPath("SilPOM"),project=AZ::Utils::GetProjectPath();
+    for(const auto& root:{QString::fromUtf8(gem.c_str()),QString::fromUtf8(project.c_str())})
+    {
+        QDir assets(root+"/Assets");
+        QDirIterator files(assets.filePath("Materials/DecalPaint"),{"*.material"},QDir::Files,QDirIterator::Subdirectories);
+        while(files.hasNext())
+        {
+            const auto source=files.next();QFileInfo info(source);
+            auto product=assets.relativeFilePath(source);product.chop(9);product+=".azmaterial";
+            if(root==QString::fromUtf8(project.c_str()))product="assets/"+product;
+            product=product.toLower();
+            for(int i=m_library->count()-1;i>=0;--i)if(m_library->item(i)->data(Qt::UserRole).toString()==product)delete m_library->takeItem(i);
+            const QString preview=info.dir().filePath(info.completeBaseName()+".preview.png");
+            const QString fallback=info.dir().filePath(info.completeBaseName()+".png");
+            auto label=info.completeBaseName();label.replace('_',' ');
+            auto* item=new QListWidgetItem(QIcon(QFileInfo::exists(preview)?preview:fallback),label,m_library);
+            item->setData(Qt::UserRole,product);
+            item->setData(Qt::UserRole+1,QFileInfo::exists(info.dir().filePath(info.completeBaseName()+"_normal.png")));
+            item->setToolTip(product);
+            item->setHidden(!label.contains(m_librarySearch->text(),Qt::CaseInsensitive));
+        }
+    }
+    m_library->sortItems();SyncLibrary();
 }
 void Painter::RefreshCanvases()
 {
@@ -473,8 +565,9 @@ void Painter::OnTick(float,AZ::ScriptTimePoint)
     if(!isVisible())return;
     if(m_clock.elapsed()-m_lastCanvasRefresh>1000){m_lastCanvasRefresh=m_clock.elapsed();RefreshCanvases();}
     auto* doc=Document(m_canvas);
-    if(!doc){if(m_drawing)Finish(true);m_status->setText("Create a paint entity to begin.");return;}
-    if(!m_drawing&&doc->GetRevision()!=m_revision)RefreshTree();
+    if(!doc&&m_drawing)Finish(true);
+    if(!doc&&m_tree->topLevelItemCount())RefreshTree();
+    if(doc&&!m_drawing&&doc->GetRevision()!=m_revision)RefreshTree();
     const auto viewport=Viewport();
     if(viewport&&viewport->GetRenderScene()&&(!AZ::RPI::SceneNotificationBus::Handler::BusIsConnectedId(viewport->GetRenderScene()->GetId())))
     {
@@ -487,7 +580,9 @@ void Painter::OnTick(float,AZ::ScriptTimePoint)
     if(m_arm->isChecked()&&viewport)
     {QPointF pixel;if(ToPixel(QCursor::pos(),pixel))m_hasCursor=Pick(int(pixel.x()),int(pixel.y()),m_cursor,m_normal);else m_hasCursor=false;}
     else m_hasCursor=false;
-    m_status->setText(QString::fromUtf8(doc->GetPaintStatus().c_str())+(m_arm->isChecked()?(m_hasCursor?"\nRendered surface ready.":"\nWaiting for visible surface / depth frame."):"\nPainting disabled."));
+    const QString status=doc?QString::fromUtf8(doc->GetPaintStatus().c_str()):
+        QString("No paint entity. Click a visible surface in Stamp/Paint mode to start a new one, or choose New paint entity.");
+    m_status->setText(status+(m_arm->isChecked()?(m_hasCursor?"\nRendered surface ready.":"\nWaiting for visible surface / depth frame."):"\nPainting disabled."));
 }
 void Painter::OnEndPrepareRender()
 {
@@ -579,10 +674,31 @@ bool Painter::ToPixel(QPointF global,QPointF& pixel) const
 }
 void Painter::Begin(QPointF pixel,float pressure)
 {
-    if(m_drawing)return;auto* d=Document(m_canvas);if(!d)return;
-    m_work=d->GetDocument();auto* layer=Layer(m_work);if(!layer||layer->m_locked||!layer->m_visible)return;
+    if(m_drawing)return;
     AZ::Vector3 p,n;if(!Pick(int(pixel.x()),int(pixel.y()),p,n))return;
     PaintStroke s;ReadBrush(s);if(!s.m_material.GetId().IsValid()){m_status->setText("Choose a processed material with a base-color texture.");return;}
+    auto* d=Document(m_canvas);
+    // Undo may remove the canvas as well as its dabs. Keep the preview alive
+    // and lazily start a new document only for a valid paint click.
+    if(!d)
+    {
+        if(s.m_erase||m_pendingCanvas)return;
+        m_pendingCanvas=true;m_pendingContact=true;
+        // Entity creation publishes Python notifications. Queue it outside the
+        // input dispatch (which may be a PySide sendEvent with its GIL released).
+        QTimer::singleShot(0,this,[this,pixel,pressure]
+        {
+            m_pendingCanvas=false;
+            if(!isVisible()||!m_arm->isChecked()||m_mode->currentIndex()==2||m_operation->currentIndex()!=0)
+            {m_pendingContact=false;return;}
+            if(!Document(m_canvas))CreateCanvas();
+            if(Document(m_canvas))Begin(pixel,pressure);
+            if(m_drawing){Write(m_work);if(m_mode->currentIndex()==0||!m_pendingContact)Finish();}
+            m_pendingContact=false;
+        });
+        return;
+    }
+    m_work=d->GetDocument();auto* layer=Layer(m_work);if(!layer||layer->m_locked||!layer->m_visible)return;
     m_before=m_work;m_strokeCanvas=m_canvas;
     AZ::Transform world=AZ::Transform::CreateIdentity();AZ::TransformBus::EventResult(world,m_canvas,&AZ::TransformBus::Events::GetWorldTM);m_strokeInverse=world.GetInverse();
     s.m_diameter/=AZStd::max(.001f,world.GetUniformScale());s.m_depth/=AZStd::max(.001f,world.GetUniformScale());
@@ -676,6 +792,7 @@ bool Painter::eventFilter(QObject* watched,QEvent* event)
         down=event->type()==QEvent::MouseButtonPress||event->type()==QEvent::MouseButtonDblClick;up=event->type()==QEvent::MouseButtonRelease;
     }
     QPointF pixel;const bool inside=ToPixel(global,pixel);
+    if(up)m_pendingContact=false;
     const auto viewport=Viewport();auto* widget=viewport?QWidget::find(reinterpret_cast<WId>(viewport->GetWindowHandle())):nullptr;
     auto* target=qobject_cast<QWidget*>(watched);
     const bool onViewport=inside&&widget&&target&&(target==widget||widget->isAncestorOf(target)||target->isAncestorOf(widget));

@@ -1,25 +1,42 @@
 # Sample-frequency hit reuse
 
-The DX12 MainPipeline has an opt-in four-sample path. The default remains the
-approved single-sample renderer. Height reconstruction, trained weights, and
-material-footprint filtering are shared between them.
+The DX12 MainPipeline supports one, two and four samples. TG starts at its
+original **2× MSAA** default. The older approved single-sample reference remains
+a historical comparison, rather than the project's startup setting. Height
+reconstruction, trained weights, and material-footprint filtering are shared.
 
-In VueLiveLink, select **Irish Fieldstone Tower (Open Shaft)** and open its
-**SilPOM Mesh → Anti-aliasing** dropdown:
+In the **Vue Live Link** pane, use **Rendering — whole scene → Anti-aliasing**:
 
-- **Current default (unchanged)** preserves the approved single-sample default.
+- **Project default (2× MSAA)** restores the renderer settings active before comparison.
 - **SMAA** enables both Atom's SMAA passes and its SMAA feature processor at 1×.
 - **TAA** enables temporal AA at 1×.
+- **2× MSAA** explicitly selects the two-sample renderer.
 - **4x MSAA (experimental)** selects the experimental four-sample renderer.
 
 SMAA, TAA and MSAA carry into game mode. The selection changes scene AA without regenerating
 the tower or changing its estimator, lighting, recovery or quality settings.
-Returning to Current default, or disabling the component, restores the settings
-active before the comparison. Default components are passive. If several meshes
-make explicit selections, the most recently edited selection wins; releasing it
-returns to the remaining selection. MSAA's sample count affects the application,
+Returning to Project default restores the exact original sample count, AA mode
+and SMAA enablement. The control is renderer-wide and remains active when the
+tower is disabled or removed. MSAA's sample count affects the application,
 including preview scenes, so a brief rendering pause protects sample transitions.
-Existing levels deserialize to Current default; no tower prefab needs rewriting.
+The standard 2× path retains the inset wall backup used at 1×. This prevents
+missed neural intersections from exposing sky through solid interior/exterior
+walls. The experimental 4× comparison keeps its separate raw-coverage policy.
+At 2×, neighbor-supported recovery runs per sample before the backing surface.
+The backup shader explicitly publishes the same depth bits to its hit record
+and depth output. Using hardware raster depth for one and interpolated sample
+depth for the other can fail the forward pass's depth-equality test, leaving
+covered samples black along triangle edges. The gameplay coverage regression
+checks both missing wall samples and exact backup-depth equality.
+The old component field remains readable for migration, but no longer appears
+on the tower. An older explicit component selection is adopted once as a global
+selection. The console equivalent is `r_silpomAntiAliasing`: 0=project default,
+1=SMAA, 2=TAA, 3=4× MSAA, 4=2× MSAA. The original enum values remain stable.
+
+`Tests/RenderingSettingsEditorSmoke.py` checks the real VueLiveLink control,
+two-sample restoration, independence from the tower and Ctrl-G at 2× and 4×.
+Keep height-derived normals enabled on the curved tower: disabling them uses
+constant per-face lighting normals and can reveal seams that AA cannot fix.
 
 The earlier Ctrl-G failure was a transition/lifecycle defect. Tracing confirmed
 an unnecessary 4× → 1× → 4× change as the editor released its AA request before
@@ -38,10 +55,10 @@ The prior restart precaution is superseded for this selector workflow.
 Four samples add substantial GPU cost and remain an experimental coverage
 comparison. They retain the current raw/repair console choice; selecting AA does
 not alter that choice or add diagnostic passes. Unsupported devices retain 1×.
-`Tests/AntiAliasingSelectorEditorSmoke.py` exercises the actual dropdown property,
-rapid transitions, disable/re-enable and exact approved 1× captures. Gameplay
-after an MSAA comparison is explicitly outside this editor visual suite.
-`Tests/MsaaGameplayEditorSmoke.py` separately exercises fresh 1×, initialized
+`Tests/AntiAliasingSelectorEditorSmoke.py` forwards to the renderer-wide control
+suite. It checks the real VueLiveLink widget, sample counts, identical 2× images
+after restoration, independence from a disabled tower and 2×/4× gameplay.
+The historical `Tests/MsaaGameplayEditorSmoke.py` separately exercises fresh 1×, initialized
 4×, 1× → 4× → 1×, live 4× handoff and mixed-selector history. Set
 `TG_SILPOM_GAMEPLAY_CASE` and `TG_SILPOM_ESTIMATOR_OUTPUT`; optional
 `TG_SILPOM_GAMEPLAY_REPEATS=3` repeats Ctrl-G without restarting. The `startup4`
@@ -79,7 +96,7 @@ r_antiAliasing MSAA
 r_silpomMsaa4 1
 ```
 
-Disabling `r_silpomMsaa4` restores one sample. The native rendering device is
+Disabling `r_silpomMsaa4` restores the sample count from before it was enabled. The native rendering device is
 checked for four-sample render/load support on the actual attachment formats
 before enabling the path. Pipeline roots pause during the sample-count
 transition, including root recreation. A temporary scene-bus router observes

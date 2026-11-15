@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #include <SilPOM/MeshSurfaceAsset.h>
+#include <SilPOM/Mesh.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
 namespace SilPOM
@@ -32,6 +33,7 @@ void MeshAssetSystem::Reflect(AZ::ReflectContext* context)
 }
 void MeshAssetSystem::Activate()
 {
+    StartRenderingSettings();
     m_handler = AZStd::make_unique<AzFramework::GenericAssetHandler<MeshSurfaceAsset>>(
         "SilPOM Mesh Surface", "Graphics", "silpommesh");
     m_handler->Register();
@@ -40,6 +42,7 @@ void MeshAssetSystem::Activate()
 }
 void MeshAssetSystem::Deactivate()
 {
+    StopRenderingSettings();
     m_handler.reset();
     m_materialHandler.reset();
 }
