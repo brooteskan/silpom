@@ -1,0 +1,2382 @@
+{
+  "date_local": "2026-11-14",
+  "baseline_commit": "18c33bbaa1e4db68e7dfa56e47a5ecbedbea67fc",
+  "upstream_main": "2f818d87cd29663fab360cc7ccde06e117c257cf",
+  "branch": "codex/renderdoc-msaa2-ryzen-5700g",
+  "scope": "Separate fresh 2x and matched 1x upper-glancing captures, with 1 warm-up and 3 measured stable-power replays each. Not normal-clock baseline timings or GPU busy time.",
+  "hardware": {
+    "cpu": "AMD Ryzen 7 5700G",
+    "cores": 8,
+    "logical_processors": 16,
+    "active_rendering_gpu": "AMD Radeon(TM) Graphics",
+    "pci_vendor": "1002",
+    "pci_device": "1638",
+    "driver": "31.0.21923.11000",
+    "driver_date_utc": "2025-07-01",
+    "ram_gib": 32,
+    "ram_modules": "2 x 16 GiB G.Skill F4-3200C16-16GVK",
+    "ram_slots": [
+      "DIMM_A1",
+      "DIMM_B1"
+    ],
+    "configured_memory_mt_s": 2133,
+    "dxgi_dedicated_video_bytes": 519847936,
+    "dxgi_shared_system_bytes": 16839022592,
+    "highest_reported_shader_model": "6.7",
+    "native_16bit_shader_ops": true,
+    "os": "Windows 11 Pro 10.0.26300",
+    "power_plan": "Balanced (unchanged)"
+  },
+  "rendering": {
+    "backend": "DX12",
+    "shader_target": "6_2",
+    "resolution": [
+      1280,
+      720
+    ],
+    "primary_sample_count": 2,
+    "comparison_sample_count": 1,
+    "aa": "Renderer-wide Current default, r_silpomAntiAliasing=0; SMAA disabled",
+    "sample_selection": "Process-start r_multiSampleCount=2 matches project default; 1 is a separate forced comparison"
+  },
+  "components": [
+    {
+      "name": "engine",
+      "base": "061180bf24f1666eb30315b35da292eb14f4659c",
+      "patch_sha256": "3dd9ed2e11485f7592f7462e7da850b154ca30c1159994b1ca6f0fcfec7877f3"
+    },
+    {
+      "name": "terrain-compositor",
+      "base": "ee6887b4b743047f7dece1b179c0cf30cb281880",
+      "patch_sha256": "dab37b902de3e3ca417531b6b08d9fed59c20dc02382c12426b3500a89137841"
+    }
+  ],
+  "unchanged_tg_silpom_pin": "e9684244b85e878b445606164b157b16438398d4",
+  "scene_sha256": "a0894326d0eb68b7328949b1f1829a8021b7293ce16a567e0c2ea8c9148f6e7b",
+  "effective_configuration_sha256": "b76f275b9af10b14731ac7dc5115e1e29eb6edb11cebd57cd05e22b3b32ec67e",
+  "renderdoc_version": "1.47 (b0e1370309f7d7bf986a73830446ca39d9b8c1fd)",
+  "local_evidence_root": "D:\\diversion\\TG\\TGProject\\user\\silpom-renderdoc-msaa2-20261114",
+  "baseline_fingerprints": {
+    "scripts/GitDependencies.json": "627fc62526d0dc10f738dcdc7a1ceb7c8f1973feb87f6723f4807bf28a5c2fdc",
+    "Levels/SilPOMTowerBenchmark/SilPOMTowerBenchmark.prefab": "a0894326d0eb68b7328949b1f1829a8021b7293ce16a567e0c2ea8c9148f6e7b",
+    "Levels/SilPOMTowerBenchmark/scene.json": "022b57a423ad8f35f7fcc5a2435cbc3f87fa0c4f0536307621a2bfc6f151f9e6",
+    "Gems/silpom/Tests/Reference/Ryzen5700GMain2f818d8-20261114.json": "d38226389baf34926f8bbbb7429a236db42a5b11c11af47c9b9c7f180c7d7c17",
+    "Gems/silpom/Docs/TowerBenchmarkRyzen5700G-2f818d8.md": "ca64d5b0f010eb06504e1182706357cf7e0b37ad316a9935fa91bc5e21d00bf0"
+  },
+  "baseline_raw_captures_verified_unchanged": 24,
+  "developer_mode_restoration": {
+    "temporary_mode_requested": true,
+    "key_existed": true,
+    "value_existed": false,
+    "old_value": null,
+    "old_kind": "",
+    "enabled": true,
+    "restored": true,
+    "replay_exit": 0,
+    "completed_utc": "2026-11-15T06:26:45.5980683Z"
+  },
+  "developer_mode_independent_verification": {
+    "value_present": false,
+    "value": null,
+    "verified_utc": "2026-11-15T06:28:08.1900392Z"
+  },
+  "limits": [
+    "No AMD hardware counters: GPUPerfAPI reports Hardware Not Supported.",
+    "No per-function, instruction, occupancy, cache-miss or stall-duration ranking.",
+    "Event times under stable power and replay instrumentation are not the 182 ms normal-clock pass.",
+    "Counter PS invocations and Samples Passed are not unique output pixels or individual invocation latency.",
+    "CPU coverage assumes standard Direct3D 2x sample locations for quality zero; not queried vendor locations.",
+    "CPU model excludes in-draw depth evolution, hardware Hi-Z and helper lanes.",
+    "No off/on experiment, shader edit, shader rebuild, recovery/default change or optimization."
+  ],
+  "runs": {
+    "2": {
+      "samples": 2,
+      "capture": "D:\\diversion\\TG\\TGProject\\user\\silpom-renderdoc-msaa2-20261114\\capture-2x-20261114-220921\\upper-glancing_frame303.rdc",
+      "capture_sha256": "bfe021553de239202c95a9303370f04de0599d2f58cc02700b86153580165413",
+      "counter_rounds": 3,
+      "warmup_rounds": 1,
+      "timed_events": 229,
+      "mapped_draws_dispatches": 189,
+      "matched_shaders": 59,
+      "renderer": {
+        "vendor": "GPUVendor.AMD",
+        "api": "GraphicsAPI.D3D12",
+        "degraded": false
+      },
+      "controls": {
+        "Lighting estimator": 5,
+        "Height-derived normals (off = cheaper)": true,
+        "Level 2 predictor (experimental)": true,
+        "Gather validation (may be cheaper)": true,
+        "R16 height textures (less GPU memory)": true,
+        "Anti-aliasing": 0
+      },
+      "final_fatal_status": "<Result: 'Success'>",
+      "dominant_draw": {
+        "event": 473,
+        "indices": 3426,
+        "instances": 1,
+        "pixel_shader": "ResourceId::3001",
+        "products": [
+          {
+            "product": "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitdepthlodnearwall_dx12_0.azshadervariant",
+            "offset": 23515,
+            "size": 82644,
+            "match": "exact-after-O3DE-specialization-excluding-resigned-container-hash",
+            "patches": [
+              {
+                "specialization_id": 7,
+                "value": 0,
+                "bit_offset": 108153
+              }
+            ]
+          }
+        ],
+        "duration_ms": {
+          "median": 396.01279999999997,
+          "min": 395.73816,
+          "max": 396.01284,
+          "repeats": [
+            395.73816,
+            396.01284,
+            396.01279999999997
+          ]
+        },
+        "ps_invocations": {
+          "median": 16877906,
+          "min": 16877778,
+          "max": 16878218,
+          "repeats": [
+            16877906,
+            16878218,
+            16877778
+          ]
+        },
+        "vs_invocations": {
+          "median": 2284,
+          "min": 2284,
+          "max": 2284,
+          "repeats": [
+            2284,
+            2284,
+            2284
+          ]
+        },
+        "samples_passed": {
+          "median": 2784451,
+          "min": 2784451,
+          "max": 2784451,
+          "repeats": [
+            2784451,
+            2784451,
+            2784451
+          ]
+        },
+        "ps_invocations_per_viewport_sample": 9.156850043402779,
+        "declares_sample_index": true,
+        "hit_draw_duration_share_percent": {
+          "median": 95.04806273403058,
+          "min": 95.04708374731081,
+          "max": 95.0541291711088,
+          "repeats": [
+            95.04806273403058,
+            95.0541291711088,
+            95.04708374731081
+          ]
+        }
+      },
+      "main_hit_draws": {
+        "draw_list": "silpomHitDepth",
+        "count": 24,
+        "duration_sum_ms": {
+          "median": 416.61823999999996,
+          "min": 416.35584,
+          "max": 416.64907999999997,
+          "repeats": [
+            416.35584,
+            416.61823999999996,
+            416.64907999999997
+          ]
+        },
+        "ps_invocation_sum": {
+          "median": 18309990,
+          "min": 18309862,
+          "max": 18310302,
+          "repeats": [
+            18309990,
+            18310302,
+            18309862
+          ]
+        },
+        "note": "Programs assigned through exact captured-bytecode matching to shader templates; wall-backup draw list excluded. Per-round sums precede medians."
+      },
+      "largest_pixel_shader_groups": [
+        {
+          "shader": "ResourceId::3001",
+          "draw_count": 6,
+          "events": [
+            473,
+            509,
+            645,
+            545,
+            749,
+            713
+          ],
+          "draw_lists": [
+            "silpomHitDepth"
+          ],
+          "duration_sum_ms": {
+            "median": 416.22256,
+            "min": 415.95968,
+            "max": 416.25215999999995,
+            "repeats": [
+              415.95968,
+              416.22256,
+              416.25215999999995
+            ]
+          },
+          "ps_invocation_sum": {
+            "median": 18087150,
+            "min": 18087022,
+            "max": 18087462,
+            "repeats": [
+              18087150,
+              18087462,
+              18087022
+            ]
+          },
+          "program_products": [
+            {
+              "product": "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitdepthlodnearwall_dx12_0.azshadervariant",
+              "offset": 23515,
+              "size": 82644,
+              "match": "exact-after-O3DE-specialization-excluding-resigned-container-hash",
+              "patches": [
+                {
+                  "specialization_id": 7,
+                  "value": 0,
+                  "bit_offset": 108153
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shader": "ResourceId::3010",
+          "draw_count": 6,
+          "events": [
+            2316,
+            2324,
+            2378,
+            2331,
+            2371,
+            2355
+          ],
+          "draw_lists": [
+            "silpomHitForward"
+          ],
+          "duration_sum_ms": {
+            "median": 165.0694,
+            "min": 165.00608,
+            "max": 165.11603999999997,
+            "repeats": [
+              165.0694,
+              165.11603999999997,
+              165.00608
+            ]
+          },
+          "ps_invocation_sum": {
+            "median": 11059200,
+            "min": 11059200,
+            "max": 11059200,
+            "repeats": [
+              11059200,
+              11059200,
+              11059200
+            ]
+          },
+          "program_products": [
+            {
+              "product": "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitforwardangularproxyambient_dx12_0.azshadervariant",
+              "offset": 16279,
+              "size": 306692,
+              "match": "exact-after-O3DE-specialization-excluding-resigned-container-hash",
+              "patches": [
+                {
+                  "specialization_id": 60,
+                  "value": 0,
+                  "bit_offset": 401468
+                },
+                {
+                  "specialization_id": 61,
+                  "value": 0,
+                  "bit_offset": 401512
+                },
+                {
+                  "specialization_id": 59,
+                  "value": 0,
+                  "bit_offset": 402720
+                },
+                {
+                  "specialization_id": 58,
+                  "value": 0,
+                  "bit_offset": 402764
+                },
+                {
+                  "specialization_id": 57,
+                  "value": 1,
+                  "bit_offset": 402808
+                },
+                {
+                  "specialization_id": 53,
+                  "value": 0,
+                  "bit_offset": 402852
+                },
+                {
+                  "specialization_id": 47,
+                  "value": 0,
+                  "bit_offset": 402896
+                },
+                {
+                  "specialization_id": 41,
+                  "value": 0,
+                  "bit_offset": 402940
+                },
+                {
+                  "specialization_id": 39,
+                  "value": 1,
+                  "bit_offset": 402984
+                },
+                {
+                  "specialization_id": 29,
+                  "value": 0,
+                  "bit_offset": 403028
+                },
+                {
+                  "specialization_id": 28,
+                  "value": 0,
+                  "bit_offset": 403072
+                },
+                {
+                  "specialization_id": 22,
+                  "value": 0,
+                  "bit_offset": 403116
+                },
+                {
+                  "specialization_id": 21,
+                  "value": 0,
+                  "bit_offset": 403160
+                },
+                {
+                  "specialization_id": 19,
+                  "value": 1,
+                  "bit_offset": 403204
+                },
+                {
+                  "specialization_id": 18,
+                  "value": 1,
+                  "bit_offset": 403248
+                },
+                {
+                  "specialization_id": 17,
+                  "value": 1,
+                  "bit_offset": 403292
+                },
+                {
+                  "specialization_id": 13,
+                  "value": 1,
+                  "bit_offset": 403336
+                },
+                {
+                  "specialization_id": 12,
+                  "value": 1,
+                  "bit_offset": 403380
+                },
+                {
+                  "specialization_id": 10,
+                  "value": 1,
+                  "bit_offset": 403424
+                },
+                {
+                  "specialization_id": 8,
+                  "value": 1,
+                  "bit_offset": 403468
+                },
+                {
+                  "specialization_id": 6,
+                  "value": 1,
+                  "bit_offset": 403512
+                },
+                {
+                  "specialization_id": 5,
+                  "value": 1,
+                  "bit_offset": 403556
+                },
+                {
+                  "specialization_id": 4,
+                  "value": 1,
+                  "bit_offset": 403600
+                },
+                {
+                  "specialization_id": 3,
+                  "value": 1,
+                  "bit_offset": 403644
+                },
+                {
+                  "specialization_id": 2,
+                  "value": 0,
+                  "bit_offset": 403688
+                },
+                {
+                  "specialization_id": 1,
+                  "value": 0,
+                  "bit_offset": 403732
+                },
+                {
+                  "specialization_id": 0,
+                  "value": 1,
+                  "bit_offset": 403776
+                },
+                {
+                  "specialization_id": 56,
+                  "value": 1,
+                  "bit_offset": 403840
+                },
+                {
+                  "specialization_id": 40,
+                  "value": 0,
+                  "bit_offset": 405612
+                },
+                {
+                  "specialization_id": 42,
+                  "value": 0,
+                  "bit_offset": 405656
+                },
+                {
+                  "specialization_id": 55,
+                  "value": 2,
+                  "bit_offset": 405912
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shader": "ResourceId::2986",
+          "draw_count": 3,
+          "events": [
+            2339,
+            2363,
+            2347
+          ],
+          "draw_lists": [
+            "silpomHitForward"
+          ],
+          "duration_sum_ms": {
+            "median": 17.61896,
+            "min": 17.61572,
+            "max": 17.666439999999998,
+            "repeats": [
+              17.61896,
+              17.61572,
+              17.666439999999998
+            ]
+          },
+          "ps_invocation_sum": {
+            "median": 5529600,
+            "min": 5529600,
+            "max": 5529600,
+            "repeats": [
+              5529600,
+              5529600,
+              5529600
+            ]
+          },
+          "program_products": [
+            {
+              "product": "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitforwardneuralonly_dx12_0.azshadervariant",
+              "offset": 16279,
+              "size": 323044,
+              "match": "exact-after-O3DE-specialization-excluding-resigned-container-hash",
+              "patches": [
+                {
+                  "specialization_id": 61,
+                  "value": 0,
+                  "bit_offset": 240604
+                },
+                {
+                  "specialization_id": 62,
+                  "value": 0,
+                  "bit_offset": 240648
+                },
+                {
+                  "specialization_id": 30,
+                  "value": 0,
+                  "bit_offset": 240740
+                },
+                {
+                  "specialization_id": 55,
+                  "value": 0,
+                  "bit_offset": 240784
+                },
+                {
+                  "specialization_id": 60,
+                  "value": 0,
+                  "bit_offset": 241636
+                },
+                {
+                  "specialization_id": 59,
+                  "value": 0,
+                  "bit_offset": 241680
+                },
+                {
+                  "specialization_id": 58,
+                  "value": 1,
+                  "bit_offset": 241724
+                },
+                {
+                  "specialization_id": 54,
+                  "value": 0,
+                  "bit_offset": 241768
+                },
+                {
+                  "specialization_id": 53,
+                  "value": 0,
+                  "bit_offset": 241812
+                },
+                {
+                  "specialization_id": 52,
+                  "value": 0,
+                  "bit_offset": 241856
+                },
+                {
+                  "specialization_id": 51,
+                  "value": 0,
+                  "bit_offset": 241900
+                },
+                {
+                  "specialization_id": 50,
+                  "value": 0,
+                  "bit_offset": 241944
+                },
+                {
+                  "specialization_id": 49,
+                  "value": 0,
+                  "bit_offset": 241988
+                },
+                {
+                  "specialization_id": 48,
+                  "value": 0,
+                  "bit_offset": 242032
+                },
+                {
+                  "specialization_id": 47,
+                  "value": 0,
+                  "bit_offset": 242076
+                },
+                {
+                  "specialization_id": 46,
+                  "value": 1,
+                  "bit_offset": 242120
+                },
+                {
+                  "specialization_id": 45,
+                  "value": 0,
+                  "bit_offset": 242164
+                },
+                {
+                  "specialization_id": 44,
+                  "value": 0,
+                  "bit_offset": 242208
+                },
+                {
+                  "specialization_id": 43,
+                  "value": 1,
+                  "bit_offset": 242252
+                },
+                {
+                  "specialization_id": 41,
+                  "value": 0,
+                  "bit_offset": 242296
+                },
+                {
+                  "specialization_id": 39,
+                  "value": 1,
+                  "bit_offset": 242340
+                },
+                {
+                  "specialization_id": 35,
+                  "value": 0,
+                  "bit_offset": 242384
+                },
+                {
+                  "specialization_id": 29,
+                  "value": 0,
+                  "bit_offset": 242428
+                },
+                {
+                  "specialization_id": 28,
+                  "value": 0,
+                  "bit_offset": 242472
+                },
+                {
+                  "specialization_id": 22,
+                  "value": 0,
+                  "bit_offset": 242516
+                },
+                {
+                  "specialization_id": 21,
+                  "value": 0,
+                  "bit_offset": 242560
+                },
+                {
+                  "specialization_id": 19,
+                  "value": 1,
+                  "bit_offset": 242604
+                },
+                {
+                  "specialization_id": 18,
+                  "value": 1,
+                  "bit_offset": 242648
+                },
+                {
+                  "specialization_id": 17,
+                  "value": 1,
+                  "bit_offset": 242692
+                },
+                {
+                  "specialization_id": 13,
+                  "value": 1,
+                  "bit_offset": 242736
+                },
+                {
+                  "specialization_id": 12,
+                  "value": 1,
+                  "bit_offset": 242780
+                },
+                {
+                  "specialization_id": 10,
+                  "value": 1,
+                  "bit_offset": 242824
+                },
+                {
+                  "specialization_id": 8,
+                  "value": 1,
+                  "bit_offset": 242868
+                },
+                {
+                  "specialization_id": 6,
+                  "value": 1,
+                  "bit_offset": 242912
+                },
+                {
+                  "specialization_id": 5,
+                  "value": 1,
+                  "bit_offset": 242956
+                },
+                {
+                  "specialization_id": 4,
+                  "value": 1,
+                  "bit_offset": 243000
+                },
+                {
+                  "specialization_id": 3,
+                  "value": 1,
+                  "bit_offset": 243044
+                },
+                {
+                  "specialization_id": 2,
+                  "value": 0,
+                  "bit_offset": 243088
+                },
+                {
+                  "specialization_id": 1,
+                  "value": 0,
+                  "bit_offset": 243132
+                },
+                {
+                  "specialization_id": 0,
+                  "value": 1,
+                  "bit_offset": 243176
+                },
+                {
+                  "specialization_id": 57,
+                  "value": 1,
+                  "bit_offset": 243260
+                },
+                {
+                  "specialization_id": 42,
+                  "value": 0,
+                  "bit_offset": 244060
+                },
+                {
+                  "specialization_id": 40,
+                  "value": 0,
+                  "bit_offset": 244104
+                },
+                {
+                  "specialization_id": 56,
+                  "value": 2,
+                  "bit_offset": 244300
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shader": "ResourceId::734",
+          "draw_count": 1,
+          "events": [
+            2183
+          ],
+          "draw_lists": [],
+          "duration_sum_ms": {
+            "median": 3.41932,
+            "min": 3.4160399999999997,
+            "max": 3.4221999999999997,
+            "repeats": [
+              3.41932,
+              3.4221999999999997,
+              3.4160399999999997
+            ]
+          },
+          "ps_invocation_sum": {
+            "median": 921600,
+            "min": 921600,
+            "max": 921600,
+            "repeats": [
+              921600,
+              921600,
+              921600
+            ]
+          },
+          "program_products": [
+            {
+              "product": "shaders/shadow/fullscreenshadow-nomsaa_dx12_0.azshadervariant",
+              "offset": 3823,
+              "size": 30168,
+              "match": "exact-after-O3DE-specialization-excluding-resigned-container-hash",
+              "patches": [
+                {
+                  "specialization_id": 1,
+                  "value": 1,
+                  "bit_offset": 78901
+                }
+              ]
+            },
+            {
+              "product": "shaders/shadow/fullscreenshadow_dx12_0.azshadervariant",
+              "offset": 3823,
+              "size": 30168,
+              "match": "exact-after-O3DE-specialization-excluding-resigned-container-hash",
+              "patches": [
+                {
+                  "specialization_id": 1,
+                  "value": 1,
+                  "bit_offset": 78901
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shader": "ResourceId::2417",
+          "draw_count": 1,
+          "events": [
+            775
+          ],
+          "draw_lists": [],
+          "duration_sum_ms": {
+            "median": 3.16776,
+            "min": 3.1453599999999997,
+            "max": 3.1963999999999997,
+            "repeats": [
+              3.1453599999999997,
+              3.16776,
+              3.1963999999999997
+            ]
+          },
+          "ps_invocation_sum": {
+            "median": 1843200,
+            "min": 1843200,
+            "max": 1843200,
+            "repeats": [
+              1843200,
+              1843200,
+              1843200
+            ]
+          },
+          "program_products": [
+            {
+              "product": "shaders/silpom/hitreuse/silpomclassifywallholes_dx12_0.azshadervariant",
+              "offset": 3823,
+              "size": 9028,
+              "match": "complete-container"
+            }
+          ]
+        },
+        {
+          "shader": "ResourceId::2982",
+          "draw_count": 9,
+          "events": [
+            804,
+            843,
+            827,
+            851,
+            866,
+            812,
+            835,
+            859,
+            819
+          ],
+          "draw_lists": [
+            "silpomHitDepthWallBackup"
+          ],
+          "duration_sum_ms": {
+            "median": 2.30596,
+            "min": 2.30532,
+            "max": 2.3062799999999997,
+            "repeats": [
+              2.30596,
+              2.30532,
+              2.3062799999999997
+            ]
+          },
+          "ps_invocation_sum": {
+            "median": 3833424,
+            "min": 3833424,
+            "max": 3833424,
+            "repeats": [
+              3833424,
+              3833424,
+              3833424
+            ]
+          },
+          "program_products": [
+            {
+              "product": "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitdepthwallbackup-nomsaa_dx12_0.azshadervariant",
+              "offset": 15249,
+              "size": 3852,
+              "match": "exact-after-O3DE-specialization-excluding-resigned-container-hash",
+              "patches": [
+                {
+                  "specialization_id": 0,
+                  "value": 1,
+                  "bit_offset": 29033
+                }
+              ]
+            },
+            {
+              "product": "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitdepthwallbackup_dx12_0.azshadervariant",
+              "offset": 15249,
+              "size": 3852,
+              "match": "exact-after-O3DE-specialization-excluding-resigned-container-hash",
+              "patches": [
+                {
+                  "specialization_id": 0,
+                  "value": 1,
+                  "bit_offset": 29033
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "normal_clock_reference": {
+        "hit_generation": {
+          "count": 360,
+          "median_ms": 182.09,
+          "p95_ms": 187.16604999999998,
+          "min_ms": 179.185,
+          "max_ms": 187.533
+        },
+        "silpom_forward_shading": {
+          "count": 360,
+          "median_ms": 90.42949999999999,
+          "p95_ms": 92.16545,
+          "min_ms": 88.007,
+          "max_ms": 98.713
+        },
+        "graphics_pass_span": {
+          "count": 360,
+          "median_ms": 296.1435,
+          "p95_ms": 301.36365,
+          "min_ms": 289.923,
+          "max_ms": 307.617
+        },
+        "cpu_frame_period": {
+          "count": 360,
+          "median_ms": 296.9018,
+          "p95_ms": 302.064205,
+          "min_ms": 290.6346,
+          "max_ms": 308.4449
+        }
+      },
+      "normal_clock_per_capture_target_counts": [
+        {
+          "file": "gpu-upper-glancing-1.json",
+          "hit": 120,
+          "forward": 120
+        },
+        {
+          "file": "gpu-upper-glancing-2.json",
+          "hit": 120,
+          "forward": 120
+        },
+        {
+          "file": "gpu-upper-glancing-3.json",
+          "hit": 120,
+          "forward": 120
+        }
+      ],
+      "proxy_model": {
+        "scope": "Reconstruct captured proxy coverage at explicit 1x/standard-2x sample sites.\n\nThis CPU model is not a hardware PS-invocation simulation. It excludes in-draw\ndepth evolution, Hi-Z granularity and helper lanes. Quality-zero 2x is modeled\nwith the Direct3D standard pattern; that pattern assumption is recorded.\n",
+        "capture_sha256": "bfe021553de239202c95a9303370f04de0599d2f58cc02700b86153580165413",
+        "event": 473,
+        "before_event": 469,
+        "samples": 2,
+        "width": 1280,
+        "height": 720,
+        "sample_sites_256ths_from_pixel_corner": [
+          [
+            192,
+            192
+          ],
+          [
+            64,
+            64
+          ]
+        ],
+        "sample_pattern_note": "Pixel center at 1x; assumed standard Direct3D 2x pattern for captured msQual=0; not a queried vendor sample-location table",
+        "proxies": 571,
+        "vertices": 2284,
+        "indices": 3426,
+        "postvs_vertex_sha256": "445b785a6383a406327a64b7ee0e28da2b12367cf3325cb3fcd98ab02b29c79e",
+        "postvs_index_sha256": "efea4843c15d7a78e86e6a0f0cad9f599790f99773026ffcb8114da4295608e8",
+        "nonempty_proxies": 172,
+        "potential_sample_coverage": 22733080,
+        "coverage_per_viewport_sample": 12.333485243055556,
+        "max_overlap": 36,
+        "overlap_p50": 12.0,
+        "overlap_p95": 26.0,
+        "full_viewport_proxies": 0,
+        "depth_one_proxies": 57,
+        "depth_one_sample_coverage": 12449726,
+        "eligible_against_before_depth": 22680953,
+        "eligible_against_completed_depth": 14440274,
+        "changed_depth_samples": 1804749,
+        "changed_depth_pixels": 903085,
+        "per_sample": [
+          {
+            "sample": 0,
+            "potential_coverage": 11364309,
+            "eligible_before": 11338188,
+            "eligible_after": 7218801,
+            "changed_depth_samples": 902342
+          },
+          {
+            "sample": 1,
+            "potential_coverage": 11368771,
+            "eligible_before": 11342765,
+            "eligible_after": 7221473,
+            "changed_depth_samples": 902407
+          }
+        ],
+        "largest_proxies": [
+          {
+            "proxy": 301,
+            "authored_face": 301,
+            "depth_bound": 1.0,
+            "sample_coverage": 782351,
+            "eligible_before": 782351,
+            "eligible_after": 782351
+          },
+          {
+            "proxy": 308,
+            "authored_face": 308,
+            "depth_bound": 1.0,
+            "sample_coverage": 599521,
+            "eligible_before": 599521,
+            "eligible_after": 599521
+          },
+          {
+            "proxy": 5,
+            "authored_face": 5,
+            "depth_bound": 0.713960587978363,
+            "sample_coverage": 441386,
+            "eligible_before": 441386,
+            "eligible_after": 441386
+          },
+          {
+            "proxy": 315,
+            "authored_face": 315,
+            "depth_bound": 1.0,
+            "sample_coverage": 432720,
+            "eligible_before": 432720,
+            "eligible_after": 432720
+          },
+          {
+            "proxy": 322,
+            "authored_face": 322,
+            "depth_bound": 1.0,
+            "sample_coverage": 356140,
+            "eligible_before": 356140,
+            "eligible_after": 356140
+          },
+          {
+            "proxy": 564,
+            "authored_face": 564,
+            "depth_bound": 1.0,
+            "sample_coverage": 342404,
+            "eligible_before": 342404,
+            "eligible_after": 342404
+          },
+          {
+            "proxy": 561,
+            "authored_face": 561,
+            "depth_bound": 1.0,
+            "sample_coverage": 324232,
+            "eligible_before": 324232,
+            "eligible_after": 324232
+          },
+          {
+            "proxy": 562,
+            "authored_face": 562,
+            "depth_bound": 1.0,
+            "sample_coverage": 303576,
+            "eligible_before": 303576,
+            "eligible_after": 303576
+          },
+          {
+            "proxy": 565,
+            "authored_face": 565,
+            "depth_bound": 1.0,
+            "sample_coverage": 295579,
+            "eligible_before": 295579,
+            "eligible_after": 295579
+          },
+          {
+            "proxy": 568,
+            "authored_face": 568,
+            "depth_bound": 1.0,
+            "sample_coverage": 294519,
+            "eligible_before": 294519,
+            "eligible_after": 294519
+          },
+          {
+            "proxy": 297,
+            "authored_face": 297,
+            "depth_bound": 1.0,
+            "sample_coverage": 282046,
+            "eligible_before": 282046,
+            "eligible_after": 282046
+          },
+          {
+            "proxy": 566,
+            "authored_face": 566,
+            "depth_bound": 1.0,
+            "sample_coverage": 273935,
+            "eligible_before": 273935,
+            "eligible_after": 273935
+          },
+          {
+            "proxy": 318,
+            "authored_face": 318,
+            "depth_bound": 1.0,
+            "sample_coverage": 273283,
+            "eligible_before": 273283,
+            "eligible_after": 273283
+          },
+          {
+            "proxy": 311,
+            "authored_face": 311,
+            "depth_bound": 1.0,
+            "sample_coverage": 272627,
+            "eligible_before": 272627,
+            "eligible_after": 272627
+          },
+          {
+            "proxy": 304,
+            "authored_face": 304,
+            "depth_bound": 1.0,
+            "sample_coverage": 249362,
+            "eligible_before": 249362,
+            "eligible_after": 249362
+          },
+          {
+            "proxy": 114,
+            "authored_face": 114,
+            "depth_bound": 0.226874440908432,
+            "sample_coverage": 248153,
+            "eligible_before": 248153,
+            "eligible_after": 769
+          },
+          {
+            "proxy": 342,
+            "authored_face": 342,
+            "depth_bound": 1.0,
+            "sample_coverage": 246094,
+            "eligible_before": 246094,
+            "eligible_after": 246094
+          },
+          {
+            "proxy": 321,
+            "authored_face": 321,
+            "depth_bound": 1.0,
+            "sample_coverage": 245326,
+            "eligible_before": 245326,
+            "eligible_after": 245326
+          },
+          {
+            "proxy": 332,
+            "authored_face": 332,
+            "depth_bound": 1.0,
+            "sample_coverage": 237237,
+            "eligible_before": 237237,
+            "eligible_after": 237237
+          },
+          {
+            "proxy": 341,
+            "authored_face": 341,
+            "depth_bound": 1.0,
+            "sample_coverage": 234000,
+            "eligible_before": 234000,
+            "eligible_after": 234000
+          }
+        ]
+      }
+    },
+    "1": {
+      "samples": 1,
+      "capture": "D:\\diversion\\TG\\TGProject\\user\\silpom-renderdoc-msaa2-20261114\\capture-1x-20261114-221142\\upper-glancing_frame303.rdc",
+      "capture_sha256": "6a785cef6e2a58002b251af8c79b78f7fa6c9745904b4897388d1db4b43f95d0",
+      "counter_rounds": 3,
+      "warmup_rounds": 1,
+      "timed_events": 225,
+      "mapped_draws_dispatches": 186,
+      "matched_shaders": 54,
+      "renderer": {
+        "vendor": "GPUVendor.AMD",
+        "api": "GraphicsAPI.D3D12",
+        "degraded": false
+      },
+      "controls": {
+        "Lighting estimator": 5,
+        "Height-derived normals (off = cheaper)": true,
+        "Level 2 predictor (experimental)": true,
+        "Gather validation (may be cheaper)": true,
+        "R16 height textures (less GPU memory)": true,
+        "Anti-aliasing": 0
+      },
+      "final_fatal_status": "<Result: 'Success'>",
+      "dominant_draw": {
+        "event": 464,
+        "indices": 3426,
+        "instances": 1,
+        "pixel_shader": "ResourceId::3175",
+        "products": [
+          {
+            "product": "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitdepthlodnear-nomsaa_dx12_0.azshadervariant",
+            "offset": 23583,
+            "size": 184568,
+            "match": "exact-after-O3DE-specialization-excluding-resigned-container-hash",
+            "patches": [
+              {
+                "specialization_id": 7,
+                "value": 0,
+                "bit_offset": 109657
+              },
+              {
+                "specialization_id": 3,
+                "value": 1,
+                "bit_offset": 109701
+              },
+              {
+                "specialization_id": 2,
+                "value": 1,
+                "bit_offset": 109745
+              }
+            ]
+          },
+          {
+            "product": "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitdepthlodnearwall-nomsaa_dx12_0.azshadervariant",
+            "offset": 23583,
+            "size": 184568,
+            "match": "exact-after-O3DE-specialization-excluding-resigned-container-hash",
+            "patches": [
+              {
+                "specialization_id": 7,
+                "value": 0,
+                "bit_offset": 109657
+              },
+              {
+                "specialization_id": 3,
+                "value": 1,
+                "bit_offset": 109701
+              },
+              {
+                "specialization_id": 2,
+                "value": 1,
+                "bit_offset": 109745
+              }
+            ]
+          }
+        ],
+        "duration_ms": {
+          "median": 246.41576,
+          "min": 245.88752,
+          "max": 247.59876,
+          "repeats": [
+            245.88752,
+            247.59876,
+            246.41576
+          ]
+        },
+        "ps_invocations": {
+          "median": 8432615,
+          "min": 8432615,
+          "max": 8432839,
+          "repeats": [
+            8432615,
+            8432839,
+            8432615
+          ]
+        },
+        "vs_invocations": {
+          "median": 2284,
+          "min": 2284,
+          "max": 2284,
+          "repeats": [
+            2284,
+            2284,
+            2284
+          ]
+        },
+        "samples_passed": {
+          "median": 1392377,
+          "min": 1392377,
+          "max": 1392377,
+          "repeats": [
+            1392377,
+            1392377,
+            1392377
+          ]
+        },
+        "ps_invocations_per_viewport_sample": 9.14997287326389,
+        "declares_sample_index": true,
+        "hit_draw_duration_share_percent": {
+          "median": 95.06983327731362,
+          "min": 95.05847146570206,
+          "max": 95.09309491628848,
+          "repeats": [
+            95.05847146570206,
+            95.09309491628848,
+            95.06983327731362
+          ]
+        }
+      },
+      "main_hit_draws": {
+        "draw_list": "silpomHitDepth",
+        "count": 24,
+        "duration_sum_ms": {
+          "median": 259.19448,
+          "min": 258.66976,
+          "max": 260.37512,
+          "repeats": [
+            258.66976,
+            260.37512,
+            259.19448
+          ]
+        },
+        "ps_invocation_sum": {
+          "median": 9032461,
+          "min": 9032461,
+          "max": 9032685,
+          "repeats": [
+            9032461,
+            9032685,
+            9032461
+          ]
+        },
+        "note": "Programs assigned through exact captured-bytecode matching to shader templates; wall-backup draw list excluded. Per-round sums precede medians."
+      },
+      "largest_pixel_shader_groups": [
+        {
+          "shader": "ResourceId::3175",
+          "draw_count": 9,
+          "events": [
+            464,
+            500,
+            636,
+            536,
+            740,
+            704,
+            568,
+            668,
+            600
+          ],
+          "draw_lists": [
+            "silpomHitDepth"
+          ],
+          "duration_sum_ms": {
+            "median": 259.0632,
+            "min": 258.53832,
+            "max": 260.24352,
+            "repeats": [
+              258.53832,
+              260.24352,
+              259.0632
+            ]
+          },
+          "ps_invocation_sum": {
+            "median": 9032461,
+            "min": 9032461,
+            "max": 9032685,
+            "repeats": [
+              9032461,
+              9032685,
+              9032461
+            ]
+          },
+          "program_products": [
+            {
+              "product": "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitdepthlodnear-nomsaa_dx12_0.azshadervariant",
+              "offset": 23583,
+              "size": 184568,
+              "match": "exact-after-O3DE-specialization-excluding-resigned-container-hash",
+              "patches": [
+                {
+                  "specialization_id": 7,
+                  "value": 0,
+                  "bit_offset": 109657
+                },
+                {
+                  "specialization_id": 3,
+                  "value": 1,
+                  "bit_offset": 109701
+                },
+                {
+                  "specialization_id": 2,
+                  "value": 1,
+                  "bit_offset": 109745
+                }
+              ]
+            },
+            {
+              "product": "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitdepthlodnearwall-nomsaa_dx12_0.azshadervariant",
+              "offset": 23583,
+              "size": 184568,
+              "match": "exact-after-O3DE-specialization-excluding-resigned-container-hash",
+              "patches": [
+                {
+                  "specialization_id": 7,
+                  "value": 0,
+                  "bit_offset": 109657
+                },
+                {
+                  "specialization_id": 3,
+                  "value": 1,
+                  "bit_offset": 109701
+                },
+                {
+                  "specialization_id": 2,
+                  "value": 1,
+                  "bit_offset": 109745
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shader": "ResourceId::3201",
+          "draw_count": 6,
+          "events": [
+            2294,
+            2302,
+            2356,
+            2349,
+            2309,
+            2333
+          ],
+          "draw_lists": [
+            "silpomHitForward"
+          ],
+          "duration_sum_ms": {
+            "median": 84.2504,
+            "min": 84.09559999999999,
+            "max": 84.2528,
+            "repeats": [
+              84.09559999999999,
+              84.2504,
+              84.2528
+            ]
+          },
+          "ps_invocation_sum": {
+            "median": 5529600,
+            "min": 5529600,
+            "max": 5529600,
+            "repeats": [
+              5529600,
+              5529600,
+              5529600
+            ]
+          },
+          "program_products": [
+            {
+              "product": "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitforwardangularproxyambient-nomsaa_dx12_0.azshadervariant",
+              "offset": 16279,
+              "size": 306120,
+              "match": "exact-after-O3DE-specialization-excluding-resigned-container-hash",
+              "patches": [
+                {
+                  "specialization_id": 60,
+                  "value": 0,
+                  "bit_offset": 397020
+                },
+                {
+                  "specialization_id": 61,
+                  "value": 0,
+                  "bit_offset": 397064
+                },
+                {
+                  "specialization_id": 59,
+                  "value": 0,
+                  "bit_offset": 398272
+                },
+                {
+                  "specialization_id": 58,
+                  "value": 0,
+                  "bit_offset": 398316
+                },
+                {
+                  "specialization_id": 57,
+                  "value": 1,
+                  "bit_offset": 398360
+                },
+                {
+                  "specialization_id": 53,
+                  "value": 0,
+                  "bit_offset": 398404
+                },
+                {
+                  "specialization_id": 47,
+                  "value": 0,
+                  "bit_offset": 398448
+                },
+                {
+                  "specialization_id": 41,
+                  "value": 0,
+                  "bit_offset": 398492
+                },
+                {
+                  "specialization_id": 39,
+                  "value": 1,
+                  "bit_offset": 398536
+                },
+                {
+                  "specialization_id": 29,
+                  "value": 0,
+                  "bit_offset": 398580
+                },
+                {
+                  "specialization_id": 28,
+                  "value": 0,
+                  "bit_offset": 398624
+                },
+                {
+                  "specialization_id": 22,
+                  "value": 0,
+                  "bit_offset": 398668
+                },
+                {
+                  "specialization_id": 21,
+                  "value": 0,
+                  "bit_offset": 398712
+                },
+                {
+                  "specialization_id": 19,
+                  "value": 1,
+                  "bit_offset": 398756
+                },
+                {
+                  "specialization_id": 18,
+                  "value": 1,
+                  "bit_offset": 398800
+                },
+                {
+                  "specialization_id": 17,
+                  "value": 1,
+                  "bit_offset": 398844
+                },
+                {
+                  "specialization_id": 13,
+                  "value": 1,
+                  "bit_offset": 398888
+                },
+                {
+                  "specialization_id": 12,
+                  "value": 1,
+                  "bit_offset": 398932
+                },
+                {
+                  "specialization_id": 10,
+                  "value": 1,
+                  "bit_offset": 398976
+                },
+                {
+                  "specialization_id": 8,
+                  "value": 1,
+                  "bit_offset": 399020
+                },
+                {
+                  "specialization_id": 6,
+                  "value": 1,
+                  "bit_offset": 399064
+                },
+                {
+                  "specialization_id": 5,
+                  "value": 1,
+                  "bit_offset": 399108
+                },
+                {
+                  "specialization_id": 4,
+                  "value": 1,
+                  "bit_offset": 399152
+                },
+                {
+                  "specialization_id": 3,
+                  "value": 1,
+                  "bit_offset": 399196
+                },
+                {
+                  "specialization_id": 2,
+                  "value": 0,
+                  "bit_offset": 399240
+                },
+                {
+                  "specialization_id": 1,
+                  "value": 0,
+                  "bit_offset": 399284
+                },
+                {
+                  "specialization_id": 0,
+                  "value": 1,
+                  "bit_offset": 399328
+                },
+                {
+                  "specialization_id": 56,
+                  "value": 1,
+                  "bit_offset": 399372
+                },
+                {
+                  "specialization_id": 40,
+                  "value": 0,
+                  "bit_offset": 401164
+                },
+                {
+                  "specialization_id": 42,
+                  "value": 0,
+                  "bit_offset": 401208
+                },
+                {
+                  "specialization_id": 55,
+                  "value": 2,
+                  "bit_offset": 401464
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shader": "ResourceId::3186",
+          "draw_count": 3,
+          "events": [
+            2317,
+            2341,
+            2325
+          ],
+          "draw_lists": [
+            "silpomHitForward"
+          ],
+          "duration_sum_ms": {
+            "median": 6.83016,
+            "min": 6.8299199999999995,
+            "max": 6.83184,
+            "repeats": [
+              6.83016,
+              6.83184,
+              6.8299199999999995
+            ]
+          },
+          "ps_invocation_sum": {
+            "median": 2764800,
+            "min": 2764800,
+            "max": 2764800,
+            "repeats": [
+              2764800,
+              2764800,
+              2764800
+            ]
+          },
+          "program_products": [
+            {
+              "product": "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitforwardneuralonly-nomsaa_dx12_0.azshadervariant",
+              "offset": 16279,
+              "size": 321992,
+              "match": "exact-after-O3DE-specialization-excluding-resigned-container-hash",
+              "patches": [
+                {
+                  "specialization_id": 61,
+                  "value": 0,
+                  "bit_offset": 236092
+                },
+                {
+                  "specialization_id": 62,
+                  "value": 0,
+                  "bit_offset": 236136
+                },
+                {
+                  "specialization_id": 30,
+                  "value": 0,
+                  "bit_offset": 236228
+                },
+                {
+                  "specialization_id": 55,
+                  "value": 0,
+                  "bit_offset": 236272
+                },
+                {
+                  "specialization_id": 60,
+                  "value": 0,
+                  "bit_offset": 237124
+                },
+                {
+                  "specialization_id": 59,
+                  "value": 0,
+                  "bit_offset": 237168
+                },
+                {
+                  "specialization_id": 58,
+                  "value": 1,
+                  "bit_offset": 237212
+                },
+                {
+                  "specialization_id": 54,
+                  "value": 0,
+                  "bit_offset": 237256
+                },
+                {
+                  "specialization_id": 53,
+                  "value": 0,
+                  "bit_offset": 237300
+                },
+                {
+                  "specialization_id": 52,
+                  "value": 0,
+                  "bit_offset": 237344
+                },
+                {
+                  "specialization_id": 51,
+                  "value": 0,
+                  "bit_offset": 237388
+                },
+                {
+                  "specialization_id": 50,
+                  "value": 0,
+                  "bit_offset": 237432
+                },
+                {
+                  "specialization_id": 49,
+                  "value": 0,
+                  "bit_offset": 237476
+                },
+                {
+                  "specialization_id": 48,
+                  "value": 0,
+                  "bit_offset": 237520
+                },
+                {
+                  "specialization_id": 47,
+                  "value": 0,
+                  "bit_offset": 237564
+                },
+                {
+                  "specialization_id": 46,
+                  "value": 1,
+                  "bit_offset": 237608
+                },
+                {
+                  "specialization_id": 45,
+                  "value": 0,
+                  "bit_offset": 237652
+                },
+                {
+                  "specialization_id": 44,
+                  "value": 0,
+                  "bit_offset": 237696
+                },
+                {
+                  "specialization_id": 43,
+                  "value": 1,
+                  "bit_offset": 237740
+                },
+                {
+                  "specialization_id": 41,
+                  "value": 0,
+                  "bit_offset": 237784
+                },
+                {
+                  "specialization_id": 39,
+                  "value": 1,
+                  "bit_offset": 237828
+                },
+                {
+                  "specialization_id": 35,
+                  "value": 0,
+                  "bit_offset": 237872
+                },
+                {
+                  "specialization_id": 29,
+                  "value": 0,
+                  "bit_offset": 237916
+                },
+                {
+                  "specialization_id": 28,
+                  "value": 0,
+                  "bit_offset": 237960
+                },
+                {
+                  "specialization_id": 22,
+                  "value": 0,
+                  "bit_offset": 238004
+                },
+                {
+                  "specialization_id": 21,
+                  "value": 0,
+                  "bit_offset": 238048
+                },
+                {
+                  "specialization_id": 19,
+                  "value": 1,
+                  "bit_offset": 238092
+                },
+                {
+                  "specialization_id": 18,
+                  "value": 1,
+                  "bit_offset": 238136
+                },
+                {
+                  "specialization_id": 17,
+                  "value": 1,
+                  "bit_offset": 238180
+                },
+                {
+                  "specialization_id": 13,
+                  "value": 1,
+                  "bit_offset": 238224
+                },
+                {
+                  "specialization_id": 12,
+                  "value": 1,
+                  "bit_offset": 238268
+                },
+                {
+                  "specialization_id": 10,
+                  "value": 1,
+                  "bit_offset": 238312
+                },
+                {
+                  "specialization_id": 8,
+                  "value": 1,
+                  "bit_offset": 238356
+                },
+                {
+                  "specialization_id": 6,
+                  "value": 1,
+                  "bit_offset": 238400
+                },
+                {
+                  "specialization_id": 5,
+                  "value": 1,
+                  "bit_offset": 238444
+                },
+                {
+                  "specialization_id": 4,
+                  "value": 1,
+                  "bit_offset": 238488
+                },
+                {
+                  "specialization_id": 3,
+                  "value": 1,
+                  "bit_offset": 238532
+                },
+                {
+                  "specialization_id": 2,
+                  "value": 0,
+                  "bit_offset": 238576
+                },
+                {
+                  "specialization_id": 1,
+                  "value": 0,
+                  "bit_offset": 238620
+                },
+                {
+                  "specialization_id": 0,
+                  "value": 1,
+                  "bit_offset": 238664
+                },
+                {
+                  "specialization_id": 57,
+                  "value": 1,
+                  "bit_offset": 238728
+                },
+                {
+                  "specialization_id": 42,
+                  "value": 0,
+                  "bit_offset": 239528
+                },
+                {
+                  "specialization_id": 40,
+                  "value": 0,
+                  "bit_offset": 239572
+                },
+                {
+                  "specialization_id": 56,
+                  "value": 2,
+                  "bit_offset": 239768
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shader": "ResourceId::1098",
+          "draw_count": 1,
+          "events": [
+            2162
+          ],
+          "draw_lists": [],
+          "duration_sum_ms": {
+            "median": 3.41188,
+            "min": 3.408,
+            "max": 3.4162,
+            "repeats": [
+              3.41188,
+              3.408,
+              3.4162
+            ]
+          },
+          "ps_invocation_sum": {
+            "median": 921600,
+            "min": 921600,
+            "max": 921600,
+            "repeats": [
+              921600,
+              921600,
+              921600
+            ]
+          },
+          "program_products": [
+            {
+              "product": "shaders/shadow/fullscreenshadow-nomsaa_dx12_0.azshadervariant",
+              "offset": 3823,
+              "size": 30168,
+              "match": "exact-after-O3DE-specialization-excluding-resigned-container-hash",
+              "patches": [
+                {
+                  "specialization_id": 1,
+                  "value": 0,
+                  "bit_offset": 78901
+                }
+              ]
+            },
+            {
+              "product": "shaders/shadow/fullscreenshadow_dx12_0.azshadervariant",
+              "offset": 3823,
+              "size": 30168,
+              "match": "exact-after-O3DE-specialization-excluding-resigned-container-hash",
+              "patches": [
+                {
+                  "specialization_id": 1,
+                  "value": 0,
+                  "bit_offset": 78901
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shader": "ResourceId::1016",
+          "draw_count": 1,
+          "events": [
+            2576
+          ],
+          "draw_lists": [],
+          "duration_sum_ms": {
+            "median": 2.27252,
+            "min": 2.27216,
+            "max": 2.27332,
+            "repeats": [
+              2.27332,
+              2.27216,
+              2.27252
+            ]
+          },
+          "ps_invocation_sum": {
+            "median": 921600,
+            "min": 921600,
+            "max": 921600,
+            "repeats": [
+              921600,
+              921600,
+              921600
+            ]
+          },
+          "program_products": [
+            {
+              "product": "shaders/editormodeoutline_dx12_0.azshadervariant",
+              "offset": 3823,
+              "size": 6224,
+              "match": "complete-container"
+            }
+          ]
+        },
+        {
+          "shader": "ResourceId::3003",
+          "draw_count": 38,
+          "events": [
+            1144,
+            1110,
+            1397,
+            1363,
+            1034,
+            992,
+            1026,
+            1684,
+            1650,
+            1076,
+            1461,
+            984,
+            1245,
+            1279,
+            1287,
+            1748,
+            1068,
+            2063,
+            1532,
+            1953,
+            977,
+            1566,
+            1945,
+            1329,
+            2029,
+            1237,
+            1995,
+            1823,
+            1574,
+            1864,
+            1230,
+            1616,
+            1524,
+            1321,
+            1789,
+            1961,
+            1857,
+            1608
+          ],
+          "draw_lists": [],
+          "duration_sum_ms": {
+            "median": 2.0148,
+            "min": 2.00784,
+            "max": 2.01912,
+            "repeats": [
+              2.0148,
+              2.00784,
+              2.01912
+            ]
+          },
+          "ps_invocation_sum": {
+            "median": 4250286,
+            "min": 4250286,
+            "max": 4250286,
+            "repeats": [
+              4250286,
+              4250286,
+              4250286
+            ]
+          },
+          "program_products": [
+            {
+              "product": "materials/types/silpommesh/silpommesh_mainpipeline_shadowmappass_customz_dx12_0.azshadervariant",
+              "offset": 13353,
+              "size": 4180,
+              "match": "complete-container"
+            }
+          ]
+        }
+      ],
+      "normal_clock_reference": {
+        "hit_generation": {
+          "count": 360,
+          "median_ms": 114.09700000000001,
+          "p95_ms": 115.7126,
+          "min_ms": 111.85,
+          "max_ms": 117.065
+        },
+        "silpom_forward_shading": {
+          "count": 360,
+          "median_ms": 45.033500000000004,
+          "p95_ms": 45.74965,
+          "min_ms": 44.231,
+          "max_ms": 49.584
+        },
+        "graphics_pass_span": {
+          "count": 360,
+          "median_ms": 175.1525,
+          "p95_ms": 178.0723,
+          "min_ms": 172.15,
+          "max_ms": 185.214
+        },
+        "cpu_frame_period": {
+          "count": 360,
+          "median_ms": 175.7517,
+          "p95_ms": 178.72368,
+          "min_ms": 172.8255,
+          "max_ms": 185.8757
+        }
+      },
+      "normal_clock_per_capture_target_counts": [
+        {
+          "file": "gpu-upper-glancing-1.json",
+          "hit": 120,
+          "forward": 120
+        },
+        {
+          "file": "gpu-upper-glancing-2.json",
+          "hit": 120,
+          "forward": 120
+        },
+        {
+          "file": "gpu-upper-glancing-3.json",
+          "hit": 120,
+          "forward": 120
+        }
+      ],
+      "proxy_model": {
+        "scope": "Reconstruct captured proxy coverage at explicit 1x/standard-2x sample sites.\n\nThis CPU model is not a hardware PS-invocation simulation. It excludes in-draw\ndepth evolution, Hi-Z granularity and helper lanes. Quality-zero 2x is modeled\nwith the Direct3D standard pattern; that pattern assumption is recorded.\n",
+        "capture_sha256": "6a785cef6e2a58002b251af8c79b78f7fa6c9745904b4897388d1db4b43f95d0",
+        "event": 464,
+        "before_event": 460,
+        "samples": 1,
+        "width": 1280,
+        "height": 720,
+        "sample_sites_256ths_from_pixel_corner": [
+          [
+            128,
+            128
+          ]
+        ],
+        "sample_pattern_note": "Pixel center at 1x; assumed standard Direct3D 2x pattern for captured msQual=0; not a queried vendor sample-location table",
+        "proxies": 571,
+        "vertices": 2284,
+        "indices": 3426,
+        "postvs_vertex_sha256": "445b785a6383a406327a64b7ee0e28da2b12367cf3325cb3fcd98ab02b29c79e",
+        "postvs_index_sha256": "efea4843c15d7a78e86e6a0f0cad9f599790f99773026ffcb8114da4295608e8",
+        "nonempty_proxies": 172,
+        "potential_sample_coverage": 11365822,
+        "coverage_per_viewport_sample": 12.332706163194445,
+        "max_overlap": 36,
+        "overlap_p50": 12.0,
+        "overlap_p95": 26.0,
+        "full_viewport_proxies": 0,
+        "depth_one_proxies": 57,
+        "depth_one_sample_coverage": 6224491,
+        "eligible_against_before_depth": 11339828,
+        "eligible_against_completed_depth": 7219461,
+        "changed_depth_samples": 902414,
+        "changed_depth_pixels": 902414,
+        "per_sample": [
+          {
+            "sample": 0,
+            "potential_coverage": 11365822,
+            "eligible_before": 11339828,
+            "eligible_after": 7219461,
+            "changed_depth_samples": 902414
+          }
+        ],
+        "largest_proxies": [
+          {
+            "proxy": 301,
+            "authored_face": 301,
+            "depth_bound": 1.0,
+            "sample_coverage": 391174,
+            "eligible_before": 391174,
+            "eligible_after": 391174
+          },
+          {
+            "proxy": 308,
+            "authored_face": 308,
+            "depth_bound": 1.0,
+            "sample_coverage": 299761,
+            "eligible_before": 299761,
+            "eligible_after": 299761
+          },
+          {
+            "proxy": 5,
+            "authored_face": 5,
+            "depth_bound": 0.713960587978363,
+            "sample_coverage": 220693,
+            "eligible_before": 220693,
+            "eligible_after": 220693
+          },
+          {
+            "proxy": 315,
+            "authored_face": 315,
+            "depth_bound": 1.0,
+            "sample_coverage": 216000,
+            "eligible_before": 216000,
+            "eligible_after": 216000
+          },
+          {
+            "proxy": 322,
+            "authored_face": 322,
+            "depth_bound": 1.0,
+            "sample_coverage": 178071,
+            "eligible_before": 178071,
+            "eligible_after": 178071
+          },
+          {
+            "proxy": 564,
+            "authored_face": 564,
+            "depth_bound": 1.0,
+            "sample_coverage": 171202,
+            "eligible_before": 171202,
+            "eligible_after": 171202
+          },
+          {
+            "proxy": 561,
+            "authored_face": 561,
+            "depth_bound": 1.0,
+            "sample_coverage": 162114,
+            "eligible_before": 162114,
+            "eligible_after": 162114
+          },
+          {
+            "proxy": 562,
+            "authored_face": 562,
+            "depth_bound": 1.0,
+            "sample_coverage": 151787,
+            "eligible_before": 151787,
+            "eligible_after": 151787
+          },
+          {
+            "proxy": 565,
+            "authored_face": 565,
+            "depth_bound": 1.0,
+            "sample_coverage": 147789,
+            "eligible_before": 147789,
+            "eligible_after": 147789
+          },
+          {
+            "proxy": 568,
+            "authored_face": 568,
+            "depth_bound": 1.0,
+            "sample_coverage": 147260,
+            "eligible_before": 147260,
+            "eligible_after": 147260
+          },
+          {
+            "proxy": 297,
+            "authored_face": 297,
+            "depth_bound": 1.0,
+            "sample_coverage": 141026,
+            "eligible_before": 141026,
+            "eligible_after": 141026
+          },
+          {
+            "proxy": 566,
+            "authored_face": 566,
+            "depth_bound": 1.0,
+            "sample_coverage": 136966,
+            "eligible_before": 136966,
+            "eligible_after": 136966
+          },
+          {
+            "proxy": 318,
+            "authored_face": 318,
+            "depth_bound": 1.0,
+            "sample_coverage": 136641,
+            "eligible_before": 136641,
+            "eligible_after": 136641
+          },
+          {
+            "proxy": 311,
+            "authored_face": 311,
+            "depth_bound": 1.0,
+            "sample_coverage": 136311,
+            "eligible_before": 136311,
+            "eligible_after": 136311
+          },
+          {
+            "proxy": 304,
+            "authored_face": 304,
+            "depth_bound": 1.0,
+            "sample_coverage": 124682,
+            "eligible_before": 124682,
+            "eligible_after": 124682
+          },
+          {
+            "proxy": 114,
+            "authored_face": 114,
+            "depth_bound": 0.226874440908432,
+            "sample_coverage": 124076,
+            "eligible_before": 124076,
+            "eligible_after": 381
+          },
+          {
+            "proxy": 342,
+            "authored_face": 342,
+            "depth_bound": 1.0,
+            "sample_coverage": 123046,
+            "eligible_before": 123046,
+            "eligible_after": 123046
+          },
+          {
+            "proxy": 321,
+            "authored_face": 321,
+            "depth_bound": 1.0,
+            "sample_coverage": 122664,
+            "eligible_before": 122664,
+            "eligible_after": 122664
+          },
+          {
+            "proxy": 332,
+            "authored_face": 332,
+            "depth_bound": 1.0,
+            "sample_coverage": 118611,
+            "eligible_before": 118611,
+            "eligible_after": 118611
+          },
+          {
+            "proxy": 341,
+            "authored_face": 341,
+            "depth_bound": 1.0,
+            "sample_coverage": 116997,
+            "eligible_before": 116997,
+            "eligible_after": 116997
+          }
+        ]
+      }
+    }
+  },
+  "raw_files": [
+    {
+      "file": "D:\\diversion\\TG\\TGProject\\user\\silpom-renderdoc-msaa2-20261114\\capture-2x-20261114-220921\\upper-glancing_frame303.rdc",
+      "sha256": "bfe021553de239202c95a9303370f04de0599d2f58cc02700b86153580165413",
+      "bytes": 386758761
+    },
+    {
+      "file": "profile-2x\\profile.json",
+      "sha256": "8c2a353ac20dc539a4625fc5b0b8eccca568ebc3c3aba92fd8c8af1ad4f3e24c",
+      "bytes": 449472
+    },
+    {
+      "file": "profile-2x\\shader-product-matches.json",
+      "sha256": "b3b85a439b753d15989828aaf5f6ae947a479f82ee477b82b26a3c7c135f40a0",
+      "bytes": 84648
+    },
+    {
+      "file": "probe-2x\\coverage-probe.json",
+      "sha256": "9f9e8c7053b293831048c85f1921ee02af93a55d304dc87c8dee9acd8bcb1846",
+      "bytes": 22216
+    },
+    {
+      "file": "probe-2x\\postvs-vertices.bin",
+      "sha256": "445b785a6383a406327a64b7ee0e28da2b12367cf3325cb3fcd98ab02b29c79e",
+      "bytes": 301488
+    },
+    {
+      "file": "probe-2x\\postvs-indices.bin",
+      "sha256": "efea4843c15d7a78e86e6a0f0cad9f599790f99773026ffcb8114da4295608e8",
+      "bytes": 13704
+    },
+    {
+      "file": "coverage-2x\\sample-coverage.json",
+      "sha256": "a1a9b56c1069d79ba51f31b8522d545f165f0ba75b9d00d43c3e6b1d0e8ddea9",
+      "bytes": 5787
+    },
+    {
+      "file": "probe-2x\\depth-before-sample-0.bin",
+      "sha256": "30c5a7b23bd6fddd1cf7ac9c20c3059284400ee912eba6f6c8d999fafe805859",
+      "bytes": 7372800
+    },
+    {
+      "file": "probe-2x\\depth-before-sample-1.bin",
+      "sha256": "e88a01a85b2bad508800f6108cddc0a98178f9bd06c8dc667a5dc2dfe8cc2012",
+      "bytes": 7372800
+    },
+    {
+      "file": "probe-2x\\depth-after-sample-0.bin",
+      "sha256": "22915641d703c8cb160628146765651019700864644e73281b6a9d3823a4950b",
+      "bytes": 7372800
+    },
+    {
+      "file": "probe-2x\\depth-after-sample-1.bin",
+      "sha256": "d7426839990bad9e0d187978cd26b2714662363c824453e88373a69feebf3d98",
+      "bytes": 7372800
+    },
+    {
+      "file": "D:\\diversion\\TG\\TGProject\\user\\silpom-renderdoc-msaa2-20261114\\capture-1x-20261114-221142\\upper-glancing_frame303.rdc",
+      "sha256": "6a785cef6e2a58002b251af8c79b78f7fa6c9745904b4897388d1db4b43f95d0",
+      "bytes": 313448566
+    },
+    {
+      "file": "profile-1x\\profile.json",
+      "sha256": "62ea0085fc60ae00bafd991b8b3c088026fd56c33d7bc786880f322c8b9ce6d6",
+      "bytes": 438532
+    },
+    {
+      "file": "profile-1x\\shader-product-matches.json",
+      "sha256": "ac01794ff38f59e5ec5c7dcd091f901e40b0f5ab65bc39eb354bde33a56fdfaf",
+      "bytes": 83606
+    },
+    {
+      "file": "probe-1x-event464\\coverage-probe.json",
+      "sha256": "1c54d03f98a020bb3ad9340ba9a813a286c669ae257c7c90de72d9afab2a70c5",
+      "bytes": 21875
+    },
+    {
+      "file": "probe-1x-event464\\postvs-vertices.bin",
+      "sha256": "445b785a6383a406327a64b7ee0e28da2b12367cf3325cb3fcd98ab02b29c79e",
+      "bytes": 301488
+    },
+    {
+      "file": "probe-1x-event464\\postvs-indices.bin",
+      "sha256": "efea4843c15d7a78e86e6a0f0cad9f599790f99773026ffcb8114da4295608e8",
+      "bytes": 13704
+    },
+    {
+      "file": "coverage-1x\\sample-coverage.json",
+      "sha256": "17a04564b69cb73b0a063ec6313b38f39f0f8d686503dfec55e4431bb99609c0",
+      "bytes": 5565
+    },
+    {
+      "file": "probe-1x-event464\\depth-before.bin",
+      "sha256": "1684f68a1311e0997fe0f614514d5bcce5fd2dea5708e6395a3bff606ae4c378",
+      "bytes": 7372800
+    },
+    {
+      "file": "probe-1x-event464\\depth-after.bin",
+      "sha256": "acd75d500bc57f6d9a4f59b583b843fb48e6c320c3fd5b4a1f189cc245221521",
+      "bytes": 7372800
+    }
+  ],
+  "comparison": {
+    "postvs_buffers_byte_identical": true,
+    "dominant_draw_ps_invocation_ratio": 2.0015032110442608,
+    "dominant_draw_replay_duration_ratio": 1.6070920139198888,
+    "main_hit_draw_replay_duration_ratio": 1.6073576875556916,
+    "normal_clock_hit_pass_ratio": 1.5959227674697845
+  }
+}

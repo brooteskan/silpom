@@ -48,7 +48,10 @@ try:
     metadata = json.loads(Path(config['capture_metadata']).read_text(encoding='utf-8-sig'))
     assert metadata['passed'] and metadata['restored']
     assert metadata['renderdoc']['file']==Path(config['capture']).name
-    assert metadata['initial_aa_state']==[1,0,0]
+    samples=int(config.get('samples',metadata.get('samples',1)))
+    assert samples in (1,2)
+    assert metadata['initial_aa_state']==[samples,0,0]
+    result['sample_count']=samples
     assert metadata['controls']['Height-derived normals (off = cheaper)'] is True
     assert metadata['controls']['Gather validation (may be cheaper)'] is True
     assert metadata['controls']['R16 height textures (less GPU memory)'] is True
@@ -64,6 +67,27 @@ try:
     status,controller=cap.OpenCapture(opts,None)
     assert status == rd.ResultCode.Succeeded,str(status)
     healthy();save('replay-opened')
+    if config.get('auto_indices'):
+        actions=[]
+        def collect(items):
+            for item in items:
+                actions.append(item);collect(item.children)
+        collect(controller.GetRootActions())
+        candidates=[]
+        for item in actions:
+            if item.numIndices!=int(config['auto_indices']) or 'Drawcall' not in str(item.flags):continue
+            controller.SetFrameEvent(item.eventId,True);healthy()
+            reflection=controller.GetPipelineState().GetShaderReflection(rd.ShaderStage.Pixel)
+            if reflection and any(str(p.systemValue)=='ShaderBuiltin.DepthOutputLessEqual' for p in reflection.outputSignature):
+                candidates.append(item.eventId)
+        selected=config.get('event')
+        assert (int(selected) in candidates) if selected is not None else len(candidates)==1, \
+            ('Specify an event from conservative-depth proxy candidates',candidates)
+        result['event']=int(selected) if selected is not None else candidates[0]
+        result['conservative_depth_candidates']=candidates
+        result['auto_selected_indices']=int(config['auto_indices'])
+        result['preceding_action']=max(item.eventId for item in actions if item.eventId<result['event']
+            and any(flag in str(item.flags) for flag in ('Drawcall','Clear')))
     controller.SetFrameEvent(result['event'],True);healthy()
     def find(items):
         for item in items:
@@ -96,14 +120,21 @@ try:
     if config.get('depth_readbacks',False):
         depth_id=state.outputMerger.depthTarget.resource
         result['depth_texture']=encode(next(t for t in controller.GetTextures() if t.resourceId==depth_id))
-        before_event=int(config.get('before_event',460))
+        assert result['depth_texture']['msSamp']==samples
+        before_event=int(config.get('before_event',result.get('preceding_action',460)))
         result['before_event']=before_event
         for label,event in (('before',before_event),('after',result['event'])):
             save('depth-'+label)
             controller.SetFrameEvent(event,True);healthy()
-            data=bytes(controller.GetTextureData(depth_id,rd.Subresource()));healthy()
-            (output/('depth-'+label+'.bin')).write_bytes(data)
-            result['depth_'+label+'_bytes']=len(data)
+            result['depth_'+label+'_samples']=[]
+            for sample in range(samples):
+                subresource=rd.Subresource();subresource.sample=sample
+                data=bytes(controller.GetTextureData(depth_id,subresource));healthy()
+                filename='depth-'+label+('' if samples==1 else '-sample-'+str(sample))+'.bin'
+                (output/filename).write_bytes(data)
+                result['depth_'+label+'_samples'].append({'sample':sample,'file':filename,
+                    'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()})
+            result['depth_'+label+'_bytes']=sum(s['bytes'] for s in result['depth_'+label+'_samples'])
     result['passed']=True;save('complete')
 except Exception:
     result['error']=traceback.format_exc();save('failed')

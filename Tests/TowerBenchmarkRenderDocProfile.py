@@ -1,7 +1,8 @@
 """Run with qrenderdoc --python and TG_SILPOM_RENDERDOC_CONFIG pointing to JSON.
 
 Input keys: capture, capture_metadata, output. Optional repeats (minimum 3),
-shader_export (default true), gpu_device_id (default 0x1638).
+shader_export (default true), gpu_device_id (default 0x1638), samples (1 or 2).
+A batch configuration has output and profiles (a list of individual inputs).
 Never saves a scene, edits a shader, changes Windows settings or requests
 RenderDoc's instrumented bindless-descriptor feedback.
 """
@@ -59,7 +60,11 @@ def profile(config):
         metadata = json.loads(Path(config['capture_metadata']).read_text(encoding='utf-8-sig'))
         assert metadata['passed'] and metadata['restored']
         assert metadata['renderdoc']['file'] == Path(config['capture']).name
-        assert metadata['initial_aa_state'] == [1, 0, 0]
+        samples = int(config.get('samples', metadata.get('samples', 1)))
+        assert samples in (1, 2)
+        assert metadata['initial_aa_state'] == [samples, 0, 0]
+        result['sample_count'] = samples
+        result['aa_state'] = metadata['initial_aa_state']
         for label in ('Height-derived normals (off = cheaper)', 'Gather validation (may be cheaper)',
                       'R16 height textures (less GPU memory)'):
             assert metadata['controls'][label] is True, (label, 'must stay enabled')
@@ -196,7 +201,24 @@ def profile(config):
 
 try:
     configuration = json.loads(Path(os.environ['TG_SILPOM_RENDERDOC_CONFIG']).read_text(encoding='utf-8-sig'))
-    profile(configuration)
+    if 'profiles' in configuration:
+        completed = []
+        for item in configuration['profiles']:
+            current = profile(item)
+            completed.append({'output': item['output'], 'passed': current['passed'],
+                'sample_count': current.get('sample_count'),
+                'capture_sha256': current.get('capture_sha256'),
+                'final_fatal_status': current.get('final_fatal_status')})
+            if not current['passed']:
+                break
+        output = Path(configuration['output'])
+        output.mkdir(parents=True, exist_ok=True)
+        (output / 'profile.json').write_text(json.dumps({
+            'passed': bool(completed) and len(completed) == len(configuration['profiles'])
+                and all(item['passed'] for item in completed),
+            'profiles': completed}, indent=2) + '\n')
+    else:
+        profile(configuration)
 finally:
     # qrenderdoc treats SystemExit specially and exits before opening its UI.
     sys.exit(0)
