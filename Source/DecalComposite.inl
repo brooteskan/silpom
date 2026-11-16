@@ -8,6 +8,15 @@ void PaintController::Rebuild()
     static_assert(sizeof(Projection)==96);
     std::vector<Projection> decals;
     std::vector<AZ::u32> receiverFaces;
+    std::vector<AZ::u32> receiverOwners;
+    m_receiverStates.clear();
+    VisitPaintSurfaces(m_configuration.m_layers,[&](const auto& surface)
+    {
+        if(!surface.receiver.IsValid()||m_receiverStates.contains(surface.receiver))return;
+        AZ::u64 revision=0;
+        MeshRequestBus::EventResult(revision,surface.receiver,&MeshRequests::GetPaintSurfaceRevision);
+        m_receiverStates.emplace(surface.receiver,revision);
+    });
     if(!m_bakeCache)m_bakeCache=AZStd::make_shared<PaintBakeCache>();
     m_bakeCache->Begin();
     AZStd::unordered_set<AZ::Data::AssetId> needed;
@@ -62,6 +71,7 @@ void PaintController::Rebuild()
         data.m_decalColor={dab.m_color.GetR(),dab.m_color.GetG(),dab.m_color.GetB()};data.m_decalColorFactor=1;
         data.m_blendMode=static_cast<AZ::Render::DecalBlendMode>(AZStd::min(dab.m_blendMode,4u));data.m_sortKey=0;
         receiverFaces.push_back(surfaceData?sample.hitFace:0u);
+        receiverOwners.push_back(surfaceData?sample.receiverOwner:0u);
         decals.push_back({data,PaintMath::BrushFlags(dab.m_erase,dab.m_heightMask),layer,0,fixed?1u:0u});
     };
     AZ::u32 layerIndex=0;
@@ -92,10 +102,12 @@ void PaintController::Rebuild()
         const bool singleLayer=std::all_of(decals.begin(),decals.end(),[&](const auto& p){return p.m_layer==decals.front().m_layer;});
         const bool surfaceOwned=!receiverFaces.empty()&&receiverFaces[0]!=0&&std::all_of(receiverFaces.begin(),receiverFaces.end(),[&](auto face){return face==receiverFaces[0];});
         if(surfaceOwned)input->hitFace=receiverFaces[0];
-        const bool supported=surfaceOwned&&singleLayer&&fixed>0&&std::all_of(decals.begin(),decals.end(),[](const auto& p){return (p.m_flags&1u)==0;})
+        const bool supported=surfaceOwned&&singleLayer&&ReceiverPaintPrefixFits(fixed)&&std::all_of(decals.begin(),decals.end(),[](const auto& p){return (p.m_flags&1u)==0;})
             &&std::all_of(decals.begin(),decals.begin()+fixed,[](const auto& p){return p.m_data.m_blendMode==AZ::Render::DecalBlendMode::Alpha;})
             &&std::none_of(decals.begin()+fixed,decals.end(),[](const auto& p){return p.m_reserved==1;});
-        if(!supported)input->error="First UV proof requires one existing receiver face, anchored dabs, one layer, an alpha-only fixed prefix, and no erases";
+        if(!supported)input->error=fixed>ReceiverPaintMaxFixedDabs
+            ?"Receiver UV prefix exceeds 32768 fixed dabs; native replay retained"
+            :"First UV proof requires one existing receiver face, anchored dabs, one layer, an alpha-only fixed prefix, and no erases";
         else
         {
             AZ::u64 hash=1469598103934665603ULL;
@@ -124,6 +136,9 @@ void PaintController::Rebuild()
                 }
                 std::vector<PaintMath::CompositeNode> nodes;
                 PaintMath::BuildCompositeNodes(nodes,0,input->fixed,[&](AZ::u32 i){return boxes[i];});
+                if(!ReceiverPaintPrefixFits(fixed,nodes.size()))input->error="Receiver UV prefix exceeds shader traversal limits; native replay retained";
+                else
+                {
                 const bool filtered=std::any_of(decals.begin(),decals.begin()+fixed,[](const auto& p){return ((p.m_flags>>8)&7u)!=7u;});
                 const AZ::u32 header[4]={aznumeric_cast<AZ::u32>(nodes.size()),aznumeric_cast<AZ::u32>(16+nodes.size()*32),filtered?4u:0u,input->fixed};
                 AZStd::vector<AZ::u8> raw(header[1]+fixed*96);memcpy(raw.data(),header,16);memcpy(raw.data()+16,nodes.data(),nodes.size()*32);
@@ -133,6 +148,7 @@ void PaintController::Rebuild()
                 creator.SetBuffer(raw.data(),raw.size(),desc);creator.SetBufferViewDescriptor(AZ::RHI::BufferViewDescriptor::CreateRaw(0,aznumeric_cast<AZ::u32>(raw.size())));
                 creator.SetUseCommonPool(AZ::RPI::CommonBufferPoolType::StaticInputAssembly);AZ::Data::Asset<AZ::RPI::BufferAsset> asset;
                 if(creator.End(asset))input->buffer=AZ::RPI::Buffer::FindOrCreate(asset);if(input->buffer)input->buffer->WaitForUpload();
+                }
             }
         }
         m_receiverInput=AZStd::move(input);
@@ -190,9 +206,13 @@ void PaintController::Rebuild()
                 AZStd::clamp(float(r_silpomPaintBakeDensity),1.f,1024.f),r_silpomPaintBake&&!m_configuration.m_receiverUv.receiver.IsValid()
                     &&std::none_of(receiverFaces.begin(),receiverFaces.end(),[](auto face){return face!=0;})&&!r_silpomPaintCompositeReference,m_bakeRequested);
             const bool receiverOwned=m_receiverInput&&m_receiverInput->buffer;
-            const bool reverse=alphaOnly&&!receiverOwned&&std::none_of(receiverFaces.begin(),receiverFaces.end(),[](auto face){return face!=0;});
+            const bool reverse=alphaOnly&&!receiverOwned;
             if(reverse){std::reverse(local.begin(),local.end());std::reverse(localBounds.begin(),localBounds.end());}
-            for(size_t i=0;i<local.size();++i)local[i].m_reserved=receiverFaces[group.projections[reverse?local.size()-1-i:i]];
+            for(size_t i=0;i<local.size();++i)
+            {
+                local[i].m_reserved=receiverOwners[group.projections[reverse?local.size()-1-i:i]];
+                if(local[i].m_reserved)local[i].m_flags|=2u; // Receiver ownership; anchor face is not brush coverage.
+            }
             references+=local.size();
             std::vector<PaintMath::CompositeNode> nodes;nodes.reserve(local.size()*2);
             PaintMath::BuildCompositeNodes(nodes,0,aznumeric_cast<AZ::u32>(local.size()),

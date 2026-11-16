@@ -12,7 +12,7 @@
       "upstream_commit": "061180bf24f1666eb30315b35da292eb14f4659c",
       "project_path": null,
       "patch": "engine.patch",
-      "patch_sha256": "ecc4f83cb3ceea8edecf2399ee49b7ee402c74c553201b0c0ebcf0b1ff5691bb",
+      "patch_sha256": "35723f2ca3cc6feb9804d43863f904e000771ee31052b6b719bb7e1130bf1256",
       "files": [
         {
           "path": "Code/Framework/AzFramework/Platform/Windows/AzFramework/Windowing/NativeWindow_Windows.cpp",
@@ -72,27 +72,37 @@
         {
           "path": "Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalComposite.azsli",
           "before_sha256": null,
-          "after_sha256": "f3038f0f5adcbaa5cd6a2c947543fae2dd5add7b6537b33df632125a53aee63f",
+          "after_sha256": "3b2351e8233ba9a305a2c73aa25b32784d69d47f41e063bfd939d14ab9527046",
           "upgrade_from": [
             {
               "before_sha256": "a6f5594527e481cdfa26da02bce375c8bff5f2c06ad49c82a9af2f5eda2abb71",
               "patch": "migrations/paint-composite-cd425e4.patch",
-              "patch_sha256": "e480b1d188a41cabf571d0c514756019ab99561d7007f1433c0f6db5bb0f2e1a"
+              "patch_sha256": "c277b8dc55662861b50fa3fbd46b49b5be10ce06d819911fb3619a6479265203"
             },
             {
               "before_sha256": "5aef9ffe098032db4bbb4ec78ea988d2bcdc4086951d6712c02f0af6f99be9e1",
               "patch": "migrations/paint-composite-f9e3d7c.patch",
-              "patch_sha256": "9be5615e9c9924b15cb6ea38d3e59c7ab7db26c8ddef876eeaefc1eed34af15e"
+              "patch_sha256": "78338a834fa7d6ba4c0f3773fc175a070846177ff8451500de55d75bf7124d2e"
             },
             {
               "before_sha256": "508d1273bf1300efd0102e5422c1305f7f54d1a0412f14219ccea8c9f3209ad7",
               "patch": "migrations/paint-composite-58471f0-experiment.patch",
-              "patch_sha256": "d6ce8cca80c7bdd141fd3e47195ce1aff60ff58ce0e9e74bc9bec9b6592e9bad"
+              "patch_sha256": "0360d110915afefb645f1246a34675c3ae5768062afc6cc4446abd6a6458e8d0"
             },
             {
               "before_sha256": "59b45e4bf849b73ceb2786814b7c1f2ccb8c60968aed3a400e1ad40cc6de0fda",
               "patch": "migrations/paint-composite-receiver-uv-experiment.patch",
-              "patch_sha256": "0e5f7395887a0ae2977b8c0103ea06e9cf7d39c21b3b02b7a5c5c5ab5343f100"
+              "patch_sha256": "176e023130841557bdb3af1a5953f7a9ef06f9f1f571afad28679ad31777a336"
+            },
+            {
+              "before_sha256": "f3038f0f5adcbaa5cd6a2c947543fae2dd5add7b6537b33df632125a53aee63f",
+              "patch": "migrations/paint-composite-receiver-uv.patch",
+              "patch_sha256": "ccb58d8768f2ac051c04cb742e40ad9a0312f5c824ed0884a93ff7eb661716c1"
+            },
+            {
+              "before_sha256": "f49fb0841f31c7b8f14fe84d91e846f39aa6bc1d83ef5781e3b3659d071383f7",
+              "patch": "migrations/paint-composite-receiver-fixes-experiment.patch",
+              "patch_sha256": "2a6f2acbb78e8e5fc5afdd549263103f03a5631916799d9687f1778d3c841ee6"
             }
           ]
         },
@@ -527,31 +537,41 @@
     "bundle": "tg-o3de-20261115-paint-bake-experimental",
     "status": "rejected prototype: slower, normal resampling error; explicit opt-in only",
     "patch": "experiments/paint-bake.patch",
-    "patch_sha256": "5f4188efe2e601427bb18a3280b3f6892d20269b0a91bc81f0d271d983e327ee",
+    "patch_sha256": "d04c6c6f0871a3d8ecc0f67d6563a8685add4d5045a44e2bf8baa6517996938d",
     "file": {
       "path": "Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalComposite.azsli",
       "before_sha256": null,
-      "after_sha256": "59b45e4bf849b73ceb2786814b7c1f2ccb8c60968aed3a400e1ad40cc6de0fda",
+      "after_sha256": "f49fb0841f31c7b8f14fe84d91e846f39aa6bc1d83ef5781e3b3659d071383f7",
       "upgrade_from": [
         {
           "before_sha256": "a6f5594527e481cdfa26da02bce375c8bff5f2c06ad49c82a9af2f5eda2abb71",
           "patch": "experiments/paint-bake-cd425e4.patch",
-          "patch_sha256": "1bef4596800317ca692572ec2d8dd6e52b6d971b412e5f0aa3c64d256b5ed55a"
+          "patch_sha256": "446e34d6c4f3752f9975e5c803e02c6cc4d4ed14cda8b655e91c42de554e15fe"
         },
         {
           "before_sha256": "5aef9ffe098032db4bbb4ec78ea988d2bcdc4086951d6712c02f0af6f99be9e1",
           "patch": "experiments/paint-bake-f9e3d7c.patch",
-          "patch_sha256": "4e78998ae10fd5e4a497f86f2effd06fd10b4c1771780b8e19da346983728087"
+          "patch_sha256": "a2786489eb180ce53d87c4e74e87b1af203b815f2d1da72b5704076385141e0f"
         },
         {
           "before_sha256": "508d1273bf1300efd0102e5422c1305f7f54d1a0412f14219ccea8c9f3209ad7",
           "patch": "experiments/paint-bake-58471f0-experiment.patch",
-          "patch_sha256": "0575f390c4a4affea4a8110f39249b5433c65fcf363c9c63a00148257e089458"
+          "patch_sha256": "c59e3c98d260eb96307efbef0fd373d0e1a7d49c1de8f79e816933f2a2daf211"
+        },
+        {
+          "before_sha256": "59b45e4bf849b73ceb2786814b7c1f2ccb8c60968aed3a400e1ad40cc6de0fda",
+          "patch": "experiments/paint-bake-receiver-uv-experiment.patch",
+          "patch_sha256": "19883265edef8feaec3963bf27188fbe33651af03c940750a00025fc82d65106"
         },
         {
           "before_sha256": "f3038f0f5adcbaa5cd6a2c947543fae2dd5add7b6537b33df632125a53aee63f",
           "patch": "experiments/paint-bake-receiver-uv.patch",
-          "patch_sha256": "9469999f5636902944ce96de37b5fbad20e329093fbf19044e3d2b82b7389cfc"
+          "patch_sha256": "5aa51bcd2cb1de523cb5cac0cbf9d74903bfee8267ac6d2cfef73d1a150cd17c"
+        },
+        {
+          "before_sha256": "3b2351e8233ba9a305a2c73aa25b32784d69d47f41e063bfd939d14ab9527046",
+          "patch": "experiments/paint-bake-receiver-fixes.patch",
+          "patch_sha256": "9e6dca1e501348ede69a9138a94c25af9ea706837f5aa66fb3a7a26cace7c5d5"
         }
       ]
     }

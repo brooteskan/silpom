@@ -23,7 +23,7 @@ struct PaintSurfacePoint
 struct PaintSurfaceSample
 {
     AZ::Vector3 position=AZ::Vector3::CreateZero(),normal=AZ::Vector3::CreateAxisZ();
-    AZ::u32 hitFace=0;
+    AZ::u32 hitFace=0,receiverOwner=0;
 };
 bool FindPaintSurface(const AZ::Vector3&,const AZ::Vector3&,PaintSurfacePoint&);
 // Persistent ownership is receiver + canonical source face. No camera or world

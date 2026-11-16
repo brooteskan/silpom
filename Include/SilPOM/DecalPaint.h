@@ -149,7 +149,7 @@ private:
     void Rebuild();
     AZStd::shared_ptr<ReceiverPaintInput> m_receiverInput;
     AZ::u32 m_receiverToken=0;
-    AZ::u64 m_anchorState=0;
+    AZStd::unordered_map<AZ::EntityId,AZ::u64> m_receiverStates;
     AZ::u64 m_receiverAssetRevision=0;
     AZ::EntityId m_entity;
     AZ::Transform m_world=AZ::Transform::CreateIdentity();

@@ -5,6 +5,7 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 #include <SilPOM/HeightPrecision.h>
+#include <SilPOM/ReceiverPaintState.h>
 #include <SilPOM/AppearanceCodec.h>
 #include <SilPOM/ReliefLod.h>
 #include <SilPOM/DirectionalEstimatorContract.h>
@@ -62,6 +63,7 @@ namespace SilPOM
 {
 namespace
 {
+AZStd::atomic_uint64_t ReceiverSurfaceRevision{0};
 AZ_CVAR(bool, r_silpomReuseDepthHits, false, nullptr, AZ::ConsoleFunctorFlags::Null,
     "Use the DX12 SilPOM hit buffer in MainPipeline (1x, 2x or 4x).");
 AZ_CVAR(bool,r_silpomMsaa4,false,nullptr,AZ::ConsoleFunctorFlags::Null,
@@ -713,6 +715,13 @@ struct MeshController::Generation
 {
     struct PaintFace {AZStd::string id;AZ::u32 source=0,batch=0,local=0,hit=0;};
     AZStd::vector<PaintFace> paintFaces;
+    // Receiver-wide projection ownership survives canonical triangle edges.
+    AZ::u32 paintReceiver=0;
+    // Keep CPU picking and anchors on the same immutable source/scale as the
+    // published model while a replacement configuration is loading or compiling.
+    MeshConfig paintConfig;
+    float paintScale=1;
+    AZ::Transform paintWorld=AZ::Transform::CreateIdentity();
     struct ProxyPatch {AZStd::vector<AZ::u32> localFaces,sourceFaces;bool protectedBoundary=false,far=false;};
     struct ProxyBatch
     {
@@ -942,6 +951,7 @@ void StopRenderingSettings() { RenderingTicker().BusDisconnect(); }
 void MeshController::Activate(AZ::EntityId entity)
 {
     m_entity = entity; m_dirty = true;
+    m_paintSurfaceRevision=++ReceiverSurfaceRevision;
     // Migrate an old component selection once; renderer controls own all later
     // changes. The serialized field remains readable but is no longer editable.
     static bool migratedLegacySelection=false;
@@ -975,6 +985,7 @@ void MeshController::Deactivate()
 void MeshController::SetConfiguration(const MeshConfig& config)
 {
     m_configuration = config; m_dirty = true;
+    m_paintSurfaceRevision=++ReceiverSurfaceRevision;
     if (m_entity.IsValid())
     {
         Release(m_pending);
@@ -983,6 +994,7 @@ void MeshController::SetConfiguration(const MeshConfig& config)
 }
 void MeshController::OnTransformChanged(const AZ::Transform&, const AZ::Transform& world)
 {
+    m_paintSurfaceRevision=++ReceiverSurfaceRevision;
     const bool scaleChanged = m_world.GetUniformScale() != world.GetUniformScale();
     m_world = world;
     if (scaleChanged) { m_dirty = true; return; }
@@ -993,12 +1005,14 @@ void MeshController::OnTransformChanged(const AZ::Transform&, const AZ::Transfor
         for (auto* generation : {m_active.get(), m_pending.get()})
             if (generation)
             {
+                generation->paintWorld=rigid;
                 for (const auto& handle : generation->handles) m_processor->SetTransform(handle, rigid);
             }
 }
 void MeshController::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) { OnAssetReloaded(asset); }
 void MeshController::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
 {
+    m_paintSurfaceRevision=++ReceiverSurfaceRevision;
     if (asset.GetId() == m_configuration.m_surface.GetId()) m_configuration.m_surface = asset;
     if (asset.GetId() == m_template.GetId()) m_template = asset;
     if (asset.GetId() == m_learnedMaterial.GetId()) m_learnedMaterial = asset;
@@ -1141,10 +1155,14 @@ bool MeshController::Prepare()
     if (AZ::Render::r_meshInstancingEnabled)
     { m_status = "Planar face renderer currently requires r_meshInstancingEnabled=false"; return false; }
     auto candidate = AZStd::make_unique<Generation>(); candidate->id = asset.m_generation;
+    candidate->paintReceiver=AllocateHitFaceBase(1);
+    candidate->paintConfig=c;candidate->paintScale=scale;
+    candidate->paintWorld=m_world;candidate->paintWorld.SetUniformScale(1);
     if ((c.m_useLevelFourWallMaterial || c.m_useLevelFourShared) && m_learnedMaterial.IsReady())
         candidate->id += ":" + m_learnedMaterial->m_generation;
     if (c.m_useLevelFiveProxy && m_appearance.IsReady()) candidate->id += ":" + m_appearance->m_generation;
     auto fail = [&](const AZStd::string& message) { Release(candidate); m_status = message; return false; };
+    if(!candidate->paintReceiver)return fail("SilPOM receiver ownership IDs exhausted");
     if (static_cast<AZ::u32>(c.m_spiralLightMode) > static_cast<AZ::u32>(SpiralLightMode::AllSilPomSurfaces))
         return fail("Invalid spiral light mode");
     if (!std::isfinite(c.m_spiralLightBrightness) || c.m_spiralLightBrightness < 0.0f || c.m_spiralLightBrightness > 100.0f)
@@ -1506,7 +1524,8 @@ bool MeshController::Prepare()
                     && Set(material,"surface.useNeuralCache",bool(neuralCache))
                     && (!neuralCache || Set(material,"surface.neuralCache",neuralCache))
                     && (!minMax || Set(material,"surface.heightBounds",minMax))
-                    && Set(material,"surface.reliefShadowSteps",c.m_reliefShadowSteps);
+                    && Set(material,"surface.reliefShadowSteps",c.m_reliefShadowSteps)
+                    && Set(material,"mesh.paintReceiver",candidate->paintReceiver);
                 if(!valid) return fail("Planar face material contract mismatch");
                 if (hasSpiralLight && (c.m_spiralLightMode == SpiralLightMode::AllSilPomSurfaces || binding.m_receiveSpiralLight))
                 {
@@ -1730,6 +1749,7 @@ void MeshController::OnTick(float, AZ::ScriptTimePoint)
                         m_processor->SetDrawItemEnabled(handle, tag, tag != motionTag);
                     }
             Release(m_active); m_active = AZStd::move(m_pending);
+            m_paintSurfaceRevision=++ReceiverSurfaceRevision;
             if (!m_active->trainedModelBatches)
             {
                 AZ::RPI::SceneNotificationBus::Handler::BusDisconnect();

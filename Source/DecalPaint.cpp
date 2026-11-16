@@ -4,6 +4,7 @@
 #include <SilPOM/DecalPaintMath.h>
 #include <SilPOM/DecalCompositeMath.h>
 #include <SilPOM/DecalBake.h>
+#include <SilPOM/ReceiverPaintState.h>
 #include <AzCore/Asset/AssetSerializer.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/Json/JsonUtils.h>
@@ -280,20 +281,16 @@ AZStd::string PaintController::SetDocumentJson(const AZStd::string& json)
 }
 void PaintController::OnTick(float delta,AZ::ScriptTimePoint)
 {
-    // A receiver transform/rebuild invalidates derived projector/cache data.
-    // The persistent source remains its face + UV, never the old world point.
-    const PaintPoint* anchor=nullptr;
-    for(const auto& layer:m_configuration.m_layers)
-    {if(!layer.m_composite.empty())anchor=&layer.m_composite.front().m_point;
-     else if(!layer.m_strokes.empty()&&!layer.m_strokes.front().m_points.empty())anchor=&layer.m_strokes.front().m_points.front();
-     if(anchor&&anchor->m_surface.IsValid())break;anchor=nullptr;}
-    if(anchor)
+    // Poll one revision per referenced receiver, not one sample per document.
+    // Rebuilds away from an anchor and mixed legacy/anchored layers count too.
+    if(RefreshPaintReceiverStates(m_receiverStates,[](AZ::EntityId receiver)
     {
-        PaintSurfaceSample sample;bool valid=false;MeshRequestBus::EventResult(valid,anchor->m_surface.receiver,&MeshRequests::ResolvePaintSurface,anchor->m_surface,sample);
-        AZ::u64 hash=valid?sample.hitFace:0;
-        if(valid)for(float value:{sample.position.GetX(),sample.position.GetY(),sample.position.GetZ(),sample.normal.GetX(),sample.normal.GetY(),sample.normal.GetZ()})
-        {AZ::u32 bits;memcpy(&bits,&value,4);hash=(hash^bits)*1099511628211ULL;}
-        if(hash!=m_anchorState){m_anchorState=hash;m_dirty=true;}
+        AZ::u64 revision=0;
+        MeshRequestBus::EventResult(revision,receiver,&MeshRequests::GetPaintSurfaceRevision);
+        return revision;
+    }))
+    {
+        m_dirty=true;m_bakeIdle=0;m_bakeRequested=false;
     }
     if(m_bakeInvalidated.exchange(false)){++m_receiverAssetRevision;m_bakeCache={};m_dirty=true;m_bakeIdle=0;m_bakeRequested=false;}
     m_bakeIdle+=AZStd::clamp(delta,0.f,.1f);

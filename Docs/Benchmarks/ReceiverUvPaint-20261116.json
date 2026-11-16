@@ -1,0 +1,1082 @@
+{
+  "state": {
+    "passed": true,
+    "stage": "complete",
+    "variants": {},
+    "benchmark_performed": true,
+    "level_sha256": "c93f9933ff343e58e02cf5263f0210bfb156cf67900da7baeec21b14a0da8fc6",
+    "heightmaps_before": {
+      "Assets\\SilPOMPlanarAB\\height.png": "31675e93592a811662fe108623460b502191b2ad46f01941637344e952b5ee87",
+      "Assets\\SilPOMPlanarAB\\IrishFieldstoneTowerOpenShaft\\sculpted-stair-silpom\\height.png": "a464b440fdd2ec0a140e1390c5c726dcba8e31e510f2b3a6386cd9e4560a73b1",
+      "Assets\\SilPOMPlanarAB\\IrishFieldstoneTowerOpenShaft\\welded-doorway\\reveal\\height.png": "9bf430cc25aeb9d33c4afef7cab97f940da1d20da1da7849abb4e2ac3cc31eab",
+      "Assets\\SilPOMPlanarAB\\IrishFieldstoneTowerOpenShaft\\welded-doorway\\trim-blocks\\height.png": "7a08f128bbf82be7743cc322afc3e09c140a7bee96cac93ea5b137df6056e0b0",
+      "Assets\\SilPOMPlanarAB\\IrishFieldstoneTowerWelded\\wall\\height.png": "aec2a049073e85e3a5f4324ad40ddb76d387f6acbcfe5efffaaae7eb91c51799"
+    },
+    "no_paint_baseline_before_fixture": true,
+    "surface_addresses_survived_consolidation": true,
+    "receiver": {
+      "face": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:2301:2721,5697,5696",
+      "hit_face": 5543,
+      "batch": 19,
+      "profile": 1,
+      "corners": [
+        {
+          "uv": [
+            0.018474331125617027,
+            0.4820946156978607
+          ],
+          "position": [
+            592.1483154296875,
+            849.7619018554688,
+            7.505000114440918
+          ]
+        },
+        {
+          "uv": [
+            0.05000000074505806,
+            1.0
+          ],
+          "position": [
+            592.00341796875,
+            849.5857543945312,
+            -0.15999998152256012
+          ]
+        },
+        {
+          "uv": [
+            0.05000000074505806,
+            0.4820946156978607
+          ],
+          "position": [
+            592.00341796875,
+            849.5857543945312,
+            7.505000114440918
+          ]
+        }
+      ]
+    },
+    "rectangle": [
+      0.03153006586401025,
+      0.6447837983824188,
+      0.04745282254647851,
+      0.6646756892147286
+    ],
+    "center": [
+      592.0517171223958,
+      849.6444702148438,
+      4.950000082453092
+    ],
+    "normal": [
+      -0.7722854399397237,
+      0.6352756876011448,
+      0.0
+    ],
+    "materials": [
+      {
+        "assetId": {
+          "guid": "{AB6BAF20-5EFE-5D5B-8CDB-8FB780ABAE7E}"
+        },
+        "assetHint": "assets/materials/decalpaint/surfacetexture_0002/surfacetexture_0002.azmaterial"
+      }
+    ],
+    "fixed": 2048,
+    "live": 100,
+    "lookup": "receiver instance + canonical face -> 2D texture; hit UV -> texel",
+    "cache": {
+      "state": "Receiver UV atlas active",
+      "mode": 2,
+      "hit_face": 5543,
+      "resolution": 512,
+      "ready": true,
+      "mips": 10,
+      "bytes": 8588856,
+      "bake_ms": 7473.175
+    },
+    "live_tail_keeps_fixed_atlas": true,
+    "saved_level_unchanged": true,
+    "heightmaps_unchanged": true,
+    "no_skipped_resource_bindings": true
+  },
+  "views": {
+    "close": {
+      "1-1": {
+        "samples": [
+          {
+            "sample": 0,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "other_face_color_and_normal_bit_exact": true,
+            "no_attempt": 826798,
+            "prefix_replay": 94802,
+            "cache_used": 0,
+            "diffuse_error": {
+              "pixels": 808668,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "normal_degrees": {
+              "pixels": 808668,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "owned_diffuse_error": {
+              "pixels": 94802,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "owned_normal_degrees": {
+              "pixels": 94802,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "prefix_replay_normal_degrees": {
+              "pixels": 94802,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "cached_diffuse_error": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            },
+            "cached_normal_degrees": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            },
+            "quality_passed": true
+          },
+          {
+            "sample": 1,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "other_face_color_and_normal_bit_exact": true,
+            "no_attempt": 826752,
+            "prefix_replay": 94848,
+            "cache_used": 0,
+            "diffuse_error": {
+              "pixels": 809037,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "normal_degrees": {
+              "pixels": 809037,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "owned_diffuse_error": {
+              "pixels": 94848,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "owned_normal_degrees": {
+              "pixels": 94848,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "prefix_replay_normal_degrees": {
+              "pixels": 94848,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "cached_diffuse_error": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            },
+            "cached_normal_degrees": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            },
+            "quality_passed": true
+          }
+        ]
+      },
+      "2-2": {
+        "samples": [
+          {
+            "sample": 0,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "other_face_color_and_normal_bit_exact": true,
+            "no_attempt": 826798,
+            "prefix_replay": 69313,
+            "cache_used": 25489,
+            "diffuse_error": {
+              "pixels": 808668,
+              "mean": 1.1457212167442776e-05,
+              "rms": 8.862588583724573e-05,
+              "p99": 0.0004329681396484375,
+              "maximum": 0.0034637451171875
+            },
+            "normal_degrees": {
+              "pixels": 808668,
+              "mean": 0.0591319315135479,
+              "rms": 0.4607841968536377,
+              "p99": 2.0037903785705566,
+              "maximum": 32.3328971862793
+            },
+            "owned_diffuse_error": {
+              "pixels": 94802,
+              "mean": 9.773085912456736e-05,
+              "rms": 0.0002588433271739632,
+              "p99": 0.0011444091796875,
+              "maximum": 0.0034637451171875
+            },
+            "owned_normal_degrees": {
+              "pixels": 94802,
+              "mean": 0.5043997168540955,
+              "rms": 1.3457797765731812,
+              "p99": 5.5960612297058105,
+              "maximum": 32.3328971862793
+            },
+            "prefix_replay_normal_degrees": {
+              "pixels": 69313,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "cached_diffuse_error": {
+              "pixels": 25489,
+              "mean": 0.0003634932800196111,
+              "rms": 0.000499193964060396,
+              "p99": 0.0015106201171875,
+              "maximum": 0.0034637451171875
+            },
+            "cached_normal_degrees": {
+              "pixels": 25489,
+              "mean": 1.8760288953781128,
+              "rms": 2.595412015914917,
+              "p99": 8.78278636932373,
+              "maximum": 32.3328971862793
+            },
+            "quality_passed": false
+          },
+          {
+            "sample": 1,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "other_face_color_and_normal_bit_exact": true,
+            "no_attempt": 826752,
+            "prefix_replay": 69266,
+            "cache_used": 25582,
+            "diffuse_error": {
+              "pixels": 809037,
+              "mean": 1.1618632925092243e-05,
+              "rms": 8.986752072814852e-05,
+              "p99": 0.000438690185546875,
+              "maximum": 0.004833221435546875
+            },
+            "normal_degrees": {
+              "pixels": 809037,
+              "mean": 0.060985587537288666,
+              "rms": 0.47118744254112244,
+              "p99": 2.0630366802215576,
+              "maximum": 30.852407455444336
+            },
+            "owned_diffuse_error": {
+              "pixels": 94848,
+              "mean": 9.910493099596351e-05,
+              "rms": 0.00026246588095091283,
+              "p99": 0.001163482666015625,
+              "maximum": 0.004833221435546875
+            },
+            "owned_normal_degrees": {
+              "pixels": 94848,
+              "mean": 0.5201964974403381,
+              "rms": 1.3761438131332397,
+              "p99": 5.898030757904053,
+              "maximum": 30.852407455444336
+            },
+            "prefix_replay_normal_degrees": {
+              "pixels": 69266,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "cached_diffuse_error": {
+              "pixels": 25582,
+              "mean": 0.0003674421168398112,
+              "rms": 0.0005053819040767848,
+              "p99": 0.001529693603515625,
+              "maximum": 0.004833221435546875
+            },
+            "cached_normal_degrees": {
+              "pixels": 25582,
+              "mean": 1.928684115409851,
+              "rms": 2.649785041809082,
+              "p99": 9.278861999511719,
+              "maximum": 30.852407455444336
+            },
+            "quality_passed": false
+          }
+        ]
+      }
+    },
+    "ordinary": {
+      "1-1": {
+        "samples": [
+          {
+            "sample": 0,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "other_face_color_and_normal_bit_exact": true,
+            "no_attempt": 891546,
+            "prefix_replay": 30054,
+            "cache_used": 0,
+            "diffuse_error": {
+              "pixels": 783774,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "normal_degrees": {
+              "pixels": 783774,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "owned_diffuse_error": {
+              "pixels": 30054,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "owned_normal_degrees": {
+              "pixels": 30054,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "prefix_replay_normal_degrees": {
+              "pixels": 30054,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "cached_diffuse_error": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            },
+            "cached_normal_degrees": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            },
+            "quality_passed": true
+          },
+          {
+            "sample": 1,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "other_face_color_and_normal_bit_exact": true,
+            "no_attempt": 891542,
+            "prefix_replay": 30058,
+            "cache_used": 0,
+            "diffuse_error": {
+              "pixels": 784347,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "normal_degrees": {
+              "pixels": 784347,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "owned_diffuse_error": {
+              "pixels": 30058,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "owned_normal_degrees": {
+              "pixels": 30058,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "prefix_replay_normal_degrees": {
+              "pixels": 30058,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "cached_diffuse_error": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            },
+            "cached_normal_degrees": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            },
+            "quality_passed": true
+          }
+        ]
+      },
+      "2-2": {
+        "samples": [
+          {
+            "sample": 0,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "other_face_color_and_normal_bit_exact": true,
+            "no_attempt": 891546,
+            "prefix_replay": 26675,
+            "cache_used": 3379,
+            "diffuse_error": {
+              "pixels": 783774,
+              "mean": 6.747402494511334e-07,
+              "rms": 1.6746420442359522e-05,
+              "p99": 0.0,
+              "maximum": 0.0044231414794921875
+            },
+            "normal_degrees": {
+              "pixels": 783774,
+              "mean": 0.012388791888952255,
+              "rms": 0.30825433135032654,
+              "p99": 0.0,
+              "maximum": 58.790199279785156
+            },
+            "owned_diffuse_error": {
+              "pixels": 30054,
+              "mean": 1.7596456018509343e-05,
+              "rms": 8.551972132408991e-05,
+              "p99": 0.000392913818359375,
+              "maximum": 0.0044231414794921875
+            },
+            "owned_normal_degrees": {
+              "pixels": 30054,
+              "mean": 0.3230855464935303,
+              "rms": 1.5741766691207886,
+              "p99": 6.518064975738525,
+              "maximum": 58.790199279785156
+            },
+            "prefix_replay_normal_degrees": {
+              "pixels": 26675,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "cached_diffuse_error": {
+              "pixels": 3379,
+              "mean": 0.00015650899149477482,
+              "rms": 0.00025504882796667516,
+              "p99": 0.0008264160132966936,
+              "maximum": 0.0044231414794921875
+            },
+            "cached_normal_degrees": {
+              "pixels": 3379,
+              "mean": 2.8736350536346436,
+              "rms": 4.694728851318359,
+              "p99": 15.608201026916504,
+              "maximum": 58.790199279785156
+            },
+            "quality_passed": false
+          },
+          {
+            "sample": 1,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "other_face_color_and_normal_bit_exact": true,
+            "no_attempt": 891542,
+            "prefix_replay": 26703,
+            "cache_used": 3355,
+            "diffuse_error": {
+              "pixels": 784347,
+              "mean": 6.711477453791304e-07,
+              "rms": 1.685028473730199e-05,
+              "p99": 0.0,
+              "maximum": 0.0037784576416015625
+            },
+            "normal_degrees": {
+              "pixels": 784347,
+              "mean": 0.01289532333612442,
+              "rms": 0.3367812931537628,
+              "p99": 0.0,
+              "maximum": 61.656578063964844
+            },
+            "owned_diffuse_error": {
+              "pixels": 30058,
+              "mean": 1.751323179632891e-05,
+              "rms": 8.60758445924148e-05,
+              "p99": 0.0003886222839355469,
+              "maximum": 0.0037784576416015625
+            },
+            "owned_normal_degrees": {
+              "pixels": 30058,
+              "mean": 0.33649641275405884,
+              "rms": 1.7203707695007324,
+              "p99": 6.83131217956543,
+              "maximum": 61.656578063964844
+            },
+            "prefix_replay_normal_degrees": {
+              "pixels": 26703,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "cached_diffuse_error": {
+              "pixels": 3355,
+              "mean": 0.00015690394502598792,
+              "rms": 0.0002576410479377955,
+              "p99": 0.0008686828659847379,
+              "maximum": 0.0037784576416015625
+            },
+            "cached_normal_degrees": {
+              "pixels": 3355,
+              "mean": 3.0147266387939453,
+              "rms": 5.149390697479248,
+              "p99": 20.100120544433594,
+              "maximum": 61.656578063964844
+            },
+            "quality_passed": false
+          }
+        ]
+      }
+    },
+    "minified": {
+      "1-1": {
+        "samples": [
+          {
+            "sample": 0,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "other_face_color_and_normal_bit_exact": true,
+            "no_attempt": 906730,
+            "prefix_replay": 14870,
+            "cache_used": 0,
+            "diffuse_error": {
+              "pixels": 807422,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "normal_degrees": {
+              "pixels": 807422,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "owned_diffuse_error": {
+              "pixels": 14870,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "owned_normal_degrees": {
+              "pixels": 14870,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "prefix_replay_normal_degrees": {
+              "pixels": 14870,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "cached_diffuse_error": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            },
+            "cached_normal_degrees": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            },
+            "quality_passed": true
+          },
+          {
+            "sample": 1,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "other_face_color_and_normal_bit_exact": true,
+            "no_attempt": 906873,
+            "prefix_replay": 14727,
+            "cache_used": 0,
+            "diffuse_error": {
+              "pixels": 807710,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "normal_degrees": {
+              "pixels": 807710,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "owned_diffuse_error": {
+              "pixels": 14727,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "owned_normal_degrees": {
+              "pixels": 14727,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "prefix_replay_normal_degrees": {
+              "pixels": 14727,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "cached_diffuse_error": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            },
+            "cached_normal_degrees": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            },
+            "quality_passed": true
+          }
+        ]
+      },
+      "2-2": {
+        "samples": [
+          {
+            "sample": 0,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "other_face_color_and_normal_bit_exact": true,
+            "no_attempt": 906730,
+            "prefix_replay": 13641,
+            "cache_used": 1229,
+            "diffuse_error": {
+              "pixels": 807422,
+              "mean": 1.7492037329702725e-07,
+              "rms": 6.762664725101786e-06,
+              "p99": 0.0,
+              "maximum": 0.00173187255859375
+            },
+            "normal_degrees": {
+              "pixels": 807422,
+              "mean": 0.005316955037415028,
+              "rms": 0.20200324058532715,
+              "p99": 0.0,
+              "maximum": 43.45846939086914
+            },
+            "owned_diffuse_error": {
+              "pixels": 14870,
+              "mean": 9.497952305537183e-06,
+              "rms": 4.983249891665764e-05,
+              "p99": 0.00024015427334234118,
+              "maximum": 0.00173187255859375
+            },
+            "owned_normal_degrees": {
+              "pixels": 14870,
+              "mean": 0.2887038588523865,
+              "rms": 1.48851478099823,
+              "p99": 6.986861705780029,
+              "maximum": 43.45846939086914
+            },
+            "prefix_replay_normal_degrees": {
+              "pixels": 13641,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "cached_diffuse_error": {
+              "pixels": 1229,
+              "mean": 0.00011491827171994373,
+              "rms": 0.00017333737923763692,
+              "p99": 0.0005999755812808871,
+              "maximum": 0.00173187255859375
+            },
+            "cached_normal_degrees": {
+              "pixels": 1229,
+              "mean": 3.493105173110962,
+              "rms": 5.177649974822998,
+              "p99": 17.345869064331055,
+              "maximum": 43.45846939086914
+            },
+            "quality_passed": false
+          },
+          {
+            "sample": 1,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "other_face_color_and_normal_bit_exact": true,
+            "no_attempt": 906873,
+            "prefix_replay": 13528,
+            "cache_used": 1199,
+            "diffuse_error": {
+              "pixels": 807710,
+              "mean": 1.7852077860425197e-07,
+              "rms": 7.330530479521258e-06,
+              "p99": 0.0,
+              "maximum": 0.001689910888671875
+            },
+            "normal_degrees": {
+              "pixels": 807710,
+              "mean": 0.00570769002661109,
+              "rms": 0.22427840530872345,
+              "p99": 0.0,
+              "maximum": 35.590206146240234
+            },
+            "owned_diffuse_error": {
+              "pixels": 14727,
+              "mean": 9.791065167519264e-06,
+              "rms": 5.4288266255753115e-05,
+              "p99": 0.000240325927734375,
+              "maximum": 0.001689910888671875
+            },
+            "owned_normal_degrees": {
+              "pixels": 14727,
+              "mean": 0.31304123997688293,
+              "rms": 1.6609556674957275,
+              "p99": 7.585890293121338,
+              "maximum": 35.590206146240234
+            },
+            "prefix_replay_normal_degrees": {
+              "pixels": 13528,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "cached_diffuse_error": {
+              "pixels": 1199,
+              "mean": 0.00012026106560369954,
+              "rms": 0.0001902626536320895,
+              "p99": 0.0006929397350177169,
+              "maximum": 0.001689910888671875
+            },
+            "cached_normal_degrees": {
+              "pixels": 1199,
+              "mean": 3.8450026512145996,
+              "rms": 5.821106910705566,
+              "p99": 21.305994033813477,
+              "maximum": 35.590206146240234
+            },
+            "quality_passed": false
+          }
+        ]
+      }
+    }
+  },
+  "timings": {
+    "close-0-0": {
+      "gpu_span_ms": 18.232,
+      "hit_forward_ms": 12.785499999999999,
+      "cpu_frame_period_ms": 18.462249999999997
+    },
+    "close-1-1": {
+      "gpu_span_ms": 19.365,
+      "hit_forward_ms": 13.862,
+      "cpu_frame_period_ms": 19.5898
+    },
+    "close-2-2": {
+      "gpu_span_ms": 17.3325,
+      "hit_forward_ms": 11.8945,
+      "cpu_frame_period_ms": 17.5355
+    },
+    "close-3-2": {
+      "gpu_span_ms": 17.4405,
+      "hit_forward_ms": 11.946000000000002,
+      "cpu_frame_period_ms": 17.664450000000002
+    },
+    "close-4-1": {
+      "gpu_span_ms": 19.3915,
+      "hit_forward_ms": 13.905,
+      "cpu_frame_period_ms": 19.6278
+    },
+    "close-5-0": {
+      "gpu_span_ms": 18.3265,
+      "hit_forward_ms": 12.881499999999999,
+      "cpu_frame_period_ms": 18.560200000000002
+    },
+    "minified-0-0": {
+      "gpu_span_ms": 9.254000000000001,
+      "hit_forward_ms": 4.586,
+      "cpu_frame_period_ms": 10.76675
+    },
+    "minified-1-1": {
+      "gpu_span_ms": 11.6615,
+      "hit_forward_ms": 6.9864999999999995,
+      "cpu_frame_period_ms": 11.89235
+    },
+    "minified-2-2": {
+      "gpu_span_ms": 11.6385,
+      "hit_forward_ms": 6.878,
+      "cpu_frame_period_ms": 11.91305
+    },
+    "minified-3-2": {
+      "gpu_span_ms": 11.599499999999999,
+      "hit_forward_ms": 6.8735,
+      "cpu_frame_period_ms": 11.807749999999999
+    },
+    "minified-4-1": {
+      "gpu_span_ms": 11.8185,
+      "hit_forward_ms": 7.053000000000001,
+      "cpu_frame_period_ms": 12.0364
+    },
+    "minified-5-0": {
+      "gpu_span_ms": 9.285,
+      "hit_forward_ms": 4.583500000000001,
+      "cpu_frame_period_ms": 10.6967
+    },
+    "ordinary-0-0": {
+      "gpu_span_ms": 11.6035,
+      "hit_forward_ms": 6.682,
+      "cpu_frame_period_ms": 11.84055
+    },
+    "ordinary-1-1": {
+      "gpu_span_ms": 13.062999999999999,
+      "hit_forward_ms": 8.109,
+      "cpu_frame_period_ms": 13.3035
+    },
+    "ordinary-2-2": {
+      "gpu_span_ms": 12.3355,
+      "hit_forward_ms": 7.301,
+      "cpu_frame_period_ms": 12.5639
+    },
+    "ordinary-3-2": {
+      "gpu_span_ms": 12.2075,
+      "hit_forward_ms": 7.1715,
+      "cpu_frame_period_ms": 12.41625
+    },
+    "ordinary-4-1": {
+      "gpu_span_ms": 13.194500000000001,
+      "hit_forward_ms": 8.2125,
+      "cpu_frame_period_ms": 13.3517
+    },
+    "ordinary-5-0": {
+      "gpu_span_ms": 11.6295,
+      "hit_forward_ms": 6.6485,
+      "cpu_frame_period_ms": 11.8508
+    }
+  },
+  "no_paint_checks": {
+    "orphan-surface": {
+      "samples": [
+        {
+          "sample": 0,
+          "hit_records_bit_exact": true,
+          "depth_bit_exact": true,
+          "color_and_normal_bit_exact": true,
+          "no_attempt": true
+        },
+        {
+          "sample": 1,
+          "hit_records_bit_exact": true,
+          "depth_bit_exact": true,
+          "color_and_normal_bit_exact": true,
+          "no_attempt": true
+        }
+      ]
+    },
+    "zero-prefix": {
+      "samples": [
+        {
+          "sample": 0,
+          "hit_records_bit_exact": true,
+          "depth_bit_exact": true,
+          "color_and_normal_bit_exact": true,
+          "no_attempt": true
+        },
+        {
+          "sample": 1,
+          "hit_records_bit_exact": true,
+          "depth_bit_exact": true,
+          "color_and_normal_bit_exact": true,
+          "no_attempt": true
+        }
+      ]
+    }
+  },
+  "visible_fixed_paint_samples": 51071,
+  "zero_prefix_no_attempt": true,
+  "quality_checks": {
+    "close": {
+      "1-1": true,
+      "2-2": false
+    },
+    "ordinary": {
+      "1-1": true,
+      "2-2": false
+    },
+    "minified": {
+      "1-1": true,
+      "2-2": false
+    }
+  },
+  "aggregate": {
+    "close": {
+      "0": {
+        "gpu_span_ms": 18.279249999999998,
+        "hit_forward_ms": 12.833499999999999,
+        "cpu_frame_period_ms": 18.511225
+      },
+      "1": {
+        "gpu_span_ms": 19.37825,
+        "hit_forward_ms": 13.8835,
+        "cpu_frame_period_ms": 19.608800000000002
+      },
+      "2": {
+        "gpu_span_ms": 17.386499999999998,
+        "hit_forward_ms": 11.920250000000001,
+        "cpu_frame_period_ms": 17.599975
+      }
+    },
+    "ordinary": {
+      "0": {
+        "gpu_span_ms": 11.6165,
+        "hit_forward_ms": 6.66525,
+        "cpu_frame_period_ms": 11.845675
+      },
+      "1": {
+        "gpu_span_ms": 13.12875,
+        "hit_forward_ms": 8.16075,
+        "cpu_frame_period_ms": 13.3276
+      },
+      "2": {
+        "gpu_span_ms": 12.2715,
+        "hit_forward_ms": 7.23625,
+        "cpu_frame_period_ms": 12.490075000000001
+      }
+    },
+    "minified": {
+      "0": {
+        "gpu_span_ms": 9.2695,
+        "hit_forward_ms": 4.5847500000000005,
+        "cpu_frame_period_ms": 10.731725
+      },
+      "1": {
+        "gpu_span_ms": 11.74,
+        "hit_forward_ms": 7.01975,
+        "cpu_frame_period_ms": 11.964375
+      },
+      "2": {
+        "gpu_span_ms": 11.619,
+        "hit_forward_ms": 6.87575,
+        "cpu_frame_period_ms": 11.860399999999998
+      }
+    }
+  },
+  "validation_context": {
+    "date": "2026-11-16",
+    "base_commit": "dada01d4afa68ed0163e57ceaa81d64441e850c1",
+    "source_state": "uncommitted review fixes",
+    "portable_tests_passed": 16,
+    "analyzer_negative_control_tests_passed": 11,
+    "native_shader_adapter_passed": true,
+    "surface_address_sanitizer_passed": true,
+    "installer_scenarios_passed": 25,
+    "native_builds": [
+      "SilPOM.Static",
+      "SilPOM.Editor",
+      "SilPOM"
+    ],
+    "asset_processing": {
+      "succeeded": 815,
+      "failed": 0,
+      "errors": 0,
+      "warnings": 554
+    },
+    "bake_binding_audit_passed": true,
+    "atlas_accepted": false,
+    "performance_caveat": "The existing Falconry script repeatedly reported a nil normalFov during gameplay. These timing observations are not a clean performance acceptance run. The historical performance table is not replaced.",
+    "raw_capture_directory": "D:\\TG-assets-gameplay\\scratch\\receiver-paint-review\\proof",
+    "source_sha256_lf": {
+      "Assets/Materials/Types/SilPOMMesh/SilPOMMesh.azsli": "edbea1e7bece77f51c4a2e9897058382bbf7e8891433b45324607de2c17a31a9",
+      "Assets/Materials/Types/SilPOMMesh/SilPOMMesh.materialtype": "85a4051e7d58be3f5f85bd0cf256458fe08e868c7004c2db17ef72f0b8cf27f5",
+      "Assets/Materials/Types/SilPOMMesh/SilPOMMeshUv.materialtype": "ed12befbae46666ce10297aaa03df23840c8430b7aa267dbe66354ed6a905ad3",
+      "Include/SilPOM/ReceiverPaintState.h": "602ae4a92f7f8793a6a061dbac605ad71908f6d452546b78f53819de227c7a7e",
+      "Include/SilPOM/ReceiverUvPaint.h": "ca5848367599ff0f7481fcf45b1cf68b6a9f5e0854d914f588511781b4f6a9fd",
+      "Include/SilPOM/HeightPrecision.h": "348f7d1c1812c4a620c1cbe129a017ddd0f334f02be25155984aadee9d8122a4",
+      "Include/SilPOM/Mesh.h": "dadb24548b57ae98d95cf5f0a2a4474295e31034c7140b8ef77313cd67ec5d1e",
+      "Include/SilPOM/DecalPaint.h": "876a76e26d41e451726a747e6b256be5034585558d9da688c9ce2d5754a6902c",
+      "Source/Mesh.cpp": "8ce258d0aff2fc9814a63860733f5f0e07beb0f652f2fc2d167a0ab89c8506b9",
+      "Source/ReceiverUvPaint.inl": "166f4864677ea41a1e97cd3172dfc97630cf5ee45cd0540d202a97d12d00e3f6",
+      "Source/ReceiverFaceGeometry.inl": "ff7630a05b2d0ac2afbe69f0b3167f08b114abd18035efd082d9d36aafe25890",
+      "Source/DecalPaint.cpp": "ada028a26f835dc774f09e49d70ac51e5d9da1c880cbd9e52f7b17de027f1946",
+      "Source/DecalComposite.inl": "939fd0a39a688ea68650512501e837912fbc0415ded1f3eb933f5439ef72451b",
+      "Integration/O3DE/engine.patch": "35723f2ca3cc6feb9804d43863f904e000771ee31052b6b719bb7e1130bf1256",
+      "Tests/receiver_uv_benchmark.py": "aed638c6e465ee65b82101c89ba4fc7a52a2f2706b540293d32b92523a35e658",
+      "Tests/analyze_receiver_uv_benchmark.py": "fe8a1634712a02f37d768b89c42353588a2f921888efc451ba2c98217fef67cb"
+    }
+  }
+}

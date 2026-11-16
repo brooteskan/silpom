@@ -1,7 +1,7 @@
 diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalComposite.azsli b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalComposite.azsli
 --- a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalComposite.azsli
 +++ b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalComposite.azsli
-@@ -1,256 +1,267 @@
+@@ -1,256 +1,277 @@
  // Copyright (c) Contributors to the Open 3D Engine Project.
  // SPDX-License-Identifier: Apache-2.0 OR MIT
  #pragma once
@@ -9,9 +9,19 @@ diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalCo
 +#ifndef DECAL_PAINT_RECEIVER_FACE
 +#define DECAL_PAINT_RECEIVER_FACE() 0u
 +#endif
++#ifndef DECAL_PAINT_RECEIVER_OWNER
++#define DECAL_PAINT_RECEIVER_OWNER() 0u
++#endif
  #ifndef DECAL_PAINT_HEIGHT
  #define DECAL_PAINT_HEIGHT() -1.0f
  #endif
++
++// Anchor faces locate dab centers; receiver ownership bounds their full footprint.
++bool PaintReceiverSelected(uint4 meta)
++{
++    if(meta.w==0)return true;
++    return (meta.x&2u)!=0?meta.w==DECAL_PAINT_RECEIVER_OWNER():meta.w==DECAL_PAINT_RECEIVER_FACE();
++}
  
  bool PaintHeightSelected(uint flags,float height)
  {
@@ -64,7 +74,7 @@ diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalCo
      float height,inout uint layer,inout float3 baseColor,inout float3 baseNormal)
  {
      const uint4 meta=buffer.Load4(offset+80);
-+    if(meta.w!=0 && meta.w!=DECAL_PAINT_RECEIVER_FACE())return;
++    if(!PaintReceiverSelected(meta))return;
      if(!PaintHeightSelected(meta.x,height))return;
      if(layer!=meta.y){layer=meta.y;baseColor=surface.albedo;baseNormal=surface.normal;}
      Decal dab=LoadPaintDab(buffer,offset);
@@ -161,24 +171,26 @@ diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalCo
      uint4 bakes=0;
      if((header.z&16)!=0)bakes=buffer.Load4(header.y+header.w*96+((header.z&8)!=0?32:0));
      uint bakeIndex=0;bool attempted=false;
++    uint node=0,firstLeaf=0;
++#if defined(DECAL_PAINT_PREFIX_OWNED)
++    [branch] if((header.z&32)!=0)
++    {
++        uint4 owner=buffer.Load4(header.y+header.w*96+((header.z&8)!=0?32:0));
++        if(DECAL_PAINT_PREFIX_OWNED(owner.x)){node=owner.y;firstLeaf=owner.z;}
++    }
++#endif
      if((header.z&2)!=0)
      {
          [loop]
-         for(uint i=0;i<header.w;++i)ApplyPaintForward(buffer,header.y+i*96,surface,positionDx,positionDy,height,layer,baseColor,baseNormal);
+-        for(uint i=0;i<header.w;++i)ApplyPaintForward(buffer,header.y+i*96,surface,positionDx,positionDy,height,layer,baseColor,baseNormal);
++        for(uint i=firstLeaf;i<header.w;++i)ApplyPaintForward(buffer,header.y+i*96,surface,positionDx,positionDy,height,layer,baseColor,baseNormal);
          return;
      }
      float3 premultiplied=0;
      float transmittance=1;
      float3 layerColor=0;
      float layerAlpha=0,weight=1;
-     uint node=0;
-+#if defined(DECAL_PAINT_PREFIX_OWNED)
-+    [branch] if((header.z&32)!=0)
-+    {
-+        uint4 owner=buffer.Load4(header.y+header.w*96+((header.z&8)!=0?32:0));
-+        if(DECAL_PAINT_PREFIX_OWNED(owner.x))node=owner.y;
-+    }
-+#endif
+-    uint node=0;
      [loop]
      while(node<header.x)
      {
@@ -240,7 +252,8 @@ diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalCo
          if(high.w>=header.w)continue; // Interior node.
          const uint leafOffset=header.y+high.w*96;
          const uint4 meta=buffer.Load4(leafOffset+80);
-         if(!PaintHeightSelected(meta.x,height))continue;
+-        if(!PaintHeightSelected(meta.x,height))continue;
++        if(!PaintReceiverSelected(meta)||!PaintHeightSelected(meta.x,height))continue;
          if((header.z&1)!=0)
          {
              if(layer!=meta.y)

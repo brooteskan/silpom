@@ -2,80 +2,35 @@
 // Included by Mesh.cpp, inside SilPOM, after Generation is defined.
 namespace
 {
-struct ReceiverFaceGeometry
-{
-    AZ::Vector3 origin,du,dv,normal,d[3];
-    AZ::Vector2 uv[3];
-    const MeshProfileBinding* profile=nullptr;
-    float multiplier=1;
-    bool Initialize(const MeshFace& f,const MeshConfig& config)
-    {
-        if(f.m_corners.size()!=3)return false;
-        for(const auto& p:config.m_profiles)if(p.m_id==f.m_profile){profile=&p;break;}
-        if(!profile||!profile->m_height.IsReady())return false;
-        for(unsigned i=0;i<3;++i){uv[i]=f.m_corners[i].m_uv;d[i]=f.m_corners[i].m_direction;}
-        origin=f.m_corners[0].m_position;
-        const auto e1=f.m_corners[1].m_position-origin,e2=f.m_corners[2].m_position-origin;
-        const auto a=uv[1]-uv[0],b=uv[2]-uv[0];const float det=a.GetX()*b.GetY()-a.GetY()*b.GetX();
-        if(std::abs(det)<1e-10f)return false;
-        du=(e1*b.GetY()-e2*a.GetY())/det;dv=(e2*a.GetX()-e1*b.GetX())/det;
-        normal=e1.Cross(e2).GetNormalizedSafe();multiplier=config.m_reliefDepthMultiplier;return true;
-    }
-    AZ::Vector3 Weights(AZ::Vector2 q) const
-    {
-        const auto a=uv[1]-uv[0],b=uv[2]-uv[0],c=q-uv[0];const float det=a.GetX()*b.GetY()-a.GetY()*b.GetX();
-        const float y=(c.GetX()*b.GetY()-c.GetY()*b.GetX())/det,z=(a.GetX()*c.GetY()-a.GetY()*c.GetX())/det;
-        return {1-y-z,y,z};
-    }
-    AZ::Vector3 Height(AZ::Vector2 q) const
-    {
-        const auto& desc=profile->m_height->GetImageDescriptor();const auto pixels=profile->m_height->GetSubImageData(0,0);
-        const int w=desc.m_size.m_width,h=desc.m_size.m_height;
-        if(w<=0||h<=0||pixels.empty())return AZ::Vector3::CreateZero();
-        auto address=[&](int i,int n){return profile->m_addressMode?AZStd::clamp(i,0,n-1):(i%n+n)%n;};
-        auto texel=[&](int x,int y)
-        {
-            const size_t index=size_t(address(y,h))*w+address(x,w);
-            if(desc.m_format==AZ::RHI::Format::R32_FLOAT){float value;memcpy(&value,pixels.data()+index*4,4);return value;}
-            AZ::u16 value;memcpy(&value,pixels.data()+index*2,2);return float(value)/65535.f;
-        };
-        const auto tiled=q*profile->m_tiling+profile->m_offset;
-        const float x=tiled.GetX()*w-.5f,y=tiled.GetY()*h-.5f,fx=x-std::floor(x),fy=y-std::floor(y);
-        const int ix=int(std::floor(x)),iy=int(std::floor(y));const float a=texel(ix,iy),b=texel(ix+1,iy)-a,c=texel(ix,iy+1)-a,e=texel(ix+1,iy+1)-a-b-c;
-        const float scale=profile->m_scale*multiplier;
-        return {scale*(a+b*fx+c*fy+e*fx*fy-profile->m_reference),scale*(b+e*fy)*w*profile->m_tiling.GetX(),scale*(c+e*fx)*h*profile->m_tiling.GetY()};
-    }
-    void Evaluate(AZ::Vector2 q,AZ::Vector3& position,AZ::Vector3& n) const
-    {
-        const auto weights=Weights(q),height=Height(q);const auto direction=d[0]*weights.GetX()+d[1]*weights.GetY()+d[2]*weights.GetZ();
-        position=origin+du*(q.GetX()-uv[0].GetX())+dv*(q.GetY()-uv[0].GetY())+direction*height.GetX();
-        const float det=du.Dot(dv.Cross(normal));
-        const auto base=(normal-dv.Cross(normal)*(height.GetY()/det)-normal.Cross(du)*(height.GetZ()/det)).GetNormalizedSafe();
-        const auto target=direction.GetNormalizedSafe(),axis=normal.Cross(target);
-        n=(base+axis.Cross(base)+axis.Cross(axis.Cross(base))/(1+normal.Dot(target))).GetNormalizedSafe();
-    }
-};
+#include "ReceiverFaceGeometry.inl"
 }
 bool MeshController::ResolvePaintSurface(const PaintSurfacePoint& address,PaintSurfaceSample& sample) const
 {
-    if(address.receiver!=m_entity||!address.IsValid()||!m_active||!m_configuration.m_surface.IsReady())return false;
+    if(address.receiver!=m_entity||!address.IsValid()||!m_active||!m_active->paintConfig.m_surface.IsReady())return false;
+    const auto& config=m_active->paintConfig;
     for(const auto& record:m_active->paintFaces)if(record.id==address.face)
     {
-        ReceiverFaceGeometry geometry;if(!geometry.Initialize(m_configuration.m_surface->m_faces[record.source],m_configuration))return false;
+        if(record.source>=config.m_surface->m_faces.size())return false;
+        ReceiverFaceGeometry geometry;if(!geometry.Initialize(config.m_surface->m_faces[record.source],config,m_active->paintScale))return false;
         const auto weights=geometry.Weights(address.uv);if(weights.GetMinElement()<-.0001f)return false;
         geometry.Evaluate(address.uv,sample.position,sample.normal);
-        sample.position=m_world.TransformPoint(sample.position);sample.normal=m_world.TransformVector(sample.normal).GetNormalizedSafe();
-        if(!address.front)sample.normal=-sample.normal;sample.hitFace=record.hit;return sample.position.IsFinite()&&sample.normal.IsFinite();
+        const auto& rigid=m_active->paintWorld;
+        sample.position=rigid.TransformPoint(sample.position);sample.normal=rigid.TransformVector(sample.normal).GetNormalizedSafe();
+        if(!address.front)sample.normal=-sample.normal;sample.hitFace=record.hit;sample.receiverOwner=m_active->paintReceiver;
+        return sample.position.IsFinite()&&sample.normal.IsFinite();
     }
     return false;
 }
 bool MeshController::FindPaintSurfacePoint(const AZ::Vector3& worldPosition,const AZ::Vector3& worldNormal,PaintSurfacePoint& address,float& distance) const
 {
-    if(!m_active||!m_configuration.m_surface.IsReady())return false;
-    const auto inverse=m_world.GetInverse();const auto position=inverse.TransformPoint(worldPosition);bool found=false;
+    if(!m_active||!m_active->paintConfig.m_surface.IsReady())return false;
+    const auto& config=m_active->paintConfig;
+    const auto& rigid=m_active->paintWorld;
+    const auto inverse=rigid.GetInverse();const auto position=inverse.TransformPoint(worldPosition);bool found=false;
     for(const auto& record:m_active->paintFaces)
     {
-        ReceiverFaceGeometry g;if(!g.Initialize(m_configuration.m_surface->m_faces[record.source],m_configuration))continue;
+        if(record.source>=config.m_surface->m_faces.size())continue;
+        ReceiverFaceGeometry g;if(!g.Initialize(config.m_surface->m_faces[record.source],config,m_active->paintScale))continue;
         const auto delta=position-g.origin;const float aa=g.du.Dot(g.du),ab=g.du.Dot(g.dv),bb=g.dv.Dot(g.dv),det=aa*bb-ab*ab;
         AZ::Vector2 q=g.uv[0]+AZ::Vector2((delta.Dot(g.du)*bb-delta.Dot(g.dv)*ab)/det,(delta.Dot(g.dv)*aa-delta.Dot(g.du)*ab)/det);
         if(g.Weights(q).GetMinElement()<-.1f)continue;
@@ -89,9 +44,9 @@ bool MeshController::FindPaintSurfacePoint(const AZ::Vector3& worldPosition,cons
             const AZ::Vector2 correction((error.Dot(dx)*c-error.Dot(dy)*b)/deter,(error.Dot(dy)*a-error.Dot(dx)*b)/deter);
             q+=correction;if(correction.GetLengthSq()<1e-14f)break;
         }
-        g.Evaluate(q,p,n);const float error=(m_world.TransformPoint(p)-worldPosition).GetLength();
+        g.Evaluate(q,p,n);const float error=(rigid.TransformPoint(p)-worldPosition).GetLength();
         if(error<distance&&error<.025f&&g.Weights(q).GetMinElement()>=-.0001f)
-        {distance=error;address.receiver=m_entity;address.face=record.id;address.uv=q;address.front=m_world.TransformVector(n).Dot(worldNormal)>=0;found=true;}
+        {distance=error;address.receiver=m_entity;address.face=record.id;address.uv=q;address.front=rigid.TransformVector(n).Dot(worldNormal)>=0;found=true;}
     }
     return found;
 }
@@ -105,18 +60,23 @@ bool FindPaintSurface(const AZ::Vector3& position,const AZ::Vector3& normal,Pain
 AZStd::string MeshController::GetPaintFacesJson() const
 {
     rapidjson::StringBuffer json;rapidjson::Writer<rapidjson::StringBuffer> w(json);w.StartArray();
-    if(m_active&&m_configuration.m_surface.IsReady())for(const auto& record:m_active->paintFaces)
+    if(m_active&&m_active->paintConfig.m_surface.IsReady())for(const auto& record:m_active->paintFaces)
     {
-        const auto& face=m_configuration.m_surface->m_faces[record.source];w.StartObject();w.Key("face");w.String(record.id.c_str());
+        const auto& faces=m_active->paintConfig.m_surface->m_faces;if(record.source>=faces.size())continue;
+        const auto& face=faces[record.source];w.StartObject();w.Key("face");w.String(record.id.c_str());
         w.Key("hit_face");w.Uint(record.hit);w.Key("batch");w.Uint(record.batch);w.Key("profile");w.Uint(face.m_profile);
         w.Key("corners");w.StartArray();for(const auto& c:face.m_corners)
-        {w.StartObject();w.Key("uv");w.StartArray();w.Double(c.m_uv.GetX());w.Double(c.m_uv.GetY());w.EndArray();w.Key("position");w.StartArray();const auto p=m_world.TransformPoint(c.m_position);w.Double(p.GetX());w.Double(p.GetY());w.Double(p.GetZ());w.EndArray();w.EndObject();}w.EndArray();w.EndObject();
+        {w.StartObject();w.Key("uv");w.StartArray();w.Double(c.m_uv.GetX());w.Double(c.m_uv.GetY());w.EndArray();w.Key("position");w.StartArray();const auto p=m_active->paintWorld.TransformPoint(c.m_position*m_active->paintScale);w.Double(p.GetX());w.Double(p.GetY());w.Double(p.GetZ());w.EndArray();w.EndObject();}w.EndArray();w.EndObject();
     }
     w.EndArray();return {json.GetString(),json.GetSize()};
 }
 
 // GPU cache implementation follows. Ownership above remains authoritative
 // whether this disposable acceleration is enabled, invalid, or absent.
+AZ::u64 MeshController::GetPaintSurfaceRevision() const
+{
+    return m_active?m_paintSurfaceRevision:0;
+}
 class ReceiverUvBakePass final : public AZ::RPI::FullscreenTrianglePass
 {
 public:
@@ -179,6 +139,8 @@ struct MeshController::UvPaint
 };
 bool MeshController::UvPaint::Bake(AZ::RPI::Scene* scene,const AZ::Transform& transform)
 {
+    if(!input||!ReceiverPaintPrefixFits(input->fixed))
+    {status="Receiver UV prefix exceeds shader traversal limits; native replay retained";return false;}
     if(table)return true;if(!scene||!input||!objectSrg)return false;
     if(!material->UsesSceneMaterialSrg()||material->GetMaterialTypeId()<0||material->GetMaterialInstanceId()<0)
     {status="Waiting for scene material registration";return false;}
@@ -308,16 +270,16 @@ void MeshController::TickReceiverUvPaint()
     {
         if(p.swapped){m_processor->SetCustomMaterials(m_active->handles[p.batch],p.original);p.swapped=false;}
         for(auto& mip:p.mips)mip.Remove();p.mips.clear();p.table={};p.input={};p.revision=0;
-        p.status="Requires stamps anchored to this receiver face";return;
+        p.status=input&&!input->error.empty()?input->error:"Requires stamps anchored to this receiver face";return;
     }
     const auto bindless=input->buffer->GetBufferView()->GetBindlessReadIndex();if(bindless.size()!=1)return;
-    if(p.revision!=input->revision||!p.world.IsClose(m_world))
+    if(p.revision!=input->revision||!p.world.IsClose(m_active->paintWorld))
     {
-        for(auto& mip:p.mips)mip.Remove();p.mips.clear();p.table={};p.revision=input->revision;p.world=m_world;p.input=input;
+        for(auto& mip:p.mips)mip.Remove();p.mips.clear();p.table={};p.revision=input->revision;p.world=m_active->paintWorld;p.input=input;
     }
     Set(p.material,"uvPaint.owner",input->token);Set(p.material,"uvPaint.prefixBuffer",bindless.begin()->second);Set(p.material,"uvPaint.face",p.hitFace);
     p.material->Compile();
-    bool ready=false;if(p.mode==2&&!p.material->NeedsCompile())ready=p.Bake(AZ::RPI::Scene::GetSceneForEntityId(m_entity),m_world);
+    bool ready=false;if(p.mode==2&&!p.material->NeedsCompile())ready=p.Bake(AZ::RPI::Scene::GetSceneForEntityId(m_entity),m_active->paintWorld);
     if(ready)
     {
         const auto index=p.table->GetBufferView()->GetBindlessReadIndex();if(index.size()!=1)return;

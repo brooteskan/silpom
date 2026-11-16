@@ -20,6 +20,10 @@ Unanchored legacy documents are ineligible. Conversion of existing paint must
 resolve against its existing receiver explicitly; a material/height texture
 shared by two objects is not an ownership key.
 
+The fixed prefix is capped at 32,768 dabs and 65,536 traversal nodes, matching
+the shader's bounded traversal. Oversized consolidated histories retain native
+replay and report the eligibility failure; they cannot publish an empty atlas.
+
 ## Surface and texture association
 
 The persistent source key is `(receiver entity ID, canonical face ID)`. A mesh
@@ -63,8 +67,13 @@ samples receive paint.
 The receiver shader either replays the fixed prefix or reads its atlas, then
 claims that paint entity's prefix token. The native composite shader skips that
 prefix only for the shader invocation that claimed it and renders the ordered
-live tail. Other receivers retain their normal native stream; anchored source
-dabs additionally carry a resolved receiving-face restriction.
+live tail. Native anchored dabs carry a receiver-instance token so the brush
+footprint can cover adjacent triangles of that receiver without leaking onto
+another object. The canonical face remains the stamp's center anchor and the
+single-face cache address; it does not clip native brush coverage. Color-only
+unbound streams retain front-to-back opacity early-out with receiver rejection.
+The native reference traversal also honors a prefix already applied by the UV
+material, so it never applies that prefix twice.
 
 Mode 0 uses the original material and full native stamp replay. Mode 1 uses the
 UV material with fixed-prefix replay. Mode 2 uses the UV material and atlas,
@@ -74,6 +83,8 @@ camera moves.
 
 Fixed source edits, stamp texture reloads, receiver transforms and generation
 changes invalidate derived resources. Live-tail edits retain the fixed atlas.
+The painter polls a transform/generation revision for every receiver referenced
+anywhere in the document, including after legacy entries and across layers.
 Disabling the cache pauses pending bake passes. Clearing the document or losing
 the receiver prevents stale cached paint from rendering.
 
@@ -95,3 +106,18 @@ faces, live-tail edits, invalid-face and zero-prefix cases, and close/ordinary/
 minified quality. The source level and height image hashes are checked without
 saving the level. Benchmark and image-quality results must be reported before
 expanding to multiple charts, layers or erase operations.
+
+The review fixes add portable tests for explicit R8/R16/R32 decoding, malformed
+payloads, scaled relief and slope normals, every referenced receiver's revision,
+and oversized prefix fallback. The production CPU geometry is included directly
+by the surface test and is also checked under AddressSanitizer. Each published
+mesh retains its source configuration, base scale and rigid transform, so a
+pending replacement cannot make old face records index a different surface.
+
+`Tests/test_native_paint_shader.py` executes the shipped native traversal through
+a C++ adapter with deterministic texture samples. It checks adjacent-triangle
+coverage, receiver isolation, opaque early-out and single prefix handoff in the
+reference path. `Tests/test_receiver_uv_analysis.py` supplies synthetic negative
+controls for replay normals, other-face normals and residual orphan/clear paint.
+These checks do not establish atlas quality or GPU performance; the opt-in
+acceptance limits above still apply.

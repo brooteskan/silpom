@@ -1,7 +1,8 @@
 """Isolated receiver-first tower proof; never saves the level.
 
-Run with SilPOM.Editor.Uv.dll. Samples are created only after querying an
-existing runtime receiver's canonical faces. No world-space paint cache exists.
+Run with the rebuilt SilPOM.Editor.dll and matching shader assets. Samples are
+created only after querying an existing runtime receiver's canonical faces.
+No world-space paint cache exists.
 """
 from pathlib import Path
 helper=Path(__file__).with_name('LightingEstimatorEditorSmoke.py')
@@ -139,6 +140,15 @@ def game():
             source_strokes.append(stroke)
         doc={'Layers':[{'Id':8000,'Name':'Receiver UV proof','Order':[s['Id'] for s in source_strokes]+[14000],
             'Strokes':source_strokes+[live]}],'NextId':epoch+10000,'FrozenThrough':epoch-1,'ReceiverUv':binding}
+        if os.environ.get('TG_RECEIVER_UV_SMOKE')!='1' and os.environ.get('TG_RECEIVER_UV_BAKE_SMOKE')!='1':
+            assert silpom.SilPomPlanarBenchmarkBus(bus.Broadcast,'CreateReference',tower,
+                'assets/silpomplanarab/irishfieldstonetowerwelded/wall/wall.azmaterial',1,1.,1.)
+            # Capture native rendering with no fixture paint before first
+            # submitting any fixture stamps or building their disposable atlas.
+            assert silpom.SilPomMeshRequestBus(bus.Event,'SetReceiverUvPaintMode',tower,0)
+            put({'Layers':[],'NextId':epoch,'FrozenThrough':epoch-1,'ReceiverUv':binding})
+            general.idle_wait_frames(60);camera(center,normal,.55);evidence('no-paint')
+            result['no_paint_baseline_before_fixture']=True
         put(doc);general.idle_wait_frames(90)
         assert silpom.DecalPaintRequestBus(bus.Event,'GetCompositeDabCount',canvas)==FIXED_COUNT
         assert silpom.DecalPaintRequestBus(bus.Event,'GetDabCount',canvas)==100
@@ -168,9 +178,6 @@ def game():
             result.update(passed=True,bake_smoke=True,stage='validated bake complete',saved_level_unchanged=LEVEL.read_bytes()==source,
                 heightmaps_unchanged=all(hashlib.sha256(p.read_bytes()).hexdigest()==h for p,h in height_hashes.items()))
             return
-        assert silpom.SilPomPlanarBenchmarkBus(bus.Broadcast,'CreateReference',tower,
-            'assets/silpomplanarab/irishfieldstonetowerwelded/wall/wall.azmaterial',1,1.,1.)
-        general.idle_wait_frames(60)
         for repeat,mode in enumerate([0,1,2,2,1,0]):
             assert silpom.SilPomMeshRequestBus(bus.Event,'SetReceiverUvPaintMode',tower,mode)
             general.idle_wait_frames(60)

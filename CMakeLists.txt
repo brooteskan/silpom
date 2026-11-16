@@ -29,6 +29,12 @@ if(NOT COMMAND o3de_gem_setup)
     add_executable(silpom_height_precision_tests Tests/HeightPrecisionTests.cpp)
     target_compile_features(silpom_height_precision_tests PRIVATE cxx_std_17)
     add_test(NAME SilPOM.HeightPrecision COMMAND silpom_height_precision_tests)
+    add_executable(silpom_receiver_surface_tests Tests/ReceiverSurfaceTests.cpp)
+    target_compile_features(silpom_receiver_surface_tests PRIVATE cxx_std_17)
+    add_test(NAME SilPOM.ReceiverSurface COMMAND silpom_receiver_surface_tests)
+    add_executable(silpom_receiver_paint_state_tests Tests/ReceiverPaintStateTests.cpp)
+    target_compile_features(silpom_receiver_paint_state_tests PRIVATE cxx_std_17)
+    add_test(NAME SilPOM.ReceiverPaintState COMMAND silpom_receiver_paint_state_tests)
     add_executable(silpom_visibility_tests Tests/VisibilityTests.cpp)
     target_compile_features(silpom_visibility_tests PRIVATE cxx_std_17)
     if(MSVC)
@@ -65,6 +71,10 @@ if(NOT COMMAND o3de_gem_setup)
         endforeach()
         set(SILPOM_PYTHON "" CACHE FILEPATH "Python with numpy/Pillow for Level 1 evaluation tests")
         if(SILPOM_PYTHON)
+        add_test(NAME SilPOM.ReceiverUvAnalysis COMMAND "${SILPOM_PYTHON}"
+            ${CMAKE_CURRENT_SOURCE_DIR}/Tests/test_receiver_uv_analysis.py)
+        add_test(NAME SilPOM.NativePaintShader COMMAND "${SILPOM_PYTHON}"
+            ${CMAKE_CURRENT_SOURCE_DIR}/Tests/test_native_paint_shader.py)
         add_test(NAME SilPOM.DirectionalEstimator.Models COMMAND "${SILPOM_PYTHON}"
             ${CMAKE_CURRENT_SOURCE_DIR}/Tests/DirectionalEstimatorModelTests.py)
             add_test(NAME SilPOM.DirectionalOcclusion COMMAND "${SILPOM_PYTHON}"

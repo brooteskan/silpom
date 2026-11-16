@@ -2,8 +2,9 @@
 #pragma once
 #if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
 float SilPomPaintHeight();
-static uint silpomPaintReceiverFace=0;
+static uint silpomPaintReceiverFace=0,silpomPaintReceiverOwner=0;
 #define DECAL_PAINT_RECEIVER_FACE() silpomPaintReceiverFace
+#define DECAL_PAINT_RECEIVER_OWNER() silpomPaintReceiverOwner
 #define DECAL_PAINT_HEIGHT() SilPomPaintHeight()
 #endif
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_MaterialInputs.azsli>
@@ -541,6 +542,7 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     silpomLitRotation=(float3x3)model;
     silpomLitOriginWS=mul(model,float4(f.origin,1)).xyz;
     silpomLitValid=!failed;silpomPaintReceiverFace=params.m_silpomHitFaceBase+IN.faceIndex;
+    silpomPaintReceiverOwner=params.m_silpomPaintReceiver;
 #endif
     float3 tangent=normalize(f.du-normal*dot(normal,f.du));
     float handedness=dot(cross(normal,tangent),f.dv)<0?-1:1;

@@ -118,6 +118,7 @@ public:
     virtual AZStd::vector<AZ::u32> GetProxyFaceOwners() const = 0;
     virtual AZStd::string GetPaintFacesJson() const=0;
     virtual bool ResolvePaintSurface(const PaintSurfacePoint&,PaintSurfaceSample&) const=0;
+    virtual AZ::u64 GetPaintSurfaceRevision() const=0;
     virtual bool FindPaintSurfacePoint(const AZ::Vector3&,const AZ::Vector3&,PaintSurfacePoint&,float&) const=0;
     virtual bool BeginReceiverUvPaint(AZ::EntityId,const AZStd::string&,const AZ::Vector4&,AZ::u32)=0;
     virtual bool SetReceiverUvPaintMode(AZ::u32)=0;
@@ -158,6 +159,7 @@ public:
     AZ::Vector3 GetAntiAliasingState() const override;
     AZStd::string GetPaintFacesJson() const override;
     bool ResolvePaintSurface(const PaintSurfacePoint&,PaintSurfaceSample&) const override;
+    AZ::u64 GetPaintSurfaceRevision() const override;
     bool FindPaintSurfacePoint(const AZ::Vector3&,const AZ::Vector3&,PaintSurfacePoint&,float&) const override;
     bool BeginReceiverUvPaint(AZ::EntityId,const AZStd::string&,const AZ::Vector4&,AZ::u32) override;
     bool SetReceiverUvPaintMode(AZ::u32) override;
@@ -181,6 +183,7 @@ private:
     void ConnectAssets();
     void Release(AZStd::unique_ptr<Generation>&);
     AZ::EntityId m_entity;
+    AZ::u64 m_paintSurfaceRevision=0;
     AZ::Transform m_world = AZ::Transform::CreateIdentity();
     AZ::Render::MeshFeatureProcessorInterface* m_processor = nullptr;
     AZ::Data::Asset<AZ::RPI::MaterialAsset> m_template{AZ::Data::AssetLoadBehavior::NoLoad};

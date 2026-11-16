@@ -118,10 +118,15 @@ repository. It leaves unrelated files alone. Reapplying is a no-op after all
 output hashes match. Exact installed decal shaders from `cd425e4`
 are upgraded using the separately hashed modification patches in `migrations/`.
 An edited predecessor is rejected and preserved; unknown revisions are not guessed.
-The exact `f9e3d7c` shader is upgraded through a separately hashed migration.
-The current target adds receiving-face restrictions for surface-addressed dabs
-and a material hook for claiming a fixed prefix. Ordinary materials do not
-compile the prefix-claim hook. The receiver-UV proof and its validation contract
+The exact `f9e3d7c`, `dada01d` stable and `dada01d` experimental shaders
+are upgraded through separately hashed migrations. Switching between the updated
+stable and experimental renderers retains the same exact-hash protections.
+The current target restricts surface-addressed dabs to their owning receiver,
+allowing the brush footprint to cross its canonical triangle edges. UV prefixes
+retain their explicit chart-face restriction. Receiver rejection also runs in
+the reversed alpha path, preserving opacity early-out, and both native traversal
+paths honor the material hook for claiming a fixed prefix. Ordinary materials do
+not compile the prefix-claim hook. The receiver-UV proof and its validation contract
 are documented in `../../Docs/ReceiverUvPaint.md`; its bake is explicitly selected
 on a bound receiver and does not create a world-space cache.
 
