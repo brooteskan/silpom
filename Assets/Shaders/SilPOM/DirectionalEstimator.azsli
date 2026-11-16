@@ -203,6 +203,34 @@ float SilPomDirectionalAmbientAccessibility()
     // Canonical samples are cosine weighted in the anchored base frame.
     // This is diffuse accessibility, not a specular occlusion estimate or an
     // environment-map-weighted radiance integral. No additional height probes.
+#if SP_ANGULAR_EDGES_AVAILABLE
+    if(o_silpomLightingEstimator==SilPomLightingEstimator::AngularEdges4)
+    {
+        // Ambient reach is zero: every direction uses the relief-top band.
+        // Cache the reciprocal root itself, keeping the two margin multiplies
+        // separate and in the same order as the general visibility query.
+        float threshold[4],inverseSin[4];
+        [unroll] for(uint k=0;k<4u;++k)
+        {
+            threshold[k]=silpomDirectionalCosines[k].w;
+            inverseSin[k]=rsqrt(max(1.0f-threshold[k]*threshold[k],1e-6f));
+        }
+        float total=0;
+        [loop] for(uint i=0;i<32u;++i)
+        {
+            float3 L=SilPomDirectionalSamples[i];
+            float margin=-1e20f;
+            [loop] for(uint k=0;k<4u;++k)
+            {
+                float capMargin=(clamp(dot(L,silpomDirectionalAxes[k]),-1.0f,1.0f)-threshold[k])
+                    *inverseSin[k]*silpomAngularInverseWidth[k];
+                margin=max(margin,capMargin);
+            }
+            total+=SilPomDirectionalLogistic(-margin);
+        }
+        return total/32.0f;
+    }
+#endif
     float total=0;
     [loop] for(uint i=0;i<32u;++i)
     {

@@ -27,5 +27,16 @@ void Main(uint3 tid:SV_DispatchThreadID)
         }
     }
     else SilPomDecodeDirectionalReceiver(q.x);
-    results[tid.x]=q.steps<0?SilPomDirectionalAmbientAccessibility():SilPomDirectionalVisibility(q.light,uint(q.steps),q.reach);
+    if(q.steps==-2)
+    {
+        // Compare the cache with the original general-query loop on the same
+        // device. Allow one float32 epsilon over the [0,1] output range:
+        // the driver can schedule the two loop forms differently.
+        float reference=0;
+        [loop] for(uint i=0;i<32u;++i)
+            reference+=SilPomDirectionalFrameVisibility(SilPomDirectionalSamples[i],16u,0.0f);
+        reference/=32.0f;
+        results[tid.x]=abs(reference-SilPomDirectionalAmbientAccessibility())<=1.192092896e-7f?0.0f:1.0f;
+    }
+    else results[tid.x]=q.steps<0?SilPomDirectionalAmbientAccessibility():SilPomDirectionalVisibility(q.light,uint(q.steps),q.reach);
 }
