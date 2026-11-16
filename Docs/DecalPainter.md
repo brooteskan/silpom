@@ -29,10 +29,11 @@ Layer visibility, opacity and transforms still apply to the whole layer/entity.
 Old prefabs migrate automatically on activation; save the level/prefab to persist
 the new representation.
 
-The Composite is a compiled **3D projection stream**, not a flat texture bake.
-It evaluates paint at the resolved SILPOM surface position and works with ordinary
-meshes too. One ordered spatial hierarchy renders the entity's fixed paint and
-live tail in **one decal batch**. It skips projections whose bounds do not cover
+The Composite retains a compiled **3D projection stream**. An experimental
+[color/normal cache](DecalPaintBake.md) is disabled after its benchmark showed
+regressions. Normal builds continue evaluating the ordered projections at the
+resolved SILPOM surface position and work with ordinary meshes too. One ordered spatial hierarchy renders the entity's fixed paint and
+live tail in **up to 32 spatial decal batches**. It skips projections whose bounds do not cover
 the shaded point; color-only alpha paint also stops once residual transmittance
 falls below 0.00001. Other blend modes and normal paint preserve their full
 forward evaluation order. No lighting is baked into the paint.
@@ -149,9 +150,9 @@ neural model, physics, or the stair materials. Projection depth controls how
 thick a volume receives a dab. Use a shallow depth where nearby walls should
 remain separate. Back-facing surfaces are rejected by angle attenuation.
 
-Gameplay sky gaps at 2× MSAA were traced independently of paint to disabled
-wall recovery. The 2× path now retains the inset wall backing used at 1×;
-single-sample surface hits and the experimental 4× policy are unchanged. The
+Gameplay sky gaps at 2Ãƒâ€” MSAA were traced independently of paint to disabled
+wall recovery. The 2Ãƒâ€” path now retains the inset wall backing used at 1Ãƒâ€”;
+single-sample surface hits and the experimental 4Ãƒâ€” policy are unchanged. The
 `decal_gameplay_coverage_smoke.py` / `DecalGameplayCoverageVisualTests.py`
 comparison disables paint and checks matched interior/exterior gameplay views.
 
@@ -180,11 +181,11 @@ and watch the pressure readout before tuning the brush response.
 ## Rendering and limits
 
 The latest 100 placements remain editable and serializable alongside the fixed
-Composite. Each paint entity supports 64 layers and one render batch. A retained
+Composite. Each paint entity supports 64 layers and up to 32 spatial render batches. A retained
 invisible material anchor per brush keeps its packed texture indices valid; these
 anchors do not occupy GPU light-list slots. There is no entity per dab, and no
 readback or tablet processing in a game build. The renderer's texture-array and
-scene culling limits still apply to distinct materials and paint entities.
+scene culling limits still apply to native batches and distinct materials. A paint entity shares its original material textures across its spatial batches.
 
 For diagnostics, `r_silpomPaintCompositeReference true` evaluates the same stream
 without spatial skipping or the alpha early-out. Restore it to `false` after

@@ -1,0 +1,48 @@
+{
+  "Type": "JsonSerialization",
+  "Version": 1,
+  "ClassName": "PassAsset",
+  "ClassData": {
+    "PassTemplate": {
+      "Name": "SilPOMPaintBakeFinalizeTemplate",
+      "PassClass": "FullScreenTriangle",
+      "Slots": [
+        {
+          "Name": "Scale",
+          "SlotType": "Input",
+          "ScopeAttachmentUsage": "Shader",
+          "ShaderInputName": "m_scale"
+        },
+        {
+          "Name": "Bias",
+          "SlotType": "Input",
+          "ScopeAttachmentUsage": "Shader",
+          "ShaderInputName": "m_bias"
+        },
+        {
+          "Name": "Normal",
+          "SlotType": "Input",
+          "ScopeAttachmentUsage": "Shader",
+          "ShaderInputName": "m_normal"
+        },
+        {
+          "Name": "Receiver",
+          "SlotType": "Input",
+          "ScopeAttachmentUsage": "Shader",
+          "ShaderInputName": "m_receiver"
+        },
+        {
+          "Name": "Status",
+          "SlotType": "Output",
+          "ScopeAttachmentUsage": "RenderTarget"
+        }
+      ],
+      "PassData": {
+        "$type": "FullscreenTrianglePassData",
+        "ShaderAsset": {
+          "FilePath": "Shaders/SilPOM/PaintBakeFinalize.shader"
+        }
+      }
+    }
+  }
+}

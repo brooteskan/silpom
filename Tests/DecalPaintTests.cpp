@@ -4,6 +4,7 @@
 #define emit
 #include "../Include/SilPOM/DecalPaintMath.h"
 #include "../Include/SilPOM/DecalCompositeMath.h"
+#include "../Include/SilPOM/DecalBakeMath.h"
 #undef emit
 #include <vector>
 #include <cstdio>
@@ -18,6 +19,97 @@ std::vector<Point> Samples(const std::vector<Point>& path,bool pressure=false,si
 }
 int main()
 {
+    for(auto span:{Vec{.01f,1,4},Vec{20,20,20},Vec{.2f,.2f,.2f}})
+    {
+        const Bounds box{{-1,-2,-3},span-Vec{1,2,3}};
+        const auto grid=MakeBakeGrid(box,128,4*1024*1024);
+        Require(grid.Bytes()<=4*1024*1024&&grid.x>=2&&grid.y>=2&&grid.z>=2,"Baked fields obey their image-byte budget");
+        Require(grid.width==(grid.x+2)*grid.columns&&grid.height>=(grid.y+2)*(grid.z*4/grid.columns),"Height variants and slice gutters fit their atlas");
+    }
+    {
+        const auto strip=MakeBakeGrid(Bounds{{0,0,0},{3,.01f,.01f}},128,4*1024*1024,1);
+        Require(strip.x>128&&strip.Bytes()<=4*1024*1024,"Long thin paint fields retain their requested density without wasting it on square atlas tiles");
+    }
+    Require(BakeBlendSupported(0)&&BakeBlendSupported(1)&&BakeBlendSupported(3)&&!BakeBlendSupported(2)&&!BakeBlendSupported(4),"Non-affine modes retain projection fallback");
+    for(float original:{0.f,.17f,.5f,1.f})
+    {
+        float forward=original,scale=1,bias=0;
+        for(unsigned i=0;i<300;++i)
+        {
+            const float a=float((i*7)%31)/31,c=float((i*11)%29)/29;
+            const unsigned mode=i%3==0?0:(i%3==1?1:3);const bool erase=i%13==0;
+            const float target=erase?original:(mode==1?forward*c:(mode==3?1-(1-forward)*(1-c):c));
+            forward=forward*(1-a)+target*a;BakeColor(c,a,mode,erase,scale,bias);
+        }
+        Require(std::abs(forward-(scale*original+bias))<1e-5f,"Baked affine color preserves mixed operation and erase order");
+    }
+    float bound=2;for(unsigned i=0;i<20;++i)bound=NormalDependence(bound,.8f);
+    Require(bound<.005f&&bound>.002f,"Dense normals converge with rounding allowance");
+    for(auto start:{Vec{1,0,0},Vec{-1,0,0},Vec{0,1,0},Vec{0,-1,0},Vec{0,0,1},Vec{0,0,-1}})
+    {
+        Vec a=start,b{0,0,1};float u=2;
+        for(unsigned i=0;i<20;++i)
+        {
+            const Vec target=Vec{float(i%3)*.3f,.2f,1}.Normalized();
+            a=(a*.2f+target*.8f).Normalized();b=(b*.2f+target*.8f).Normalized();u=NormalDependence(u,.8f);
+            Require((a-b).Length()<=u,"Normal convergence bound covers differing incoming base normals");
+        }
+    }
+    Require(NormalDependence(2,.5f)==2&&NormalDependence(2,1)==0,"Uncertain half blends fall back; full normal replacement is independent");
+    for(auto start:{Vec{1,0,0},Vec{-1,0,0},Vec{0,1,0},Vec{0,0,-1}})
+    for(float nominal:{.2f,.499f,.5f,.8f,.9999f})
+    {
+        Vec a=start,b{0,0,1};float u=2;
+        const float low=std::max(0.f,nominal-.0001f),high=std::min(1.f,nominal+.0001f);
+        for(unsigned i=0;i<50;++i)
+        {
+            const Vec target=Vec{float(i%3)*.3f,.2f,1}.Normalized();
+            const float actual=i%2?low:high;
+            a=(a*(1-actual)+target*actual).Normalized();b=(b*(1-nominal)+target*nominal).Normalized();
+            u=NormalIntervalDependence(u,nominal,low,high);
+            Require((a-b).Length()<=u+1e-6f,"Normal interval bound covers different receiver-angle attenuation and base normals");
+        }
+    }
+    for(float alpha:{.2f,.4f,.5f,.8f})
+    for(unsigned axis=0;axis<12;++axis)
+    {
+        const float angle=float(axis)*.5235988f;
+        Vec a{std::cos(angle)*.7f,std::sin(angle)*.7f,.7141428f},b{0,0,1};float u=.765367f;
+        for(unsigned i=0;i<100;++i)
+        {
+            const float turn=float(i)*.731f;
+            const Vec target{std::cos(turn)*.7f,std::sin(turn)*.7f,.7141428f};
+            const float actual=alpha+(i%2?-.0001f:.0001f);
+            a=(a*(1-actual)+target*actual).Normalized();b=(b*(1-alpha)+target*alpha).Normalized();
+            u=NormalConeDependence(u,alpha,alpha-.0001f,alpha+.0001f);
+            Require((a-b).Length()<=u+1e-6f,"Validated hemisphere cone covers weak-opacity normal chains and receiver-angle uncertainty");
+        }
+        if(alpha>=.5f)Require(u<.01f,"Dense moderate-opacity paint can certify its normal cache without accepting opposite-facing base normals");
+    }
+    for(unsigned split=1;split<80;++split)
+    {
+        float forward=.3f,scale=1,bias=0;
+        for(unsigned i=0;i<split;++i)
+        {
+            float a=float((i*7)%19)/19,c=float((i*13)%17)/17;bool erase=i%11==0;
+            forward=forward*(1-a)+(erase?.3f:c)*a;BakeColor(c,a,0,erase,scale,bias);
+        }
+        for(unsigned i=split;i<100;++i)
+        {float a=float((i*7)%19)/19,c=float((i*13)%17)/17;forward=forward*(1-a)+(i%11==0?.3f:c)*a;}
+        float color=0,alpha=0,weight=1;
+        for(unsigned i=100;i-->split;)
+        {
+            float a=float((i*7)%19)/19,c=float((i*13)%17)/17;
+            if(i%11!=0){color+=weight*a*c;alpha+=weight*a;}weight*=1-a;
+        }
+        color+=weight*bias;alpha+=weight*(1-scale);
+        Require(std::abs(forward-(color+(1-alpha)*.3f))<1e-5f,"Baked fixed prefix composes with reverse live alpha and layer erase");
+    }
+    for(unsigned i=0;i<100;++i)
+    {
+        const float x=(i+.5f)/100;Bounds thin{{x,-.001f,-.001f},{x+.00001f,.001f,.001f}};
+        for(float corner:{0.f,1.f})Require(Bounds{{corner-1,-1,-1},{corner+1,1,1}}.Intersects(thin),"Conservative bake neighbourhoods cannot drop thin stamps");
+    }
     // Spatial grouping must yield exactly the original ordered stream at every
     // point, including split planes and dabs spanning many cells. This protects
     // every blend/normal/erase/layer operation, not just commutative alpha.

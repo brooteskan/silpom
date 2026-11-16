@@ -115,7 +115,20 @@ python "$tgProject/EngineIntegration/O3DE/apply.py" --engine $engineSource --pro
 repositories' exact HEAD revisions and all touched-file hashes before changing
 either repository. It never resets, cleans, checks out, commits or pushes a
 repository. It leaves unrelated files alone. Reapplying is a no-op after all
-output hashes match. `--verify-only` also supports the original source copy
+output hashes match. Exact installed decal shaders from `cd425e4`
+are upgraded using the separately hashed modification patches in `migrations/`.
+An edited predecessor is rejected and preserved; unknown revisions are not guessed.
+The current `f9e3d7c` shader already matches the stable target and needs no change.
+
+The rejected color/normal bake prototype is isolated under `experiments/`.
+Only `apply.py --experimental-paint-bake` installs it; verification needs the same
+flag. The default installer restores an exact, unedited experimental shader to
+stable. It refuses edited experiments. This prototype was slower in the measured
+cases and its accepted normal samples failed quality checks. It is disabled in
+the native painter and excluded from the default engine patch. See
+`../../Docs/DecalPaintBakeBenchmark.md` for measurements. Installing or restoring
+it requires a full dependent shader/material asset rebuild.
+`--verify-only` also supports the original source copy
 without Git metadata; it requires every patched file to match.
 
 `validate_bundle.py --baseline <existing-O3DE-checkout> --terrain <existing-terrain-checkout>

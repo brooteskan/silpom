@@ -1,0 +1,628 @@
+{
+  "date": "2026-11-15",
+  "status": "rejected experiment; disabled by default; stable shader restored",
+  "base_commit": "f9e3d7c6c9ae67e8bbcb6e24f6bda15acfb1d8af",
+  "hardware": {
+    "gpu": {
+      "Name": "AMD Radeon RX 7900 XTX",
+      "DriverVersion": "32.0.32015.7029"
+    },
+    "cpu": {
+      "Name": "AMD Ryzen 7 2700 Eight-Core Processor          "
+    }
+  },
+  "configuration": "profile; DX12 Shader Model 6.7; gameplay 1280x720; 2x MSAA",
+  "method": "Original spatial build: two repeats; experimental build: matched ABBA cache 0,1,1,0, 180 GPU timestamp frames per view/run after warmup; captures and baking excluded from steady-state timings",
+  "level_sha256": "a0cd36ade8a6ef7fb9492908556e93ca61c022e2450685ae1eacff8018d51689",
+  "level_unchanged": true,
+  "stable_before": {
+    "saved-inside": {
+      "gpu_span_ms": 7.1,
+      "hit_forward_ms": 1.6212499999999999
+    },
+    "saved-outside": {
+      "gpu_span_ms": 6.324,
+      "hit_forward_ms": 1.17275
+    },
+    "spread-inside": {
+      "gpu_span_ms": 19.76375,
+      "hit_forward_ms": 13.34675
+    },
+    "spread-outside": {
+      "gpu_span_ms": 6.793749999999999,
+      "hit_forward_ms": 1.565
+    }
+  },
+  "prototype_abba": {
+    "patch-patch": {
+      "off": {
+        "gpu_span_ms": 9.306999999999999,
+        "hit_forward_ms": 4.615499999999999,
+        "cpu_frame_period_ms": 10.868
+      },
+      "on": {
+        "gpu_span_ms": 9.903749999999999,
+        "hit_forward_ms": 4.99875,
+        "cpu_frame_period_ms": 11.268275
+      },
+      "percent": {
+        "gpu_span_ms": 6.41184055012356,
+        "hit_forward_ms": 8.303542411439736,
+        "cpu_frame_period_ms": 3.6830603606919254
+      }
+    },
+    "saved-inside": {
+      "off": {
+        "gpu_span_ms": 8.152000000000001,
+        "hit_forward_ms": 2.50325,
+        "cpu_frame_period_ms": 11.009525
+      },
+      "on": {
+        "gpu_span_ms": 8.1685,
+        "hit_forward_ms": 2.485,
+        "cpu_frame_period_ms": 10.956525
+      },
+      "percent": {
+        "gpu_span_ms": 0.2024043179587709,
+        "hit_forward_ms": -0.7290522320982817,
+        "cpu_frame_period_ms": -0.4814013320284083
+      }
+    },
+    "saved-outside": {
+      "off": {
+        "gpu_span_ms": 6.3895,
+        "hit_forward_ms": 1.2742499999999999,
+        "cpu_frame_period_ms": 10.997225
+      },
+      "on": {
+        "gpu_span_ms": 6.453749999999999,
+        "hit_forward_ms": 1.3425,
+        "cpu_frame_period_ms": 11.15355
+      },
+      "percent": {
+        "gpu_span_ms": 1.0055559902965694,
+        "hit_forward_ms": 5.3560918187169015,
+        "cpu_frame_period_ms": 1.4214949680487532
+      }
+    },
+    "spread-inside": {
+      "off": {
+        "gpu_span_ms": 47.105999999999995,
+        "hit_forward_ms": 38.132999999999996,
+        "cpu_frame_period_ms": 47.319925
+      },
+      "on": {
+        "gpu_span_ms": 46.744,
+        "hit_forward_ms": 38.05225,
+        "cpu_frame_period_ms": 47.0243
+      },
+      "percent": {
+        "gpu_span_ms": -0.7684795992017879,
+        "hit_forward_ms": -0.21175884404582845,
+        "cpu_frame_period_ms": -0.6247368312608303
+      }
+    },
+    "spread-outside": {
+      "off": {
+        "gpu_span_ms": 7.36175,
+        "hit_forward_ms": 2.2065,
+        "cpu_frame_period_ms": 10.985925
+      },
+      "on": {
+        "gpu_span_ms": 7.37975,
+        "hit_forward_ms": 2.2045000000000003,
+        "cpu_frame_period_ms": 11.199725
+      },
+      "percent": {
+        "gpu_span_ms": 0.2445070805175309,
+        "hit_forward_ms": -0.0906412871062634,
+        "cpu_frame_period_ms": 1.9461265209802514
+      }
+    }
+  },
+  "bakes": {
+    "saved": {
+      "batches": 32,
+      "materials": 1,
+      "unique_projections": 12940,
+      "projection_references": 17042,
+      "gpu_buffers": 1,
+      "gpu_bytes": 2730816,
+      "rebuild_ms": 43.905,
+      "baked_prefixes": 32,
+      "bake_pending": 0,
+      "bake_failed": 0,
+      "bake_bytes": 130317664,
+      "bake_wall_ms": 15824.751
+    },
+    "spread": {
+      "batches": 4,
+      "materials": 1,
+      "unique_projections": 4096,
+      "projection_references": 4600,
+      "gpu_buffers": 1,
+      "gpu_bytes": 736064,
+      "rebuild_ms": 7.7015,
+      "baked_prefixes": 0,
+      "bake_pending": 0,
+      "bake_failed": 0,
+      "bake_bytes": 0,
+      "bake_wall_ms": 0.0
+    },
+    "patch": {
+      "batches": 1,
+      "materials": 1,
+      "unique_projections": 2048,
+      "projection_references": 2048,
+      "gpu_buffers": 1,
+      "gpu_bytes": 327776,
+      "rebuild_ms": 2.3396,
+      "baked_prefixes": 1,
+      "bake_pending": 0,
+      "bake_failed": 0,
+      "bake_bytes": 4204808,
+      "bake_wall_ms": 574.996
+    }
+  },
+  "comparisons": {
+    "patch-patch": {
+      "hit_records_identical": true,
+      "diffuse_linear": {
+        "pixels": 921600,
+        "mean": 9.328317007728515e-10,
+        "rms": 1.516302035042827e-07,
+        "p99": 0.0,
+        "maximum": 7.593631744384766e-05
+      },
+      "normal_degrees": {
+        "pixels": 921600,
+        "mean": 0.0004654005460906774,
+        "rms": 0.05941060185432434,
+        "p99": 0.0,
+        "maximum": 15.8529691696167
+      },
+      "coverage": {
+        "baked": 71,
+        "empty": 0,
+        "fallback": 4662
+      },
+      "rejection_reasons": {
+        "footprint": 1041,
+        "attenuation_error": 0,
+        "receiver_normal": 667,
+        "normal_dependence": 0,
+        "bounds": 2954,
+        "nonfinite_or_hdr": 0,
+        "incoming_normal_cone": 0
+      },
+      "baked_diffuse_linear": {
+        "pixels": 71,
+        "mean": 1.2108417649869807e-05,
+        "rms": 1.7275386198889464e-05,
+        "p99": 6.463765748776495e-05,
+        "maximum": 7.593631744384766e-05
+      },
+      "baked_normal_degrees": {
+        "pixels": 71,
+        "mean": 6.0410308837890625,
+        "rms": 6.768711566925049,
+        "p99": 13.173654556274414,
+        "maximum": 15.8529691696167
+      },
+      "visible_paint_pixels": 705,
+      "visible_normal_paint_pixels": 1184,
+      "baked_visible_paint_pixels": 71,
+      "painted_diffuse_linear": {
+        "pixels": 1184,
+        "mean": 7.26096004655119e-07,
+        "rms": 4.230396825732896e-06,
+        "p99": 2.0843745005549863e-05,
+        "maximum": 7.593631744384766e-05
+      },
+      "painted_normal_degrees": {
+        "pixels": 1184,
+        "mean": 0.362257719039917,
+        "rms": 1.6575220823287964,
+        "p99": 9.158280372619629,
+        "maximum": 15.8529691696167
+      },
+      "baked_painted_diffuse_linear": {
+        "pixels": 71,
+        "mean": 1.2108417649869807e-05,
+        "rms": 1.7275386198889464e-05,
+        "p99": 6.463765748776495e-05,
+        "maximum": 7.593631744384766e-05
+      },
+      "baked_painted_normal_degrees": {
+        "pixels": 71,
+        "mean": 6.0410308837890625,
+        "rms": 6.768711566925049,
+        "p99": 13.173654556274414,
+        "maximum": 15.8529691696167
+      }
+    },
+    "saved-inside": {
+      "hit_records_identical": true,
+      "diffuse_linear": {
+        "pixels": 879371,
+        "mean": 0.0,
+        "rms": 0.0,
+        "p99": 0.0,
+        "maximum": 0.0
+      },
+      "normal_degrees": {
+        "pixels": 879371,
+        "mean": 0.0,
+        "rms": 0.0,
+        "p99": 0.0,
+        "maximum": 0.0
+      },
+      "coverage": {
+        "baked": 0,
+        "empty": 509507,
+        "fallback": 369856
+      },
+      "rejection_reasons": {
+        "footprint": 359325,
+        "attenuation_error": 393,
+        "receiver_normal": 1185,
+        "normal_dependence": 137,
+        "bounds": 8816,
+        "nonfinite_or_hdr": 0,
+        "incoming_normal_cone": 0
+      },
+      "baked_diffuse_linear": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      },
+      "baked_normal_degrees": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      },
+      "visible_paint_pixels": 56158,
+      "visible_normal_paint_pixels": 63844,
+      "baked_visible_paint_pixels": 0,
+      "painted_diffuse_linear": {
+        "pixels": 63927,
+        "mean": 0.0,
+        "rms": 0.0,
+        "p99": 0.0,
+        "maximum": 0.0
+      },
+      "painted_normal_degrees": {
+        "pixels": 63927,
+        "mean": 0.0,
+        "rms": 0.0,
+        "p99": 0.0,
+        "maximum": 0.0
+      },
+      "baked_painted_diffuse_linear": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      },
+      "baked_painted_normal_degrees": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      }
+    },
+    "saved-outside": {
+      "hit_records_identical": true,
+      "diffuse_linear": {
+        "pixels": 358248,
+        "mean": 0.0,
+        "rms": 0.0,
+        "p99": 0.0,
+        "maximum": 0.0
+      },
+      "normal_degrees": {
+        "pixels": 358248,
+        "mean": 0.0,
+        "rms": 0.0,
+        "p99": 0.0,
+        "maximum": 0.0
+      },
+      "coverage": {
+        "baked": 0,
+        "empty": 47226,
+        "fallback": 69799
+      },
+      "rejection_reasons": {
+        "footprint": 55665,
+        "attenuation_error": 0,
+        "receiver_normal": 733,
+        "normal_dependence": 0,
+        "bounds": 13401,
+        "nonfinite_or_hdr": 0,
+        "incoming_normal_cone": 0
+      },
+      "baked_diffuse_linear": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      },
+      "baked_normal_degrees": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      },
+      "visible_paint_pixels": 84,
+      "visible_normal_paint_pixels": 131,
+      "baked_visible_paint_pixels": 0,
+      "painted_diffuse_linear": {
+        "pixels": 133,
+        "mean": 0.0,
+        "rms": 0.0,
+        "p99": 0.0,
+        "maximum": 0.0
+      },
+      "painted_normal_degrees": {
+        "pixels": 133,
+        "mean": 0.0,
+        "rms": 0.0,
+        "p99": 0.0,
+        "maximum": 0.0
+      },
+      "baked_painted_diffuse_linear": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      },
+      "baked_painted_normal_degrees": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      }
+    },
+    "spread-inside": {
+      "hit_records_identical": true,
+      "diffuse_linear": {
+        "pixels": 879371,
+        "mean": 0.0,
+        "rms": 0.0,
+        "p99": 0.0,
+        "maximum": 0.0
+      },
+      "normal_degrees": {
+        "pixels": 879371,
+        "mean": 0.0,
+        "rms": 0.0,
+        "p99": 0.0,
+        "maximum": 0.0
+      },
+      "coverage": {
+        "baked": 0,
+        "empty": 0,
+        "fallback": 7
+      },
+      "rejection_reasons": {
+        "footprint": 7,
+        "attenuation_error": 0,
+        "receiver_normal": 0,
+        "normal_dependence": 0,
+        "bounds": 0,
+        "nonfinite_or_hdr": 0,
+        "incoming_normal_cone": 0
+      },
+      "baked_diffuse_linear": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      },
+      "baked_normal_degrees": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      },
+      "visible_paint_pixels": 0,
+      "visible_normal_paint_pixels": 0,
+      "baked_visible_paint_pixels": 0,
+      "painted_diffuse_linear": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      },
+      "painted_normal_degrees": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      },
+      "baked_painted_diffuse_linear": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      },
+      "baked_painted_normal_degrees": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      }
+    },
+    "spread-outside": {
+      "hit_records_identical": true,
+      "diffuse_linear": {
+        "pixels": 358248,
+        "mean": 0.0,
+        "rms": 0.0,
+        "p99": 0.0,
+        "maximum": 0.0
+      },
+      "normal_degrees": {
+        "pixels": 358248,
+        "mean": 0.0,
+        "rms": 0.0,
+        "p99": 0.0,
+        "maximum": 0.0
+      },
+      "coverage": {
+        "baked": 0,
+        "empty": 0,
+        "fallback": 12
+      },
+      "rejection_reasons": {
+        "footprint": 12,
+        "attenuation_error": 0,
+        "receiver_normal": 0,
+        "normal_dependence": 0,
+        "bounds": 0,
+        "nonfinite_or_hdr": 0,
+        "incoming_normal_cone": 0
+      },
+      "baked_diffuse_linear": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      },
+      "baked_normal_degrees": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      },
+      "visible_paint_pixels": 0,
+      "visible_normal_paint_pixels": 0,
+      "baked_visible_paint_pixels": 0,
+      "painted_diffuse_linear": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      },
+      "painted_normal_degrees": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      },
+      "baked_painted_diffuse_linear": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      },
+      "baked_painted_normal_degrees": {
+        "pixels": 0,
+        "mean": 0,
+        "rms": 0,
+        "p99": 0,
+        "maximum": 0
+      }
+    }
+  },
+  "quality_checks": {
+    "patch-patch": false
+  },
+  "paint_cache_exercised": true,
+  "implementation_sha256": {
+    "Gems\\silpom\\Tests\\decal_bake_benchmark.py": "7c25c81311384c35eef0de34ae10d5a7da4b648931edec88122da0ea103d0d23",
+    "Gems\\silpom\\Assets\\Shaders\\SilPOM\\PaintBake.azsl": "badc74178d59ca3efd48b8b7577a8d1e0c8d6eeb6cdefaa0fe98f34a2b23150d",
+    "user\\engine-source\\Gems\\Atom\\Feature\\Common\\Assets\\ShaderLib\\Atom\\Features\\PBR\\DecalComposite.azsli": "508d1273bf1300efd0102e5422c1305f7f54d1a0412f14219ccea8c9f3209ad7",
+    "build\\windows\\bin\\profile\\SilPOM.Editor.Bake.dll": "911c7e5cd734ae48fc13d7738fa7b22817595f8aaf44c1bf75f7cacdd81f7bd0"
+  },
+  "evidence": {
+    "before": "scratch/decal-bake/before",
+    "prototype": "scratch/decal-bake/after-cone",
+    "crash_corrected_check": "scratch/decal-bake/qa-pool-fix",
+    "restored": "scratch/decal-bake/after-restore",
+    "smoke": "scratch/decal-bake/final-composite-smoke.json"
+  },
+  "conclusion": "No production benefit. The saved tower views accepted no painted field samples. Normal error exceeded thresholds in the dense patch. Merely including the experimental shader also regressed the no-bake path; stable default engine integration therefore retains the f9e3d7c shader. Experimental install and exact restoration are separate opt-in paths.",
+  "limitations": [
+    "GPU span includes inter-pass waits; CPU frame period includes waits, not isolated CPU work.",
+    "Finite world-space field resampling is not a receiver-surface UV bake.",
+    "Benchmarks do not justify shipping this cache.",
+    "Image payload excludes driver alignment/pool overhead."
+  ],
+  "restored_stable": {
+    "passed": true,
+    "gpu_times": {
+      "patch-patch": {
+        "gpu_span_ms": 8.068,
+        "hit_forward_ms": 3.646
+      },
+      "saved-inside": {
+        "gpu_span_ms": 7.01525,
+        "hit_forward_ms": 1.609
+      },
+      "saved-outside": {
+        "gpu_span_ms": 6.05575,
+        "hit_forward_ms": 1.0995
+      },
+      "spread-inside": {
+        "gpu_span_ms": 19.7305,
+        "hit_forward_ms": 13.359
+      },
+      "spread-outside": {
+        "gpu_span_ms": 6.664,
+        "hit_forward_ms": 1.5095
+      }
+    },
+    "implementation_sha256": {
+      "Gems\\silpom\\Tests\\decal_bake_benchmark.py": "b07da787e1262a9cfc136d8e4c81448ebcc73fd15591af3a410109ad9cd4b9e9",
+      "Gems\\silpom\\Assets\\Shaders\\SilPOM\\PaintBake.azsl": "badc74178d59ca3efd48b8b7577a8d1e0c8d6eeb6cdefaa0fe98f34a2b23150d",
+      "user\\engine-source\\Gems\\Atom\\Feature\\Common\\Assets\\ShaderLib\\Atom\\Features\\PBR\\DecalComposite.azsli": "5aef9ffe098032db4bbb4ec78ea988d2bcdc4086951d6712c02f0af6f99be9e1",
+      "build\\windows\\bin\\profile\\SilPOM.Editor.dll": "72b870ed21104689f6c373c683cbd5fdf46d25ef5a413d55d3f143a0163fc755"
+    },
+    "source_shader_sha256": "5aef9ffe098032db4bbb4ec78ea988d2bcdc4086951d6712c02f0af6f99be9e1",
+    "scene_unchanged": true,
+    "editor_exit_code": 0
+  },
+  "validation": {
+    "portable_paint_math": "passed",
+    "stable_and_experimental_bundle_lf_crlf": "passed",
+    "painter_composite_smoke": "passed",
+    "smoke_editor_assertions": 0,
+    "smoke_reference_errors": {
+      "mixed": {
+        "mean": 0.0,
+        "maximum": 0
+      },
+      "alpha": {
+        "mean": 0.00019837333862328903,
+        "maximum": 1
+      }
+    },
+    "smoke_long_gesture": {
+      "live": 100,
+      "fixed": 725
+    },
+    "prototype_normal_quality": "failed; intentionally not enabled"
+  }
+}

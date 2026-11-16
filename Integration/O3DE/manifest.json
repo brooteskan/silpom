@@ -72,7 +72,19 @@
         {
           "path": "Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalComposite.azsli",
           "before_sha256": null,
-          "after_sha256": "5aef9ffe098032db4bbb4ec78ea988d2bcdc4086951d6712c02f0af6f99be9e1"
+          "after_sha256": "5aef9ffe098032db4bbb4ec78ea988d2bcdc4086951d6712c02f0af6f99be9e1",
+          "upgrade_from": [
+            {
+              "before_sha256": "a6f5594527e481cdfa26da02bce375c8bff5f2c06ad49c82a9af2f5eda2abb71",
+              "patch": "migrations/paint-composite-cd425e4.patch",
+              "patch_sha256": "476afbcf04e8ad4c790234bd9c85d4b6cc0ab87fae60ff43670a56571bdb1f55"
+            },
+            {
+              "before_sha256": "508d1273bf1300efd0102e5422c1305f7f54d1a0412f14219ccea8c9f3209ad7",
+              "patch": "experiments/paint-bake-restore.patch",
+              "patch_sha256": "95fba33fca215a37adad75a5d92f251fc505f591dae97a4cde5a82b192190bbd"
+            }
+          ]
         },
         {
           "path": "Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Decals.azsli",
@@ -500,5 +512,28 @@
         }
       ]
     }
-  ]
+  ],
+  "experimental_paint_bake": {
+    "bundle": "tg-o3de-20261115-paint-bake-experimental",
+    "status": "rejected prototype: slower, normal resampling error; explicit opt-in only",
+    "patch": "experiments/paint-bake.patch",
+    "patch_sha256": "5eb37992c6ba79e6a340a8b82168abdb7673239b1b279b4d3574dda93cb4e432",
+    "file": {
+      "path": "Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalComposite.azsli",
+      "before_sha256": null,
+      "after_sha256": "508d1273bf1300efd0102e5422c1305f7f54d1a0412f14219ccea8c9f3209ad7",
+      "upgrade_from": [
+        {
+          "before_sha256": "a6f5594527e481cdfa26da02bce375c8bff5f2c06ad49c82a9af2f5eda2abb71",
+          "patch": "experiments/paint-bake-cd425e4.patch",
+          "patch_sha256": "c6007973e40f061811aa817e04946a74756cc9294589a59b2bf48d3485d24b9e"
+        },
+        {
+          "before_sha256": "5aef9ffe098032db4bbb4ec78ea988d2bcdc4086951d6712c02f0af6f99be9e1",
+          "patch": "migrations/paint-composite-f9e3d7c.patch",
+          "patch_sha256": "033bcd0eaa410d97a574b0b173001f06e6e2c715577e2f4a5ba377e75f6a9acb"
+        }
+      ]
+    }
+  }
 }

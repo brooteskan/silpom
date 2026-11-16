@@ -1,0 +1,55 @@
+{
+  "Type": "JsonSerialization",
+  "Version": 1,
+  "ClassName": "PassAsset",
+  "ClassData": {
+    "PassTemplate": {
+      "Name": "SilPOMPaintBakeTemplate",
+      "PassClass": "FullScreenTriangle",
+      "Slots": [
+        {
+          "Name": "Scale",
+          "SlotType": "Output",
+          "ScopeAttachmentUsage": "RenderTarget",
+          "LoadStoreAction": {
+            "LoadAction": "Load",
+            "StoreAction": "Store"
+          }
+        },
+        {
+          "Name": "Bias",
+          "SlotType": "Output",
+          "ScopeAttachmentUsage": "RenderTarget",
+          "LoadStoreAction": {
+            "LoadAction": "Load",
+            "StoreAction": "Store"
+          }
+        },
+        {
+          "Name": "Normal",
+          "SlotType": "Output",
+          "ScopeAttachmentUsage": "RenderTarget",
+          "LoadStoreAction": {
+            "LoadAction": "Load",
+            "StoreAction": "Store"
+          }
+        },
+        {
+          "Name": "Receiver",
+          "SlotType": "Output",
+          "ScopeAttachmentUsage": "RenderTarget",
+          "LoadStoreAction": {
+            "LoadAction": "Load",
+            "StoreAction": "Store"
+          }
+        }
+      ],
+      "PassData": {
+        "$type": "FullscreenTrianglePassData",
+        "ShaderAsset": {
+          "FilePath": "Shaders/SilPOM/PaintBake.shader"
+        }
+      }
+    }
+  }
+}

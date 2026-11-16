@@ -1,0 +1,166 @@
+// SPDX-License-Identifier: MIT
+#include <Atom/Features/SrgSemantics.azsli>
+#include <Atom/Features/PostProcessing/FullscreenVertex.azsli>
+#include <Atom/Features/MatrixUtility.azsli>
+#include <Atom/RPI/TangentSpace.azsli>
+#include <viewsrg_all.srgi>
+
+ShaderResourceGroup PassSrg : SRG_PerPass
+{
+    ByteAddressBuffer m_source;
+    float4 m_low;
+    float4 m_span;
+    uint4 m_grid;
+    uint2 m_rows;
+    SamplerState BakeSampler
+    {
+        MinFilter=Linear;MagFilter=Linear;MipFilter=Linear;
+        AddressU=Clamp;AddressV=Clamp;AddressW=Clamp;
+    };
+}
+struct BakeOutput {float4 scale:SV_Target0;float4 bias:SV_Target1;float4 normal:SV_Target2;float4 receiver:SV_Target3;};
+float3 SafeNormal(float3 n){return dot(n,n)>1e-12?normalize(n):float3(0,0,1);}
+float Dependence(float u,float a)
+{
+    if(a<=0)return u;
+    if(a>=1)return 0;
+    float d=abs(1-2*a)-.002;return d<1e-6?2:min(2,u*(1-a)/d+.002);
+}
+float Attenuation(float d,float factor){return lerp(1,smoothstep(.55,1,d),factor);}
+float IntervalDependence(float u,float alpha,float low,float high)
+{
+    if(high<=0)return u;
+    if(low>=1)return 0;
+    if(low<=.501&&high>=.499)return 2;
+    float denominator=min(abs(1-2*low),abs(1-2*high))-.002;
+    float delta=max(alpha-low,high-alpha);
+    return denominator<=0?2:min(2,((1-low)*u+2*delta)/denominator+.002);
+}
+float ConeDependence(float u,float alpha,float low,float high)
+{
+    if(high<=0)return u;
+    if(low>=1)return 0;
+    // Both normals lie in a 45-degree cone, so their mutual dot is >=0.
+    // The cone is convex under normalized positive blends. Runtime validates
+    // the incoming normal; every baked target is checked below.
+    float middle=clamp(.5,low,high);
+    float denominator=sqrt(1-2*middle*(1-middle))-.002;
+    return min(2,((1-low)*u+2*max(alpha-low,high-alpha))/denominator+.002);
+}
+void Maps(uint array,float3 uv,float2 dx,float2 dy,out float4 base,out float2 normal)
+{
+    base=0;normal=.5;
+    switch(array)
+    {
+        case 0:base=ViewSrg::m_decalTextureArrayDiffuse0.SampleGrad(PassSrg::BakeSampler,uv,dx,dy);normal=ViewSrg::m_decalTextureArrayNormalMaps0.SampleGrad(PassSrg::BakeSampler,uv,dx,dy).rg;break;
+        case 1:base=ViewSrg::m_decalTextureArrayDiffuse1.SampleGrad(PassSrg::BakeSampler,uv,dx,dy);normal=ViewSrg::m_decalTextureArrayNormalMaps1.SampleGrad(PassSrg::BakeSampler,uv,dx,dy).rg;break;
+        case 2:base=ViewSrg::m_decalTextureArrayDiffuse2.SampleGrad(PassSrg::BakeSampler,uv,dx,dy);normal=ViewSrg::m_decalTextureArrayNormalMaps2.SampleGrad(PassSrg::BakeSampler,uv,dx,dy).rg;break;
+        case 3:base=ViewSrg::m_decalTextureArrayDiffuse3.SampleGrad(PassSrg::BakeSampler,uv,dx,dy);normal=ViewSrg::m_decalTextureArrayNormalMaps3.SampleGrad(PassSrg::BakeSampler,uv,dx,dy).rg;break;
+        case 4:base=ViewSrg::m_decalTextureArrayDiffuse4.SampleGrad(PassSrg::BakeSampler,uv,dx,dy);normal=ViewSrg::m_decalTextureArrayNormalMaps4.SampleGrad(PassSrg::BakeSampler,uv,dx,dy).rg;break;
+    }
+}
+BakeOutput MainPS(VSOutput input)
+{
+    if(input.m_position.y<PassSrg::m_rows.x||input.m_position.y>=PassSrg::m_rows.y)discard;
+    const uint3 size=PassSrg::m_grid.xyz;
+    const uint2 tileSize=size.xy+2;
+    const uint2 pixel=uint2(input.m_position.xy),tile=pixel/tileSize;
+    const uint slice=tile.x+tile.y*PassSrg::m_grid.w,band=slice/size.z;
+    const float3 grid=float3(clamp(int2(pixel%tileSize)-1,int2(0,0),int2(size.xy)-1),slice%size.z);
+    const float3 step=PassSrg::m_span.xyz/(size-1);
+    const float3 p=PassSrg::m_low.xyz+grid*step;
+    float3 scale=1,bias=0,n=float3(0,0,1);
+    float dependence=2,identity=1,occupied=0,error=0;bool cone=true;
+    float3 receiver=float3(0,0,1);float nearest=3.4e38;
+    const uint4 header=PassSrg::m_source.Load4(0);
+    // A nearby projection supplies a receiver-normal candidate. The runtime
+    // accepts it only if all eight contributing lattice points agree with the
+    // actual receiver normal. Otherwise the original stream is evaluated.
+    uint node=0;
+    [loop] while(node<header.x)
+    {
+        uint4 lo=PassSrg::m_source.Load4(16+node*32),hi=PassSrg::m_source.Load4(32+node*32);
+        if(any(p+step<asfloat(lo.xyz))||any(p-step>asfloat(hi.xyz))){node=lo.w;continue;}
+        ++node;if(hi.w>=header.w)continue;
+        uint offset=header.y+hi.w*96;
+        float3 centre=asfloat(PassSrg::m_source.Load3(offset));
+        float distance=dot(p-centre,p-centre);
+        if(distance<nearest)
+        {
+            nearest=distance;
+            receiver=transpose(MatrixFromQuaternion(asfloat(PassSrg::m_source.Load4(offset+16))))[2];
+        }
+    }
+    n=receiver;
+    dependence=.765367; // Maximum distance from the centre of a 45-degree cone.
+    node=0;
+    [loop] while(band<uint(PassSrg::m_low.w)&&node<header.x)
+    {
+        uint4 lo=PassSrg::m_source.Load4(16+node*32),hi=PassSrg::m_source.Load4(32+node*32);
+        // Occupancy covers the entire trilinear interpolation neighbourhood,
+        // rather than only its lattice points. Thin stamps cannot disappear.
+        if(any(p+step<asfloat(lo.xyz))||any(p-step>asfloat(hi.xyz))){node=lo.w;continue;}
+        ++node;if(hi.w>=header.w)continue;
+        uint offset=header.y+hi.w*96;
+        uint4 a=PassSrg::m_source.Load4(offset),q=PassSrg::m_source.Load4(offset+16),h=PassSrg::m_source.Load4(offset+32);
+        uint4 d=PassSrg::m_source.Load4(offset+48),c=PassSrg::m_source.Load4(offset+64),meta=PassSrg::m_source.Load4(offset+80);
+        uint mask=(meta.x>>8)&7;
+        if(band==3?mask!=7:(mask&(1u<<band))==0)continue;
+        occupied=1;
+        float3x3 rotation=transpose(MatrixFromQuaternion(asfloat(q)));
+        float3 uvw=mul(rotation,p-asfloat(a.xyz))/asfloat(h.xyz);
+        if(any(uvw < -1)||any(uvw > 1))continue;
+        float2 footprint=float2(dot(abs(rotation[0]),step)/asfloat(h.x),dot(abs(rotation[1]),step)/asfloat(h.y))*.5;
+        float4 map;float2 normalMap;
+        Maps(d.z,float3(uvw.x*.5+.5,.5-uvw.y*.5,d.w),float2(footprint.x,0),float2(0,footprint.y),map,normalMap);
+        float facing=dot(receiver,rotation[2]);
+        float attenuation=Attenuation(facing,asfloat(h.w));
+        // Exact dot-product extrema over a 5.1-degree receiver-normal cone,
+        // including half-float quantization. A chord bound is far too loose
+        // for aligned projections, where smoothstep's derivative approaches 0.
+        float sine=sqrt(saturate(1-facing*facing));
+        float minFacing=facing<-.9960411?-1:facing*.9960411-sine*.0888943;
+        float maxFacing=facing>.9960411?1:facing*.9960411+sine*.0888943;
+        float amin=Attenuation(minFacing,asfloat(h.w));
+        float amax=Attenuation(maxFacing,asfloat(h.w));
+        float alpha=saturate(map.a*asfloat(a.w)*attenuation);
+        float alphaMin=saturate(map.a*asfloat(a.w)*amin);
+        float alphaMax=saturate(map.a*asfloat(a.w)*amax);
+        float delta=max(alpha-alphaMin,alphaMax-alpha);
+        float3 color=map.rgb*asfloat(c.xyz);
+        if((meta.x&1)!=0)
+        {
+            error=(1-alphaMin)*error+delta;
+            scale=lerp(scale,1,alpha);bias*=1-alpha;
+            if(alpha>=1)n=receiver;
+            else if(alpha>0)n=SafeNormal(lerp(n,receiver,alpha));
+            // Erase restores the unknown layer-start normal. A later dense
+            // prefix can converge again, but partial erases cannot certify it.
+            dependence=2;
+            if(alphaMin>=1)identity=1;
+
+        }
+        else
+        {
+            uint mode=(d.y>>8)&255;
+            if(any(color<0)||any(color>1))error=65504;
+            else if(mode==1)error=max(1-alphaMin+alphaMin*color.x,max(1-alphaMin+alphaMin*color.y,1-alphaMin+alphaMin*color.z))*error+delta*max(1-color.x,max(1-color.y,1-color.z));
+            else if(mode==3)error=max(1-alphaMin*color.x,max(1-alphaMin*color.y,1-alphaMin*color.z))*error+delta*max(color.x,max(color.y,color.z));
+            else error=(1-alphaMin)*error+delta;
+            if(mode==1){float3 factor=lerp(1,color,alpha);scale*=factor;bias*=factor;}
+            else if(mode==3){float3 factor=1-alpha*color;scale*=factor;bias=bias*factor+alpha*color;}
+            else {scale*=1-alpha;bias=lerp(bias,color,alpha);}
+            float na=saturate(map.a*asfloat(d.x)*attenuation);
+            float naMin=saturate(map.a*asfloat(d.x)*amin),naMax=saturate(map.a*asfloat(d.x)*amax);
+            if(na>0)
+            {
+                float3 worldNormal=GetWorldSpaceNormal(real2(normalMap),real3(rotation[2]),real3(rotation[0]),real3(rotation[1]),real(1));
+                if(dot(worldNormal,receiver)<.7071068){cone=false;dependence=2;}
+                n=float3(real3(SafeNormal(lerp(n,worldNormal,na))));
+                dependence=cone?ConeDependence(dependence,na,naMin,naMax):IntervalDependence(dependence,na,naMin,naMax);identity=0;
+            }
+        }
+    }
+    BakeOutput output;
+    output.scale=float4(scale,dependence);output.bias=float4(bias,occupied);output.normal=float4(n,identity>0?1:(cone?-1:0));output.receiver=float4(receiver,min(error,65504));return output;
+}

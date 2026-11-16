@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: MIT
+#include <Atom/Features/SrgSemantics.azsli>
+#include <Atom/Features/PostProcessing/FullscreenVertex.azsli>
+ShaderResourceGroup PassSrg : SRG_PerPass
+{
+    Texture2D<float4> m_scale;
+    Texture2D<float4> m_bias;
+    Texture2D<float4> m_normal;
+    Texture2D<float4> m_receiver;
+}
+// Explicit shader-read attachments transition the persistent images out of
+// render-target state before later bindless material reads. This 1x1 pass and
+// the bake pass are disabled after publication; there is no steady-state draw.
+float4 MainPS(VSOutput input):SV_Target0
+{return PassSrg::m_scale.Load(int3(0,0,0))+PassSrg::m_bias.Load(int3(0,0,0))+PassSrg::m_normal.Load(int3(0,0,0))+PassSrg::m_receiver.Load(int3(0,0,0));}

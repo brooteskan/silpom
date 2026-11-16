@@ -2,6 +2,7 @@
 #include <SilPOM/DecalPaint.h>
 #include <SilPOM/DecalPaintMath.h>
 #include <SilPOM/DecalCompositeMath.h>
+#include <SilPOM/DecalBake.h>
 #include <AzCore/Asset/AssetSerializer.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/Json/JsonUtils.h>
@@ -26,6 +27,10 @@ AZ_CVAR(bool,r_silpomPaintCompositeReference,false,nullptr,AZ::ConsoleFunctorFla
     "Diagnostic: evaluate the complete paint stream without spatial skipping or opacity early-out.");
 AZ_CVAR(bool,r_silpomPaintSpatialGrouping,true,nullptr,AZ::ConsoleFunctorFlags::Null,
     "Automatically partition a paint entity into ordered, spatially clipped render batches; false retains the single-volume baseline.");
+AZ_CVAR(bool,r_silpomPaintBake,false,nullptr,AZ::ConsoleFunctorFlags::Null,"Bake consolidated prefixes into guarded color/normal fields after painting is idle.");
+AZ_CVAR(float,r_silpomPaintBakeDensity,128.f,nullptr,AZ::ConsoleFunctorFlags::Null,"Target baked field samples per world metre, subject to the memory limit.");
+AZ_CVAR(AZ::u32,r_silpomPaintBakeMiB,128,nullptr,AZ::ConsoleFunctorFlags::Null,"Maximum color/normal bake image bytes per paint entity in MiB.");
+AZ_CVAR(AZ::u32,r_silpomPaintBakeDebug,0,nullptr,AZ::ConsoleFunctorFlags::Null,"Diagnostic: green=empty baked prefix, blue=baked color/normal, red=projection fallback.");
 // Native entity undo reconstructs controllers. Retain the irreversible frontier
 // separately so an old entity snapshot cannot resurrect composited source paths.
 AZStd::unordered_map<AZ::EntityId,PaintConfig> CompositeHistory;
@@ -169,10 +174,11 @@ void PaintController::Release()
         for(auto& batch:m_batches)m_processor->ReleaseDecal(batch);
         for(auto [id,h]:m_materialHandles){(void)id;m_processor->ReleaseDecal(h);}
     }
-    m_batches.clear();m_materialHandles.clear();m_buffer={};
+    m_batches.clear();m_materialHandles.clear();m_buffer={};m_bakeCache={};
 }
 void PaintController::Deactivate()
 {
+    AZ::Data::AssetBus::MultiHandler::BusDisconnect();m_bakeAssets.clear();
     AZ::TickBus::Handler::BusDisconnect();
     PaintRequestBus::Handler::BusDisconnect();
     AZ::TransformNotificationBus::Handler::BusDisconnect();
@@ -180,6 +186,7 @@ void PaintController::Deactivate()
 }
 void PaintController::SetDocument(const PaintConfig& c)
 {
+    m_bakeIdle=0;m_bakeRequested=false;
     auto next=c;
     const auto history=CompositeHistory.find(m_entity);
     if(KeepCompositeHistory&&m_entity.IsValid()&&history!=CompositeHistory.end())
@@ -254,21 +261,31 @@ AZStd::string PaintController::SetDocumentJson(const AZStd::string& json)
     if(!loaded.IsSuccess())return loaded.GetError();
     SetDocument(c);return {};
 }
-void PaintController::OnTick(float,AZ::ScriptTimePoint)
+void PaintController::OnTick(float delta,AZ::ScriptTimePoint)
 {
+    if(m_bakeInvalidated.exchange(false)){m_bakeCache={};m_dirty=true;m_bakeIdle=0;m_bakeRequested=false;}
+    m_bakeIdle+=AZStd::clamp(delta,0.f,.1f);
     if(!m_processor) m_processor=AZ::RPI::Scene::GetFeatureProcessorForEntity<AZ::Render::DecalFeatureProcessorInterface>(m_entity);
     if(m_processor)
     {
         AZ::u64 fingerprint=r_silpomPaintCompositeReference?0x7144878129ULL:0;
         if(r_silpomPaintSpatialGrouping)fingerprint^=0x51a71a1ULL;
+        if(r_silpomPaintBake&&!r_silpomPaintCompositeReference)fingerprint^=0xba4e123ULL;
+        fingerprint^=AZ::u64(r_silpomPaintBakeDebug)*0xd3b46eULL;
+        fingerprint^=AZ::u64(r_silpomPaintBakeMiB)<<16;
+        fingerprint^=AZ::u64(AZStd::clamp(float(r_silpomPaintBakeDensity),1.f,1024.f)*1000);
         for(const auto& [id,h]:m_materialHandles)
         {
             (void)id;const auto d=m_processor->GetDecalData(h);
             fingerprint^=(AZ::u64(d.m_textureArrayIndex)<<32|d.m_textureIndex)+0x9e3779b97f4a7c15ULL+AZ::u64(h.GetIndex());
         }
-        if(fingerprint!=m_materialFingerprint){m_materialFingerprint=fingerprint;m_dirty=true;}
+        if(fingerprint!=m_materialFingerprint){m_materialFingerprint=fingerprint;m_dirty=true;m_bakeRequested=false;}
     }
+    if(r_silpomPaintBake&&m_bakeIdle>.75f&&!m_bakeRequested){m_bakeRequested=true;m_dirty=true;}
     if(m_dirty && m_processor) {Rebuild();m_dirty=false;}
+    if(m_bakeCache&&r_silpomPaintBake&&!r_silpomPaintCompositeReference)
+        if(m_bakeCache->Tick(AZ::RPI::Scene::GetSceneForEntityId(m_entity),m_bakeIdle>.75f))m_dirty=true;
 }
+#include "DecalBake.inl"
 #include "DecalComposite.inl"
 }

@@ -1,8 +1,9 @@
 # Spatial grouping inside a paint entity
 
 Paint documents, layers, stroke order and the rolling 100-dab edit history are
-unchanged. Consolidated dabs remain resolved projections, rather than baked
-textures. Both consolidated and live projections enter the same renderer.
+unchanged. Consolidated dabs retain their resolved projections. Both consolidated and live
+projections enter the same renderer. The disabled experimental [color/normal cache](DecalPaintBake.md)
+bakes eligible fixed prefixes inside these groups without changing the document.
 
 The renderer builds conservative world-space boxes from the eight corners of
 each oriented projection, including entity rotation and uniform scale. It then
@@ -24,7 +25,8 @@ its header byte offset; projection offsets are absolute, node links are local.
 Each clipped header has flag 8 and a 32-byte clipping record after its projections:
 low.xyz, inclusive-upper-axis mask, high.xyz, reserved. Material anchors remain
 one per distinct material asset, retaining Atom's shared texture arrays. Grouping
-does not allocate or copy decal textures.
+does not allocate or copy decal textures. Baking adds separate derived images;
+the source material textures remain shared.
 
 Stamps affect color and normals only. They do not modify the SiLPOM heightmap,
 relief geometry, learned data or relief acceleration bounds. Height masks only
@@ -48,8 +50,8 @@ paint, the ungrouped baseline, dense overlap and the reference/handle caps.
 VueLiveLink. Set `TG_SILPOM_ESTIMATOR_OUTPUT` to an evidence directory and run it
 with Editor's `--runpython` argument. Use `TG_PAINT_GROUPING_MODES=original,original`
 for the original binary, or `0,1,1,0` for a matched ABBA comparison in one process.
-It retains tower quality settings, uses two fixed gameplay cameras at 1280×720
-with 2× MSAA, and captures 180 GPU timestamp frames per run after warm-up. An
+It retains tower quality settings, uses two fixed gameplay cameras at 1280Ãƒâ€”720
+with 2Ãƒâ€” MSAA, and captures 180 GPU timestamp frames per run after warm-up. An
 invisible benchmark reference mesh enables timestamp collection without adding a
 visible surface. Screenshots and raw diffuse/normal attachments are captured
 outside timed intervals. The fixtures cover the saved paint and 4,096 dabs spread
@@ -72,7 +74,7 @@ reprocessing through AssetProcessorBatch's `--reprocessFileList` option.
 ## Measured results, 2026-11-15
 
 RX 7900 XTX, Ryzen 7 2700, profile build, DX12 SM 6.7, gameplay at
-1280×720 with 2× MSAA. The table uses the matched ABBA run's GPU graphics-span
+1280Ãƒâ€”720 with 2Ãƒâ€” MSAA. The table uses the matched ABBA run's GPU graphics-span
 medians (two runs per mode, 180 frames per run):
 
 | Paint / camera | Single volume | Grouped | GPU time reduction |
@@ -94,7 +96,7 @@ Saved paint selected 32 groups, 17,042 references for 12,940 unique dabs, and
 4,600 references for 4,096 dabs, and 736,064 bytes versus 655,344 bytes. Both
 retained one material anchor and one shared GPU buffer; no texture duplication.
 
-Individual Editor rebuild observations were about 8–9 ms ungrouped versus
+Individual Editor rebuild observations were about 8Ã¢â‚¬â€œ9 ms ungrouped versus
 41 ms grouped for saved paint, and 3 ms versus 7.5 ms for spread paint. These
 include buffer creation/upload waiting and are not statistical CPU-work samples.
 They expose the edit-time tradeoff; steady-state rendering does not rebuild.

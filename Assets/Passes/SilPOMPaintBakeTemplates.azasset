@@ -1,0 +1,17 @@
+{
+  "Type": "JsonSerialization",
+  "Version": 1,
+  "ClassName": "AssetAliasesSourceData",
+  "ClassData": {
+    "AssetPaths": [
+      {
+        "Name": "SilPOMPaintBakeTemplate",
+        "Path": "Passes/SilPOMPaintBake.pass"
+      },
+      {
+        "Name": "SilPOMPaintBakeFinalizeTemplate",
+        "Path": "Passes/SilPOMPaintBakeFinalize.pass"
+      }
+    ]
+  }
+}

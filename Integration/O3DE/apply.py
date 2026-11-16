@@ -53,7 +53,7 @@ def patch_sections(patch):
     return sections
 
 
-def prepare(engine, project, verify_only=False):
+def prepare(engine, project, verify_only=False, experimental_paint_bake=False):
     manifest = json.loads((BUNDLE / "manifest.json").read_text(encoding="utf-8"))
     if manifest["schema_version"] != 1:
         raise ValueError("Unsupported manifest schema")
@@ -76,18 +76,42 @@ def prepare(engine, project, verify_only=False):
         sections = patch_sections(patch)
         if set(sections) != {entry["path"] for entry in component["files"]}:
             raise ValueError(f"Patch and file manifest disagree: {component['name']}")
+        if experimental_paint_bake and component["name"] == "engine":
+            experiment = manifest["experimental_paint_bake"]
+            contents = normalized(safe_path(BUNDLE, experiment["patch"]).read_bytes())
+            if digest(contents) != experiment["patch_sha256"]:
+                raise ValueError("Experimental paint-bake patch integrity check failed")
+            replacement = patch_sections(contents)
+            entry = experiment["file"]
+            if set(replacement) != {entry["path"]} or entry["path"] not in sections:
+                raise ValueError("Invalid experimental paint-bake replacement")
+            sections.update(replacement)
+            component = dict(component, files=[entry if old["path"] == entry["path"] else old for old in component["files"]])
         pending = []
+        selected = []
         for entry in component["files"]:
+            upgrades = {}
+            for upgrade in entry.get("upgrade_from", []):
+                contents = normalized(safe_path(BUNDLE, upgrade["patch"]).read_bytes())
+                if digest(contents) != upgrade["patch_sha256"]:
+                    raise ValueError(f"Patch integrity check failed: {upgrade['patch']}")
+                replacement = patch_sections(contents)
+                if set(replacement) != {entry["path"]} or upgrade["before_sha256"] in upgrades:
+                    raise ValueError(f"Invalid or duplicate upgrade: {upgrade['patch']}")
+                upgrades[upgrade["before_sha256"]] = replacement[entry["path"]]
             path = safe_path(root, entry["path"])
             if path.exists() and not path.is_file():
                 raise ValueError(f"Expected a file, found another object: {path}")
             actual = file_hash(path)
             if actual == entry["after_sha256"]:
                 continue
-            if verify_only or actual != entry["before_sha256"]:
+            if verify_only or (actual != entry["before_sha256"] and actual not in upgrades):
                 raise ValueError(f"Conflicting or incomplete file: {path}. Preserve local work and use the pinned source checkout.")
             pending.append(entry["path"])
-        plans.append((component, root, b"".join(sections[path] for path in pending), len(pending)))
+            # Added-file aggregate sections cannot replace an installed older
+            # file. A known hash selects a separately guarded modification patch.
+            selected.append(sections[entry["path"]] if actual == entry["before_sha256"] else upgrades[actual])
+        plans.append((component, root, b"".join(selected), len(pending)))
     return plans
 
 
@@ -95,12 +119,14 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--engine", required=True, type=Path)
     parser.add_argument("--project", required=True, type=Path)
+    parser.add_argument("--experimental-paint-bake", action="store_true",
+                        help="Opt into the rejected color/normal bake prototype for benchmarks; not a production optimization")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--check-only", action="store_true", help="Preflight every component without modifying source")
     mode.add_argument("--verify-only", action="store_true", help="Require all patched contents; also works on source copies without Git metadata")
     args = parser.parse_args(argv)
     engine, project = args.engine.resolve(), args.project.resolve()
-    plans = prepare(engine, project, args.verify_only)
+    plans = prepare(engine, project, args.verify_only, args.experimental_paint_bake)
     if args.verify_only:
         print("Verified all engine and terrain integration file hashes.")
         return 0
@@ -120,7 +146,7 @@ def main(argv=None):
             return 0
         for root, patch_path in staged:
             git(root, "apply", "--whitespace=nowarn", str(patch_path))
-    prepare(engine, project, verify_only=True)
+    prepare(engine, project, verify_only=True, experimental_paint_bake=args.experimental_paint_bake)
     print("Applied and verified the complete TG engine integration. Rebuild native modules and shader assets.")
     return 0
 

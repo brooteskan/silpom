@@ -4,10 +4,13 @@ void PaintController::Rebuild()
 {
     const auto started=std::chrono::steady_clock::now();
     using Data=AZ::Render::DecalData;
-    struct Projection {Data m_data;AZ::u32 m_flags=0,m_layer=0,m_layerEndNode=0,m_reserved=0;};
+    using Projection=PaintProjection;
     static_assert(sizeof(Projection)==96);
     std::vector<Projection> decals;
+    if(!m_bakeCache)m_bakeCache=AZStd::make_shared<PaintBakeCache>();
+    m_bakeCache->Begin();
     AZStd::unordered_set<AZ::Data::AssetId> needed;
+    AZStd::unordered_set<AZ::Data::AssetId> assets;
     m_liveCount=0;m_compositeCount=0;
     bool waiting=false;size_t references=0,bufferBytes=0;
     auto append=[&](const PaintDab& dab,float opacity,bool fixed,AZ::u32 layer)
@@ -15,7 +18,16 @@ void PaintController::Rebuild()
         if(fixed)++m_compositeCount;else ++m_liveCount;
         if((dab.m_heightMask&7u)==0)return;
         if(!dab.m_material.GetId().IsValid())return;
-        needed.insert(dab.m_material.GetId());
+        if(needed.insert(dab.m_material.GetId()).second)
+        {
+            assets.insert(dab.m_material.GetId());
+            if(dab.m_material.IsReady())for(const auto& value:dab.m_material->GetPropertyValues())
+                if(value.Is<AZ::Data::Asset<AZ::RPI::ImageAsset>>())
+                {
+                    const auto id=value.GetValue<AZ::Data::Asset<AZ::RPI::ImageAsset>>().GetId();
+                    if(id.IsValid())assets.insert(id);
+                }
+        }
         auto it=m_materialHandles.find(dab.m_material.GetId());
         if(it==m_materialHandles.end())
         {
@@ -41,7 +53,7 @@ void PaintController::Rebuild()
         data.m_normalMapOpacity=dab.m_erase?0:AZStd::clamp(opacity*dab.m_normalOpacity,0.f,1.f);
         data.m_decalColor={dab.m_color.GetR(),dab.m_color.GetG(),dab.m_color.GetB()};data.m_decalColorFactor=1;
         data.m_blendMode=static_cast<AZ::Render::DecalBlendMode>(AZStd::min(dab.m_blendMode,4u));data.m_sortKey=0;
-        decals.push_back({data,PaintMath::BrushFlags(dab.m_erase,dab.m_heightMask),layer,0,0});
+        decals.push_back({data,PaintMath::BrushFlags(dab.m_erase,dab.m_heightMask),layer,0,fixed?1u:0u});
     };
     AZ::u32 layerIndex=0;
     for(const auto& layer:m_configuration.m_layers)
@@ -61,6 +73,9 @@ void PaintController::Rebuild()
                 for(const auto& point:live->second->m_points)append(ResolveDab(*live->second,point),layer.m_opacity,false,layerId);
         }
     }
+    for(auto id:m_bakeAssets)if(!assets.contains(id))AZ::Data::AssetBus::MultiHandler::BusDisconnect(id);
+    for(auto id:assets)if(!m_bakeAssets.contains(id))AZ::Data::AssetBus::MultiHandler::BusConnect(id);
+    m_bakeAssets=AZStd::move(assets);
     for(auto it=m_materialHandles.begin();it!=m_materialHandles.end();)
     {
         if(!needed.contains(it->first)){m_processor->ReleaseDecal(it->second);it=m_materialHandles.erase(it);}
@@ -77,7 +92,7 @@ void PaintController::Rebuild()
         const bool filtered=std::any_of(decals.begin(),decals.end(),[](const Projection& p){return ((p.m_flags>>8)&7u)!=7u;});
         // Front-to-back alpha can stop after opacity saturates. Other blends
         // and normal paint retain their original forward evaluation order.
-        if(alphaOnly)std::reverse(decals.begin(),decals.end());
+
         std::vector<PaintMath::Bounds> bounds;bounds.reserve(decals.size());
         for(const auto& projection:decals)
         {
@@ -102,10 +117,19 @@ void PaintController::Rebuild()
             const auto base=aznumeric_cast<AZ::u32>(bytes.size());headers.push_back(base);
             std::vector<Projection> local;local.reserve(group.projections.size());
             for(auto i:group.projections)local.push_back(decals[i]);
+            std::vector<PaintMath::Bounds> localBounds;localBounds.reserve(local.size());
+            for(auto i:group.projections)localBounds.push_back(PaintMath::Intersection(bounds[i],group.clip));
+            const size_t perBakeBudget=size_t(AZStd::clamp(AZ::u32(r_silpomPaintBakeMiB),1u,1024u))*1024*1024/
+                (groups.size()*AZStd::max(size_t(1),m_configuration.m_layers.size()));
+            const auto bakes=m_bakeCache->Prepare(local,localBounds,group.clip,perBakeBudget,
+                AZStd::clamp(float(r_silpomPaintBakeDensity),1.f,1024.f),r_silpomPaintBake&&!r_silpomPaintCompositeReference,m_bakeRequested);
+            const bool reverse=alphaOnly;
+            if(reverse){std::reverse(local.begin(),local.end());std::reverse(localBounds.begin(),localBounds.end());}
+            for(auto& p:local)p.m_reserved=0;
             references+=local.size();
             std::vector<PaintMath::CompositeNode> nodes;nodes.reserve(local.size()*2);
             PaintMath::BuildCompositeNodes(nodes,0,aznumeric_cast<AZ::u32>(local.size()),
-                [&](AZ::u32 i){return PaintMath::Intersection(bounds[group.projections[i]],group.clip);});
+                [&](AZ::u32 i){return localBounds[i];});
             std::vector<AZ::u32> leafNodes(local.size());
             for(AZ::u32 i=0;i<nodes.size();++i)if(nodes[i].leaf<local.size())leafNodes[nodes[i].leaf]=i;
             for(size_t first=0;first<local.size();)
@@ -115,16 +139,40 @@ void PaintController::Rebuild()
                 for(size_t i=first;i<end;++i)local[i].m_layerEndNode=endNode;
                 first=end;
             }
+            if(!bakes.empty())
+            {
+                AZ::u32 firstLeaf=0;
+                for(size_t i=nodes.size();i-->0;)
+                    if(nodes[i].leaf<local.size())firstLeaf=nodes[i].leaf;
+                    else nodes[i].leaf=0x80000000u|firstLeaf;
+            }
             const AZ::u32 header[4]={aznumeric_cast<AZ::u32>(nodes.size()),aznumeric_cast<AZ::u32>(base+16+nodes.size()*32),
-                (r_silpomPaintCompositeReference?2u:(alphaOnly?1u:0u))|(filtered?4u:0u)|(clipped?8u:0u),aznumeric_cast<AZ::u32>(local.size())};
+                (r_silpomPaintCompositeReference?2u:(reverse?1u:0u))|(filtered?4u:0u)|(clipped?8u:0u)|(bakes.empty()?0u:16u),aznumeric_cast<AZ::u32>(local.size())};
             const size_t end=header[1]+local.size()*96;
-            bytes.resize(end+(clipped?32:0));
+            const size_t bakeInfo=end+(clipped?32:0);
+            bytes.resize(bakeInfo+(bakes.empty()?0:16+bakes.size()*sizeof(PaintBakeRecord)));
             memcpy(bytes.data()+base,header,16);memcpy(bytes.data()+base+16,nodes.data(),nodes.size()*32);
             memcpy(bytes.data()+header[1],local.data(),local.size()*96);
             if(clipped)
             {
                 const PaintMath::CompositeNode clip{group.clip.low,group.inclusiveHigh,group.clip.high,0};
                 memcpy(bytes.data()+end,&clip,32);
+            }
+            if(!bakes.empty())
+            {
+                const AZ::u32 info[4]={aznumeric_cast<AZ::u32>(bakes.size()),aznumeric_cast<AZ::u32>(bakeInfo+16),0,0};
+                memcpy(bytes.data()+bakeInfo,info,16);
+                for(size_t i=0;i<bakes.size();++i)
+                {
+                    auto record=bakes[reverse?bakes.size()-1-i:i]->record;
+                    auto* entry=bakes[reverse?bakes.size()-1-i:i];
+                    const auto first=reverse?local.size()-entry->end:entry->first,endLeaf=reverse?local.size()-entry->first:entry->end;
+                    record.reserved=aznumeric_cast<AZ::u32>(first);record.reserved2=aznumeric_cast<AZ::u32>(endLeaf);
+                    record.layer=local[first].m_layer;
+                    record.flags=(record.flags&2u)|(r_silpomPaintBakeDebug?1u:0u)|(AZ::u32(r_silpomPaintBakeDebug)>1u?4u:0u);
+                    record.endNode=endLeaf==local.size()?aznumeric_cast<AZ::u32>(nodes.size()):leafNodes[endLeaf];
+                    memcpy(bytes.data()+bakeInfo+16+i*sizeof(record),&record,sizeof(record));
+                }
             }
         }
         bufferBytes=bytes.size();
@@ -173,9 +221,10 @@ void PaintController::Rebuild()
         }
         else waiting=true;
     }
+    m_bakeCache->End();
     const double milliseconds=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count();
-    m_renderStats=AZStd::string::format("{\"batches\":%u,\"materials\":%zu,\"unique_projections\":%zu,\"projection_references\":%zu,\"gpu_buffers\":%u,\"gpu_bytes\":%zu,\"rebuild_ms\":%.6f}",
-        GetRenderHandleCount(),m_materialHandles.size(),decals.size(),references,m_buffer?1u:0u,bufferBytes,milliseconds);
+    m_renderStats=AZStd::string::format("{\"batches\":%u,\"materials\":%zu,\"unique_projections\":%zu,\"projection_references\":%zu,\"gpu_buffers\":%u,\"gpu_bytes\":%zu,\"rebuild_ms\":%.6f,\"baked_prefixes\":%zu,\"bake_pending\":%zu,\"bake_failed\":%zu,\"bake_bytes\":%zu,\"bake_wall_ms\":%.3f}",
+        GetRenderHandleCount(),m_materialHandles.size(),decals.size(),references,m_buffer?1u:0u,bufferBytes,milliseconds,m_bakeCache->Count(3),m_bakeCache->Count(0)+m_bakeCache->Count(1)+m_bakeCache->Count(2),m_bakeCache->Count(4),m_bakeCache->Bytes(),m_bakeCache->WallMilliseconds());
     m_status=AZStd::string::format("%u live dabs / 100; %u in Composite; %u render batches%s",
         m_liveCount,m_compositeCount,GetRenderHandleCount(),
         waiting?"; waiting for brush material / GPU buffer":"");

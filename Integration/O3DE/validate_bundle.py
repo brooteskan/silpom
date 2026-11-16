@@ -92,6 +92,67 @@ def main():
         assert snapshot() == applied, "Reapplication changed files"
         results.append(label+": complete application, all 95 output hashes, idempotent reapplication")
         (output/(label+"-apply.txt")).write_text(log,encoding="utf-8")
+        # Each published predecessor must upgrade using a modification patch,
+        # including files originally added by the aggregate. Whole-file context
+        # in these patches also retains the exact previous fixture for testing.
+        for component, root in zip(manifest["components"], roots):
+            for entry in component["files"]:
+                for upgrade in entry.get("upgrade_from", []):
+                    old = []
+                    in_hunk = False
+                    for line in (BUNDLE/upgrade["patch"]).read_bytes().splitlines(keepends=True):
+                        if line.startswith(b"@@ "):
+                            in_hunk = True
+                        elif in_hunk and line[:1] in (b" ", b"-"):
+                            old.append(line[1:])
+                    previous = b"".join(old)
+                    assert hashlib.sha256(previous.replace(b"\r\n", b"\n")).hexdigest() == upgrade["before_sha256"]
+                    path = root/entry["path"]
+                    current = path.read_bytes()
+                    path.write_bytes(previous.replace(b"\n",b"\r\n") if crlf else previous)
+                    before_upgrade = snapshot()
+                    apply("--check-only")
+                    assert snapshot() == before_upgrade, "Upgrade preflight changed source"
+                    apply("--verify-only", success=False)
+                    path.write_bytes(path.read_bytes()+b"\n// preserve edited predecessor\n")
+                    edited = snapshot()
+                    apply(success=False)
+                    assert snapshot() == edited, "Edited predecessor was overwritten"
+                    path.write_bytes(previous.replace(b"\n",b"\r\n") if crlf else previous)
+                    apply()
+                    apply("--verify-only")
+                    assert snapshot() == applied, "Upgrade did not reproduce the current bundle exactly"
+                    assert path.read_bytes() == current
+                    results.append(label+": exact-hash upgrade "+upgrade["before_sha256"][:12]+"; edited predecessor preserved")
+        experiment = manifest["experimental_paint_bake"]
+        experiment_path = engine/experiment["file"]["path"]
+        apply("--experimental-paint-bake", "--check-only")
+        assert snapshot() == applied, "Experimental preflight changed source"
+        apply("--experimental-paint-bake")
+        apply("--experimental-paint-bake", "--verify-only")
+        experimental = snapshot()
+        assert hashlib.sha256(experiment_path.read_bytes().replace(b"\r\n",b"\n")).hexdigest() == experiment["file"]["after_sha256"]
+        apply("--verify-only", success=False)
+        apply("--experimental-paint-bake")
+        assert snapshot() == experimental, "Experimental reapplication changed files"
+        contents = experiment_path.read_bytes()
+        experiment_path.write_bytes(contents+b"\n// preserve experimental edit\n")
+        edited = snapshot()
+        apply(success=False)
+        assert snapshot() == edited, "Edited experiment was overwritten by restoration"
+        experiment_path.write_bytes(contents)
+        apply()
+        apply("--verify-only")
+        assert snapshot() == applied, "Restoring stable renderer changed unrelated files"
+        experiment_path.unlink()
+        fresh = snapshot()
+        apply("--experimental-paint-bake", "--check-only")
+        assert snapshot() == fresh
+        apply("--experimental-paint-bake")
+        apply("--experimental-paint-bake", "--verify-only")
+        apply()
+        assert snapshot() == applied, "Fresh experimental shader could not restore stable bundle"
+        results.append(label+": explicit experiment, idempotence, fresh shader install, edited experiment preserved, exact stable restoration")
         conflict = engine/manifest["components"][0]["files"][0]["path"]
         content = conflict.read_bytes()
         conflict.write_bytes(content+b"\n// preserve this edit\n")

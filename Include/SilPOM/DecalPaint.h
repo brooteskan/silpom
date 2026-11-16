@@ -6,6 +6,8 @@
 #include <AzCore/Math/Color.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/containers/unordered_set.h>
+#include <AzCore/std/parallel/atomic.h>
 #include <Atom/RPI.Public/Buffer/Buffer.h>
 #include <AzFramework/Components/ComponentAdapter.h>
 #include <Atom/Feature/Decals/DecalFeatureProcessorInterface.h>
@@ -13,6 +15,7 @@
 
 namespace SilPOM
 {
+class PaintBakeCache;
 struct PaintPoint
 {
     AZ_TYPE_INFO(PaintPoint,"{26BE20E4-1543-465A-B623-5BCD3D887E62}");
@@ -101,7 +104,8 @@ public:
     virtual void RestoreUndoDocument(const PaintConfig&)=0;
 };
 using PaintRequestBus=AZ::EBus<PaintRequests>;
-class PaintController final : private PaintRequestBus::Handler,private AZ::TransformNotificationBus::Handler,private AZ::TickBus::Handler
+class PaintController final : private PaintRequestBus::Handler,private AZ::TransformNotificationBus::Handler,private AZ::TickBus::Handler,
+    private AZ::Data::AssetBus::MultiHandler
 {
 public:
     AZ_TYPE_INFO(PaintController,"{8CA1B393-B3A0-4610-B98C-450A019B5565}");
@@ -130,8 +134,10 @@ public:
     AZ::u64 GetRevision() const override { return m_revision; }
     PaintConfig m_configuration;
 private:
-    void OnTransformChanged(const AZ::Transform&,const AZ::Transform& world) override { m_world=world;m_dirty=true; }
+    void OnTransformChanged(const AZ::Transform&,const AZ::Transform& world) override { m_world=world;m_dirty=true;m_bakeIdle=0;m_bakeRequested=false; }
     void OnTick(float,AZ::ScriptTimePoint) override;
+    void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData>) override {m_bakeInvalidated=true;}
+    void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData>) override {m_bakeInvalidated=true;}
     void Release();
     void Rebuild();
     AZ::EntityId m_entity;
@@ -140,6 +146,11 @@ private:
     AZStd::vector<AZ::Render::DecalFeatureProcessorInterface::DecalHandle> m_batches;
     AZStd::unordered_map<AZ::Data::AssetId,AZ::Render::DecalFeatureProcessorInterface::DecalHandle> m_materialHandles;
     AZ::Data::Instance<AZ::RPI::Buffer> m_buffer;
+    AZStd::shared_ptr<PaintBakeCache> m_bakeCache;
+    float m_bakeIdle=0;
+    bool m_bakeRequested=false;
+    AZStd::atomic_bool m_bakeInvalidated{false};
+    AZStd::unordered_set<AZ::Data::AssetId> m_bakeAssets;
     AZ::u32 m_liveCount=0,m_compositeCount=0;
     AZ::u64 m_materialFingerprint=0;
     AZStd::string m_status="Inactive";
