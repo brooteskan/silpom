@@ -30,8 +30,15 @@ def compare_sample(base,record,depth,z,baseline,color,normal_base,packed,use,fac
     other=mask&((base[...,3]>>2)!=face)
     assert np.array_equal(baseline[other],color[other]),'Paint changed a different receiver face color'
     assert np.array_equal(normal_base[other],packed[other]),'Paint changed a different receiver face normal'
+    # Approximation is allowed only where the atlas was actually sampled.
+    # Include usage==0 receiving pixels as well as explicit prefix replay.
+    non_atlas=mask&~accepted
+    if mode==2:
+        assert np.array_equal(baseline[non_atlas],color[non_atlas]),'Atlas fallback changed native color'
+        assert np.array_equal(normal_base[non_atlas],packed[non_atlas]),'Atlas fallback changed native normals'
     assert np.all(np.isfinite(color[mask])),'Nonfinite diffuse output'
     result={'hit_records_bit_exact':True,'depth_bit_exact':True,'other_face_color_and_normal_bit_exact':True,
+        'non_atlas_receiving_pixels':int(non_atlas.sum()),'non_atlas_color_and_normal_bit_exact':True,
         'no_attempt':int((use[...,0]==0).sum()),'prefix_replay':int(replay.sum()),'cache_used':int(accepted.sum()),
         'diffuse_error':errors(baseline,color,mask),'normal_degrees':normal_errors(normal_base,packed,mask),
         'owned_diffuse_error':errors(baseline,color,attempted),'owned_normal_degrees':normal_errors(normal_base,packed,attempted),

@@ -107,6 +107,11 @@ minified quality. The source level and height image hashes are checked without
 saving the level. Benchmark and image-quality results must be reported before
 expanding to multiple charts, layers or erase operations.
 
+In atlas mode, every receiving pixel outside the atlas-use mask must match
+native color and packed normals exactly. This includes explicit replay and
+zero-usage receiving pixels on the selected face. Approximation thresholds
+apply only to pixels that actually sampled the atlas.
+
 The review fixes add portable tests for explicit R8/R16/R32 decoding, malformed
 payloads, scaled relief and slope normals, every referenced receiver's revision,
 and oversized prefix fallback. The production CPU geometry is included directly
@@ -118,6 +123,7 @@ pending replacement cannot make old face records index a different surface.
 a C++ adapter with deterministic texture samples. It checks adjacent-triangle
 coverage, receiver isolation, opaque early-out and single prefix handoff in the
 reference path. `Tests/test_receiver_uv_analysis.py` supplies synthetic negative
-controls for replay normals, other-face normals and residual orphan/clear paint.
+controls for replay normals, mixed atlas/fallback pixels, other-face normals
+and residual orphan/clear paint.
 These checks do not establish atlas quality or GPU performance; the opt-in
 acceptance limits above still apply.

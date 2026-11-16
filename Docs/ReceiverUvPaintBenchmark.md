@@ -147,3 +147,21 @@ also passed AddressSanitizer.
 
 Metrics, source hashes and validation context are retained in
 [ReceiverUvPaint-20261116.json](Benchmarks/ReceiverUvPaint-20261116.json).
+
+## Atlas fallback acceptance correction
+
+The original atlas-mode quality gate considered only atlas-use pixels. It could
+report success despite corrupt color or normals in pixels falling back to
+replay on the selected receiver. The analyzer now requires exact native color
+and packed normals for every receiving pixel outside the atlas-use mask,
+including zero-usage pixels. Only atlas-use pixels receive approximation limits.
+
+Six added mixed-mask regression tests cover corrupted replay and zero-usage
+receiving pixels, one-bit normal changes, small color errors, valid atlas
+approximation and nonreceiving exclusions. All 17 analyzer tests pass.
+
+Reanalysis of the retained local captures passes the new exactness checks on
+both real samples in all three views. The normal-quality failures remain
+unchanged; no new rendering or timing run was needed or performed. The metrics
+file above now records non-atlas receiving-pixel counts and exactness results,
+with separate reanalysis provenance preserving the original capture context.

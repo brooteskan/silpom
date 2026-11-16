@@ -64,6 +64,55 @@ class ReceiverUvAnalysisTests(unittest.TestCase):
         self.assertGreater(report['cached_normal_degrees']['maximum'],80)
         self.assertFalse(report['quality_passed'])
 
+    def test_mixed_atlas_and_exact_fallback_accepts_atlas_approximation(self):
+        use=self.usage.copy();use[0,0,0]=2
+        changed=self.color.copy();changed[0,0,0]+=.005
+        report=self.compare(mode=2,color=changed,usage=use)
+        self.assertEqual(report['cache_used'],1)
+        self.assertEqual(report['prefix_replay'],3)
+        self.assertEqual(report['non_atlas_receiving_pixels'],5)
+        self.assertTrue(report['non_atlas_color_and_normal_bit_exact'])
+        self.assertGreater(report['cached_diffuse_error']['maximum'],0)
+        self.assertTrue(report['quality_passed'])
+
+    def test_atlas_replay_fallback_color_change_is_rejected(self):
+        use=self.usage.copy();use[0,0,0]=2
+        # Even an error within atlas approximation limits is invalid in replay.
+        for error in (.001,.75):
+            with self.subTest(error=error):
+                changed=self.color.copy();changed[0,1,0]+=error
+                with self.assertRaisesRegex(AssertionError,'Atlas fallback changed native color'):
+                    self.compare(mode=2,color=changed,usage=use)
+
+    def test_atlas_replay_fallback_normal_change_is_rejected(self):
+        use=self.usage.copy();use[0,0,0]=2
+        for value in (self.changed_normal,int(self.normal[0,1])^1):
+            with self.subTest(packed_normal=value):
+                changed=self.normal.copy();changed[0,1]=value
+                with self.assertRaisesRegex(AssertionError,'Atlas fallback changed native normals'):
+                    self.compare(mode=2,normal=changed,usage=use)
+
+    def test_atlas_no_attempt_receiving_color_change_is_rejected(self):
+        use=self.usage.copy();use[0,0,0]=2;use[0,1]=0
+        changed=self.color.copy();changed[0,1,0]=1
+        with self.assertRaisesRegex(AssertionError,'Atlas fallback changed native color'):
+            self.compare(mode=2,color=changed,usage=use)
+
+    def test_atlas_no_attempt_receiving_normal_change_is_rejected(self):
+        use=self.usage.copy();use[0,0,0]=2;use[0,1]=0
+        changed=self.normal.copy();changed[0,1]=self.changed_normal
+        with self.assertRaisesRegex(AssertionError,'Atlas fallback changed native normals'):
+            self.compare(mode=2,normal=changed,usage=use)
+
+    def test_atlas_fallback_check_excludes_nonreceiving_pixels(self):
+        use=self.usage.copy();use[0,0,0]=2;use[0,1]=0
+        self.records[0,1,3]=0
+        color=self.color.copy();color[0,1,0]=1
+        normal=self.normal.copy();normal[0,1]=self.changed_normal
+        report=self.compare(mode=2,color=color,normal=normal,usage=use)
+        self.assertEqual(report['non_atlas_receiving_pixels'],4)
+        self.assertTrue(report['quality_passed'])
+
     def test_usage_face_must_match_the_real_receiving_hit(self):
         use=self.usage.copy();use[0,2]=use[0,0]
         with self.assertRaisesRegex(AssertionError,'disagrees with hit face'):
