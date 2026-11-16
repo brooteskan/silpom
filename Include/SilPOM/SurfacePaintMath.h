@@ -29,6 +29,8 @@ inline float Opacity(float a){return std::isfinite(a)?std::clamp(a,0.f,1.f):0.f;
 // Filter all four components linearly, including at mip boundaries. In
 // particular, never normalize the stored normal vector after painting or
 // during mip generation: its magnitude retains coverage and cancellation.
+// Saved paint color uses linear sRGB primaries, including premultiplied RGB.
+// Paint is converted to the live material's ACEScg space only when compositing.
 struct ColorTexel {Vec3 premultiplied;float coverage=0;};
 struct NormalTexel {Vec3 premultiplied;float coverage=0;};
 static_assert(sizeof(ColorTexel)==16&&sizeof(NormalTexel)==16);
@@ -96,10 +98,27 @@ inline Texel Filter(const Texel* values,const float* weights,size_t count)
 }
 inline ColorTexel FilterColor(const ColorTexel* values,const float* weights,size_t count){return Filter(values,weights,count);}
 inline NormalTexel FilterNormal(const NormalTexel* values,const float* weights,size_t count){return Filter(values,weights,count);}
-inline Vec3 ComposeColor(Vec3 liveColor,const ColorTexel& paint)
+inline Vec3 LinearSrgbToAcesCg(Vec3 color)
 {
-    if(paint.coverage<=0)return liveColor;
-    return liveColor*(1-paint.coverage)+paint.premultiplied;
+    // Pinned O3DE LinearSrgb_To_AcesCg: XYZToAP1 * D65ToD60Cat * SRGBToXYZ.
+    // Keep the source linear-sRGB texels unchanged for editing and persistence.
+    const Vec3 xyz{
+        .41239089f*color.x+.35758430f*color.y+.18048084f*color.z,
+        .21263906f*color.x+.71516860f*color.y+.07219233f*color.z,
+        .01933082f*color.x+.11919472f*color.y+.95053232f*color.z};
+    const Vec3 adapted{
+        1.01303f*xyz.x+.00610531f*xyz.y-.014971f*xyz.z,
+        .00769823f*xyz.x+.998165f*xyz.y-.00503203f*xyz.z,
+        -.00284131f*xyz.x+.00468516f*xyz.y+.924507f*xyz.z};
+    return {
+        1.64102352f*adapted.x-.32480335f*adapted.y-.23642471f*adapted.z,
+        -.66366309f*adapted.x+1.61533189f*adapted.y+.01675635f*adapted.z,
+        .01172191f*adapted.x-.00828444f*adapted.y+.98839492f*adapted.z};
+}
+inline Vec3 ComposeColor(Vec3 liveAcesCg,const ColorTexel& paint)
+{
+    if(paint.coverage<=0)return liveAcesCg;
+    return liveAcesCg*(1-paint.coverage)+LinearSrgbToAcesCg(paint.premultiplied);
 }
 inline Vec3 RotateDetail(Vec3 detail,float radians)
 {

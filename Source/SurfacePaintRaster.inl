@@ -13,10 +13,13 @@ AZ::Vector4 SurfaceBrushSample(const std::vector<uint8_t>& rgba,unsigned w,unsig
     return at(ix,iy)*(1-(x-ix))*(1-(y-iy))+at(jx,iy)*(x-ix)*(1-(y-iy))+at(ix,jy)*(1-(x-ix))*(y-iy)+at(jx,jy)*(x-ix)*(y-iy);
 }
 }
-bool MeshController::ApplySurfaceTextureBrush(const PaintSurfacePoint& anchor,const SurfacePaintBrush& brush,
+bool MeshController::ApplySurfaceTextureBrush(const PaintSurfacePoint& anchor,AZ::EntityId canvas,const SurfacePaintBrush& brush,
     const SurfaceBrushPixels& source,AZ::u64 layer,AZStd::vector<SurfacePaintChart>& charts,AZStd::string& error)
 {
     error.clear();
+    const auto* document=PaintRequestBus::FindFirstHandler(canvas);
+    if(!document||!document->GetDocument().m_textureAuthoritative)
+    {error="Authoritative paint document is unavailable";return false;}
     if(anchor.receiver!=m_entity||!anchor.IsValid()||!m_active||!m_active->paintConfig.m_surface.IsReady()
         ||!brush.position.IsFinite()||!brush.normal.IsFinite()||!brush.tangent.IsFinite()
         ||!std::isfinite(brush.diameter)||brush.diameter<=0||!std::isfinite(brush.depth)||brush.depth<=0
@@ -113,17 +116,38 @@ bool MeshController::ApplySurfaceTextureBrush(const PaintSurfacePoint& anchor,co
             }
             if(receiving&&memcmp(&before,&pixel,sizeof(pixel))!=0)changed=true;
         }
+        if(brush.erase&&found!=result.end())
+        {
+            SurfacePaintImage::Triangle domain;
+            const float inverseU=1/(rect.GetZ()-rect.GetX()),inverseV=1/(rect.GetW()-rect.GetY());
+            for(unsigned i=0;i<3;++i)domain.corners[i]={(g.uv[i].GetX()-rect.GetX())*inverseU,(g.uv[i].GetY()-rect.GetY())*inverseV};
+            std::vector<uint32_t> receivingWeights;
+            bool painted=!SurfacePaintImage::Detail::DomainWeights(image,domain,receivingWeights);
+            for(size_t i=0;i<receivingWeights.size()&&!painted;++i)
+            {
+                const auto& pixel=image.pixels[i];
+                if(receivingWeights[i]&&(pixel.color.coverage>0||pixel.normal.coverage>0))
+                {painted=true;break;}
+            }
+            if(!painted)
+            {
+                result.erase(found);any=true;
+                continue;
+            }
+        }
         if(!changed)continue;
         const auto encoded=SurfacePaintImage::Encode(image);if(encoded.empty()){error="Surface texture encoding failed; stroke was not applied";return false;}
         chart.texels.assign(encoded.data(),encoded.size());
         if(found==result.end())result.push_back(AZStd::move(chart));else *found=AZStd::move(chart);
-        if(AZStd::count_if(result.begin(),result.end(),[&](const auto& c){return c.receiver==m_entity;})>128)
-        {error="Surface paint supports at most 128 face/layer/side charts per receiver";return false;}
-        size_t bytes=0;for(const auto& c:result)if(c.receiver==m_entity)
-            for(unsigned size=c.resolution;size;size/=2)bytes+=size_t(size)*size*32;
-        if(bytes>256u*1024u*1024u){error="Surface paint exceeds the 256 MiB receiver texture budget";return false;}
+        if(!brush.erase&&!ValidateSurfacePaintReceiver(m_entity,canvas,&document->GetDocument(),error,&result))return false;
         any=true;
     }
-    if(any)charts=AZStd::move(result);
+    if(any)
+    {
+        // An erase may repair an old over-budget document by freeing several
+        // charts. Validate the completed transaction, not an intermediate step.
+        if(!ValidateSurfacePaintReceiver(m_entity,canvas,&document->GetDocument(),error,&result))return false;
+        charts=AZStd::move(result);
+    }
     return any;
 }

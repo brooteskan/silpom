@@ -74,7 +74,10 @@ void SilPomApplySurfaceTextures(inout Surface surface,MaterialParameters params,
         }
         const float4 color=lerp(colors[0],colors[1],frac(lod))*opacity;
         const float4 detail=lerp(normals[0],normals[1],frac(lod))*opacity;
-        surface.albedo=surface.albedo*(1-color.a)+color.rgb;
+        // Saved RGB is coverage-premultiplied linear sRGB. Material albedo is
+        // ACEScg, as in BaseColorInput.azsli. The linear primary conversion
+        // applies directly to premultiplied RGB; coverage stays unchanged.
+        surface.albedo=surface.albedo*(1-color.a)+LinearSrgb_To_AcesCg(color.rgb);
         // Preserve the live world normal bit-for-bit for clear or flat detail.
         if(detail.a>0&&(detail.x!=0||detail.y!=0))
         {

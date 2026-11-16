@@ -308,6 +308,8 @@ private:
     QLabel* m_paintHint=nullptr;
     PaintStroke m_textureBrush;
     SurfaceBrushPixels m_texturePixels;
+    QString m_textureError;
+    AZ::EntityId m_textureErrorCanvas;
     QPushButton* m_colorButton=nullptr;
     AZ::Color m_color=AZ::Color(.18f,.12f,.07f,1.f);
 };
@@ -506,8 +508,15 @@ void Painter::Write(const PaintConfig& c)
 {
     if(auto* d=Document(m_canvas))
     {
+        const auto revision=d->GetRevision();
         d->SetDocument(c);
-        if(c.m_textureAuthoritative){if(m_drawing)m_work=d->GetDocument();return;}
+        if(c.m_textureAuthoritative)
+        {
+            if(d->GetRevision()==revision)
+            {m_textureError=QString::fromUtf8(d->GetPaintStatus().c_str());m_textureErrorCanvas=m_canvas;}
+            else if(!m_drawing)m_textureError.clear();
+            if(m_drawing)m_work=d->GetDocument();return;
+        }
         if(m_drawing)
         {
             m_work=d->GetDocument();m_stroke=-1;
@@ -646,7 +655,8 @@ void Painter::OnTick(float,AZ::ScriptTimePoint)
     QString receiverStatus;
     if(texture&&!doc->GetDocument().m_surfacePaint.empty())
     {AZStd::string state;MeshRequestBus::EventResult(state,doc->GetDocument().m_surfacePaint.front().receiver,&MeshRequests::GetSurfacePaintStatus);receiverStatus="\n"+QString::fromUtf8(state.c_str());}
-    m_status->setText(status+receiverStatus+(m_arm->isChecked()?(m_hasCursor?"\nRendered surface ready.":"\nWaiting for visible surface / depth frame."):"\nPainting disabled."));
+    const QString editError=texture&&m_textureErrorCanvas==m_canvas&&!m_textureError.isEmpty()?"\n"+m_textureError:QString{};
+    m_status->setText(status+receiverStatus+editError+(m_arm->isChecked()?(m_hasCursor?"\nRendered surface ready.":"\nWaiting for visible surface / depth frame."):"\nPainting disabled."));
 }
 void Painter::OnEndPrepareRender()
 {
@@ -812,8 +822,10 @@ void Painter::AddPixel(QPointF pixel,float pressure)
                 brush.depth=stroke->m_depth*world.GetUniformScale();brush.opacity=stroke->m_opacity*(stroke->m_pressureOpacity?PaintMath::Pressure(p.pressure):1.f);
                 brush.normalOpacity=stroke->m_normalOpacity;brush.color=stroke->m_color;brush.blendMode=stroke->m_blendMode;brush.erase=stroke->m_erase;brush.heightMask=stroke->m_heightMask;
                 AZStd::string error;bool applied=false;
-                MeshRequestBus::EventResult(applied,dab.m_surface.receiver,&MeshRequests::ApplySurfaceTextureBrush,dab.m_surface,brush,m_texturePixels,Layer(m_work)->m_id,m_work.m_surfacePaint,error);
-                if(!error.empty())m_status->setText(QString::fromUtf8(error.c_str()));
+                MeshRequestBus::EventResult(applied,dab.m_surface.receiver,&MeshRequests::ApplySurfaceTextureBrush,dab.m_surface,m_canvas,brush,m_texturePixels,Layer(m_work)->m_id,m_work.m_surfacePaint,error);
+                if(!error.empty())
+                {m_textureError=QString::fromUtf8(error.c_str());m_textureErrorCanvas=m_canvas;m_status->setText(m_textureError);}
+                else if(applied)m_textureError.clear();
                 return; // No persistent dab or projection history in this document.
             }
             dab.m_pressure=p.pressure;dab.m_start=p.start;dab.m_sequence=m_work.m_nextId++;
@@ -978,7 +990,7 @@ public:
         brush.diameter=settings.GetX();brush.depth=.25f;brush.opacity=settings.GetY();brush.normalOpacity=settings.GetZ();
         brush.color=color;brush.erase=erase;brush.heightMask=7;
         AZStd::string error;bool applied=false;
-        MeshRequestBus::EventResult(applied,receiver,&MeshRequests::ApplySurfaceTextureBrush,address,brush,pixels,selected->m_id,next.m_surfacePaint,error);
+        MeshRequestBus::EventResult(applied,receiver,&MeshRequests::ApplySurfaceTextureBrush,address,canvas,brush,pixels,selected->m_id,next.m_surfacePaint,error);
         if(!applied)return error.empty()?AZStd::string("Brush did not affect any receiving texels"):error;
         AzToolsFramework::ScopedUndoBatch undo("Paint surface texture stamp");
         const auto revision=document->GetRevision();document->SetDocument(next);

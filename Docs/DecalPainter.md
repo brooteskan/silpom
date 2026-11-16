@@ -21,8 +21,13 @@ not the overwritten blue. Keep that blue on a separate layer to preserve it.
 Paint follows its receiving model through transforms; moving the paint-document
 entity does not relocate saved UV paint. Missing receivers/faces stay unresolved.
 New texture painting currently supports up to 128 face/layer/side charts and
-256 MiB of active raw mip texels per receiver. GPU allocation and temporary
+256 MiB of raw mip texels for visible charts across all canvases on a receiver.
+Unresolved visible charts reserve capacity too. GPU allocation and temporary
 replacement overhead are additional. New charts use 256x256 texels.
+Edits that exceed the combined limit are rejected without changing saved paint.
+Fully erased charts release their slots; hidden layers release their reservation
+until made visible again. Saved paint RGB is linear sRGB and is converted to
+O3DE's ACEScg albedo space when rendered.
 
 Existing paint documents retain their legacy projection history unchanged.
 They are not silently converted or discarded. The rolling Composite and path

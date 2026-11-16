@@ -89,6 +89,11 @@ public:
 };
 // Used by both the editor and runtime, including migration of old prefabs.
 void CompactPaint(PaintConfig&);
+// One receiver-wide reservation for visible saved charts, including unresolved
+// faces. The same check guards edits and publication. A candidate replaces its
+// canvas atomically; brush transactions can override only that canvas's texels.
+bool ValidateSurfacePaintReceiver(AZ::EntityId receiver,AZ::EntityId replacementCanvas,const PaintConfig* replacement,
+    AZStd::string& error,const AZStd::vector<SurfacePaintChart>* replacementCharts=nullptr);
 void ResetPaintCompositeHistory();
 void EnablePaintCompositeHistory(bool);
 class PaintRequests : public AZ::EBusTraits

@@ -7,6 +7,7 @@ NoMarch tower and the fixed editor camera used by surface_texture_editor_smoke.
 """
 import argparse
 import base64
+from collections import deque
 import json
 from pathlib import Path
 import struct
@@ -17,6 +18,21 @@ from analyze_decal_bake_benchmark import dds,normals
 
 F=np.float32
 MIN_PAINTED_SAMPLES=100
+
+# Independently retain the pinned engine's sRGB/D65 -> XYZ -> D60 -> AP1
+# colorimetry. Saved paint RGB is premultiplied linear sRGB; live albedo is
+# ACEScg. This linear primaries conversion commutes with premultiplication.
+_XYZ_TO_AP1=np.array([[1.64102352,-.32480335,-.23642471],
+    [-.66366309,1.61533189,.01675635],[.01172191,-.00828444,.98839492]],dtype=F)
+_D65_TO_D60=np.array([[1.01303,.00610531,-.014971],
+    [.00769823,.998165,-.00503203],[-.00284131,.00468516,.924507]],dtype=F)
+_SRGB_TO_XYZ=np.array([[.41239089,.35758430,.18048084],
+    [.21263906,.71516860,.07219233],[.01933082,.11919472,.95053232]],dtype=F)
+_LINEAR_SRGB_TO_ACESCG=_XYZ_TO_AP1@(_D65_TO_D60@_SRGB_TO_XYZ)
+
+
+def paint_color_to_acescg(rgb):
+    return np.asarray(rgb,dtype=F)@_LINEAR_SRGB_TO_ACESCG.T
 
 
 def decode_chart(text):
@@ -56,18 +72,80 @@ def decode_chart(text):
     return image
 
 
-def generate_mips(image):
-    """Average raw F32 tuples; never normalize the stored normal vector."""
+def triangle_domain_weights(shape,triangle):
+    """Classify storage texel centers against the actual receiving triangle."""
+    height,width=shape
+    vertices=np.asarray(triangle,dtype=F).astype(np.float64)
+    assert vertices.shape==(3,2) and np.all(np.isfinite(vertices)),'Invalid receiving triangle'
+    first=vertices[1]-vertices[0];second=vertices[2]-vertices[0]
+    area=first[0]*second[1]-first[1]*second[0]
+    assert area!=0,'Degenerate receiving triangle'
+    y,x=np.mgrid[:height,:width]
+    points=np.stack(((x+.5)/width,(y+.5)/height),axis=-1)
+    inside=np.ones((height,width),dtype=bool)
+    for first,last in ((0,1),(1,2),(2,0)):
+        edge=vertices[last]-vertices[first];delta=points-vertices[first]
+        side=edge[0]*delta[...,1]-edge[1]*delta[...,0]
+        inside&=side>=0 if area>0 else side<=0
+    assert np.any(inside),'Receiving triangle contains no source texel centers'
+    return inside.astype(np.uint32)
+
+
+def extend_domain_boundary(image,weights):
+    """Nearest receiving center by deterministic Manhattan-distance padding.
+
+    Padding is a sampling extension only. Its geometric weight stays zero, so
+    it never contributes surface area to a later mip's average.
+    """
+    height,width=weights.shape;seeds=np.flatnonzero(weights.reshape(-1)>0)
+    assert seeds.size,'Mip has no receiving-domain samples'
+    if seeds.size==height*width:return image.copy()
+    nearest=np.full(height*width,-1,dtype=np.int32);nearest[seeds]=seeds
+    pending=deque(int(i) for i in seeds)
+    while pending:
+        index=pending.popleft();y,x=divmod(index,width)
+        for neighbor in (index-1 if x else -1,index+1 if x+1<width else -1,
+            index-width if y else -1,index+width if y+1<height else -1):
+            if neighbor>=0 and nearest[neighbor]<0:
+                nearest[neighbor]=nearest[index];pending.append(neighbor)
+    return image.reshape(-1,8)[nearest].reshape(height,width,8)
+
+
+def generate_mips(image,triangle=None):
+    """Filter raw F32 moments, separating surface area from chart storage.
+
+    Without a triangle this is the ordinary rectangular filter used by the
+    standalone math fixtures. Real receiver charts provide their canonical UV
+    triangle, and each mip averages only carried receiving-domain weights.
+    """
     assert image.ndim==3 and image.shape[-1]==8
     result=[np.asarray(image,dtype=F)]
+    weights=None
+    if triangle is not None:
+        weights=triangle_domain_weights(image.shape[:2],triangle)
+        result[0]=extend_domain_boundary(result[0],weights)
     while result[-1].shape[0]>1 or result[-1].shape[1]>1:
         source=result[-1];height,width=source.shape[:2]
         y=np.minimum(np.arange(max(1,height//2))*2,height-1)
         x=np.minimum(np.arange(max(1,width//2))*2,width-1)
         yy=np.minimum(y+1,height-1);xx=np.minimum(x+1,width-1)
-        low=source[y[:,None],x[None,:]]*F(.5)+source[y[:,None],xx[None,:]]*F(.5)
-        high=source[yy[:,None],x[None,:]]*F(.5)+source[yy[:,None],xx[None,:]]*F(.5)
-        result.append(low*F(.5)+high*F(.5))
+        if weights is None:
+            low=source[y[:,None],x[None,:]]*F(.5)+source[y[:,None],xx[None,:]]*F(.5)
+            high=source[yy[:,None],x[None,:]]*F(.5)+source[yy[:,None],xx[None,:]]*F(.5)
+            result.append(low*F(.5)+high*F(.5))
+        else:
+            output=np.zeros((len(y),len(x),8),dtype=F)
+            total=np.zeros((len(y),len(x)),dtype=np.uint32)
+            for row,column in ((y,x),(y,xx),(yy,x),(yy,xx)):
+                child=source[row[:,None],column[None,:]]
+                count=weights[row[:,None],column[None,:]]
+                present=count>0;first=present&(total==0);mixed=present&~first
+                output[first]=child[first]
+                fraction=count[mixed].astype(F)/(total[mixed]+count[mixed]).astype(F)
+                output[mixed]=output[mixed]*(F(1)-fraction[:,None])+child[mixed]*fraction[:,None]
+                total+=count
+            weights=total
+            result.append(extend_domain_boundary(output,weights))
     return result
 
 
@@ -198,15 +276,19 @@ def ordered_charts(document,faces,eye):
             assert image.shape==(resolution,resolution,8)
             rectangle=np.array(source_chart['Rectangle'],dtype=F)
             assert np.all(np.isfinite(rectangle)) and np.all(rectangle[2:]>rectangle[:2])
+            triangle=(np.array([c['uv'] for c in face['corners']],dtype=F)-rectangle[:2])*(F(1)/(rectangle[2:]-rectangle[:2]))
             charts.append({'face':int(face['hit_face']),'frame':face_frame(face,front),
-                'rectangle':rectangle,'opacity':F(min(opacity,1)),'mips':generate_mips(image)})
+                'rectangle':rectangle,'triangle':triangle,'opacity':F(min(opacity,1)),'mips':generate_mips(image,triangle)})
     assert charts,'No visible-side source charts'
     return charts,excluded_backside
 
 
 def predict(records,baseline_color,baseline_normal,charts,shader_uv=None,gradients=None):
-    uv,dx,dy,quad_valid=quad_derivatives(records)
-    if shader_uv is not None:uv=np.asarray(shader_uv,dtype=F)
+    source_uv,dx,dy,quad_valid=quad_derivatives(records)
+    # Receiving ownership is independent of the shader values under test.
+    # Observed shader coordinates are used only to predict numerical sampling,
+    # after their round trip has been validated against these hit records.
+    sample_uv=source_uv if shader_uv is None else np.asarray(shader_uv,dtype=F)
     if gradients is not None:
         gradients=np.asarray(gradients,dtype=F);dx=gradients[...,:2];dy=gradients[...,2:4]
     face=records[...,3]>>2;receiving=(records[...,3]&3)==1
@@ -219,8 +301,9 @@ def predict(records,baseline_color,baseline_normal,charts,shader_uv=None,gradien
     full_chart_count=np.zeros(face.shape,dtype=np.uint32)
     for chart in charts:
         rectangle=chart['rectangle'];inverse=F(1)/(rectangle[2:]-rectangle[:2])
-        q=(uv-rectangle[:2])*inverse
-        in_domain=np.all((q>=0)&(q<=1)&np.isfinite(q),axis=-1)&receiving&(face==chart['face'])
+        source_q=(source_uv-rectangle[:2])*inverse
+        q=(sample_uv-rectangle[:2])*inverse
+        in_domain=np.all((source_q>=0)&(source_q<=1)&np.isfinite(source_q),axis=-1)&receiving&(face==chart['face'])
         full_chart_count[in_domain]+=1
         qany=np.zeros(in_domain[0::2,0::2].shape,dtype=bool);qall=np.ones(qany.shape,dtype=bool)
         for y,x in ((0,0),(0,1),(1,0),(1,1)):
@@ -236,7 +319,7 @@ def predict(records,baseline_color,baseline_normal,charts,shader_uv=None,gradien
         lod=np.clip(np.log2(np.maximum(F(1),rho)),F(0),F(len(chart['mips'])-1))
         source_neutral[eligible]&=neutral_normal_support(chart['mips'],q[eligible],lod)
         values=sample_mips(chart['mips'],q[eligible],lod)*chart['opacity']
-        color[eligible]=color[eligible]*(F(1)-values[:,3:4])+values[:,:3]
+        color[eligible]=color[eligible]*(F(1)-values[:,3:4])+paint_color_to_acescg(values[:,:3])
         active=(values[:,7]>0)&((values[:,4]!=0)|(values[:,5]!=0))
         active_mask=np.zeros(face.shape,dtype=bool);active_mask[eligible]=active
         normal_paint|=active_mask;color_paint[eligible]|=values[:,3]>0
@@ -264,6 +347,7 @@ def metrics(delta,mask):
 def compare_sample(records,baseline_color,baseline_normal,actual_color,actual_normal,charts,usage,
     baseline_packed=None,actual_packed=None,shader_uv=None,gradients=None,
     preservation_colors=None,forward_normal=None,forward_base_normal=None):
+    if shader_uv is not None:validate_shader_uv(records,shader_uv,charts,usage)
     predicted=predict(records,baseline_color,baseline_normal,charts,shader_uv,gradients)
     status=(records[...,3]&3)==1;faces=records[...,3]>>2;used=usage[...,0]==3
     assert not np.any((usage[...,0]!=0)&~used),'Unexpected replay/cache usage in authoritative mode'
@@ -285,7 +369,10 @@ def compare_sample(records,baseline_color,baseline_normal,actual_color,actual_no
     receiving_normals=metrics(degrees,mask)
     neutral=mask&~predicted['normal_paint']
     source_neutral=predicted['source_neutral_normal']
-    uncharted=status&~np.isin(faces,[chart['face'] for chart in charts])
+    charted_face=np.isin(faces,[chart['face'] for chart in charts])
+    uncharted=status&~charted_face
+    unpainted=status&(predicted['full_chart_count']==0)
+    outside_chart=unpainted&charted_face
     exact_base=baseline_packed if baseline_packed is not None else baseline_normal
     exact_actual=actual_packed if baseline_packed is not None else actual_normal
     neutral_exact=np.array_equal(exact_base[neutral],exact_actual[neutral])
@@ -294,6 +381,13 @@ def compare_sample(records,baseline_color,baseline_normal,actual_color,actual_no
     uncharted_normal_exact=np.array_equal(exact_base[uncharted],exact_actual[uncharted])
     preserve_base,preserve_actual=preservation_colors if preservation_colors is not None else (baseline_color,actual_color)
     uncharted_color_exact=np.array_equal(preserve_base[uncharted],preserve_actual[uncharted])
+    # A face can own a partial chart. Every receiving pixel outside all saved
+    # rectangles must still retain the native result, even if it shares that
+    # face or a derivative quad with painted pixels.
+    unpainted_normal_exact=np.array_equal(exact_base[unpainted],exact_actual[unpainted])
+    unpainted_color_exact=np.array_equal(preserve_base[unpainted],preserve_actual[unpainted])
+    outside_raw_normal_exact=np.array_equal(baseline_normal[outside_chart],actual_normal[outside_chart])
+    outside_raw_color_exact=np.array_equal(baseline_color[outside_chart],actual_color[outside_chart])
     mip_levels=predicted['mip_low'][mask]
     report={'receiving_samples':int(status.sum()),'authoritative_samples':int(used.sum()),
         'evaluated_samples':int(mask.sum()),'painted_normal_samples':int(predicted['normal_paint'].sum()),
@@ -307,10 +401,15 @@ def compare_sample(records,baseline_color,baseline_normal,actual_color,actual_no
         'source_neutral_normals_bit_exact':bool(source_neutral_exact and source_neutral_raw_exact),
         'uncharted_receiving_samples':int(uncharted.sum()),
         'uncharted_material_bit_exact':bool(uncharted_color_exact and uncharted_normal_exact),
+        'unpainted_receiving_samples':int(unpainted.sum()),
+        'unpainted_material_bit_exact':bool(unpainted_color_exact and unpainted_normal_exact),
+        'outside_chart_same_face_samples':int(outside_chart.sum()),
+        'outside_chart_raw_material_bit_exact':bool(outside_raw_color_exact and outside_raw_normal_exact),
         'color_error':color_metrics,'normal_degrees':normal_metrics,'receiving_normal_degrees':receiving_normals,
         'mip_low_min':int(mip_levels.min()) if mip_levels.size else None,
         'mip_low_max':int(mip_levels.max()) if mip_levels.size else None}
-    report['quality_passed']=bool(source_neutral_exact and source_neutral_raw_exact and uncharted_color_exact and uncharted_normal_exact
+    report['quality_passed']=bool(source_neutral_exact and source_neutral_raw_exact and unpainted_color_exact and unpainted_normal_exact
+        and outside_raw_color_exact and outside_raw_normal_exact
         and normal_metrics['pixels']>=MIN_PAINTED_SAMPLES
         and color_metrics['pixels']>=MIN_PAINTED_SAMPLES
         and color_metrics['rms']<=.01 and color_metrics['maximum']<=.05
@@ -342,13 +441,19 @@ def capture_image(root,stem,label,format,sample,channels=3):
 
 
 def validate_shader_uv(records,shader_uv,charts,usage):
-    source_uv=records[...,:2].view('<f4');used=usage[...,0]==3
-    assert np.all(np.isfinite(shader_uv[used])),'Nonfinite shader source UV'
+    source_uv=records[...,:2].view('<f4')
+    # Do not let missing paint usage or an incorrect shader coordinate choose
+    # which receiving addresses are checked. Raw diagnostics are available on
+    # the entire face of every chart, including outside partial rectangles.
+    faces=records[...,3]>>2;receiving=(records[...,3]&3)==1
+    checked=receiving&np.isin(faces,[chart['face'] for chart in charts])
+    assert np.all(np.isfinite(source_uv[checked])),'Nonfinite receiving hit UV'
+    assert np.all(np.isfinite(np.asarray(shader_uv)[checked])),'Nonfinite shader source UV'
     error=np.abs(np.asarray(shader_uv,dtype=F)-source_uv)
-    maximum=float(error[used].max()) if np.any(used) else 0.
+    maximum=float(error[checked].max()) if np.any(checked) else 0.
     maximum_texel=0.
     for chart in charts:
-        selected=used&((records[...,3]>>2)==chart['face'])
+        selected=checked&(faces==chart['face'])
         if not np.any(selected):continue
         rectangle=chart['rectangle'];inverse=F(1)/(rectangle[2:]-rectangle[:2])
         extent=np.array([chart['mips'][0].shape[1],chart['mips'][0].shape[0]],dtype=F)
@@ -357,7 +462,7 @@ def validate_shader_uv(records,shader_uv,charts,usage):
     # offset. Bound that documented float32 round trip in UV and texel units;
     # the shader coordinates are observations, never an output-error fit.
     assert maximum<=1e-5 and maximum_texel<=.01,(maximum,maximum_texel,'Shader UV changed receiving address')
-    return {'maximum_absolute':maximum,'maximum_chart_texel':maximum_texel}
+    return {'checked_receiving_samples':int(checked.sum()),'maximum_absolute':maximum,'maximum_chart_texel':maximum_texel}
 
 
 def packed_normal(rgb):
@@ -393,6 +498,7 @@ def main():
     assert state['retained_dabs']==0 and state['texels_survive_json_roundtrip'],state
     assert state.get('raw_surface_diagnostics') and state.get('texture_snapshot_undo_redo_exact'),state
     assert state.get('mesh_settings_restored') and state.get('material_scope','').startswith('base SiLPOM material'),state
+    assert state.get('partial_chart_fixture'),'Expected a real partial-chart preservation fixture'
     document=json.loads((root/'paint-document.json').read_text())
     selected=state['receiver'];p=np.array([c['position'] for c in selected['corners']],dtype=F)
     eye=p.mean(axis=0)+face_frame(selected)[2]*F(.55)
@@ -417,12 +523,14 @@ def main():
         report=compare_sample(records,base_color,base_normal,actual_color,actual_normal,charts,usage,
             base_packed,actual_packed,shader_uv,gradients,preservation_colors=(base_lit,actual_lit),
             forward_normal=normals(actual_packed),forward_base_normal=normals(base_packed))
+        assert report['outside_chart_same_face_samples']>=100,'Partial chart did not exercise unpainted pixels on its receiving face'
         reports.append({'sample':sample,**identities,'shader_uv_roundtrip':address_check,**report})
     result={'source':'saved source texels + native material normal; no projected-history fit',
         'capture_state':state,'samples':reports,'visible_source_charts':len(charts),
         'excluded_backside_source_charts':backside,'derivatives':'raw production shader ddx/ddy per actual MSAA sample; cross-face and invalid quads excluded',
         'color_source':'raw pre-lighting material albedo; lit DiffuseSamples retained only for unchanged-output checks',
         'minimum_painted_samples_per_msaa_sample':MIN_PAINTED_SAMPLES,
+        'minimum_same_face_outside_chart_samples_per_msaa_sample':100,
         'color_limits':{'rms':.01,'maximum':.05},'normal_degree_limits':{'rms':1,'maximum':5},
         'quality_passed':all(report['quality_passed'] for report in reports)}
     (root/'analysis.json').write_text(json.dumps(result,indent=2)+'\n')

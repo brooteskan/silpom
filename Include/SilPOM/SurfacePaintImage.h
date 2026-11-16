@@ -24,6 +24,11 @@ struct Image
     uint32_t width=0,height=0;
     std::vector<Pixel> pixels;
 };
+// A receiving triangle in normalized chart coordinates. Source storage remains
+// rectangular; these coordinates describe which texel centers belong to the
+// surface, independently of painted coverage.
+struct Point {float x=0,y=0;};
+struct Triangle {Point corners[3];};
 inline constexpr uint32_t MinResolution=32,MaxResolution=1024;
 
 namespace Detail
@@ -154,7 +159,8 @@ inline std::string Encode(const Image& image)
             {
                 const auto next=Detail::Word(image,i);end=i+1;
                 while(end<words&&Detail::Word(image,end)==next)++end;
-                if(end-i>=3)break;i=end;
+                if(end-i>=3)break;
+                i=end;
             }
             Detail::AddWord(bytes,uint32_t(i-begin));
             for(size_t k=begin;k<i;++k)Detail::AddWord(bytes,Detail::Word(image,k));
@@ -218,6 +224,79 @@ inline std::vector<Image> GenerateMips(const Image& source)
     if(!Valid(source))return {};
     std::vector<Image> mips;mips.push_back(source);
     while(mips.back().width>1||mips.back().height>1)mips.push_back(Downsample(mips.back()));
+    return mips;
+}
+
+namespace Detail
+{
+inline bool DomainWeights(const Image& image,const Triangle& triangle,std::vector<uint32_t>& weights)
+{
+    for(const auto& p:triangle.corners)if(!std::isfinite(p.x)||!std::isfinite(p.y))return false;
+    auto edge=[](const Point& a,const Point& b,double x,double y)
+    {return (double(b.x)-a.x)*(y-a.y)-(double(b.y)-a.y)*(x-a.x);};
+    const auto& a=triangle.corners[0];const auto& b=triangle.corners[1];const auto& c=triangle.corners[2];
+    const double determinant=edge(a,b,c.x,c.y);
+    if(!std::isfinite(determinant)||determinant==0)return false;
+    weights.assign(image.pixels.size(),0);bool any=false;
+    for(uint32_t y=0;y<image.height;++y)for(uint32_t x=0;x<image.width;++x)
+    {
+        const double u=(double(x)+.5)/image.width,v=(double(y)+.5)/image.height;
+        const double e0=edge(a,b,u,v),e1=edge(b,c,u,v),e2=edge(c,a,u,v);
+        const bool inside=determinant>0?(e0>=0&&e1>=0&&e2>=0):(e0<=0&&e1<=0&&e2<=0);
+        if(inside){weights[size_t(y)*image.width+x]=1;any=true;}
+    }
+    return any;
+}
+inline void ExtendDomain(Image& image,const std::vector<uint32_t>& weights)
+{
+    // Multi-source breadth-first extension uses the nearest receiving texel in
+    // the four-neighbor lattice. Row-major seeds and L/R/U/D neighbors resolve
+    // ties deterministically. Extended samples keep zero geometric weight.
+    constexpr uint32_t invalid=std::numeric_limits<uint32_t>::max();
+    std::vector<uint32_t> nearest(weights.size(),invalid),queue;queue.reserve(weights.size());
+    for(uint32_t i=0;i<weights.size();++i)if(weights[i]){nearest[i]=i;queue.push_back(i);}
+    for(size_t head=0;head<queue.size();++head)
+    {
+        const auto p=queue[head];const uint32_t x=p%image.width,y=p/image.width;
+        auto visit=[&](uint32_t next)
+        {if(nearest[next]==invalid){nearest[next]=nearest[p];queue.push_back(next);}};
+        if(x)visit(p-1);
+        if(x+1<image.width)visit(p+1);
+        if(y)visit(p-image.width);
+        if(y+1<image.height)visit(p+image.width);
+    }
+    for(size_t i=0;i<weights.size();++i)if(!weights[i])image.pixels[i]=image.pixels[nearest[i]];
+}
+}
+
+inline std::vector<Image> GenerateMips(const Image& source,const Triangle& triangle)
+{
+    if(!Valid(source))return {};
+    std::vector<uint32_t> weights;
+    if(!Detail::DomainWeights(source,triangle,weights))return {};
+    std::vector<Image> mips;mips.push_back(source);Detail::ExtendDomain(mips.back(),weights);
+    while(mips.back().width>1||mips.back().height>1)
+    {
+        const auto& previous=mips.back();Image next;
+        next.width=std::max(1u,previous.width/2);next.height=std::max(1u,previous.height/2);
+        next.pixels.resize(size_t(next.width)*next.height);std::vector<uint32_t> nextWeights(next.pixels.size(),0);
+        for(uint32_t y=0;y<next.height;++y)for(uint32_t x=0;x<next.width;++x)
+        {
+            Pixel value{};uint32_t total=0;
+            for(uint32_t dy=0;dy<std::min(2u,previous.height);++dy)
+                for(uint32_t dx=0;dx<std::min(2u,previous.width);++dx)
+                {
+                    const size_t child=size_t(y*2+dy)*previous.width+x*2+dx;const uint32_t weight=weights[child];
+                    if(!weight)continue;
+                    value=total?Detail::Mix(value,previous.pixels[child],float(weight)/float(total+weight)):previous.pixels[child];
+                    total+=weight;
+                }
+            const size_t parent=size_t(y)*next.width+x;next.pixels[parent]=value;nextWeights[parent]=total;
+        }
+        // Clear paint within the face still has geometric weight, so padding
+        // never fills an erased receiving texel or discards clear interior area.
+        Detail::ExtendDomain(next,nextWeights);mips.push_back(std::move(next));weights=std::move(nextWeights);
+    }
     return mips;
 }
 inline Pixel Sample(const Image& image,float u,float v)

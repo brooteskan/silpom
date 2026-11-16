@@ -10,6 +10,7 @@ import numpy as np
 from analyze_surface_texture_paint import (compose_normal,decode_chart,face_frame,generate_mips,
     ordered_charts,quad_derivatives,sample_level,sample_mips,compare_sample)
 from analyze_surface_texture_paint import neutral_normal_support,predict,validate_shader_uv
+from analyze_surface_texture_paint import paint_color_to_acescg,triangle_domain_weights
 
 F=np.float32
 
@@ -40,7 +41,9 @@ class SurfaceTextureAnalysisTests(unittest.TestCase):
         self.records[...,:2]=uv.view('<u4');self.records[...,3]=(7<<2)|1
         self.base_color=np.broadcast_to(np.array([.2,.4,.6],dtype=F),(16,16,3)).copy()
         self.base_normal=np.broadcast_to(np.array([0,0,1],dtype=F),(16,16,3)).copy()
-        self.color=np.broadcast_to(np.array([.5,.3,.5],dtype=F),(16,16,3)).copy()
+        # Pinned engine AP1 result for premultiplied linear-sRGB (.4,.1,.2),
+        # source-over the already-ACEScg base with coverage .5.
+        self.color=np.broadcast_to(np.array([.3886652,.3224046,.49316636],dtype=F),(16,16,3)).copy()
         vector=[.18,.24,.6*math.sqrt(.75)+.4];length=math.sqrt(sum(v*v for v in vector))
         self.normal=np.broadcast_to(np.array([v/length for v in vector],dtype=F),(16,16,3)).copy()
         self.usage=np.zeros_like(self.records);self.usage[...,0]=3;self.usage[...,1]=7;self.usage[...,2]=1;self.usage[...,3]=99
@@ -64,6 +67,63 @@ class SurfaceTextureAnalysisTests(unittest.TestCase):
         mips=generate_mips(image)
         self.assertEqual(len(mips),6)
         self.assertTrue(np.allclose(mips[-1][0,0,4:8],[0,0,.6,1],atol=1e-6))
+
+    def test_fully_painted_triangle_keeps_full_coverage_at_every_mip(self):
+        triangle=np.array([[0,0],[1,0],[0,1]],dtype=F)
+        y,x=np.mgrid[:256,:256];padded=(x+.5)/256+(y+.5)/256<=1+4/256
+        image=np.zeros((256,256,8),dtype=F)
+        image[padded]=[.2,.4,.6,1,.3,.4,math.sqrt(.75),1]
+        # Reproduce the rectangular reduction's dilution, then verify that
+        # only receiving-domain geometry controls the corrected reduction.
+        diluted=generate_mips(image)
+        self.assertGreater(float(diluted[-1][0,0,3]),.51)
+        self.assertLess(float(diluted[-1][0,0,3]),.53)
+        for mip in generate_mips(image,triangle):
+            self.assertTrue(np.all(mip[...,3]==1))
+            self.assertTrue(np.all(mip[...,7]==1))
+            self.assertTrue(np.allclose(mip[...,4:7],[.3,.4,math.sqrt(.75)],atol=1e-6))
+
+    def test_domain_mips_count_clear_surface_and_ignore_nonreceiving_storage(self):
+        triangle=np.array([[0,0],[1,0],[0,1]],dtype=F)
+        inside=triangle_domain_weights((32,32),triangle)>0
+        image=np.zeros_like(self.image);painted=inside.copy();painted[8:]=False;painted[:,8:]=False
+        image[painted]=[.3,.2,.1,1,.3,.4,math.sqrt(.75),1]
+        source=image.copy();source[~inside]=[1,0,1,1,.8,0,.6,1]
+        expected_coverage=F(painted.sum())/F(inside.sum())
+        actual=generate_mips(source,triangle);control=generate_mips(image,triangle)
+        self.assertTrue(np.array_equal(actual[0][inside],image[inside]))
+        self.assertTrue(np.all(actual[0][inside&~painted]==0))
+        self.assertTrue(all(np.array_equal(a,b) for a,b in zip(actual,control)))
+        self.assertAlmostEqual(float(actual[-1][0,0,3]),float(expected_coverage),places=6)
+        self.assertAlmostEqual(float(actual[-1][0,0,7]),float(expected_coverage),places=6)
+
+    def test_domain_mips_support_reversed_thin_and_partly_outside_triangles(self):
+        for triangle in (np.array([[0,0],[1,0],[0,1]],dtype=F),
+            np.array([[.4,0],[.6,0],[.5,1]],dtype=F),
+            np.array([[-1,-1],[2,-1],[.5,2]],dtype=F)):
+            with self.subTest(triangle=triangle.tolist()):
+                inside=triangle_domain_weights((32,32),triangle)>0
+                image=np.zeros_like(self.image);image[inside]=[.3,.2,.1,1,0,0,1,1]
+                forward=generate_mips(image,triangle);reverse=generate_mips(image,triangle[::-1])
+                self.assertTrue(all(np.array_equal(a,b) for a,b in zip(forward,reverse)))
+                self.assertTrue(all(np.all(m[...,3]==1) and np.all(m[...,7]==1) for m in forward))
+
+    def test_domain_mips_preserve_raw_normal_moment_cancellation(self):
+        triangle=np.array([[0,0],[1,0],[0,1]],dtype=F)
+        inside=triangle_domain_weights((32,32),triangle)>0
+        image=np.zeros_like(self.image);image[...,6]=.6;image[...,7]=1
+        image[:,0::2,4]=.8;image[:,1::2,4]=-.8
+        expected=image[inside].mean(axis=0)
+        actual=generate_mips(image,triangle)[-1][0,0]
+        self.assertTrue(np.allclose(actual,expected,atol=2e-6))
+        self.assertLess(float(np.linalg.norm(actual[4:7])),.61)
+        self.assertEqual(float(actual[7]),1)
+
+    def test_invalid_or_unrepresented_triangle_domain_is_rejected(self):
+        for triangle in ([[0,0],[1,0],[.5,0]],[[0,0],[math.nan,0],[0,1]],
+            [[0,0],[.0001,0],[0,.0001]]):
+            with self.subTest(triangle=triangle):
+                with self.assertRaises(AssertionError):generate_mips(self.image,triangle)
 
     def test_bilinear_texel_centers_and_edge_clamp(self):
         image=np.zeros((2,2,8),dtype=F);image[0,0,0]=1;image[0,1,2]=1
@@ -197,7 +257,9 @@ class SurfaceTextureAnalysisTests(unittest.TestCase):
     def test_chart_edge_quads_are_excluded_and_reported(self):
         charts=copy.deepcopy(self.charts);charts[0]['rectangle']=np.array([.254,0,1,1],dtype=F)
         use=self.usage.copy();use[:,0]=0
-        report=self.compare(charts=charts,usage=use)
+        color=self.color.copy();color[:,0]=self.base_color[:,0]
+        normal=self.normal.copy();normal[:,0]=self.base_normal[:,0]
+        report=self.compare(charts=charts,usage=use,actual_color=color,actual_normal=normal)
         self.assertTrue(report['quality_passed']);self.assertEqual(report['excluded_chart_edge_quad_samples'],32)
         self.assertEqual(report['painted_normal_samples'],224)
 
@@ -248,13 +310,13 @@ class SurfaceTextureAnalysisTests(unittest.TestCase):
         uv=self.records[...,:2].view('<f4').copy();uv[...,0]+=F(.125)
         gradients=np.zeros((16,16,4),dtype=F)
         predicted=predict(self.records,self.base_color,self.base_normal,charts,uv,gradients)
-        expected=sample_level(image,uv.reshape(-1,2)).reshape(16,16,8)[...,:3]
+        expected=paint_color_to_acescg(sample_level(image,uv.reshape(-1,2)).reshape(16,16,8)[...,:3])
         self.assertTrue(np.array_equal(predicted['color'],expected))
         self.assertTrue(np.all(predicted['mip_low']==0))
         gradients[...,0]=1
         predicted=predict(self.records,self.base_color,self.base_normal,charts,uv,gradients)
         self.assertTrue(np.all(predicted['mip_low']==5))
-        self.assertTrue(np.allclose(predicted['color'],np.mean(image[...,:3],axis=(0,1))))
+        self.assertTrue(np.allclose(predicted['color'],paint_color_to_acescg(np.mean(image[...,:3],axis=(0,1)))))
 
     def test_raw_shader_address_roundtrip_is_bounded_independently(self):
         uv=self.records[...,:2].view('<f4').copy()
@@ -268,6 +330,62 @@ class SurfaceTextureAnalysisTests(unittest.TestCase):
         changed=uv.copy();changed[...,0]+=F(1e-6)
         with self.assertRaisesRegex(AssertionError,'changed receiving address'):
             validate_shader_uv(self.records,changed,tight,self.usage)
+
+    def test_saturated_saved_rgb_is_converted_to_acescg_without_changing_coverage(self):
+        # Columns of the pinned engine's combined sRGB/D65 -> AP1/D60 matrix,
+        # independently evaluated from its published colorimetry constants.
+        expected=np.array([[.61309415,.07019562,.02061560],
+            [.33951990,.91635690,.10956981],[.04737774,.01345321,.86981565]],dtype=F)
+        self.assertTrue(np.allclose(paint_color_to_acescg(np.eye(3,dtype=F)),expected,atol=1e-7))
+        self.assertTrue(np.allclose(paint_color_to_acescg(np.eye(3,dtype=F)*F(.25)),expected*F(.25),atol=1e-7))
+        image=self.image.copy();image[...,:4]=[.25,0,0,.25]
+        charts=copy.deepcopy(self.charts);charts[0]['mips']=generate_mips(image)
+        prediction=predict(self.records,self.base_color,self.base_normal,charts)
+        expected_color=self.base_color*F(.75)+expected[0]*F(.25)
+        self.assertTrue(np.allclose(prediction['color'],expected_color,atol=1e-7))
+
+    def test_bad_shader_uv_cannot_hide_four_genuine_painted_pixels_with_zero_usage(self):
+        uv=self.records[...,:2].view('<f4').copy();uv[:2,:2]=[F(2),F(2)]
+        usage=self.usage.copy();usage[:2,:2]=0
+        color=self.color.copy();color[:2,:2]=self.base_color[:2,:2]
+        normal=self.normal.copy();normal[:2,:2]=self.base_normal[:2,:2]
+        # The four pixels form a complete, valid receiving quad. Expected
+        # ownership remains in-chart because it comes from the hit records.
+        predicted=predict(self.records,self.base_color,self.base_normal,self.charts,uv)
+        self.assertTrue(np.all(predicted['accepted']))
+        self.assertEqual(int(predicted['full_chart_count'].sum()),256)
+        with self.assertRaisesRegex(AssertionError,'changed receiving address'):
+            validate_shader_uv(self.records,uv,self.charts,usage)
+        with self.assertRaisesRegex(AssertionError,'changed receiving address'):
+            self.compare(actual_color=color,actual_normal=normal,usage=usage,shader_uv=uv)
+        # Omitting raw diagnostics cannot make missing source-defined usage
+        # acceptable either.
+        with self.assertRaisesRegex(AssertionError,'did not match'):
+            self.compare(actual_color=color,actual_normal=normal,usage=usage)
+
+    def test_outside_partial_chart_on_same_face_preserves_all_sixty_four_pixels(self):
+        charts=copy.deepcopy(self.charts)
+        charts[0]['rectangle']=np.array([.25,.25,.33984375,.5],dtype=F)
+        usage=self.usage.copy();usage[:,12:]=0
+        color=self.color.copy();color[:,12:]=self.base_color[:,12:]
+        normal=self.normal.copy();normal[:,12:]=self.base_normal[:,12:]
+        good=self.compare(charts=charts,usage=usage,actual_color=color,actual_normal=normal)
+        self.assertTrue(good['quality_passed'])
+        self.assertEqual(good['outside_chart_same_face_samples'],64)
+        self.assertEqual(good['excluded_cross_face_or_invalid_quad_samples'],0)
+        self.assertEqual(good['excluded_chart_edge_quad_samples'],0)
+        color[:,12:]=[1,0,1];normal[:,12:]=[0,1,0]
+        failed=self.compare(charts=charts,usage=usage,actual_color=color,actual_normal=normal)
+        self.assertFalse(failed['quality_passed'])
+        self.assertFalse(failed['unpainted_material_bit_exact'])
+        self.assertFalse(failed['outside_chart_raw_material_bit_exact'])
+
+    def test_zero_usage_outside_chart_does_not_exempt_bad_shader_uv(self):
+        charts=copy.deepcopy(self.charts);charts[0]['rectangle']=np.array([.25,.25,.33984375,.5],dtype=F)
+        usage=self.usage.copy();usage[:,12:]=0
+        uv=self.records[...,:2].view('<f4').copy();uv[:,12:,0]+=F(.001)
+        with self.assertRaisesRegex(AssertionError,'changed receiving address'):
+            validate_shader_uv(self.records,uv,charts,usage)
 
     def test_raw_audit_cannot_pass_when_real_forward_normal_disagrees(self):
         good=self.compare(forward_normal=self.normal,forward_base_normal=self.base_normal)

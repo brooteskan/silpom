@@ -18,6 +18,18 @@ Texture2D<float4> GetMaterialTexture(const int readIndex)
     if(localReadIndex<0)localReadIndex=nullTextureIndex;
     return Bindless::GetTexture2D(localReadIndex);
 }
+// Match the pinned engine's BaseColorInput working-space conversion. This
+// adapter supplies the engine function used by the real production include.
+float3 LinearSrgb_To_AcesCg(float3 color)
+{
+    const float3x3 xyzToAp1=float3x3(1.64102352,-.32480335,-.23642471,
+        -.66366309,1.61533189,.01675635,.01172191,-.00828444,.98839492);
+    const float3x3 d65ToD60=float3x3(1.01303,.00610531,-.014971,
+        .00769823,.998165,-.00503203,-.00284131,.00468516,.924507);
+    const float3x3 srgbToXyz=float3x3(.41239089,.35758430,.18048084,
+        .21263906,.71516860,.07219233,.01933082,.11919472,.95053232);
+    return mul(mul(xyzToAp1,mul(d65ToD60,srgbToXyz)),color);
+}
 struct MaterialParameters {uint m_receiverPaintAtlas,m_silpomHitFaceBase;};
 struct Surface {float3 albedo,normal;};
 struct Face {float3 normal,du,dv;};

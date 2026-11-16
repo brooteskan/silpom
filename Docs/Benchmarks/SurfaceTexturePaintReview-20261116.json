@@ -1,0 +1,639 @@
+{
+  "passed": true,
+  "date": "2026-11-16",
+  "baseline_commit": "c787b4560d0a47797ac0141bbe1206fd58b0346c",
+  "fixes": {
+    "color_space": "Saved premultiplied linear-sRGB RGB is converted through the pinned engine LinearSrgb_To_AcesCg before compositing into ACEScg albedo; coverage is unchanged.",
+    "domain_mips": "Receiving source texel centers carry geometric counts through raw tuple averaging. Every mip pads outside cells by deterministic four-neighbor nearest extension with zero exterior weight. Clear interior cells retain weight.",
+    "receiver_capacity": "One shared 128-chart / 256 MiB reservation across all visible saved charts on a receiver, including unresolved faces. Brush, document/layer transactions and renderer use the same validator; fully erased charts are removed.",
+    "oracle": "Expected coverage derives from hit-record face/UV. Shader UV is validated even for usage-zero samples. All no-chart receiving pixels, including partial-chart faces, preserve native output.",
+    "gcc_adapter": "std::isfinite is explicitly available before compiling the shared shader helper as C++."
+  },
+  "scope": {
+    "hardware": "AMD Radeon RX 7900 XTX, DX12",
+    "image_fixture": "VueLiveLink, base SiLPOM material, fixed 1280x720, 2x MSAA, partial receiving chart",
+    "performance_measured": false,
+    "learned_shared_proxy_image_quality_measured": false,
+    "capacity_fixture": "Two authoritative canvases, 48+48 default 256-square charts; 268434432 raw mip bytes; no previous painted snapshot during cold restoration"
+  },
+  "portable_validation": {
+    "ctest_passed": true,
+    "ctest_tests": 5,
+    "ctest_failures": 0,
+    "ctest_log_sha256": "2aad27f070751a829b584712db4e053116673df5333a47fe65a7fce8a5fe5750",
+    "gcc": "GCC 12.2 MinGW; -std=c++17 -Wall -Wextra -Wpedantic -Werror; Math, Image, Layout compile and execution passed",
+    "clang_asan": "Math and Image passed",
+    "image_oracle_regression_tests": 33,
+    "domain_oracle_cross_language": {
+      "passed": true,
+      "source_dimensions": [
+        64,
+        32
+      ],
+      "independent_python_vs_production_cpp": [
+        {
+          "winding": 0,
+          "mips": 7,
+          "maximum_component_error": 4.656612873077393e-10,
+          "all_texels_bit_exact": false
+        },
+        {
+          "winding": 1,
+          "mips": 7,
+          "maximum_component_error": 4.656612873077393e-10,
+          "all_texels_bit_exact": false
+        }
+      ]
+    }
+  },
+  "editor_image_validation": {
+    "source": "saved source texels + native material normal; no projected-history fit",
+    "samples": [
+      {
+        "sample": 0,
+        "hit_records_and_depth_bit_exact": true,
+        "flat_normals_bit_exact": true,
+        "cleared_material_bit_exact": true,
+        "restored_paint_bit_exact": true,
+        "shader_uv_roundtrip": {
+          "checked_receiving_samples": 336612,
+          "maximum_absolute": 3.725290298461914e-09,
+          "maximum_chart_texel": 5.0417867896612734e-05
+        },
+        "receiving_samples": 808641,
+        "authoritative_samples": 309017,
+        "evaluated_samples": 305096,
+        "painted_normal_samples": 121302,
+        "painted_color_samples": 135478,
+        "excluded_cross_face_or_invalid_quad_samples": 21953,
+        "excluded_chart_edge_quad_samples": 676,
+        "neutral_normal_samples": 183794,
+        "neutral_normals_bit_exact": true,
+        "source_neutral_normal_samples": 176444,
+        "source_neutral_raw_normals_bit_exact": true,
+        "source_neutral_packed_normals_bit_exact": true,
+        "source_neutral_normals_bit_exact": true,
+        "uncharted_receiving_samples": 472029,
+        "uncharted_material_bit_exact": true,
+        "unpainted_receiving_samples": 499624,
+        "unpainted_material_bit_exact": true,
+        "outside_chart_same_face_samples": 27595,
+        "outside_chart_raw_material_bit_exact": true,
+        "color_error": {
+          "pixels": 305096,
+          "mean": 2.499010406609159e-05,
+          "rms": 7.167606963776052e-05,
+          "maximum": 0.0010197162628173828
+        },
+        "normal_degrees": {
+          "pixels": 121302,
+          "mean": 0.0012932753888890147,
+          "rms": 0.005706572439521551,
+          "maximum": 0.08622922748327255
+        },
+        "receiving_normal_degrees": {
+          "pixels": 305096,
+          "mean": 0.0005141886067576706,
+          "rms": 0.003598247654736042,
+          "maximum": 0.08622922748327255
+        },
+        "mip_low_min": 0,
+        "mip_low_max": 4,
+        "quality_passed": true,
+        "forward_normal_degrees": {
+          "pixels": 305096,
+          "mean": 0.06361018866300583,
+          "rms": 0.07319743931293488,
+          "maximum": 0.2255535125732422
+        },
+        "raw_to_forward_normal_degrees": {
+          "pixels": 305096,
+          "mean": 0.0636916235089302,
+          "rms": 0.07316920161247253,
+          "maximum": 0.20747904479503632
+        },
+        "base_material_normal_degrees": {
+          "pixels": 305096,
+          "mean": 0.06365830451250076,
+          "rms": 0.0731242299079895,
+          "maximum": 0.2065337896347046
+        }
+      },
+      {
+        "sample": 1,
+        "hit_records_and_depth_bit_exact": true,
+        "flat_normals_bit_exact": true,
+        "cleared_material_bit_exact": true,
+        "restored_paint_bit_exact": true,
+        "shader_uv_roundtrip": {
+          "checked_receiving_samples": 336656,
+          "maximum_absolute": 3.725290298461914e-09,
+          "maximum_chart_texel": 5.0417867896612734e-05
+        },
+        "receiving_samples": 809011,
+        "authoritative_samples": 308964,
+        "evaluated_samples": 305076,
+        "painted_normal_samples": 120048,
+        "painted_color_samples": 134437,
+        "excluded_cross_face_or_invalid_quad_samples": 21799,
+        "excluded_chart_edge_quad_samples": 796,
+        "neutral_normal_samples": 185028,
+        "neutral_normals_bit_exact": true,
+        "source_neutral_normal_samples": 177520,
+        "source_neutral_raw_normals_bit_exact": true,
+        "source_neutral_packed_normals_bit_exact": true,
+        "source_neutral_normals_bit_exact": true,
+        "uncharted_receiving_samples": 472355,
+        "uncharted_material_bit_exact": true,
+        "unpainted_receiving_samples": 500047,
+        "unpainted_material_bit_exact": true,
+        "outside_chart_same_face_samples": 27692,
+        "outside_chart_raw_material_bit_exact": true,
+        "color_error": {
+          "pixels": 305076,
+          "mean": 2.4615294023533352e-05,
+          "rms": 7.107696728780866e-05,
+          "maximum": 0.001019805669784546
+        },
+        "normal_degrees": {
+          "pixels": 120048,
+          "mean": 0.0012990236282348633,
+          "rms": 0.005727200303226709,
+          "maximum": 0.09065408259630203
+        },
+        "receiving_normal_degrees": {
+          "pixels": 305076,
+          "mean": 0.0005111683276481926,
+          "rms": 0.0035926573909819126,
+          "maximum": 0.09065408259630203
+        },
+        "mip_low_min": 0,
+        "mip_low_max": 4,
+        "quality_passed": true,
+        "forward_normal_degrees": {
+          "pixels": 305076,
+          "mean": 0.06354770809412003,
+          "rms": 0.07312700897455215,
+          "maximum": 0.22728192806243896
+        },
+        "raw_to_forward_normal_degrees": {
+          "pixels": 305076,
+          "mean": 0.06362061947584152,
+          "rms": 0.07310238480567932,
+          "maximum": 0.20367176830768585
+        },
+        "base_material_normal_degrees": {
+          "pixels": 305076,
+          "mean": 0.06351417303085327,
+          "rms": 0.07302363216876984,
+          "maximum": 0.2065337896347046
+        }
+      }
+    ],
+    "visible_source_charts": 5,
+    "excluded_backside_source_charts": 0,
+    "derivatives": "raw production shader ddx/ddy per actual MSAA sample; cross-face and invalid quads excluded",
+    "color_source": "raw pre-lighting material albedo; lit DiffuseSamples retained only for unchanged-output checks",
+    "minimum_painted_samples_per_msaa_sample": 100,
+    "minimum_same_face_outside_chart_samples_per_msaa_sample": 100,
+    "color_limits": {
+      "rms": 0.01,
+      "maximum": 0.05
+    },
+    "normal_degree_limits": {
+      "rms": 1,
+      "maximum": 5
+    },
+    "quality_passed": true
+  },
+  "editor_image_state": {
+    "passed": true,
+    "stage": "complete",
+    "benchmark_performed": false,
+    "entered_gameplay": false,
+    "level_sha256": "4e406f84c8363be02651c4c61dc6c1651f95bdb06dd788ccd8f12dcc135c6eaa",
+    "mesh_settings_before": {
+      "Local shadow method": 3,
+      "Level 4A wall material (experimental)": false,
+      "Level 4B shared material / visibility (experimental)": true,
+      "Level 5A learned relief LOD (experimental)": true,
+      "Level 5B bounded proxy depth (experimental)": true,
+      "Lighting estimator": 5,
+      "Neural directional visibility (off = cheaper)": true,
+      "Learned proxy directional response (off = cheaper)": true,
+      "Diffuse ambient accessibility (experimental)": true
+    },
+    "material_scope": "base SiLPOM material; 4A/4B/5A/5B temporarily disabled through Editor API",
+    "mesh_settings_during": {
+      "Local shadow method": 3,
+      "Level 4A wall material (experimental)": false,
+      "Level 4B shared material / visibility (experimental)": false,
+      "Level 5A learned relief LOD (experimental)": false,
+      "Level 5B bounded proxy depth (experimental)": false,
+      "Lighting estimator": 0,
+      "Neural directional visibility (off = cheaper)": true,
+      "Learned proxy directional response (off = cheaper)": true,
+      "Diffuse ambient accessibility (experimental)": false
+    },
+    "receiver": {
+      "face": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:2301:2721,5697,5696",
+      "hit_face": 8782,
+      "batch": 19,
+      "profile": 1,
+      "corners": [
+        {
+          "uv": [
+            0.018474331125617027,
+            0.4820946156978607
+          ],
+          "position": [
+            592.1483154296875,
+            849.7619018554688,
+            7.505000114440918
+          ]
+        },
+        {
+          "uv": [
+            0.05000000074505806,
+            1.0
+          ],
+          "position": [
+            592.00341796875,
+            849.5857543945312,
+            -0.15999998152256012
+          ]
+        },
+        {
+          "uv": [
+            0.05000000074505806,
+            0.4820946156978607
+          ],
+          "position": [
+            592.00341796875,
+            849.5857543945312,
+            7.505000114440918
+          ]
+        }
+      ]
+    },
+    "other_paint_documents_temporarily_hidden": 1,
+    "surface_paint_status": {
+      "state": "Authoritative surface textures active",
+      "mode": 3,
+      "ready": true,
+      "charts": 5,
+      "bytes": 13980960,
+      "pending": false
+    },
+    "flat_normal_check": {
+      "receiving_samples": 1617652,
+      "color_changes": 283641,
+      "normal_changes": 0,
+      "hit_records_bit_exact": true,
+      "depth_bit_exact": true
+    },
+    "erase_reduces_color_and_normal_coverage": true,
+    "texture_snapshot_undo_redo_exact": true,
+    "partial_chart_fixture": true,
+    "partial_chart_face": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:2301:2721,5697,5696",
+    "partial_chart_rectangle": [
+      0.024779465049505234,
+      0.4820946156978607,
+      0.04369486682116985,
+      1.0
+    ],
+    "retained_dabs": 0,
+    "charts": 5,
+    "texels_survive_json_roundtrip": true,
+    "raw_surface_diagnostics": true,
+    "painted_output": {
+      "receiving_samples": 1617652,
+      "color_changes": 268509,
+      "normal_changes": 208710,
+      "hit_records_bit_exact": true,
+      "depth_bit_exact": true
+    },
+    "authoritative_usage_samples": 617981,
+    "clear_check": {
+      "receiving_samples": 1617652,
+      "color_changes": 0,
+      "normal_changes": 0,
+      "hit_records_bit_exact": true,
+      "depth_bit_exact": true
+    },
+    "restore_check": {
+      "receiving_samples": 1617652,
+      "color_changes": 0,
+      "normal_changes": 0,
+      "hit_records_bit_exact": true,
+      "depth_bit_exact": true
+    },
+    "saved_level_unchanged": true,
+    "heightmaps_unchanged": true,
+    "no_skipped_resource_bindings": true,
+    "mesh_settings_restored": true,
+    "other_paint_documents_restored": true
+  },
+  "receiver_capacity_validation": {
+    "passed": true,
+    "stage": "complete",
+    "entered_gameplay": false,
+    "benchmark_performed": false,
+    "chart_resolution": 256,
+    "raw_mip_bytes_per_chart": 2796192,
+    "level_sha256": "4e406f84c8363be02651c4c61dc6c1651f95bdb06dd788ccd8f12dcc135c6eaa",
+    "extra_face": {
+      "face": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:1728:466,467,483",
+      "uv": [
+        0.0416259765625,
+        0.9517114220652729
+      ]
+    },
+    "other_authoritative_documents_hidden": 0,
+    "last_surface_status": {
+      "state": "Authoritative surface textures active",
+      "mode": 3,
+      "ready": true,
+      "charts": 96,
+      "bytes": 268434432,
+      "pending": false
+    },
+    "published_layouts": {
+      "initial_empty": {
+        "state": "unbound"
+      },
+      "canvas_a_48": {
+        "state": "Authoritative surface textures active",
+        "mode": 3,
+        "ready": true,
+        "charts": 48,
+        "bytes": 134217216,
+        "pending": false
+      },
+      "combined_96": {
+        "state": "Authoritative surface textures active",
+        "mode": 3,
+        "ready": true,
+        "charts": 96,
+        "bytes": 268434432,
+        "pending": false
+      },
+      "rejected_edits_keep_96": {
+        "state": "Authoritative surface textures active",
+        "mode": 3,
+        "ready": true,
+        "charts": 96,
+        "bytes": 268434432,
+        "pending": false
+      },
+      "erase_reclaimed_95": {
+        "state": "Authoritative surface textures active",
+        "mode": 3,
+        "ready": true,
+        "charts": 95,
+        "bytes": 265638240,
+        "pending": false
+      },
+      "new_brush_after_erase_96": {
+        "state": "Authoritative surface textures active",
+        "mode": 3,
+        "ready": true,
+        "charts": 96,
+        "bytes": 268434432,
+        "pending": false
+      },
+      "empty_import_reclaimed_96": {
+        "state": "Authoritative surface textures active",
+        "mode": 3,
+        "ready": true,
+        "charts": 96,
+        "bytes": 268434432,
+        "pending": false
+      },
+      "all_empty_import_48": {
+        "state": "Authoritative surface textures active",
+        "mode": 3,
+        "ready": true,
+        "charts": 48,
+        "bytes": 134217216,
+        "pending": false
+      },
+      "restore_empty_import_96": {
+        "state": "Authoritative surface textures active",
+        "mode": 3,
+        "ready": true,
+        "charts": 96,
+        "bytes": 268434432,
+        "pending": false
+      },
+      "hidden_canvas_a_48": {
+        "state": "Authoritative surface textures active",
+        "mode": 3,
+        "ready": true,
+        "charts": 48,
+        "bytes": 134217216,
+        "pending": false
+      },
+      "hidden_a_plus_b_49": {
+        "state": "Authoritative surface textures active",
+        "mode": 3,
+        "ready": true,
+        "charts": 49,
+        "bytes": 137013408,
+        "pending": false
+      },
+      "visibility_capacity_restored_96": {
+        "state": "Authoritative surface textures active",
+        "mode": 3,
+        "ready": true,
+        "charts": 96,
+        "bytes": 268434432,
+        "pending": false
+      },
+      "cold_clear_a_48": {
+        "state": "Authoritative surface textures active",
+        "mode": 3,
+        "ready": true,
+        "charts": 48,
+        "bytes": 134217216,
+        "pending": false
+      },
+      "cold_unbound": {
+        "state": "unbound"
+      },
+      "cold_restore_a_48": {
+        "state": "Authoritative surface textures active",
+        "mode": 3,
+        "ready": true,
+        "charts": 48,
+        "bytes": 134217216,
+        "pending": false
+      },
+      "cold_restore_combined_96": {
+        "state": "Authoritative surface textures active",
+        "mode": 3,
+        "ready": true,
+        "charts": 96,
+        "bytes": 268434432,
+        "pending": false
+      }
+    },
+    "cross_canvas_import_rejected": {
+      "rejected": true,
+      "documents_bit_exact": true,
+      "error": "Surface paint exceeds 256 MiB of visible mip texels across this receiver's paint canvases"
+    },
+    "cross_canvas_brush_rejected": {
+      "rejected": true,
+      "documents_bit_exact": true,
+      "error": "Surface paint exceeds 256 MiB of visible mip texels across this receiver's paint canvases"
+    },
+    "erase_reclaims_chart_slot_and_bytes": true,
+    "empty_import_pruned_before_capacity_check": true,
+    "all_empty_import_reclaims_all_chart_bytes": true,
+    "cross_canvas_unhide_rejected": {
+      "rejected": true,
+      "documents_bit_exact": true,
+      "error": "Surface paint exceeds 256 MiB of visible mip texels across this receiver's paint canvases"
+    },
+    "cold_publish_from_saved_texels": true,
+    "retained_dabs": 0,
+    "saved_level_unchanged": true,
+    "heightmaps_unchanged": true,
+    "no_skipped_resource_bindings": true,
+    "other_authoritative_documents_restored": true
+  },
+  "cached_shader_binding_validation": {
+    "production_shader": "Assets/Shaders/SilPOM/ReceiverUv/SurfaceTexture.azsli",
+    "passed": true,
+    "profiles": [
+      {
+        "profile": "ps_6_2",
+        "paint_texture_handles": 4,
+        "all_nonuniform": true,
+        "annotation_omission_rejected": true,
+        "omitted_handle_flags": [
+          "false",
+          "false",
+          "false",
+          "false"
+        ],
+        "nullable_material_helper_rejected": true,
+        "nullable_helper_handle_flags": [
+          "false",
+          "false",
+          "false",
+          "false"
+        ]
+      },
+      {
+        "profile": "ps_6_7",
+        "paint_texture_handles": 4,
+        "all_nonuniform": true,
+        "annotation_omission_rejected": true,
+        "omitted_handle_flags": [
+          "false",
+          "false",
+          "false",
+          "false"
+        ],
+        "nullable_material_helper_rejected": true,
+        "nullable_helper_handle_flags": [
+          "false",
+          "false",
+          "false",
+          "false"
+        ]
+      }
+    ],
+    "engine_shaders": [],
+    "cached_variants": [
+      {
+        "source": "D:\\TG-assets-gameplay\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommeshuv_mainpipeline_silpomuvusage_dx12_0.azshadervariant",
+        "sha256": "47e79108ccb5dc90e16eaff7f6f4dda5b65f489cd96a1ec63e8957f67ff97245",
+        "total_texture_handles": 11,
+        "nonuniform_texture_handles": 4,
+        "minimum_nonuniform_handles": 4
+      },
+      {
+        "source": "D:\\TG-assets-gameplay\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommeshuv_mainpipeline_silpomhitforward_dx12_0.azshadervariant",
+        "sha256": "71d791e7d59bdd5ca7c3c88c4071d73df052e74e95ecbc6e5672777addbd6aca",
+        "total_texture_handles": 37,
+        "nonuniform_texture_handles": 8,
+        "minimum_nonuniform_handles": 8
+      }
+    ]
+  },
+  "asset_processing": {
+    "successful_assets": 41,
+    "failed_assets": 0,
+    "reported_errors": 0,
+    "reported_warnings": 226,
+    "log_sha256": "fb5cc7955b1669e30c161c6d25590a8adca4aca5d73d7c0f9045d7a3760b31f4"
+  },
+  "source_sha256": {
+    "Assets/Shaders/SilPOM/ReceiverUv/SurfaceTexture.azsli": "22f6c275993435a322721b907163fc37eddffe53e622ee9b3759c07197fd21aa",
+    "CMakeLists.txt": "c7eebf0d6f2de9bce42e11c1267caa65eb32a20bce19a212862a50f190455e0c",
+    "Include/SilPOM/DecalPaint.h": "6ff68b14088800c98059c1c59d73116afb329c451175328ce2dd6f5b533fa65c",
+    "Include/SilPOM/Mesh.h": "105961fd7b89522ed5f44ec80bbcda39e808e67c6dafed187b45b5ef7dc6c884",
+    "Include/SilPOM/SurfacePaintImage.h": "592e4ea1e6f32b28020405cb19d40a25f743400bd62527ed8bdc98b4e832da7c",
+    "Include/SilPOM/SurfacePaintLayout.h": "62db1a3dca2d69ef2e1593f7e0cecf58cfdf3663f2989803e5f13dbbd91b0891",
+    "Include/SilPOM/SurfacePaintMath.h": "f5531b16b7d11d79c844f64167dbd474259c4d4b6555d411810c777feef255f2",
+    "Source/DecalPaint.cpp": "889adf57709ab79d4231624ce4c30d09f7fc9414ae5a405acf763e954fe06530",
+    "Source/Editor/DecalPainter.cpp": "e0d09a8ff7e60616f21a28e1149dc743d9365c5695e5a24e72b2d8558b6c3bae",
+    "Source/SurfacePaintRaster.inl": "2bcfbea604d1777be7f57021f8b764cc5dbc4673ce027434394367adcda70e52",
+    "Source/SurfacePaintRender.inl": "abc30a94f15e2305a9236e02507315e781d641805a4e3265e1278471fb3f2467",
+    "Tests/SurfacePaintImageTests.cpp": "6defdc30ad41117abbb6811970608760c2b5995956850db37b41e64cae5f0c44",
+    "Tests/SurfacePaintLayoutTests.cpp": "6f751bf3e8bef43ef41af2b27bdb55e4b716876f8696d40f0f830849f4c0864b",
+    "Tests/SurfacePaintMathTests.cpp": "9c0c6ec445c6cc8b4c22f00ac24dbb6f398847a71dc9f6eea34cece021a884d6",
+    "Tests/SurfaceTextureGpu.hlsl": "07cbca4002058984180a2323595f5341fcdac0c2b2a461f03ddd0ccc5d942751",
+    "Tests/analyze_surface_texture_paint.py": "38892615d8e3cd57056a92906287be9c5f1ac359db9d416f4380464f61d82cb9",
+    "Tests/surface_texture_budget_editor_smoke.py": "cb874d4943561e79ee0ad70c1c2feeb30badd4dbcb393caf92e0b2126d442c46",
+    "Tests/surface_texture_editor_smoke.py": "db49df17a53dcd8ad680d020d96cf1f4cfcfebc7dd17200a2516c618ec1e6ec5",
+    "Tests/test_surface_texture_analysis.py": "cb71ea093b38a834edd3723348fd4d9ca20b0da4308b6da233763820c3ed63f8",
+    "silpom_files.cmake": "b90305a1e77c3bf976e7623c78a43f9521264638305dbebab8fa650942327661"
+  },
+  "artifact_sha256": {
+    "editor-proof\\analysis.json": "a0513fed283b5c31de74004e3e9058895cbad130dbb759d4f4070ffccfa8b325",
+    "editor-proof\\baseline-depth.dds": "7866e5f29646809ffe49889e526bafea72bb2f92e593c1a26f5c9fd1b6be82dc",
+    "editor-proof\\baseline-diffuse.dds": "8b9041001888c750359344acaadd986bd28be72edb32828f86bea33a45676460",
+    "editor-proof\\baseline-normal.dds": "02ff06a460806598ff7025084ac208a9ab6e69b230a76868cdd4ac6841a655b3",
+    "editor-proof\\baseline-records.dds": "1d5ff086bb6f1622d04f7e72b37fcf74641cdecd101caa29122b4ad190a22ea1",
+    "editor-proof\\baseline-usage.dds": "e1a1cd06160501b04bbd816c670f4a2c8f011024b0b09afb4941a18863062261",
+    "editor-proof\\cleared-depth.dds": "7866e5f29646809ffe49889e526bafea72bb2f92e593c1a26f5c9fd1b6be82dc",
+    "editor-proof\\cleared-diffuse.dds": "8b9041001888c750359344acaadd986bd28be72edb32828f86bea33a45676460",
+    "editor-proof\\cleared-normal.dds": "02ff06a460806598ff7025084ac208a9ab6e69b230a76868cdd4ac6841a655b3",
+    "editor-proof\\cleared-records.dds": "1d5ff086bb6f1622d04f7e72b37fcf74641cdecd101caa29122b4ad190a22ea1",
+    "editor-proof\\cleared-usage.dds": "e1a1cd06160501b04bbd816c670f4a2c8f011024b0b09afb4941a18863062261",
+    "editor-proof\\flat-depth.dds": "7866e5f29646809ffe49889e526bafea72bb2f92e593c1a26f5c9fd1b6be82dc",
+    "editor-proof\\flat-diffuse.dds": "d9ae8d22be56c6087c334b293d4655d22aaba1a7011fa774a6de264c05ed9dd4",
+    "editor-proof\\flat-normal.dds": "02ff06a460806598ff7025084ac208a9ab6e69b230a76868cdd4ac6841a655b3",
+    "editor-proof\\flat-records.dds": "1d5ff086bb6f1622d04f7e72b37fcf74641cdecd101caa29122b4ad190a22ea1",
+    "editor-proof\\flat-usage.dds": "ceca5d0c3b3aaafa51893883b46ab76df04d6d5d652a0b35c5cedf40685e15aa",
+    "editor-proof\\paint-document.json": "5de917140ede92339d4a0de673b300b2fc29c50ed53bbe864f40e3a69ab36bae",
+    "editor-proof\\painted-base-color.dds": "614b893a44f23fe22388acad2acb1fddfbff662780abefbafac390bcef375f54",
+    "editor-proof\\painted-base-normal.dds": "9db3499bde3b062553336843b3c06187f251f0e5c9cce8d85d3abff17065cbeb",
+    "editor-proof\\painted-depth.dds": "7866e5f29646809ffe49889e526bafea72bb2f92e593c1a26f5c9fd1b6be82dc",
+    "editor-proof\\painted-diffuse.dds": "29f5c4d537993e1ca2ad51cde92c315455b38a5192752b22bd0978ecca95de78",
+    "editor-proof\\painted-gradients.dds": "ae82c617c88f2da8574c6b9d472f5fb60b7f1ebc53f5ead6997fd6e333b4e983",
+    "editor-proof\\painted-normal.dds": "c7bf739c5bd98124da2d7b0b9ca610c597fa5708ccf72a742c9668d89fcfba39",
+    "editor-proof\\painted-paint-color.dds": "616df1331d753d089c0812bde9938ae1369a2071f26dae9f7962976fff757840",
+    "editor-proof\\painted-paint-normal.dds": "3674f6fdc37758a13c3b956de90981ef8f38207c1dc709a32fe0cf9bd959173f",
+    "editor-proof\\painted-records.dds": "1d5ff086bb6f1622d04f7e72b37fcf74641cdecd101caa29122b4ad190a22ea1",
+    "editor-proof\\painted-usage.dds": "08925a021322dba76e7405d39d4f5263db7e1e575fc140e073220c32e506bfaf",
+    "editor-proof\\restored-depth.dds": "7866e5f29646809ffe49889e526bafea72bb2f92e593c1a26f5c9fd1b6be82dc",
+    "editor-proof\\restored-diffuse.dds": "29f5c4d537993e1ca2ad51cde92c315455b38a5192752b22bd0978ecca95de78",
+    "editor-proof\\restored-normal.dds": "c7bf739c5bd98124da2d7b0b9ca610c597fa5708ccf72a742c9668d89fcfba39",
+    "editor-proof\\restored-records.dds": "1d5ff086bb6f1622d04f7e72b37fcf74641cdecd101caa29122b4ad190a22ea1",
+    "editor-proof\\restored-usage.dds": "08925a021322dba76e7405d39d4f5263db7e1e575fc140e073220c32e506bfaf",
+    "editor-proof\\results.json": "885389f2bcad9e48a7e3a962050d45adc4ac544966f70b190e5bad3271549ae3",
+    "budget-proof\\canvas-a.json": "e21f602d394c3bd6613ddf306001b7c2b726133d141305067557efc9f85622db",
+    "budget-proof\\canvas-b.json": "4c46995c22873824a3cef4204fc2fcbe26db6f43384c21e92339ad30f9a3f348",
+    "budget-proof\\results.json": "a3a64885c43ee8702c152d61c22cbe8833e6ae3020a23c91b1201db8e6f608c4"
+  },
+  "native_modules_sha256": {
+    "SilPOM.dll": "9c2867aacdf73ae9073db61f93d04aeb6cde9f734f0364d90ea05034669dcee9",
+    "SilPOM.Editor.dll": "7ea395c731867df91056377346c004548249787ed451e5712874aa73f0e2e21d",
+    "SilPOM.Builder.dll": "837e05a5490f422bcce47e894558983bf93e5ac185e889f6051695f4194ee942"
+  }
+}

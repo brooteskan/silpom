@@ -316,6 +316,18 @@ try:
     general.redo();general.idle_wait_frames(8)
     assert get_document()['ClassData']['SurfacePaint']==document['ClassData']['SurfacePaint'],'Redo did not restore erased texels'
     result['texture_snapshot_undo_redo_exact']=True
+    stage('partial chart leaves native pixels on the same receiving face')
+    # A saved chart's rectangle is its sampling domain. Narrow one existing
+    # chart while retaining its authoritative source texels, so the image
+    # oracle exercises native output outside the chart on that very same face.
+    partial=copy.deepcopy(document)
+    selected_chart=next(c for c in partial['ClassData']['SurfacePaint'] if c['Face']==face['face'])
+    rectangle=selected_chart['Rectangle'];span=rectangle[2]-rectangle[0]
+    selected_chart['Rectangle']=[rectangle[0]+span*.2,rectangle[1],rectangle[2]-span*.2,rectangle[3]]
+    put(partial);document=get_document()
+    result['partial_chart_fixture']=True
+    result['partial_chart_face']=face['face']
+    result['partial_chart_rectangle']=selected_chart['Rectangle']
     assert retained_dabs(document)==0
     assert all('Material' not in c for c in document['ClassData']['SurfacePaint'])
     result['retained_dabs']=0;result['charts']=len(document['ClassData']['SurfacePaint'])

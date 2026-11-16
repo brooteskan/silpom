@@ -97,9 +97,9 @@ void MeshController::TickSurfacePaintTextures()
         if(runtime.pending)runtime.retired.push_back({runtime.frame+8,runtime.pending});
         runtime.pending={};runtime.fingerprint=fingerprint;runtime.requested=true;runtime.retryFrame=0;
         auto next=AZStd::make_shared<SurfacePaintRuntime::Snapshot>();
-        struct Entry {const SurfacePaintChart* chart;AZ::u32 hitFace,batch;float opacity;};
+        struct Entry {const SurfacePaintChart* chart;AZ::u32 hitFace,batch,source;float opacity;};
         AZStd::vector<Entry> entries;
-        bool valid=true,retry=false;
+        bool valid=ValidateSurfacePaintReceiver(m_entity,AZ::EntityId(),nullptr,runtime.status),retry=false;
         for(const auto& document:documents)
             for(const auto& layer:document.config->m_layers)
             {
@@ -112,10 +112,9 @@ void MeshController::TickSurfacePaintTextures()
                     if(face==m_active->paintFaces.end())continue; // Orphaned chart stays saved but cannot paint another face.
                     if(!chart.rectangle.IsFinite()||chart.rectangle.GetZ()<=chart.rectangle.GetX()||chart.rectangle.GetW()<=chart.rectangle.GetY())
                     {valid=false;runtime.status="Invalid surface texture rectangle";break;}
-                    entries.push_back({&chart,face->hit,face->batch,AZStd::clamp(layer.m_opacity,0.f,1.f)});
+                    entries.push_back({&chart,face->hit,face->batch,face->source,AZStd::clamp(layer.m_opacity,0.f,1.f)});
                 }
             }
-        if(entries.size()>128){valid=false;runtime.status="Surface paint requires at most 128 active charts per receiver";}
         const auto pool=AZ::RPI::ImageSystemInterface::Get()->GetSystemStreamingPool();
         if(!pool){retry=valid;valid=false;runtime.status="Surface paint streaming pool is unavailable";}
         const size_t recordsEnd=16+entries.size()*48;
@@ -127,18 +126,21 @@ void MeshController::TickSurfacePaintTextures()
             if(chart.resolution<SurfacePaintImage::MinResolution||chart.resolution>SurfacePaintImage::MaxResolution
                 ||(chart.resolution&(chart.resolution-1u))!=0)
             {valid=false;runtime.status="Invalid surface texture resolution";break;}
-            // Source texels remain saved if the active texture layout exceeds
-            // this proof's allocation budget; never publish a partial layout.
-            size_t imageBytes=0;
-            for(AZ::u32 size=chart.resolution;size;size/=2)imageBytes+=size_t(size)*size*32;
-            constexpr size_t imageBudget=256u*1024u*1024u;
-            if(imageBytes>imageBudget||next->bytes>imageBudget-imageBytes)
-            {valid=false;runtime.status="Surface texture layout exceeds the 256 MiB receiver budget";break;}
             SurfacePaintImage::Image image;
             if(!SurfacePaintImage::Decode(std::string_view(chart.texels.data(),chart.texels.size()),image)
                 ||image.width!=chart.resolution||image.height!=chart.resolution)
             {valid=false;runtime.status="Invalid authoritative surface texture payload";break;}
-            const auto mips=SurfacePaintImage::GenerateMips(image);
+            if(entry.source>=m_active->paintConfig.m_surface->m_faces.size()
+                ||m_active->paintConfig.m_surface->m_faces[entry.source].m_corners.size()!=3)
+            {valid=false;runtime.status="Surface texture receiving triangle is unavailable";break;}
+            const auto& corners=m_active->paintConfig.m_surface->m_faces[entry.source].m_corners;
+            SurfacePaintImage::Triangle domain;
+            const float inverseU=1/(chart.rectangle.GetZ()-chart.rectangle.GetX()),inverseV=1/(chart.rectangle.GetW()-chart.rectangle.GetY());
+            for(unsigned i=0;i<3;++i)domain.corners[i]={
+                (corners[i].m_uv.GetX()-chart.rectangle.GetX())*inverseU,
+                (corners[i].m_uv.GetY()-chart.rectangle.GetY())*inverseV};
+            const auto mips=SurfacePaintImage::GenerateMips(image,domain);
+            if(mips.empty()){valid=false;runtime.status="Surface texture receiving domain has no texel samples";break;}
             const AZ::u32 record[4]={entry.hitFace,chart.front?1u:0u,aznumeric_cast<AZ::u32>(mips.size()),aznumeric_cast<AZ::u32>(bytes.size())};
             const AZ::Vector4 rectangle(chart.rectangle.GetX(),chart.rectangle.GetY(),1/(chart.rectangle.GetZ()-chart.rectangle.GetX()),1/(chart.rectangle.GetW()-chart.rectangle.GetY()));
             const float opacity[4]={entry.opacity,0,0,0};

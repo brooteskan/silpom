@@ -8,6 +8,7 @@ using namespace SilPOM::SurfacePaintMath;
 // types/builtins. Runtime shading must use the same normal definition as paint.
 using float3=Vec3;
 struct float4 {float x,y,z,w;};
+using std::isfinite;
 float dot(float3 a,float3 b){return Dot(a,b);}
 float3 cross(float3 a,float3 b){return Cross(a,b);}
 float rsqrt(float v){return 1/std::sqrt(v);}
@@ -113,13 +114,37 @@ int main()
         Require(Near(BlendChannel(.2f,.7f,4),.28f)&&Near(BlendChannel(.8f,.7f,4),.88f),"Overlay selects by destination color");
     }
     {
+        // Saturated primaries expose incorrect working-space interpretation;
+        // neutral-only fixtures can conceal it. Expected columns come from
+        // the pinned engine's XYZToAP1 * D65ToD60Cat * SRGBToXYZ transform.
+        const Vec3 source[3]={{1,0,0},{0,1,0},{0,0,1}};
+        const Vec3 expected[3]={{.61309415f,.07019562f,.02061560f},
+            {.33951990f,.91635690f,.10956981f},{.04737774f,.01345321f,.86981565f}};
+        const Vec3 materialAcesCg{.17f,.31f,.43f};
+        for(unsigned i=0;i<3;++i)
+        {
+            Require(Near(LinearSrgbToAcesCg(source[i]),expected[i]),"Saved linear-sRGB primaries must convert to the engine ACEScg working space");
+            for(float coverage:{.125f,.5f,1.f})
+            {
+                ColorTexel paint;PaintColor(paint,source[i],coverage);
+                Require(Exact(paint.premultiplied,source[i]*coverage)&&paint.coverage==coverage,"Color conversion cannot change saved RGB or coverage");
+                Require(Near(ComposeColor(materialAcesCg,paint),materialAcesCg*(1-coverage)+expected[i]*coverage),"Premultiplied paint converts primaries before compositing, leaving coverage unchanged");
+            }
+        }
+        Require(Exact(LinearSrgbToAcesCg({}),{}),"Transparent black stays zero through primary conversion");
+        Require(Near(LinearSrgbToAcesCg({.5f,.5f,.5f}),{.49999592f,.50000286f,.50000054f}),"Neutral color follows the pinned white-point transform");
+        ColorTexel edge[2];PaintColor(edge[0],source[0],.25f);PaintColor(edge[1],source[2],.75f);
+        const float half[2]={.5f,.5f};const auto filtered=FilterColor(edge,half,2);
+        Require(Near(filtered.coverage,.5f)&&Near(ComposeColor(materialAcesCg,filtered),materialAcesCg*.5f+expected[0]*.125f+expected[2]*.375f),"Linear primary conversion preserves premultiplied filtering");
+    }
+    {
         const Vec3 material{.1f,.2f,.3f};
         ColorTexel flattened;PaintColor(flattened,{0,0,1},1);PaintColor(flattened,{1,0,0},1);EraseColor(flattened,1);
         Require(Exact(ComposeColor(material,flattened),material),"Erasing flattened red over blue reveals material, not overwritten blue");
         ColorTexel blue,red;PaintColor(blue,{0,0,1},1);PaintColor(red,{1,0,0},1);EraseColor(red,1);
-        Require(Exact(ComposeColor(ComposeColor(material,blue),red),{0,0,1}),"Separate lower layers survive erase");
+        Require(Exact(ComposeColor(ComposeColor(material,blue),red),LinearSrgbToAcesCg({0,0,1})),"Separate lower layers survive erase");
         ColorTexel edge[2];PaintColor(edge[0],{1,0,0},1);const float weights[2]={.5f,.5f};
-        Require(Near(ComposeColor(material,FilterColor(edge,weights,2)),material*.5f+Vec3{.5f,0,0}),"Filtered color edges preserve premultiplied coverage");
+        Require(Near(ComposeColor(material,FilterColor(edge,weights,2)),material*.5f+LinearSrgbToAcesCg({.5f,0,0})),"Filtered color edges preserve premultiplied coverage");
         NormalTexel lower,top;PaintNormal(lower,Unit({.4f,0,.9f}),1);PaintNormal(top,Unit({-.2f,.3f,.8f}),1);
         const auto lowerResult=ComposeNormal({0,0,1},lower);EraseNormal(top,1);
         Require(Exact(ComposeNormal(lowerResult,top),lowerResult),"Normal erase reveals the separate lower normal layer");

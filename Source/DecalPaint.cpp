@@ -6,6 +6,7 @@
 #include <SilPOM/DecalBake.h>
 #include <SilPOM/ReceiverPaintState.h>
 #include <SilPOM/SurfacePaintImage.h>
+#include <SilPOM/SurfacePaintLayout.h>
 #include <AzCore/Asset/AssetSerializer.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/Json/JsonUtils.h>
@@ -201,6 +202,40 @@ void PaintController::Deactivate()
     AZ::TransformNotificationBus::Handler::BusDisconnect();
     Release();m_processor=nullptr;m_entity.SetInvalid();
 }
+bool ValidateSurfacePaintReceiver(AZ::EntityId receiver,AZ::EntityId replacementCanvas,const PaintConfig* replacement,
+    AZStd::string& error,const AZStd::vector<SurfacePaintChart>* replacementCharts)
+{
+    SurfacePaintLayout::Usage usage;bool valid=true;error.clear();
+    auto add=[&](const PaintConfig& config,const AZStd::vector<SurfacePaintChart>* overrideCharts)
+    {
+        if(!config.m_textureAuthoritative)return true;
+        const auto& charts=overrideCharts?*overrideCharts:config.m_surfacePaint;
+        if(AZStd::none_of(charts.begin(),charts.end(),[&](const auto& c){return c.receiver==receiver;}))return true;
+        for(const auto& layer:config.m_layers)
+        {
+            if(!std::isfinite(layer.m_opacity)){error="Invalid surface paint layer opacity";return false;}
+            if(!layer.m_visible||layer.m_opacity<=0)continue;
+            for(const auto& chart:charts)
+            {
+                if(chart.receiver!=receiver||chart.layer!=layer.m_id)continue;
+                switch(usage.Add(chart.resolution))
+                {
+                case SurfacePaintLayout::Error::None:break;
+                case SurfacePaintLayout::Error::Resolution:error="Invalid surface texture resolution";return false;
+                case SurfacePaintLayout::Error::Charts:error="Surface paint exceeds 128 visible charts across this receiver's paint canvases";return false;
+                case SurfacePaintLayout::Error::Bytes:error="Surface paint exceeds 256 MiB of visible mip texels across this receiver's paint canvases";return false;
+                }
+            }
+        }
+        return true;
+    };
+    PaintRequestBus::EnumerateHandlers([&](PaintRequests* canvas)
+    {
+        if(!replacement||canvas->GetPaintEntity()!=replacementCanvas)valid=add(canvas->GetDocument(),nullptr);
+        return valid;
+    });
+    return valid&&(!replacement||add(*replacement,replacementCharts));
+}
 void PaintController::SetDocument(const PaintConfig& c)
 {
     m_bakeIdle=0;m_bakeRequested=false;
@@ -208,14 +243,18 @@ void PaintController::SetDocument(const PaintConfig& c)
     if(next.m_textureAuthoritative)
     {
         if(next.m_layers.size()>PaintConfig::MaxLayers){m_status="Surface paint layer limit exceeded";return;}
-        for(const auto& chart:next.m_surfacePaint)
+        for(auto chartIt=next.m_surfacePaint.begin();chartIt!=next.m_surfacePaint.end();)
         {
+            const auto& chart=*chartIt;
             SurfacePaintImage::Image checked;
             if(!chart.receiver.IsValid()||chart.face.empty()||!chart.rectangle.IsFinite()
                 ||chart.rectangle.GetZ()<=chart.rectangle.GetX()||chart.rectangle.GetW()<=chart.rectangle.GetY()
                 ||!SurfacePaintImage::Decode(std::string_view(chart.texels.data(),chart.texels.size()),checked)
                 ||checked.width!=chart.resolution||checked.height!=chart.resolution)
             {m_status="Invalid saved surface texture; paint document was not changed";return;}
+            if(std::all_of(checked.pixels.begin(),checked.pixels.end(),[](const auto& pixel)
+                {return pixel.color.coverage==0&&pixel.normal.coverage==0;}))chartIt=next.m_surfacePaint.erase(chartIt);
+            else ++chartIt;
         }
         // Never silently discard a legacy history as a texture conversion.
         for(const auto& layer:next.m_layers)
@@ -224,10 +263,16 @@ void PaintController::SetDocument(const PaintConfig& c)
             {m_status="Create a new paint entity for surface-texture painting; legacy paint has not been converted";return;}
         }
         for(auto& layer:next.m_layers)
-        {if(!layer.m_id)layer.m_id=next.m_nextId++;layer.m_strokes.clear();layer.m_order.clear();}
+        {
+            if(!std::isfinite(layer.m_opacity)){m_status="Invalid surface paint layer opacity";return;}
+            if(!layer.m_id)layer.m_id=next.m_nextId++;layer.m_strokes.clear();layer.m_order.clear();
+        }
         next.m_surfacePaint.erase(AZStd::remove_if(next.m_surfacePaint.begin(),next.m_surfacePaint.end(),[&](const auto& chart)
             {return AZStd::none_of(next.m_layers.begin(),next.m_layers.end(),[&](const auto& l){return l.m_id==chart.layer;});}),next.m_surfacePaint.end());
         next.m_receiverUv=ReceiverUvBinding();
+        AZStd::unordered_set<AZ::EntityId> receivers;
+        for(const auto& chart:next.m_surfacePaint)receivers.insert(chart.receiver);
+        for(const auto receiver:receivers)if(!ValidateSurfacePaintReceiver(receiver,m_entity,&next,m_status))return;
         m_configuration=AZStd::move(next);m_revision=++PaintRevision;m_dirty=true;return;
     }
     const auto history=CompositeHistory.find(m_entity);

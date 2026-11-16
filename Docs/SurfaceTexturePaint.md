@@ -46,7 +46,7 @@ two independent four-component values:
 
 | Texture | RGB/XYZ | Alpha |
 |---|---|---|
-| Color | Premultiplied linear paint color `C` | Color coverage `A_color` |
+| Color | Premultiplied linear-sRGB paint color `C` | Color coverage `A_color` |
 | Normal detail | Premultiplied unit detail vector `M` in the receiver frame | Normal coverage `A_normal` |
 
 The receiver frame is attached to the canonical face. Its tangent follows U;
@@ -66,12 +66,19 @@ paint data and are not modified.
 
 Source chart resolution is a power of two from 32 through 1,024, with 256 used
 for new charts. A receiver supports at most 128 face/layer/side charts and a
-256 MiB budget for the active layout's raw GPU mip texels, whichever limit is
+256 MiB budget for visible charts' raw GPU mip texels, whichever limit is
 reached first. Color and normal detail each use RGBA32F: together they require
 32 bytes per texel. A 256-square chart with its complete mip chain therefore
 uses about 2.67 MiB of raw GPU texels. This budget excludes descriptor tables,
 material/allocation overhead, CPU source data and temporary pending or retired
 GPU snapshots used for atomic replacement; peak memory while editing is higher.
+The reservation is shared across every paint canvas on that receiver. Visible
+saved charts reserve capacity even while their face is unresolved, so resolving
+a face cannot silently overflow the layout. Hidden or zero-opacity layers do not
+reserve capacity; making them visible must fit the combined receiver limit.
+Brush edits, document import/layer changes and rendering use the same accounting.
+Rejected edits preserve the existing document and report the limit. A fully
+erased receiving chart is removed, releasing its reservation and GPU textures.
 
 ## Applying a brush
 
@@ -93,7 +100,7 @@ rotates its XY detail into the receiver frame; it must not turn the brush's
 absolute projector-forward direction into saved normal detail. Color coverage
 and normal coverage are independent.
 
-Color is bounded linear RGB in `[0,1]`. Alpha, Multiply, bounded Add, Screen and
+Saved color is bounded linear sRGB in `[0,1]`. Alpha, Multiply, bounded Add, Screen and
 Overlay operate within the selected, isolated paint layer. They do not depend
 on the live material or a separately evaluated lower layer while painting.
 With source color `s`, opacity `a`, stored premultiplied color `C`, coverage `A`
@@ -108,6 +115,11 @@ An empty layer receives `a*s` for every blend mode. Alpha uses `B(d,s)=s`;
 Multiply uses `d*s`; Add uses `min(1,d+s)`; Screen uses `1-(1-d)*(1-s)`;
 Overlay chooses its branch using the existing layer color. Layer rendering
 then composites the stored result over the material or lower paint layers.
+O3DE evaluates that live albedo in ACEScg. Before compositing, the renderer uses
+the engine's `LinearSrgb_To_AcesCg` transform on premultiplied paint RGB and
+leaves coverage unchanged. This linear primaries conversion commutes with
+premultiplication and filtering. Neither saved texels nor alpha are converted
+to ACEScg, and undo/reload retains the original linear-sRGB source values.
 
 ## One defined normal composition
 
@@ -136,6 +148,16 @@ filtering. For example, one quarter opaque `+X` detail and three quarters clear
 area gives `M=(0.25,0,0)`, `A=0.25` and final detail proportional to
 `(0.25,0,0.75)`. Normalizing the stored mip vector first would incorrectly
 amplify the painted edge. Color uses ordinary premultiplied filtering.
+
+Derived chart mips distinguish the receiving triangle from unused rectangular
+storage. Receiving source texel centers contribute geometric weight, including
+centers whose paint is clear. Reduction averages raw color/normal tuples using
+those carried counts. At every mip level, cells outside that domain are padded
+from the nearest receiving cell in the four-neighbor lattice; padding keeps zero
+geometric weight. Thus clear paint on the face remains clear, while unused chart
+space cannot dilute a fully painted triangle to half coverage at the 1x1 mip.
+These discrete center weights are not exact triangle/pixel intersection areas.
+Saved source payloads are unchanged; only the derived sampling images are padded.
 
 Erasing with strength `e` scales premultiplied values and their coverages by
 `1-e`. A full erase clears the selected layer's texels and reveals the material
@@ -211,7 +233,11 @@ quantization can disturb cancellation or zero-weight-neighbor cases. Receiving
 faces without a visible saved chart must preserve native color and packed
 normals exactly.
 
-## Editor result, 2026-11-16
+## Original Editor result, 2026-11-16
+
+This records the `c787b45` fixture before the color-primaries, triangle-domain
+mip and analyzer coverage corrections below. Its numeric agreement with the
+then-defined reference did not validate those missing semantics.
 
 The [recorded proof](Benchmarks/SurfaceTexturePaint-20261116.json) passes on an
 RX 7900 XTX using DX12, a fixed 1280x720 editor view and 2x MSAA. Five saved
@@ -247,3 +273,50 @@ This is image-quality acceptance for the stated base-material fixture. It does
 not measure frame-time gains or learned/shared/proxy material image quality.
 Existing projection documents remain legacy data; their fitted normal cache is
 still an approximation, even though its mip descriptor lookup is corrected too.
+
+## Review corrections and validation, 2026-11-16
+
+The [review-correction proof](Benchmarks/SurfaceTexturePaintReview-20261116.json)
+records the explicit linear-sRGB-to-ACEScg conversion, domain-aware mip chain,
+receiver-wide capacity admission and stricter image oracle described above.
+The shader-helper C++ adapter also exposes `std::isfinite`; GCC 12.2 compiles
+and runs the Math, Image and Layout suites with strict warnings as errors.
+Five focused CTests, 33 analyzer regressions and the existing shader binding
+negative controls pass. Native Static/runtime/Editor/Builder builds and all 39
+shader jobs complete, with zero failed assets or reported errors.
+
+The revised base-material Editor fixture includes a partial rectangular chart.
+Expected paint ownership comes from independent hit-record face/UV, including
+pixels reporting no shader paint use. Across both real MSAA samples, 55,287
+receiving samples outside that partial chart on the same face preserve raw and
+native material output exactly. All 999,671 no-chart receiving samples preserve
+native output. The numerical image masks contain 610,172 chart samples, including
+241,350 with normal detail; derivative and chart-edge exclusions remain reported.
+
+| Revised comparison | Worst RMS | Worst maximum |
+|---|---:|---:|
+| Raw painted normal, degrees | 0.005728 | 0.090655 |
+| Actual Forward packed normal, degrees | 0.073198 | 0.227282 |
+| Raw ACEScg albedo, absolute channel error | 0.000072 | 0.001020 |
+
+Both reported analyzer false positives are explicit negative controls: bad UVs
+and zero use on four genuinely in-chart pixels fail validation, and corrupting
+64 outside-chart pixels on the same face fails exact preservation with no
+derivative/chart-edge exclusions hiding the damage. The independent Python
+domain-mip reference also matches production C++ across seven levels and both
+triangle windings within 4.66e-10 per component. A fully painted triangle retains
+color and normal coverage of one through the 1x1 mip, while clear interior paint
+and erasure continue contributing their receiving-domain weight.
+
+The separate native Editor capacity fixture publishes 48+48 default charts on
+one receiver (268,434,432 raw mip bytes). Both importing and brushing chart 97
+are rejected with both documents unchanged. Erasing a complete chart publishes
+95 charts; another brush reuses the capacity and publishes 96. Empty imports
+are pruned before admission. Unhiding a layer is rejected when another canvas
+has consumed its released capacity. Clearing the canvases releases the painted
+runtime, and restoring their saved JSON publishes all 96 charts again without
+an earlier painted GPU snapshot. Existing documents, the saved level and the
+heightmaps are unchanged after both Editor fixtures.
+
+These results remain bounded to the stated fixtures. Frame-time improvements
+and learned/shared/proxy material image quality are not measured here.
