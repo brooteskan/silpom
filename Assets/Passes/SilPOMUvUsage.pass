@@ -26,6 +26,91 @@
             "LoadAction": "Load",
             "StoreAction": "Store"
           }
+        },
+        {
+          "Name": "BaseColor",
+          "SlotType": "Output",
+          "ScopeAttachmentUsage": "RenderTarget",
+          "LoadStoreAction": {
+            "LoadAction": "Clear",
+            "StoreAction": "Store",
+            "ClearValue": {
+              "Value": [
+                0,
+                0,
+                0,
+                0
+              ]
+            }
+          }
+        },
+        {
+          "Name": "PaintColor",
+          "SlotType": "Output",
+          "ScopeAttachmentUsage": "RenderTarget",
+          "LoadStoreAction": {
+            "LoadAction": "Clear",
+            "StoreAction": "Store",
+            "ClearValue": {
+              "Value": [
+                0,
+                0,
+                0,
+                0
+              ]
+            }
+          }
+        },
+        {
+          "Name": "BaseNormal",
+          "SlotType": "Output",
+          "ScopeAttachmentUsage": "RenderTarget",
+          "LoadStoreAction": {
+            "LoadAction": "Clear",
+            "StoreAction": "Store",
+            "ClearValue": {
+              "Value": [
+                0,
+                0,
+                0,
+                0
+              ]
+            }
+          }
+        },
+        {
+          "Name": "PaintNormal",
+          "SlotType": "Output",
+          "ScopeAttachmentUsage": "RenderTarget",
+          "LoadStoreAction": {
+            "LoadAction": "Clear",
+            "StoreAction": "Store",
+            "ClearValue": {
+              "Value": [
+                0,
+                0,
+                0,
+                0
+              ]
+            }
+          }
+        },
+        {
+          "Name": "Gradients",
+          "SlotType": "Output",
+          "ScopeAttachmentUsage": "RenderTarget",
+          "LoadStoreAction": {
+            "LoadAction": "Clear",
+            "StoreAction": "Store",
+            "ClearValue": {
+              "Value": [
+                0,
+                0,
+                0,
+                0
+              ]
+            }
+          }
         }
       ],
       "Connections": [
@@ -49,6 +134,41 @@
             "Pass": "SilPOMUvUsageClear",
             "Attachment": "Hit"
           }
+        },
+        {
+          "LocalSlot": "BaseColor",
+          "AttachmentRef": {
+            "Pass": "This",
+            "Attachment": "BaseColorImage"
+          }
+        },
+        {
+          "LocalSlot": "PaintColor",
+          "AttachmentRef": {
+            "Pass": "This",
+            "Attachment": "PaintColorImage"
+          }
+        },
+        {
+          "LocalSlot": "BaseNormal",
+          "AttachmentRef": {
+            "Pass": "This",
+            "Attachment": "BaseNormalImage"
+          }
+        },
+        {
+          "LocalSlot": "PaintNormal",
+          "AttachmentRef": {
+            "Pass": "This",
+            "Attachment": "PaintNormalImage"
+          }
+        },
+        {
+          "LocalSlot": "Gradients",
+          "AttachmentRef": {
+            "Pass": "This",
+            "Attachment": "GradientsImage"
+          }
         }
       ],
       "PassData": {
@@ -58,7 +178,94 @@
         "PassSrgShaderAsset": {
           "FilePath": "Shaders/SilPOM/HitReuse/SilPOMHitForwardSrg.shader"
         }
-      }
+      },
+      "ImageAttachments": [
+        {
+          "Name": "BaseColorImage",
+          "SizeSource": {
+            "Source": {
+              "Pass": "This",
+              "Attachment": "Depth"
+            }
+          },
+          "ImageDescriptor": {
+            "Format": "R32G32B32A32_FLOAT",
+            "SharedQueueMask": "Graphics"
+          },
+          "MultisampleSource": {
+            "Pass": "This",
+            "Attachment": "Depth"
+          }
+        },
+        {
+          "Name": "PaintColorImage",
+          "SizeSource": {
+            "Source": {
+              "Pass": "This",
+              "Attachment": "Depth"
+            }
+          },
+          "ImageDescriptor": {
+            "Format": "R32G32B32A32_FLOAT",
+            "SharedQueueMask": "Graphics"
+          },
+          "MultisampleSource": {
+            "Pass": "This",
+            "Attachment": "Depth"
+          }
+        },
+        {
+          "Name": "BaseNormalImage",
+          "SizeSource": {
+            "Source": {
+              "Pass": "This",
+              "Attachment": "Depth"
+            }
+          },
+          "ImageDescriptor": {
+            "Format": "R32G32B32A32_FLOAT",
+            "SharedQueueMask": "Graphics"
+          },
+          "MultisampleSource": {
+            "Pass": "This",
+            "Attachment": "Depth"
+          }
+        },
+        {
+          "Name": "PaintNormalImage",
+          "SizeSource": {
+            "Source": {
+              "Pass": "This",
+              "Attachment": "Depth"
+            }
+          },
+          "ImageDescriptor": {
+            "Format": "R32G32B32A32_FLOAT",
+            "SharedQueueMask": "Graphics"
+          },
+          "MultisampleSource": {
+            "Pass": "This",
+            "Attachment": "Depth"
+          }
+        },
+        {
+          "Name": "GradientsImage",
+          "SizeSource": {
+            "Source": {
+              "Pass": "This",
+              "Attachment": "Depth"
+            }
+          },
+          "ImageDescriptor": {
+            "Format": "R32G32B32A32_FLOAT",
+            "SharedQueueMask": "Graphics"
+          },
+          "MultisampleSource": {
+            "Pass": "This",
+            "Attachment": "Depth"
+          }
+        }
+      ]
     }
   }
 }

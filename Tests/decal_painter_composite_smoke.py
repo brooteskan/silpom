@@ -1,7 +1,9 @@
-"""Rolling 100-dab retention, native undo, >4096 projections and GPU equivalence.
+"""Legacy rolling 100-dab retention, native undo, >4096 projections and GPU equivalence.
 
 Run in a dedicated Editor --runpython session. QTimer returns control to the
 normal event loop between checks. Never saves VueLiveLink; exits automatically.
+Fixtures explicitly select legacy projection storage rather than the new
+authoritative surface-texture default.
 """
 import copy
 import hashlib
@@ -48,9 +50,23 @@ def data(canvas):
 
 
 def put(canvas, d):
+    assert not d.get("TextureAuthoritative", False), "Composite fixtures require legacy projection storage"
+    assert not d.get("SurfacePaint"), "Legacy fixture must not discard saved surface textures"
+    d = dict(d, TextureAuthoritative=False)
     document = {"Type": "JsonSerialization", "Version": 1, "ClassName": "PaintConfig", "ClassData": d}
     error = silpom.DecalPainterBus(bus.Broadcast, "SetPaintDocument", canvas, json.dumps(document))
     assert not error, error
+
+
+def select_legacy_fixture(canvas):
+    config = data(canvas)
+    assert not config.get("SurfacePaint"), "Fresh canvas already contains source textures"
+    config["TextureAuthoritative"] = False
+    document = {"Type": "JsonSerialization", "Version": 1, "ClassName": "PaintConfig", "ClassData": config}
+    # Setup must not add an Editor undo entry before gesture/frontier checks.
+    error = silpom.DecalPaintRequestBus(bus.Event, "SetDocumentJson", canvas, json.dumps(document))
+    assert not error, error
+    assert not data(canvas).get("TextureAuthoritative", False)
 
 
 def count(canvas):
@@ -90,6 +106,8 @@ class Check(QtCore.QObject):
         self.capture_handler = None
         self.capture_done = {}
         self.canvas = silpom.DecalPainterBus(bus.Broadcast, "CreatePaintEntity")
+        select_legacy_fixture(self.canvas)
+        result["fixture_representation"] = "legacy projections"
         self.panel = next(w for w in QtWidgets.QApplication.allWidgets() if w.objectName() == "DecalPainter")
         self.viewport = QtWidgets.QWidget.find(silpom.DecalPainterBus(bus.Broadcast, "GetViewportWindowId"))
         self.viewport.window().setWindowTitle("Paint composite verification — closes automatically")
@@ -148,6 +166,7 @@ class Check(QtCore.QObject):
 
     def new_canvas(self):
         canvas = silpom.DecalPainterBus(bus.Broadcast, "CreatePaintEntity")
+        select_legacy_fixture(canvas)
         # CreateNewEntity chooses its transform from the current scene/selection.
         # Fixture placements are local to the original canvas, so copy its pose.
         components.TransformBus(bus.Event, "SetWorldTM", canvas, self.paint_world)

@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: MIT
+// Diagnostic sample export. Retain raw float surface values independently of
+// forward lighting and the normal GBuffer's integer packing.
+#include <Atom/Features/SrgSemantics.azsli>
+#include <Atom/Features/PostProcessing/FullscreenVertex.azsli>
+ShaderResourceGroup PassSrg : SRG_PerPass
+{
+    Texture2DMS<uint4> m_hits;
+    Texture2DMS<float> m_depth;
+    Texture2DMS<float4> m_baseColor;
+    Texture2DMS<float4> m_paintColor;
+    Texture2DMS<float4> m_baseNormal;
+    Texture2DMS<float4> m_paintNormal;
+    Texture2DMS<float4> m_gradients;
+}
+struct Output
+{
+    uint4 hit:SV_Target0;
+    float depth:SV_Target1;
+    float4 baseColor:SV_Target2;
+    float4 paintColor:SV_Target3;
+    float4 baseNormal:SV_Target4;
+    float4 paintNormal:SV_Target5;
+    float4 gradients:SV_Target6;
+};
+Output MainPS(VSOutput IN)
+{
+    int2 p=int2(IN.m_position.xy);uint w,h,samples;PassSrg::m_hits.GetDimensions(w,h,samples);
+    uint sampleIndex=min(uint(p.x)%4u,samples-1u);p.x/=4;
+    Output OUT;
+    OUT.hit=PassSrg::m_hits.Load(p,sampleIndex);
+    OUT.depth=PassSrg::m_depth.Load(p,sampleIndex);
+    OUT.baseColor=PassSrg::m_baseColor.Load(p,sampleIndex);
+    OUT.paintColor=PassSrg::m_paintColor.Load(p,sampleIndex);
+    OUT.baseNormal=PassSrg::m_baseNormal.Load(p,sampleIndex);
+    OUT.paintNormal=PassSrg::m_paintNormal.Load(p,sampleIndex);
+    OUT.gradients=PassSrg::m_gradients.Load(p,sampleIndex);
+    return OUT;
+}

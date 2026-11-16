@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <SilPOM/ReceiverUvPaint.h>
+#include <SilPOM/SurfacePaint.h>
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Component/TickBus.h>
@@ -81,6 +82,10 @@ public:
     AZStd::vector<PaintLayer> m_layers;
     AZ::u64 m_nextId=1,m_frozenThrough=0;
     ReceiverUvBinding m_receiverUv;
+    // New documents store the painted texels themselves. Legacy documents keep
+    // their projections until an explicit, separately validated conversion.
+    bool m_textureAuthoritative=false;
+    AZStd::vector<SurfacePaintChart> m_surfacePaint;
 };
 // Used by both the editor and runtime, including migration of old prefabs.
 void CompactPaint(PaintConfig&);

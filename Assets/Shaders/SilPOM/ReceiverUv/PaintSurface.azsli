@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "SurfaceTexture.azsli"
 // Atlas ownership is resolved before shading: one receiver + canonical face.
 // Neither world position nor camera position chooses an image.
 uint SilPomUvUse(MaterialParameters params,uint face,float2 uv)
@@ -18,6 +19,8 @@ void SilPomReplayUvPrefix(inout Surface surface,MaterialParameters params,float3
 }
 void SilPomApplyUvPaint(inout Surface surface,MaterialParameters params,uint face,bool front)
 {
+    if(params.m_receiverPaintMode==3u)
+    {SilPomApplySurfaceTextures(surface,params,face,front);return;}
     float3 dx=ddx(surface.position),dy=ddy(surface.position);
     const float2 uv=silpomLitUv;float2 uvDx=ddx(uv),uvDy=ddy(uv);
     uint use=SilPomUvUse(params,face,uv);if(use==0)return;
@@ -36,8 +39,8 @@ void SilPomApplyUvPaint(inout Surface surface,MaterialParameters params,uint fac
             uint4 mip=table.Load4(32+(k==0?low:high)*16);
             // Two-texel gutters keep the chart's samples within its own image.
             float2 tex=(q*float(mip.w)+2.0f)/float(mip.w+4u);
-            colors[k]=GetMaterialTexture(mip.x).SampleLevel(PassSrg::LinearSampler,tex,0);
-            normals[k]=GetMaterialTexture(front?mip.y:mip.z).SampleLevel(PassSrg::LinearSampler,tex,0);
+            colors[k]=Bindless::GetTexture2D(NonUniformResourceIndex(mip.x)).SampleLevel(PassSrg::LinearSampler,tex,0);
+            normals[k]=Bindless::GetTexture2D(NonUniformResourceIndex(front?mip.y:mip.z)).SampleLevel(PassSrg::LinearSampler,tex,0);
         }
         const float4 color=lerp(colors[0],colors[1],frac(lod)),normal=lerp(normals[0],normals[1],frac(lod));
         surface.albedo=surface.albedo*(1-color.a)+color.rgb;

@@ -16,6 +16,8 @@
 #include <AzFramework/Asset/AssetCatalogBus.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <AzCore/IO/FileIO.h>
 #include <AzToolsFramework/API/ViewPaneOptions.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
@@ -64,6 +66,12 @@
 #include <QTreeWidget>
 #include <QVBoxLayout>
 #include <QElapsedTimer>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QImage>
+#include <QColorSpace>
+#include <QStandardItemModel>
 #include <cmath>
 
 namespace SilPOM
@@ -132,6 +140,42 @@ AZ::RPI::ViewportContextPtr Viewport()
     return manager?manager->GetDefaultViewportContext():nullptr;
 }
 PaintRequests* Document(AZ::EntityId id) { return PaintRequestBus::FindFirstHandler(id); }
+bool LoadSurfaceBrushPixels(AZ::Data::AssetId material,float normalOpacity,SurfaceBrushPixels& pixels)
+{
+    AZStd::string product,source;bool found=false;
+    AZ::Data::AssetCatalogRequestBus::BroadcastResult(product,&AZ::Data::AssetCatalogRequests::GetAssetPathById,material);
+    AzToolsFramework::AssetSystemRequestBus::BroadcastResult(found,&AzToolsFramework::AssetSystem::AssetSystemRequest::GetFullSourcePathFromRelativeProductPath,product,source);
+    if(!found)return false;
+    QFile file(QString::fromUtf8(source.c_str()));if(!file.open(QIODevice::ReadOnly))return false;
+    const auto materialJson=QJsonDocument::fromJson(file.readAll()).object();
+    const auto properties=materialJson.value("propertyValues").toObject();
+    auto resolve=[&](QString path)
+    {
+        if(path.startsWith('@'))
+        {
+            char full[4096];auto* io=AZ::IO::FileIOBase::GetInstance();
+            if(io&&io->ResolvePath(path.toUtf8().constData(),full,sizeof(full)))return QString::fromUtf8(full);
+            return QString{};
+        }
+        return QDir::isAbsolutePath(path)?path:QFileInfo(file).dir().filePath(path);
+    };
+    auto load=[&](const QString& key,bool color,std::vector<uint8_t>& bytes,uint32_t& width,uint32_t& height)
+    {
+        const auto path=properties.value(key).toString();if(path.isEmpty())return false;
+        QImage image(resolve(path));if(image.isNull()||image.width()>8192||image.height()>8192)return false;
+        if(color&&image.colorSpace().isValid())image.convertToColorSpace(QColorSpace::SRgb);
+        image=image.convertToFormat(QImage::Format_RGBA8888);width=unsigned(image.width());height=unsigned(image.height());
+        bytes.resize(size_t(width)*height*4);
+        for(unsigned y=0;y<height;++y)memcpy(bytes.data()+size_t(y)*width*4,image.constScanLine(int(y)),size_t(width)*4);
+        return true;
+    };
+    SurfaceBrushPixels next;
+    if(!load("baseColor.textureMap",true,next.color,next.width,next.height))return false;
+    const auto normal=properties.value("normal.textureMap").toString();
+    if(normalOpacity>0&&!normal.isEmpty()&&!normal.contains("default_normal",Qt::CaseInsensitive)
+        &&!load("normal.textureMap",false,next.normal,next.normalWidth,next.normalHeight))return false;
+    pixels=std::move(next);return true;
+}
 void SyncPaintPrefab(AZ::EntityId id)
 {
     if(auto* api=AZ::Interface<AzToolsFramework::Prefab::PrefabPublicInterface>::Get())
@@ -158,6 +202,7 @@ public:
 private:
     static PaintConfig Snapshot(const PaintConfig& c)
     {
+        if(c.m_textureAuthoritative)return c; // Texels, rather than paths, are the undoable result.
         // Do not copy (or retain capacity for) the growing fixed paint buffer.
         PaintConfig snapshot;snapshot.m_nextId=c.m_nextId;snapshot.m_frozenThrough=c.m_frozenThrough;snapshot.m_receiverUv=c.m_receiverUv;
         for(const auto& layer:c.m_layers)
@@ -260,6 +305,9 @@ private:
     QListWidget* m_library=nullptr;
     QLineEdit* m_librarySearch=nullptr;
     QLabel *m_status=nullptr,*m_pen=nullptr;
+    QLabel* m_paintHint=nullptr;
+    PaintStroke m_textureBrush;
+    SurfaceBrushPixels m_texturePixels;
     QPushButton* m_colorButton=nullptr;
     AZ::Color m_color=AZ::Color(.18f,.12f,.07f,1.f);
 };
@@ -269,7 +317,7 @@ Painter::Painter(QWidget* parent):QWidget(parent)
     setObjectName("DecalPainter");g_painter=this;m_clock.start();
     auto* outer=new QVBoxLayout(this);
     m_status=new QLabel(this);m_status->setObjectName("DecalPaintStatus");m_status->setWordWrap(true);outer->addWidget(m_status);
-    auto* compositeHint=new QLabel("Automatic Composite: only the newest 100 dabs remain editable. Older paint is fixed and cannot be undone.",this);
+    auto* compositeHint=new QLabel("New paint is saved as surface textures. Erase reveals the material and lower paint layers.",this);m_paintHint=compositeHint;
     compositeHint->setWordWrap(true);outer->addWidget(compositeHint);
     auto* scroll=new QScrollArea(this);scroll->setWidgetResizable(true);outer->addWidget(scroll);
     auto* contents=new QWidget(scroll);scroll->setWidget(contents);auto* layout=new QVBoxLayout(contents);
@@ -446,7 +494,7 @@ AZ::EntityId Painter::CreateCanvas()
             &AzToolsFramework::EntityCompositionRequests::AddComponentsToEntities,
             AzToolsFramework::EntityIdList{id},AZ::ComponentTypeList{azrtti_typeid<EditorPaintComponent>()});
         if(!added.IsSuccess())return AZ::EntityId{};
-        if(auto* d=Document(id)) {PaintConfig initial;initial.m_layers.emplace_back();d->SetDocument(initial);}
+        if(auto* d=Document(id)) {PaintConfig initial;initial.m_textureAuthoritative=true;initial.m_layers.emplace_back();d->SetDocument(initial);}
         AzToolsFramework::ScopedUndoBatch::MarkEntityDirty(id);m_canvas=id;m_layer=0;m_stroke=-1;m_revision=~AZ::u64(0);
         AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::SetSelectedEntities,AzToolsFramework::EntityIdList{id});
     }
@@ -459,6 +507,7 @@ void Painter::Write(const PaintConfig& c)
     if(auto* d=Document(m_canvas))
     {
         d->SetDocument(c);
+        if(c.m_textureAuthoritative){if(m_drawing)m_work=d->GetDocument();return;}
         if(m_drawing)
         {
             m_work=d->GetDocument();m_stroke=-1;
@@ -485,6 +534,11 @@ void Painter::RefreshTree()
             if(int(i)==m_layer&&m_stroke<0)m_tree->setCurrentItem(item);
             if(!l.m_composite.empty())
             {auto* fixed=new QTreeWidgetItem(item,{QString("Composite (%1 fixed dabs)").arg(l.m_composite.size())});fixed->setFlags(Qt::ItemIsEnabled);}
+            if(c.m_textureAuthoritative)
+            {
+                size_t count=0;for(const auto& chart:c.m_surfacePaint)if(chart.layer==l.m_id)++count;
+                if(count){auto* texture=new QTreeWidgetItem(item,{QString("Painted surface textures (%1)").arg(count)});texture->setFlags(Qt::ItemIsEnabled);}
+            }
             for(size_t j=0;j<l.m_strokes.size();++j)
             {auto* s=new QTreeWidgetItem(item,{QString::fromUtf8(l.m_strokes[j].m_name.c_str())+(!l.m_strokes[j].m_visible?" [hidden]":"")});s->setData(0,Qt::UserRole,int(i));s->setData(0,Qt::UserRole+1,int(j));if(int(i)==m_layer&&int(j)==m_stroke)m_tree->setCurrentItem(s);}
         }
@@ -566,6 +620,12 @@ void Painter::OnTick(float,AZ::ScriptTimePoint)
     if(!isVisible())return;
     if(m_clock.elapsed()-m_lastCanvasRefresh>1000){m_lastCanvasRefresh=m_clock.elapsed();RefreshCanvases();}
     auto* doc=Document(m_canvas);
+    const bool texture=doc&&doc->GetDocument().m_textureAuthoritative;
+    if(texture&&m_mode->currentIndex()==2)m_mode->setCurrentIndex(0);
+    if(auto* apply=findChild<QPushButton*>("ApplyStroke"))apply->setEnabled(!texture);
+    m_points->setEnabled(!texture);
+    m_paintHint->setText(texture?"Paint is saved as surface textures. Erase reveals the material and lower layers. Undo restores texture snapshots.":"Legacy stroke document: the newest 100 dabs remain editable; older Composite paint is fixed.");
+    if(auto* model=qobject_cast<QStandardItemModel*>(m_mode->model()))if(auto* item=model->item(2))item->setEnabled(!texture);
     if(!doc&&m_drawing)Finish(true);
     if(!doc&&m_tree->topLevelItemCount())RefreshTree();
     if(doc&&!m_drawing&&doc->GetRevision()!=m_revision)RefreshTree();
@@ -583,7 +643,10 @@ void Painter::OnTick(float,AZ::ScriptTimePoint)
     else m_hasCursor=false;
     const QString status=doc?QString::fromUtf8(doc->GetPaintStatus().c_str()):
         QString("No paint entity. Click a visible surface in Stamp/Paint mode to start a new one, or choose New paint entity.");
-    m_status->setText(status+(m_arm->isChecked()?(m_hasCursor?"\nRendered surface ready.":"\nWaiting for visible surface / depth frame."):"\nPainting disabled."));
+    QString receiverStatus;
+    if(texture&&!doc->GetDocument().m_surfacePaint.empty())
+    {AZStd::string state;MeshRequestBus::EventResult(state,doc->GetDocument().m_surfacePaint.front().receiver,&MeshRequests::GetSurfacePaintStatus);receiverStatus="\n"+QString::fromUtf8(state.c_str());}
+    m_status->setText(status+receiverStatus+(m_arm->isChecked()?(m_hasCursor?"\nRendered surface ready.":"\nWaiting for visible surface / depth frame."):"\nPainting disabled."));
 }
 void Painter::OnEndPrepareRender()
 {
@@ -705,14 +768,20 @@ void Painter::Begin(QPointF pixel,float pressure)
     m_before=m_work;m_strokeCanvas=m_canvas;
     AZ::Transform world=AZ::Transform::CreateIdentity();AZ::TransformBus::EventResult(world,m_canvas,&AZ::TransformBus::Events::GetWorldTM);m_strokeInverse=world.GetInverse();
     s.m_diameter/=AZStd::max(.001f,world.GetUniformScale());s.m_depth/=AZStd::max(.001f,world.GetUniformScale());
-    s.m_id=m_work.m_nextId++;s.m_explicitDabs=true;m_activeStrokeId=s.m_id;m_sampler={};
+    s.m_id=m_work.m_textureAuthoritative?0:m_work.m_nextId++;s.m_explicitDabs=true;m_activeStrokeId=s.m_id;m_sampler={};
     s.m_name=AZStd::string::format("%s %s %llu",s.m_erase?"Erase":"Paint",m_mode->currentIndex()==0?"stamp":"stroke",static_cast<unsigned long long>(s.m_id));
     m_undo=AZStd::make_unique<AzToolsFramework::ScopedUndoBatch>(s.m_erase?"Erase decal stroke":"Paint decal stroke");
+    if(m_work.m_textureAuthoritative)
+    {
+        if(!LoadSurfaceBrushPixels(s.m_material.GetId(),s.m_erase?0.f:s.m_normalOpacity,m_texturePixels))
+        {m_status->setText("The selected brush needs a readable source material and base-color image.");m_undo.reset();return;}
+        m_textureBrush=s;m_stroke=-1;m_drawing=true;m_break=true;m_lastPixel=pixel;m_lastPressure=pressure;AddPixel(pixel,pressure);return;
+    }
     layer->m_strokes.push_back(s);m_stroke=int(layer->m_strokes.size())-1;m_drawing=true;m_break=true;m_lastPixel=pixel;m_lastPressure=pressure;AddPixel(pixel,pressure);
 }
 void Painter::AddPixel(QPointF pixel,float pressure)
 {
-    if(auto* stroke=Stroke(m_work))
+    if(auto* stroke=m_work.m_textureAuthoritative?&m_textureBrush:Stroke(m_work))
     {
         if(stroke->m_points.size()>=PaintConfig::MaxPoints)return;
         AZ::Vector3 p,n;
@@ -733,6 +802,20 @@ void Painter::AddPixel(QPointF pixel,float pressure)
             PaintPoint dab;dab.m_position={p.position.x,p.position.y,p.position.z};dab.m_normal={p.normal.x,p.normal.y,p.normal.z};
             if(!FindPaintSurface(m_strokeInverse.GetInverse().TransformPoint(dab.m_position),
                 m_strokeInverse.GetInverse().TransformVector(dab.m_normal),dab.m_surface))return;
+            if(m_work.m_textureAuthoritative)
+            {
+                const auto world=m_strokeInverse.GetInverse();SurfacePaintBrush brush;
+                brush.position=world.TransformPoint(dab.m_position);brush.normal=world.TransformVector(dab.m_normal).GetNormalizedSafe();
+                const auto rotation=AZ::Quaternion::CreateShortestArc(AZ::Vector3::CreateAxisZ(),brush.normal)*AZ::Quaternion::CreateRotationZ(AZ::DegToRad(stroke->m_rotation));
+                brush.tangent=rotation.TransformVector(AZ::Vector3::CreateAxisX());
+                brush.diameter=PaintMath::Diameter(stroke->m_diameter,p.pressure,stroke->m_pressureSize,stroke->m_minimumSize)*world.GetUniformScale();
+                brush.depth=stroke->m_depth*world.GetUniformScale();brush.opacity=stroke->m_opacity*(stroke->m_pressureOpacity?PaintMath::Pressure(p.pressure):1.f);
+                brush.normalOpacity=stroke->m_normalOpacity;brush.color=stroke->m_color;brush.blendMode=stroke->m_blendMode;brush.erase=stroke->m_erase;brush.heightMask=stroke->m_heightMask;
+                AZStd::string error;bool applied=false;
+                MeshRequestBus::EventResult(applied,dab.m_surface.receiver,&MeshRequests::ApplySurfaceTextureBrush,dab.m_surface,brush,m_texturePixels,Layer(m_work)->m_id,m_work.m_surfacePaint,error);
+                if(!error.empty())m_status->setText(QString::fromUtf8(error.c_str()));
+                return; // No persistent dab or projection history in this document.
+            }
             dab.m_pressure=p.pressure;dab.m_start=p.start;dab.m_sequence=m_work.m_nextId++;
             stroke->m_points.push_back(dab);
         },stroke->m_diameter,stroke->m_spacing,stroke->m_pressureSize,stroke->m_minimumSize);
@@ -848,6 +931,8 @@ public:
     virtual AZStd::string GetPickerStatus()=0;
     virtual AZStd::string SavePaintPrefab(AZ::EntityId,const AZStd::string&)=0;
     virtual AZStd::string SetPaintDocument(AZ::EntityId,const AZStd::string&)=0;
+    virtual AZStd::string ApplySurfaceTextureStamp(AZ::EntityId,AZ::EntityId,const AZStd::string&,const AZ::Vector2&,
+        const AZ::Vector4&,const AZ::Color&,const AZStd::string&,bool,AZ::u64)=0;
 };
 using PainterBus=AZ::EBus<PainterRequests>;
 class PainterAutomation final : public PainterBus::Handler
@@ -865,6 +950,40 @@ public:
         const auto before=d->GetDocument();
         const auto error=d->SetDocumentJson(json);if(error.empty())RecordPaintUndo(entity,before,undo.GetUndoBatch());
         return error;
+    }
+    AZStd::string ApplySurfaceTextureStamp(AZ::EntityId canvas,AZ::EntityId receiver,const AZStd::string& face,const AZ::Vector2& uv,
+        const AZ::Vector4& settings,const AZ::Color& color,const AZStd::string& material,bool erase,AZ::u64 layerId) override
+    {
+        auto* document=Document(canvas);if(!document)return "Paint entity unavailable";
+        const auto before=document->GetDocument();
+        if(!before.m_textureAuthoritative)return "Create an authoritative surface-texture paint entity first";
+        if(!settings.IsFinite()||settings.GetX()<=0||!std::isfinite(color.GetR())||!std::isfinite(color.GetG())||!std::isfinite(color.GetB()))
+            return "Invalid surface brush settings";
+        auto next=before;
+        auto selected=layerId?AZStd::find_if(next.m_layers.begin(),next.m_layers.end(),[&](const auto& layer){return layer.m_id==layerId;}):next.m_layers.begin();
+        if(selected==next.m_layers.end()||selected->m_locked||!selected->m_visible)return "Choose a visible, unlocked paint layer";
+        PaintSurfacePoint address;address.receiver=receiver;address.face=face;address.uv=uv;
+        PaintSurfaceSample sample;bool resolved=false;
+        MeshRequestBus::EventResult(resolved,receiver,&MeshRequests::ResolvePaintSurface,address,sample);
+        if(!resolved)return "Receiving face or UV address is unavailable";
+        AZ::Data::AssetId materialId;
+        AZ::Data::AssetCatalogRequestBus::BroadcastResult(materialId,&AZ::Data::AssetCatalogRequests::GetAssetIdByPath,
+            material.c_str(),azrtti_typeid<AZ::RPI::MaterialAsset>(),false);
+        SurfaceBrushPixels pixels;
+        if(!materialId.IsValid()||!LoadSurfaceBrushPixels(materialId,erase?0.f:settings.GetZ(),pixels))return "Surface brush source images are unavailable";
+        SurfacePaintBrush brush;brush.position=sample.position;brush.normal=sample.normal;
+        const auto rotation=AZ::Quaternion::CreateShortestArc(AZ::Vector3::CreateAxisZ(),sample.normal)
+            *AZ::Quaternion::CreateRotationZ(AZ::DegToRad(settings.GetW()));
+        brush.tangent=rotation.TransformVector(AZ::Vector3::CreateAxisX());
+        brush.diameter=settings.GetX();brush.depth=.25f;brush.opacity=settings.GetY();brush.normalOpacity=settings.GetZ();
+        brush.color=color;brush.erase=erase;brush.heightMask=7;
+        AZStd::string error;bool applied=false;
+        MeshRequestBus::EventResult(applied,receiver,&MeshRequests::ApplySurfaceTextureBrush,address,brush,pixels,selected->m_id,next.m_surfacePaint,error);
+        if(!applied)return error.empty()?AZStd::string("Brush did not affect any receiving texels"):error;
+        AzToolsFramework::ScopedUndoBatch undo("Paint surface texture stamp");
+        const auto revision=document->GetRevision();document->SetDocument(next);
+        if(document->GetRevision()==revision)return document->GetPaintStatus();
+        RecordPaintUndo(canvas,before,undo.GetUndoBatch());return {};
     }
     AZStd::string SavePaintPrefab(AZ::EntityId entity,const AZStd::string& path) override
     {
@@ -888,7 +1007,8 @@ void DecalPainterSystem::Reflect(AZ::ReflectContext* context)
         ->Attribute(AZ::Script::Attributes::Module,"silpom")->Attribute(AZ::Script::Attributes::Scope,AZ::Script::Attributes::ScopeFlags::Common)
         ->Event("CreatePaintEntity",&PainterRequests::CreatePaintEntity)->Event("PickVisiblePixel",&PainterRequests::PickVisiblePixel)
         ->Event("GetViewportWindowId",&PainterRequests::GetViewportWindowId)->Event("GetPickerStatus",&PainterRequests::GetPickerStatus)
-        ->Event("SavePaintPrefab",&PainterRequests::SavePaintPrefab)->Event("SetPaintDocument",&PainterRequests::SetPaintDocument);
+        ->Event("SavePaintPrefab",&PainterRequests::SavePaintPrefab)->Event("SetPaintDocument",&PainterRequests::SetPaintDocument)
+        ->Event("ApplySurfaceTextureStamp",&PainterRequests::ApplySurfaceTextureStamp);
 }
 void DecalPainterSystem::Activate()
 {

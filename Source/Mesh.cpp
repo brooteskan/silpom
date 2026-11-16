@@ -6,6 +6,8 @@
 #include <rapidjson/writer.h>
 #include <SilPOM/HeightPrecision.h>
 #include <SilPOM/ReceiverPaintState.h>
+#include <SilPOM/SurfacePaintImage.h>
+#include <AzCore/Math/Aabb.h>
 #include <SilPOM/AppearanceCodec.h>
 #include <SilPOM/ReliefLod.h>
 #include <SilPOM/DirectionalEstimatorContract.h>
@@ -756,6 +758,8 @@ struct MeshController::Generation
     AZStd::atomic_bool published{false};
 };
 #include "ReceiverUvPaint.inl"
+#include "SurfacePaintRaster.inl"
+#include "SurfacePaintRender.inl"
 MeshController::MeshController() = default;
 MeshController::MeshController(const MeshConfig& config) : m_configuration(config) {}
 MeshController::~MeshController() = default;
@@ -850,6 +854,7 @@ void MeshController::Reflect(AZ::ReflectContext* context)
             ->Event("GetProxyFaceOwners",&MeshRequests::GetProxyFaceOwners)
             ->Event("GetAntiAliasingState",&MeshRequests::GetAntiAliasingState)
             ->Event("GetPaintFacesJson",&MeshRequests::GetPaintFacesJson)
+            ->Event("GetSurfacePaintStatus",&MeshRequests::GetSurfacePaintStatus)
             ->Event("BeginReceiverUvPaint",&MeshRequests::BeginReceiverUvPaint)
             ->Event("SetReceiverUvPaintMode",&MeshRequests::SetReceiverUvPaintMode)
             ->Event("GetReceiverUvPaintStatus",&MeshRequests::GetReceiverUvPaintStatus)
@@ -980,6 +985,7 @@ void MeshController::Deactivate()
     AZ::TickBus::Handler::BusDisconnect(); MeshRequestBus::Handler::BusDisconnect();
     AZ::TransformNotificationBus::Handler::BusDisconnect(); AZ::Data::AssetBus::MultiHandler::BusDisconnect();
     ReleaseReceiverUvPaint();
+    ReleaseSurfacePaintTextures();
     Release(m_pending); Release(m_active); m_processor = nullptr; m_entity.SetInvalid(); m_status = "Inactive";
 }
 void MeshController::SetConfiguration(const MeshConfig& config)
@@ -1611,7 +1617,7 @@ AZStd::vector<AZ::u32> MeshController::GetProxyFaceOwners() const
         for(size_t i=0;i<batch.flags.size();++i)if(batch.flags[i])owners.push_back(batch.hitFaceBase+aznumeric_cast<AZ::u32>(i));
     return owners;
 }
-void MeshController::OnBeginPrepareRender(){UpdateProxyLod();}
+void MeshController::OnBeginPrepareRender(){UpdateProxyLod();SyncSurfacePaintMaterials();}
 void MeshController::UpdateProxyLod()
 {
     if(!m_active||m_active->proxyBatches.empty()||!m_configuration.m_surface.IsReady())return;
@@ -1703,7 +1709,7 @@ void MeshController::UpdateProxyLod()
 }
 void MeshController::OnTick(float, AZ::ScriptTimePoint)
 {
-    TickReceiverUvPaint();
+    if(!m_surfacePaintRuntime)TickReceiverUvPaint();
     const unsigned policy=UpdateHitSamplePolicy(AZ::RPI::Scene::GetSceneForEntityId(m_entity));
     if(m_hitSamplePolicy!=policy){m_hitSamplePolicy=policy;m_checkHitPasses=true;}
     if (m_dirty) { Release(m_pending); m_dirty = Prepare(); }
@@ -1748,6 +1754,7 @@ void MeshController::OnTick(float, AZ::ScriptTimePoint)
                         const auto tag = packet.GetRHIDrawPacket()->GetDrawListTag(i);
                         m_processor->SetDrawItemEnabled(handle, tag, tag != motionTag);
                     }
+            ReleaseSurfacePaintTextures();
             Release(m_active); m_active = AZStd::move(m_pending);
             m_paintSurfaceRevision=++ReceiverSurfaceRevision;
             if (!m_active->trainedModelBatches)
@@ -1793,5 +1800,6 @@ void MeshController::OnTick(float, AZ::ScriptTimePoint)
                 m_status += AZStd::string::format("; spiral light on %zu relief batches", m_active->spiralLightBatches);
         }
     }
+    TickSurfacePaintTextures();
 }
 }

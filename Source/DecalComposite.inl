@@ -2,6 +2,14 @@
 // Included in DecalPaint.cpp, inside namespace SilPOM.
 void PaintController::Rebuild()
 {
+    if(m_configuration.m_textureAuthoritative)
+    {
+        Release();m_receiverInput={};m_receiverStates.clear();m_liveCount=0;m_compositeCount=0;
+        size_t bytes=0;for(const auto& chart:m_configuration.m_surfacePaint)bytes+=chart.texels.size();
+        m_status=AZStd::string::format("Surface paint: %zu texture charts; %.2f MiB saved; no retained dabs",m_configuration.m_surfacePaint.size(),double(bytes)/1048576);
+        m_renderStats=AZStd::string::format("{\"authoritative_textures\":true,\"charts\":%zu,\"saved_bytes\":%zu,\"retained_dabs\":0}",m_configuration.m_surfacePaint.size(),bytes);
+        return;
+    }
     const auto started=std::chrono::steady_clock::now();
     using Data=AZ::Render::DecalData;
     using Projection=PaintProjection;

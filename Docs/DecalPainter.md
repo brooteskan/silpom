@@ -1,15 +1,44 @@
 # Decal Painter
 
+New paint entities now use **persistent surface textures**. Choose **New paint
+entity** to use this model. The brush targets the supported SiLPOM surface under
+the cursor; the top dropdown chooses the paint document, not the receiving model.
+Each affected receiver face and layer stores painted color/coverage and normal
+detail/coverage. Strokes update these texels immediately; individual dabs are
+not retained or replayed. Save the level or prefab to preserve the texels.
+
+Normal detail is attached to the receiving surface and combined once with its
+live material/height normal. It does not fit the old projected-normal sequence.
+See [surface texture painting](SurfaceTexturePaint.md) for the precise normal,
+filtering and erase rules and their validation limits.
+
+Paint, erase, layer visibility/opacity/order and undo remain available. Undo
+restores texture snapshots; **Edit point** and **Apply brush settings to selected
+stroke** apply only to legacy stroke documents. Erasing red painted over blue
+within one flattened layer reveals the underlying material or lower layers,
+not the overwritten blue. Keep that blue on a separate layer to preserve it.
+
+Paint follows its receiving model through transforms; moving the paint-document
+entity does not relocate saved UV paint. Missing receivers/faces stay unresolved.
+New texture painting currently supports up to 128 face/layer/side charts and
+256 MiB of active raw mip texels per receiver. GPU allocation and temporary
+replacement overhead are additional. New charts use 256x256 texels.
+
+Existing paint documents retain their legacy projection history unchanged.
+They are not silently converted or discarded. The rolling Composite and path
+editing descriptions below describe those **legacy documents**.
+
 Open **Tools > Decal Painter**, choose **New paint entity**, and enable painting.
 If undo also removes the paint entity, the enabled brush continues tracking the
 surface. Your next valid Stamp/Paint click starts a new paint entity automatically.
 Erase and Edit point do not create an empty document.
 The tool is available in any level, including VueLiveLink. It creates a **Decal
 Paint** entity with a **Surface Decal Paint** component; it does not alter the
-tower's material or its heightmap. Save the level to save your work. Layers and
-strokes also travel with the entity when it is saved as a prefab.
+tower's source material asset or its heightmap. Save the level to save your
+work. Layers and saved texels travel with a texture-paint entity when it is
+saved as a prefab; legacy documents retain their layers and strokes instead.
 
-## Automatic Composite
+## Automatic Composite (legacy documents)
 
 Each paint entity retains the **newest 100 dabs** as editable paint. Every older
 dab moves into the ongoing **Composite**, including the older section of a long
@@ -49,8 +78,10 @@ one paint entity, as before.
 The **Decal library** shows thumbnail tiles for the included round brushes and
 SurfaceTexture 0001/0002 stamps. Click a tile to choose it for new paint. Textured
 stamps use white tint, full dab opacity and their normal map; adjust these below
-the library as needed. Existing paint changes only with **Apply brush settings
-to selected stroke**. Search filters tiles by name; **Refresh** discovers new
+the library as needed. Brush choices affect future painting. Existing texture
+paint is changed by erasing or repainting texels, or through its layer controls.
+In a legacy document, **Apply brush settings to selected stroke** changes that
+stroke's editable tail. Search filters tiles by name; **Refresh** discovers new
 materials without reopening the pane.
 
 Add custom `.material` files under the project's `Assets/Materials/DecalPaint`
@@ -65,7 +96,7 @@ roughness, metallic and AO maps are not applied by the color/normal decal render
 Choose **Paint** or **Erase (selected layer)** in **Brush operation** (the Paint /
 Erase selector under the Stamp/Paint/Edit-point selector). Both operations work
 with individual stamps and continuous strokes. Erase removes earlier color and
-normal paint in the selected layer, including fixed Composite paint, revealing
+normal paint in the selected layer, including fixed Composite paint in legacy documents, revealing
 the material and lower paint layers. Paint added after an erase remains visible.
 Opacity, the brush texture's alpha and tablet pressure control erase strength.
 Blend, tint and normal-map opacity apply to painting; they are disabled for erase.
@@ -77,27 +108,33 @@ The **Heightmap ranges** group has independent **Paint** and **Erase** rows of
 - Medium: values from 1/3 up to 2/3.
 - High: values from 2/3 through 1.
 
-All three are selected by default, preserving unrestricted painting and erasing.
-Selecting none makes that operation have no effect. A restricted selection affects
-SILPOM surfaces with height information; ordinary surfaces without a heightmap
-receive the brush only when all three bands are selected. These are heightmap
-values, independent of the object's world elevation or height-scale setting.
+All three are selected by default. Selecting none makes that operation have no
+effect. These are normalized heightmap values, independent of the object's world
+elevation or height-scale setting, including zero relief depth.
 
-Each stroke stores its operation and range selection. Selecting a stroke restores
+Texture painting evaluates the selected ranges while writing affected texels,
+using the receiver's bilinear mip-zero height, tiling and repeat/clamp rules.
+Changing the range controls or receiver height later does not refilter already
+saved paint. It does not modify the receiver's height texture.
+
+Legacy strokes store their operation and range selection. Selecting a stroke restores
 its matching row without changing the other operation's row. **Apply brush
 settings to selected stroke** updates its editable tail. Fixed Composite dabs
 retain the original operation and height mask, including after saving/reloading.
 Erase dabs participate in the same rolling 100-dab limit and undo rules as paint.
 
-Height filtering runs in the shader at the resolved SILPOM hit UV, using the same
+Legacy height filtering runs in the shader at the resolved SILPOM hit UV, using the same
 bilinear mip-zero height, tiling and repeat/clamp rules as the geometry. It does
 not modify the source textures. Restricted batches sample height once per shaded
-point, rather than once per dab; unrestricted batches skip that lookup.
+point, rather than once per dab; unrestricted batches skip that lookup. Legacy
+unanchored projections on ordinary surfaces without height information require
+all three bands. New brush placement requires a supported SiLPOM receiver.
 
-- **Stamp:** one decal for each click or pen contact.
+- **Stamp:** one brush stamp for each click or pen contact.
 - **Paint:** hold the left mouse button or pen tip and drag. Spacing is measured
   along the surface in fractions of the brush diameter, independent of event
-  rate. Larger spacing produces fewer dabs and costs less to render.
+  rate. Larger spacing reduces brush-update work and reduces replay cost in
+  legacy documents. Texture rendering cost does not grow with past dab count.
 - Hold **Alt**, or use right/middle mouse, to navigate. Painting only captures
   left-button/pen gestures inside the main level viewport while enabled.
 - **Esc** cancels the current gesture and disables painting. **Ctrl+Z/Ctrl+Y**
@@ -107,39 +144,45 @@ point, rather than once per dab; unrestricted batches skip that lookup.
   **Decal_AlbedoWithOpacity** for custom decal textures. Decal materials need a
   valid normal texture too; the supplied brushes use the engine's flat normal.
 
-Diameter, opacity, normal map opacity, spacing, rotation, projection depth, tint, blend mode and
-pressure response become properties of each stroke. To change an existing
-stroke, select it, adjust the brush settings, then click **Apply brush settings
+Diameter, opacity, normal map opacity, spacing, rotation, projection depth, tint,
+blend mode and pressure response control new texture updates. They are not
+retained as editable stroke properties after those texels are painted.
+
+In legacy documents these settings become properties of each stroke. To change
+an existing stroke, select it, adjust the brush settings, then click **Apply brush settings
 to selected stroke**. Changes retain its live dab positions and pressure values.
 Only the live tail can be changed. Its point list contains actual dab placements;
 spacing controls future dabs and does not reposition existing placements.
 
 ## Editing and layers
 
-Select a layer or stroke in the tree. Rename it, toggle visibility, or delete it.
-**Lower/Raise** reorder the selected stroke within its layer, or the selected
-layer in the stack. Higher items in the stack are drawn later. A layer's opacity
-multiplies the opacities of its strokes. Locking a layer prevents painting,
-point changes and deletion on it. These actions participate in Editor undo.
+Select a layer in the tree to rename it, toggle visibility, change opacity or
+delete it. **Lower/Raise** reorder layers; higher items are drawn later. Texture
+layer opacity scales both color and normal coverage. Locking prevents painting
+and deletion on that layer. These actions participate in Editor undo.
 
-To change the path, select a stroke and a point in the point list, then choose
+Legacy documents also expose individual live strokes. **Lower/Raise** reorder
+a selected stroke within its layer, and layer opacity multiplies stroke opacity.
+
+To change a legacy path, select a stroke and a point in the point list, then choose
 **Edit point**. Click or drag in the viewport to reproject that point onto the
 visible surface. The selected point is orange and the remaining path is green.
 You can also delete individual points. Gaps remain gaps when their first point
 is deleted. The brush outline shows its full, unpressured diameter.
 
-Points are stored in the paint entity's local coordinates. Transform the entity
-to move the painting as a group, or parent it to the object it should follow.
-A paint entity can hold strokes across several static objects; it is not
-automatically attached to whichever object is under each dab. Re-exporting or
-changing a target's geometry does not automatically reproject existing strokes.
+Old, unanchored legacy points use the paint entity's local coordinates, so its
+transform can relocate those projections. Receiver-anchored legacy dabs and
+new surface-texture paint instead follow their receiving objects. A paint
+document can refer to several receivers. Re-exporting geometry does not
+automatically reproject paint onto different canonical faces.
 
 ## SILPOM placement
 
 The brush reads the rendered depth **after** SILPOM's hit, hole-fill and backup
 passes, reconstructs the visible position, and estimates its normal from adjacent
-depth pixels. It uses the matching frame's jittered projection matrix. Ordinary
-meshes use the same path. A moved camera or changed viewport size invalidates the
+depth pixels. It uses the matching frame's jittered projection matrix. The click
+must then resolve to a supported SiLPOM receiver before new paint is authored.
+A moved camera or changed viewport size invalidates the
 snapshot until a matching frame arrives. Sky and off-surface excursions break
 the stroke instead of joining unrelated surfaces.
 

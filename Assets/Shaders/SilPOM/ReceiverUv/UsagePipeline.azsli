@@ -44,14 +44,44 @@
 
 VsOutput VertexShader(VsInput IN,uint instanceId:SV_InstanceID)
 {VsSystemValues SV;SV.m_instanceId=instanceId;VsOutput OUT=EvaluateVertexGeometry(IN,SV,GetMaterialParameters());OUT.m_instanceId=instanceId;return OUT;}
-struct UvUsageOutput {uint4 usage:SV_Target0;float depth:SV_Depth;};
+// Raw surface values make the authoritative-texture definition measurable
+// independently of lighting and packed GBuffer normal precision.
+struct UvUsageOutput
+{
+    uint4 usage:SV_Target0;
+    float4 baseColor:SV_Target1;
+    float4 paintColor:SV_Target2;
+    float4 baseNormal:SV_Target3;
+    float4 paintNormal:SV_Target4;
+    float4 gradients:SV_Target5;
+    float depth:SV_Depth;
+};
 UvUsageOutput PixelShader(VsOutput IN,bool front:SV_IsFrontFace,uint sampleIndex:SV_SampleIndex)
 {
     silpomHitSampleIndex=sampleIndex;VsSystemValues SV;SV.m_instanceId=IN.m_instanceId;
     const MaterialParameters params=GetMaterialParameters();
     PixelGeometryData geo=EvaluatePixelGeometry(IN,SV,front,params);
+    UvUsageOutput OUT=(UvUsageOutput)0;OUT.depth=IN.position.z;
+    if(params.m_receiverPaintMode==3u)
+    {
+        // Use the same live material evaluation and paint composition as the
+        // forward shader. The saved source, not these outputs, is the oracle.
+        Surface base=EvaluateSurface_SilPomMesh(IN,SV,geo,params);
+        Surface painted=base;
+        OUT.gradients=float4(ddx(silpomLitUv),ddy(silpomLitUv));
+        SilPomApplySurfaceTextures(painted,params,IN.faceIndex,geo.isFrontFace);
+        // Preserve the exact evaluated UV too; hit-record UV decoding may
+        // undergo a material tiling round trip before paint is sampled.
+        OUT.baseColor=float4(base.albedo,silpomLitUv.x);
+        OUT.paintColor=float4(painted.albedo,silpomLitUv.y);
+        OUT.baseNormal=float4(base.normal,1);
+        OUT.paintNormal=float4(painted.normal,1);
+        const uint charts=SilPomSurfaceTextureChartCount(params,IN.faceIndex,silpomLitUv,geo.isFrontFace);
+        OUT.usage=charts==0?uint4(0,0,0,0):
+            uint4(3u,params.m_silpomHitFaceBase+IN.faceIndex,charts,params.m_silpomPaintReceiver);
+        return OUT; // Authoritative textures have no prefix buffer to read.
+    }
     const uint use=SilPomUvUse(params,IN.faceIndex,silpomLitUv);
-    UvUsageOutput OUT;OUT.depth=IN.position.z;OUT.usage=0;
     if(use==0)return OUT;
     const uint4 prefix=Bindless::GetByteAddressBuffer(params.m_receiverPaintPrefix).Load4(0);
     OUT.usage=uint4(use,params.m_silpomHitFaceBase+IN.faceIndex,prefix.w,params.m_receiverPaintOwner);return OUT;

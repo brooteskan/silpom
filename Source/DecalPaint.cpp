@@ -5,6 +5,7 @@
 #include <SilPOM/DecalCompositeMath.h>
 #include <SilPOM/DecalBake.h>
 #include <SilPOM/ReceiverPaintState.h>
+#include <SilPOM/SurfacePaintImage.h>
 #include <AzCore/Asset/AssetSerializer.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/Json/JsonUtils.h>
@@ -142,9 +143,13 @@ void PaintConfig::Reflect(AZ::ReflectContext* context)
         sc->Class<ReceiverUvBinding>()->Version(1)->Field("Receiver",&ReceiverUvBinding::receiver)
             ->Field("Face",&ReceiverUvBinding::face)->Field("Rectangle",&ReceiverUvBinding::rectangle)
             ->Field("Resolution",&ReceiverUvBinding::resolution);
-        sc->Class<PaintConfig,AZ::ComponentConfig>()->Version(1)->Field("Layers",&PaintConfig::m_layers)
+        sc->Class<SurfacePaintChart>()->Version(1)->Field("Receiver",&SurfacePaintChart::receiver)
+            ->Field("Face",&SurfacePaintChart::face)->Field("Layer",&SurfacePaintChart::layer)->Field("Front",&SurfacePaintChart::front)
+            ->Field("Rectangle",&SurfacePaintChart::rectangle)->Field("Resolution",&SurfacePaintChart::resolution)->Field("Texels",&SurfacePaintChart::texels);
+        sc->Class<PaintConfig,AZ::ComponentConfig>()->Version(2)->Field("Layers",&PaintConfig::m_layers)
             ->Field("NextId",&PaintConfig::m_nextId)->Field("FrozenThrough",&PaintConfig::m_frozenThrough)
-            ->Field("ReceiverUv",&PaintConfig::m_receiverUv);
+            ->Field("ReceiverUv",&PaintConfig::m_receiverUv)
+            ->Field("TextureAuthoritative",&PaintConfig::m_textureAuthoritative)->Field("SurfacePaint",&PaintConfig::m_surfacePaint);
     }
 }
 void PaintController::Reflect(AZ::ReflectContext* context)
@@ -200,6 +205,31 @@ void PaintController::SetDocument(const PaintConfig& c)
 {
     m_bakeIdle=0;m_bakeRequested=false;
     auto next=c;
+    if(next.m_textureAuthoritative)
+    {
+        if(next.m_layers.size()>PaintConfig::MaxLayers){m_status="Surface paint layer limit exceeded";return;}
+        for(const auto& chart:next.m_surfacePaint)
+        {
+            SurfacePaintImage::Image checked;
+            if(!chart.receiver.IsValid()||chart.face.empty()||!chart.rectangle.IsFinite()
+                ||chart.rectangle.GetZ()<=chart.rectangle.GetX()||chart.rectangle.GetW()<=chart.rectangle.GetY()
+                ||!SurfacePaintImage::Decode(std::string_view(chart.texels.data(),chart.texels.size()),checked)
+                ||checked.width!=chart.resolution||checked.height!=chart.resolution)
+            {m_status="Invalid saved surface texture; paint document was not changed";return;}
+        }
+        // Never silently discard a legacy history as a texture conversion.
+        for(const auto& layer:next.m_layers)
+        {
+            if(!layer.m_composite.empty()||AZStd::any_of(layer.m_strokes.begin(),layer.m_strokes.end(),[](const auto& s){return !s.m_points.empty();}))
+            {m_status="Create a new paint entity for surface-texture painting; legacy paint has not been converted";return;}
+        }
+        for(auto& layer:next.m_layers)
+        {if(!layer.m_id)layer.m_id=next.m_nextId++;layer.m_strokes.clear();layer.m_order.clear();}
+        next.m_surfacePaint.erase(AZStd::remove_if(next.m_surfacePaint.begin(),next.m_surfacePaint.end(),[&](const auto& chart)
+            {return AZStd::none_of(next.m_layers.begin(),next.m_layers.end(),[&](const auto& l){return l.m_id==chart.layer;});}),next.m_surfacePaint.end());
+        next.m_receiverUv=ReceiverUvBinding();
+        m_configuration=AZStd::move(next);m_revision=++PaintRevision;m_dirty=true;return;
+    }
     const auto history=CompositeHistory.find(m_entity);
     if(KeepCompositeHistory&&m_entity.IsValid()&&history!=CompositeHistory.end())
     {
@@ -250,6 +280,7 @@ bool PaintController::BindReceiverUv(AZ::EntityId receiver,const AZStd::string& 
 }
 void PaintController::RestoreUndoDocument(const PaintConfig& snapshot)
 {
+    if(snapshot.m_textureAuthoritative){SetDocument(snapshot);return;}
     auto next=snapshot;
     if(const auto history=CompositeHistory.find(m_entity);history!=CompositeHistory.end())
     {
@@ -277,7 +308,7 @@ AZStd::string PaintController::SetDocumentJson(const AZStd::string& json)
 {
     PaintConfig c;const auto loaded=AZ::JsonSerializationUtils::LoadObjectFromString(c,json);
     if(!loaded.IsSuccess())return loaded.GetError();
-    SetDocument(c);return {};
+    const auto previous=m_revision;SetDocument(c);return m_revision==previous?m_status:AZStd::string{};
 }
 void PaintController::OnTick(float delta,AZ::ScriptTimePoint)
 {

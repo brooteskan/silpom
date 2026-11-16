@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+// Authoritative normal texel: premultiplied receiver-frame detail M, coverage A.
+// Filter the complete tuple; never normalize M when painting or building mips.
+float3 SilPomSurfaceUnit(float3 v)
+{
+    const float length2=dot(v,v);
+    if(!isfinite(length2)||length2<=1.e-16f)return float3(0,0,1);
+    return v*rsqrt(length2);
+}
+float3 SilPomComposeSurfaceNormal(float3 liveNormalInReceiverFrame,float4 paint)
+{
+    if(paint.w<=0||(paint.x==0&&paint.y==0))return liveNormalInReceiverFrame;
+    const float coverage=isfinite(paint.w)?clamp(paint.w,0.f,1.f):0.f;
+    const float3 base=SilPomSurfaceUnit(liveNormalInReceiverFrame);
+    const float3 detail=SilPomSurfaceUnit(float3(paint.x,paint.y,paint.z+(1-coverage)));
+    const float3 axis=float3(-base.y,base.x,0);
+    if(base.z<=-1.f+1.e-5f)return SilPomSurfaceUnit(float3(detail.x,-detail.y,-detail.z));
+    return SilPomSurfaceUnit(detail+cross(axis,detail)+cross(axis,cross(axis,detail))*(1/(1+base.z)));
+}

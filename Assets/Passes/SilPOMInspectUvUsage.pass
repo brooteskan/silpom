@@ -33,6 +33,61 @@
           "Name": "SampleDepth",
           "SlotType": "Output",
           "ScopeAttachmentUsage": "RenderTarget"
+        },
+        {
+          "Name": "BaseColorInput",
+          "ShaderInputName": "m_baseColor",
+          "SlotType": "Input",
+          "ScopeAttachmentUsage": "Shader"
+        },
+        {
+          "Name": "BaseColor",
+          "SlotType": "Output",
+          "ScopeAttachmentUsage": "RenderTarget"
+        },
+        {
+          "Name": "PaintColorInput",
+          "ShaderInputName": "m_paintColor",
+          "SlotType": "Input",
+          "ScopeAttachmentUsage": "Shader"
+        },
+        {
+          "Name": "PaintColor",
+          "SlotType": "Output",
+          "ScopeAttachmentUsage": "RenderTarget"
+        },
+        {
+          "Name": "BaseNormalInput",
+          "ShaderInputName": "m_baseNormal",
+          "SlotType": "Input",
+          "ScopeAttachmentUsage": "Shader"
+        },
+        {
+          "Name": "BaseNormal",
+          "SlotType": "Output",
+          "ScopeAttachmentUsage": "RenderTarget"
+        },
+        {
+          "Name": "PaintNormalInput",
+          "ShaderInputName": "m_paintNormal",
+          "SlotType": "Input",
+          "ScopeAttachmentUsage": "Shader"
+        },
+        {
+          "Name": "PaintNormal",
+          "SlotType": "Output",
+          "ScopeAttachmentUsage": "RenderTarget"
+        },
+        {
+          "Name": "GradientsInput",
+          "ShaderInputName": "m_gradients",
+          "SlotType": "Input",
+          "ScopeAttachmentUsage": "Shader"
+        },
+        {
+          "Name": "Gradients",
+          "SlotType": "Output",
+          "ScopeAttachmentUsage": "RenderTarget"
         }
       ],
       "Connections": [
@@ -62,6 +117,76 @@
           "AttachmentRef": {
             "Pass": "This",
             "Attachment": "SampleDepthImage"
+          }
+        },
+        {
+          "LocalSlot": "BaseColorInput",
+          "AttachmentRef": {
+            "Pass": "SilPOMUvUsage",
+            "Attachment": "BaseColor"
+          }
+        },
+        {
+          "LocalSlot": "BaseColor",
+          "AttachmentRef": {
+            "Pass": "This",
+            "Attachment": "BaseColorImage"
+          }
+        },
+        {
+          "LocalSlot": "PaintColorInput",
+          "AttachmentRef": {
+            "Pass": "SilPOMUvUsage",
+            "Attachment": "PaintColor"
+          }
+        },
+        {
+          "LocalSlot": "PaintColor",
+          "AttachmentRef": {
+            "Pass": "This",
+            "Attachment": "PaintColorImage"
+          }
+        },
+        {
+          "LocalSlot": "BaseNormalInput",
+          "AttachmentRef": {
+            "Pass": "SilPOMUvUsage",
+            "Attachment": "BaseNormal"
+          }
+        },
+        {
+          "LocalSlot": "BaseNormal",
+          "AttachmentRef": {
+            "Pass": "This",
+            "Attachment": "BaseNormalImage"
+          }
+        },
+        {
+          "LocalSlot": "PaintNormalInput",
+          "AttachmentRef": {
+            "Pass": "SilPOMUvUsage",
+            "Attachment": "PaintNormal"
+          }
+        },
+        {
+          "LocalSlot": "PaintNormal",
+          "AttachmentRef": {
+            "Pass": "This",
+            "Attachment": "PaintNormalImage"
+          }
+        },
+        {
+          "LocalSlot": "GradientsInput",
+          "AttachmentRef": {
+            "Pass": "SilPOMUvUsage",
+            "Attachment": "Gradients"
+          }
+        },
+        {
+          "LocalSlot": "Gradients",
+          "AttachmentRef": {
+            "Pass": "This",
+            "Attachment": "GradientsImage"
           }
         }
       ],
@@ -99,12 +224,97 @@
             "Format": "R32_FLOAT",
             "SharedQueueMask": "Graphics"
           }
+        },
+        {
+          "Name": "BaseColorImage",
+          "SizeSource": {
+            "Source": {
+              "Pass": "This",
+              "Attachment": "Hit"
+            },
+            "Multipliers": {
+              "WidthMultiplier": 4,
+              "HeightMultiplier": 1
+            }
+          },
+          "ImageDescriptor": {
+            "Format": "R32G32B32A32_FLOAT",
+            "SharedQueueMask": "Graphics"
+          }
+        },
+        {
+          "Name": "PaintColorImage",
+          "SizeSource": {
+            "Source": {
+              "Pass": "This",
+              "Attachment": "Hit"
+            },
+            "Multipliers": {
+              "WidthMultiplier": 4,
+              "HeightMultiplier": 1
+            }
+          },
+          "ImageDescriptor": {
+            "Format": "R32G32B32A32_FLOAT",
+            "SharedQueueMask": "Graphics"
+          }
+        },
+        {
+          "Name": "BaseNormalImage",
+          "SizeSource": {
+            "Source": {
+              "Pass": "This",
+              "Attachment": "Hit"
+            },
+            "Multipliers": {
+              "WidthMultiplier": 4,
+              "HeightMultiplier": 1
+            }
+          },
+          "ImageDescriptor": {
+            "Format": "R32G32B32A32_FLOAT",
+            "SharedQueueMask": "Graphics"
+          }
+        },
+        {
+          "Name": "PaintNormalImage",
+          "SizeSource": {
+            "Source": {
+              "Pass": "This",
+              "Attachment": "Hit"
+            },
+            "Multipliers": {
+              "WidthMultiplier": 4,
+              "HeightMultiplier": 1
+            }
+          },
+          "ImageDescriptor": {
+            "Format": "R32G32B32A32_FLOAT",
+            "SharedQueueMask": "Graphics"
+          }
+        },
+        {
+          "Name": "GradientsImage",
+          "SizeSource": {
+            "Source": {
+              "Pass": "This",
+              "Attachment": "Hit"
+            },
+            "Multipliers": {
+              "WidthMultiplier": 4,
+              "HeightMultiplier": 1
+            }
+          },
+          "ImageDescriptor": {
+            "Format": "R32G32B32A32_FLOAT",
+            "SharedQueueMask": "Graphics"
+          }
         }
       ],
       "PassData": {
         "$type": "FullscreenTrianglePassData",
         "ShaderAsset": {
-          "FilePath": "Shaders/SilPOM/HitReuse/SilPOMInspectSamples.shader"
+          "FilePath": "Shaders/SilPOM/HitReuse/SilPOMInspectSurfaceTexture.shader"
         }
       }
     }

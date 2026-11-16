@@ -1,0 +1,86 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#include "SurfaceNormal.azsli"
+
+// Mode 3 samples saved, authoritative texels. There is no projection prefix,
+// fitted world-normal bias, or replay fallback in this representation.
+// Table: uint4 header {SPT1,chartCount,0,0}; 48-byte chart records followed by
+// uint4 mip records {colorImage,normalImage,width,height}.
+uint SilPomSurfaceTextureChartCount(MaterialParameters params,uint face,float2 uv,bool front)
+{
+    ByteAddressBuffer table=Bindless::GetByteAddressBuffer(params.m_receiverPaintAtlas);
+    uint bytes;table.GetDimensions(bytes);if(bytes<16u)return 0;
+    const uint4 header=table.Load4(0);
+    if(header.x!=0x53505431u||header.y>128u||header.y>(bytes-16u)/48u)return 0;
+    const uint hitFace=params.m_silpomHitFaceBase+face;uint count=0;
+    [loop] for(uint chart=0;chart<header.y;++chart)
+    {
+        const uint offset=16u+chart*48u;const uint4 info=table.Load4(offset);
+        if(info.x!=hitFace||info.y!=(front?1u:0u)||info.z==0u||info.z>11u)continue;
+        if(info.w>bytes||info.z>(bytes-info.w)/16u)continue;
+        const float4 rectangle=asfloat(table.Load4(offset+16u));
+        const float2 q=(uv-rectangle.xy)*rectangle.zw;
+        if(asfloat(table.Load4(offset+32u)).x>0&&all(q>=0)&&all(q<=1))++count;
+    }
+    return count;
+}
+void SilPomApplySurfaceTextures(inout Surface surface,MaterialParameters params,uint face,bool front)
+{
+    ByteAddressBuffer table=Bindless::GetByteAddressBuffer(params.m_receiverPaintAtlas);
+    uint bytes;table.GetDimensions(bytes);if(bytes<16u)return;
+    const uint4 header=table.Load4(0);
+    if(header.x!=0x53505431u||header.y>128u||header.y>(bytes-16u)/48u)return;
+    const uint hitFace=params.m_silpomHitFaceBase+face;
+    const float2 uv=silpomLitUv,dx=ddx(uv),dy=ddy(uv);
+    // Receiver coordinates are attached to the undeformed canonical face.
+    // Relief/material normals remain live inputs to the single composition rule.
+    const float3 localN=front?silpomLitFace.normal:-silpomLitFace.normal;
+    const float3 localT=normalize(silpomLitFace.du);
+    const float handedness=dot(cross(silpomLitFace.normal,localT),silpomLitFace.dv)<0?-1:1;
+    const float3 localB=normalize(cross(localN,localT))*handedness;
+    const float3 T=normalize(mul(silpomLitRotation,localT));
+    const float3 B=normalize(mul(silpomLitRotation,localB));
+    const float3 N=normalize(mul(silpomLitRotation,localN));
+    [loop] for(uint chart=0;chart<header.y;++chart)
+    {
+        const uint offset=16u+chart*48u;
+        const uint4 info=table.Load4(offset);
+        if(info.x!=hitFace||info.y!=(front?1u:0u)||info.z==0u||info.z>11u)continue;
+        if(info.w>bytes||info.z>(bytes-info.w)/16u)continue;
+        const float4 rectangle=asfloat(table.Load4(offset+16u));
+        const float opacity=saturate(asfloat(table.Load4(offset+32u)).x);
+        const float2 q=(uv-rectangle.xy)*rectangle.zw;
+        if(opacity==0||any(q<0)||any(q>1))continue;
+        const uint4 first=table.Load4(info.w);
+        const float2 extent=float2(first.zw);
+        const float rho=max(length(dx*rectangle.zw*extent),length(dy*rectangle.zw*extent));
+        const float lod=clamp(log2(max(1.0f,rho)),0.0f,float(info.z-1u));
+        const uint low=uint(floor(lod)),high=min(low+1u,info.z-1u);
+        float4 colors[2],normals[2];
+        [unroll] for(uint k=0;k<2;++k)
+        {
+            const uint4 mip=table.Load4(info.w+(k==0?low:high)*16u);
+            const float2 halfTexel=.5f/float2(mip.zw);
+            // Explicit per-level clamping matches the CPU bilinear definition
+            // even if the pipeline's shared sampler uses wrap addressing.
+            const float2 tex=clamp(q,halfTexel,1.0f-halfTexel);
+            // Each mip is a distinct descriptor, and LOD can differ between
+            // lanes in the same wave. Preserve that nonuniform selection.
+            // These indices are validated when the table is built. Bypass the
+            // nullable material helper: its signed fallback branch loses the
+            // compiler's nonuniform marker before descriptor array indexing.
+            colors[k]=Bindless::GetTexture2D(NonUniformResourceIndex(mip.x)).SampleLevel(PassSrg::LinearSampler,tex,0);
+            normals[k]=Bindless::GetTexture2D(NonUniformResourceIndex(mip.y)).SampleLevel(PassSrg::LinearSampler,tex,0);
+        }
+        const float4 color=lerp(colors[0],colors[1],frac(lod))*opacity;
+        const float4 detail=lerp(normals[0],normals[1],frac(lod))*opacity;
+        surface.albedo=surface.albedo*(1-color.a)+color.rgb;
+        // Preserve the live world normal bit-for-bit for clear or flat detail.
+        if(detail.a>0&&(detail.x!=0||detail.y!=0))
+        {
+            const float3 live=float3(dot(surface.normal,T),dot(surface.normal,B),dot(surface.normal,N));
+            const float3 composed=SilPomComposeSurfaceNormal(live,detail);
+            surface.normal=normalize(T*composed.x+B*composed.y+N*composed.z);
+        }
+    }
+}

@@ -1,7 +1,9 @@
-"""Check focus, paint, selection and rendering in the normal Qt event loop.
+"""Check authoritative paint, focus, lazy canvas recreation and Qt rendering.
 
 The startup script returns before gestures run. QTimer drives short checks and
 automatically closes the dedicated Editor without saving the level.
+Requires a fixture with no existing Surface Decal Paint entities so undoing
+canvas creation really leaves no document; it never deletes existing paint.
 """
 import hashlib
 import json
@@ -29,6 +31,19 @@ def flush():
     (output / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
 
 
+def surface_document(canvas, painted):
+    raw = json.loads(silpom.DecalPaintRequestBus(bus.Event, "GetDocumentJson", canvas))
+    config = raw.get("ClassData", raw)
+    assert config.get("TextureAuthoritative", False), "New canvases must use authoritative textures"
+    charts = config.get("SurfacePaint", [])
+    assert bool(charts) == painted, ("Unexpected surface texture state", painted, len(charts))
+    assert all(chart.get("Texels") for chart in charts), "Saved charts need authoritative texels"
+    assert not any(layer.get("Strokes") or layer.get("Composite") for layer in config.get("Layers", [])), "Texture paint retained projected dab history"
+    assert silpom.DecalPaintRequestBus(bus.Event, "GetDabCount", canvas) == 0
+    assert silpom.DecalPaintRequestBus(bus.Event, "GetCompositeDabCount", canvas) == 0
+    return config
+
+
 def click(viewport, x, y):
     local = QtCore.QPointF(x / viewport.devicePixelRatioF(), y / viewport.devicePixelRatioF())
     global_pos = viewport.mapToGlobal(local)
@@ -52,6 +67,8 @@ class Check(QtCore.QObject):
         self.capture_done = {}
         self.canvas = silpom.DecalPainterBus(bus.Broadcast, "CreatePaintEntity")
         assert self.canvas.IsValid()
+        surface_document(self.canvas, False)
+        result["fixture_representation"] = "authoritative surface textures"
         self.panel = next(w for w in QtWidgets.QApplication.allWidgets() if w.objectName() == "DecalPainter")
         self.viewport = QtWidgets.QWidget.find(silpom.DecalPainterBus(bus.Broadcast, "GetViewportWindowId"))
         self.viewport.window().setWindowTitle("Decal Painter verification — closes automatically")
@@ -78,20 +95,20 @@ class Check(QtCore.QObject):
                 self.step = 1
             elif self.step == 1:
                 result["stage"] = "checking stamp and focus"
-                assert silpom.DecalPaintRequestBus(bus.Event, "GetDabCount", self.canvas) == 1
+                surface_document(self.canvas, True)
                 general.undo()
                 self.step = 2
             elif self.step == 2:
                 result["stage"] = "painting after stroke undo"
-                assert silpom.DecalPaintRequestBus(bus.Event, "GetDabCount", self.canvas) == 0
+                surface_document(self.canvas, False)
                 click(self.viewport, x+30, y)
                 self.step = 3
             elif self.step == 3:
-                assert silpom.DecalPaintRequestBus(bus.Event, "GetDabCount", self.canvas) == 1
+                surface_document(self.canvas, True)
                 general.undo()
                 self.step = 4
             elif self.step == 4:
-                assert silpom.DecalPaintRequestBus(bus.Event, "GetDabCount", self.canvas) == 0
+                surface_document(self.canvas, False)
                 general.undo()  # Undo creation of the empty canvas too.
                 self.step = 5
             elif self.step == 5:
@@ -122,7 +139,8 @@ class Check(QtCore.QObject):
                 assert len(canvases) == 1
                 assert canvases[0] != self.canvas
                 self.canvas = canvases[0]
-                assert silpom.DecalPaintRequestBus(bus.Event, "GetDabCount", self.canvas) == 1
+                recreated = surface_document(self.canvas, True)
+                result["recreated_surface_chart_count"] = len(recreated["SurfacePaint"])
                 result["paint_after_stroke_and_canvas_undo"] = True
                 self.arm.setChecked(False)
                 # Exercise the ordinary viewport click path too (including its collider query).
@@ -169,6 +187,14 @@ try:
     if general.get_current_level_name().lower() != "vuelivelink":
         assert general.open_level(str(level))
     general.idle_wait_frames(150)
+    paint_types = editor.EditorComponentAPIBus(bus.Broadcast, "FindComponentTypeIdsByEntityType",
+        ["Surface Decal Paint"], entity.EntityType().Game)
+    assert paint_types, "Surface Decal Paint component type is unavailable"
+    paint_query = entity.SearchFilter()
+    paint_query.components = {paint_types[0]: {}}
+    existing_paint = entity.SearchBus(bus.Broadcast, "SearchEntities", paint_query)
+    result["existing_paint_entities"] = len(existing_paint)
+    assert not existing_paint, "Lazy-canvas recreation requires a pristine paint fixture; existing paint entities were left unchanged"
     query = entity.SearchFilter()
     query.names = ["Irish Fieldstone Tower (Open Shaft)"]
     tower = entity.SearchBus(bus.Broadcast, "SearchEntities", query)[0]

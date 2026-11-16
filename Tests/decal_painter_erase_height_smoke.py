@@ -1,7 +1,9 @@
-"""Rendered paint/erase, independent height selections and Composite persistence.
+"""Legacy paint/erase, independent height selections and Composite persistence.
 
 Run with a dedicated Editor --runpython. Reuses the composite test's setup and
 capture helpers; never saves VueLiveLink and closes automatically.
+The shared setup explicitly selects legacy documents so projected operation,
+pressure, Composite and point metadata remain part of this fixture.
 """
 from pathlib import Path
 import azlmbr.paths as paths
@@ -35,7 +37,7 @@ class EraseCheck(Check):
 
     def document(self, layers):
         config = copy.deepcopy(self.prototype)
-        config.update(Layers=[], NextId=100000, FrozenThrough=0)
+        config.update(Layers=[], NextId=100000, FrozenThrough=0, TextureAuthoritative=False)
         sequence = 100
         for layer_index, operations in enumerate(layers):
             layer = {"Id": layer_index + 1, "Order": [], "Strokes": []}

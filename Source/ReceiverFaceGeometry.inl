@@ -46,7 +46,7 @@ struct ReceiverFaceGeometry
         const float y=(c.GetX()*b.GetY()-c.GetY()*b.GetX())/det,z=(a.GetX()*c.GetY()-a.GetY()*c.GetX())/det;
         return {1-y-z,y,z};
     }
-    AZ::Vector3 Height(AZ::Vector2 q) const
+    AZ::Vector3 Height(AZ::Vector2 q,bool normalized=false) const
     {
         const auto& desc=profile->m_height->GetImageDescriptor();const auto pixels=profile->m_height->GetSubImageData(0,0);
         const int w=desc.m_size.m_width,h=desc.m_size.m_height;
@@ -63,6 +63,7 @@ struct ReceiverFaceGeometry
         const auto tiled=q*profile->m_tiling+profile->m_offset;
         const float x=tiled.GetX()*w-.5f,y=tiled.GetY()*h-.5f,fx=x-std::floor(x),fy=y-std::floor(y);
         const int ix=int(std::floor(x)),iy=int(std::floor(y));const float a=texel(ix,iy),b=texel(ix+1,iy)-a,c=texel(ix,iy+1)-a,e=texel(ix+1,iy+1)-a-b-c;
+        if(normalized)return {a+b*fx+c*fy+e*fx*fy,(b+e*fy)*w*profile->m_tiling.GetX(),(c+e*fx)*h*profile->m_tiling.GetY()};
         const float scale=profile->m_scale*multiplier;
         return {scale*(a+b*fx+c*fy+e*fx*fy-profile->m_reference),scale*(b+e*fy)*w*profile->m_tiling.GetX(),scale*(c+e*fx)*h*profile->m_tiling.GetY()};
     }

@@ -35,6 +35,12 @@ if(NOT COMMAND o3de_gem_setup)
     add_executable(silpom_receiver_paint_state_tests Tests/ReceiverPaintStateTests.cpp)
     target_compile_features(silpom_receiver_paint_state_tests PRIVATE cxx_std_17)
     add_test(NAME SilPOM.ReceiverPaintState COMMAND silpom_receiver_paint_state_tests)
+    add_executable(silpom_surface_paint_math_tests Tests/SurfacePaintMathTests.cpp)
+    target_compile_features(silpom_surface_paint_math_tests PRIVATE cxx_std_17)
+    add_test(NAME SilPOM.SurfacePaintMath COMMAND silpom_surface_paint_math_tests)
+    add_executable(silpom_surface_paint_image_tests Tests/SurfacePaintImageTests.cpp)
+    target_compile_features(silpom_surface_paint_image_tests PRIVATE cxx_std_17)
+    add_test(NAME SilPOM.SurfacePaintImage COMMAND silpom_surface_paint_image_tests)
     add_executable(silpom_visibility_tests Tests/VisibilityTests.cpp)
     target_compile_features(silpom_visibility_tests PRIVATE cxx_std_17)
     if(MSVC)
@@ -75,6 +81,8 @@ if(NOT COMMAND o3de_gem_setup)
             ${CMAKE_CURRENT_SOURCE_DIR}/Tests/test_receiver_uv_analysis.py)
         add_test(NAME SilPOM.NativePaintShader COMMAND "${SILPOM_PYTHON}"
             ${CMAKE_CURRENT_SOURCE_DIR}/Tests/test_native_paint_shader.py)
+        add_test(NAME SilPOM.SurfaceTextureAnalysis COMMAND "${SILPOM_PYTHON}"
+            ${CMAKE_CURRENT_SOURCE_DIR}/Tests/test_surface_texture_analysis.py)
         add_test(NAME SilPOM.DirectionalEstimator.Models COMMAND "${SILPOM_PYTHON}"
             ${CMAKE_CURRENT_SOURCE_DIR}/Tests/DirectionalEstimatorModelTests.py)
             add_test(NAME SilPOM.DirectionalOcclusion COMMAND "${SILPOM_PYTHON}"
@@ -95,6 +103,26 @@ if(NOT COMMAND o3de_gem_setup)
     set(SILPOM_DXC "" CACHE FILEPATH "DXC executable for optional Windows GPU conformance tests")
     option(SILPOM_DXR_TESTS "Build optional procedural ray tracing conformance test" OFF)
     if(WIN32 AND SILPOM_DXC)
+        add_executable(silpom_surface_normal_gpu_tests Tests/SurfacePaintNormalGpuTests.cpp)
+        target_compile_features(silpom_surface_normal_gpu_tests PRIVATE cxx_std_17)
+        target_compile_definitions(silpom_surface_normal_gpu_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+        target_link_libraries(silpom_surface_normal_gpu_tests PRIVATE d3d12 dxgi dxguid)
+        foreach(profile IN ITEMS 6_2 6_7)
+            set(surface_normal_shader ${CMAKE_CURRENT_BINARY_DIR}/surface-normal-${profile}.dxil)
+            add_custom_command(OUTPUT ${surface_normal_shader}
+                COMMAND "${SILPOM_DXC}" -T cs_${profile} -E Main -Fo ${surface_normal_shader} ${CMAKE_CURRENT_SOURCE_DIR}/Tests/SurfacePaintNormalGpu.hlsl
+                DEPENDS Tests/SurfacePaintNormalGpu.hlsl Assets/Shaders/SilPOM/ReceiverUv/SurfaceNormal.azsli VERBATIM)
+            add_custom_target(silpom_surface_normal_shader_${profile} DEPENDS ${surface_normal_shader})
+            add_dependencies(silpom_surface_normal_gpu_tests silpom_surface_normal_shader_${profile})
+            add_test(NAME SilPOM.SurfaceNormal.GPU.SM${profile} COMMAND silpom_surface_normal_gpu_tests ${surface_normal_shader})
+            set(surface_texture_shader ${CMAKE_CURRENT_BINARY_DIR}/surface-texture-${profile}.dxil)
+            add_custom_command(OUTPUT ${surface_texture_shader}
+                COMMAND "${SILPOM_DXC}" -T ps_${profile} -E MainPS -Fo ${surface_texture_shader} ${CMAKE_CURRENT_SOURCE_DIR}/Tests/SurfaceTextureGpu.hlsl
+                DEPENDS Tests/SurfaceTextureGpu.hlsl Assets/Shaders/SilPOM/ReceiverUv/SurfaceTexture.azsli
+                    Assets/Shaders/SilPOM/ReceiverUv/SurfaceNormal.azsli VERBATIM)
+            add_custom_target(silpom_surface_texture_shader_${profile} DEPENDS ${surface_texture_shader})
+            add_dependencies(silpom_surface_normal_gpu_tests silpom_surface_texture_shader_${profile})
+        endforeach()
         add_executable(silpom_appearance_gpu_tests Tests/AppearanceGpuTests.cpp)
         target_compile_features(silpom_appearance_gpu_tests PRIVATE cxx_std_17)
         target_compile_definitions(silpom_appearance_gpu_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)

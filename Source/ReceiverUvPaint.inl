@@ -224,6 +224,7 @@ bool MeshController::UvPaint::Bake(AZ::RPI::Scene* scene,const AZ::Transform& tr
 }
 bool MeshController::BeginReceiverUvPaint(AZ::EntityId canvas,const AZStd::string& face,const AZ::Vector4& rectangle,AZ::u32 resolution)
 {
+    if(m_surfacePaintRuntime)return false;
     if(!canvas.IsValid()||!m_active||!rectangle.IsFinite()||rectangle.GetZ()<=rectangle.GetX()||rectangle.GetW()<=rectangle.GetY()||resolution<32||resolution>2048)return false;
     if(m_uvPaint&&m_uvPaint->generation==m_active.get()&&m_uvPaint->canvas==canvas&&m_uvPaint->face==face&&m_uvPaint->rectangle==rectangle&&m_uvPaint->resolution==resolution)return true;
     auto it=AZStd::find_if(m_active->paintFaces.begin(),m_active->paintFaces.end(),[&](const auto& f){return f.id==face;});if(it==m_active->paintFaces.end())return false;
@@ -242,6 +243,7 @@ bool MeshController::SetReceiverUvPaintMode(AZ::u32 mode)
 }
 AZStd::string MeshController::GetReceiverUvPaintStatus() const
 {
+    if(m_surfacePaintRuntime)return GetSurfacePaintStatus();
     if(!m_uvPaint)return "{\"state\":\"unbound\"}";const auto& p=*m_uvPaint;
     size_t bytes=0;for(const auto& mip:p.mips)bytes+=size_t(mip.record.size+4)*(mip.record.size+4)*24;
     return AZStd::string::format("{\"state\":\"%s\",\"mode\":%u,\"hit_face\":%u,\"resolution\":%u,\"ready\":%s,\"mips\":%zu,\"bytes\":%zu,\"bake_ms\":%.3f}",p.status.c_str(),p.mode,p.hitFace,p.resolution,p.table?"true":"false",p.mips.size(),bytes,p.bakeMs);

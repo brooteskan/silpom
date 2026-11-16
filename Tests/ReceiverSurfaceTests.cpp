@@ -98,6 +98,10 @@ int main()
     Require(geometry.Initialize(face,config,1),"Valid R8 height rejected");
     Require(Near(geometry.Height({.25f,.25f}).GetX(),-.2f),"R8 first pixel decoded incorrectly");
     Require(Near(geometry.Height({.75f,.75f}).GetX(),.2f),"R8 final pixel decoded incorrectly");
+    config.m_profiles[0].m_scale=0;
+    Require(geometry.Initialize(face,config,1),"Zero-relief receiving face rejected");
+    Require(Near(geometry.Height({.75f,.75f}).GetX(),0)&&Near(geometry.Height({.75f,.75f},true).GetX(),1),"Height masks must retain normalized source height at zero relief");
+    config.m_profiles[0].m_scale=.4f;
     Require(Near(geometry.Height({.5f,.5f}).GetX(),0),"R8 bilinear interpolation changed");
     Require(Near(geometry.Height({-.25f,1.25f}).GetX(),.4f*(170.f/255-.5f)),"Clamp addressing changed");
     config.m_profiles[0].m_addressMode=0;

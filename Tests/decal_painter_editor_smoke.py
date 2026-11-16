@@ -1,7 +1,9 @@
-"""Exercise the real dock, viewport event filter, GPU picks, undo and serialization.
+"""Exercise legacy editable strokes through the real dock, picks and serialization.
 
 Run in a dedicated Editor --runpython session. Never saves the user's level.
 Synthetic Qt pen events test the input pipeline, not the physical tablet driver.
+The fixture explicitly selects legacy projection storage; newly created user
+documents otherwise default to authoritative surface textures.
 """
 import hashlib
 import json
@@ -130,6 +132,17 @@ try:
     stage("opening dock")
     canvas = silpom.DecalPainterBus(bus.Broadcast, "CreatePaintEntity")
     assert canvas.IsValid(), "No paint entity"
+    # Point editing and rolling-dab assertions belong to the legacy document.
+    # Initialize through the controller so this setup does not add an undo step.
+    legacy = document()
+    legacy_data = legacy.get("ClassData", legacy)
+    assert not legacy_data.get("SurfacePaint"), "Fresh canvas already contains source textures"
+    legacy_data["TextureAuthoritative"] = False
+    error = silpom.DecalPaintRequestBus(bus.Event, "SetDocumentJson", canvas, json.dumps(legacy))
+    assert not error, error
+    checked = document()
+    assert not checked.get("ClassData", checked).get("TextureAuthoritative", False)
+    result["fixture_representation"] = "legacy projections"
     app = QtWidgets.QApplication.instance()
     panel = next(w for w in app.allWidgets() if w.objectName() == "DecalPainter")
     stage("decal library")
