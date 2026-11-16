@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <SilPOM/MeshSurfaceAsset.h>
+#include <SilPOM/ReceiverUvPaint.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Math/Vector4.h>
@@ -115,6 +116,13 @@ public:
     virtual bool IsReady() const = 0;
     virtual AZ::Vector3 GetProxyLodState() const = 0; // far faces, candidate faces, largest selected pixel bound
     virtual AZStd::vector<AZ::u32> GetProxyFaceOwners() const = 0;
+    virtual AZStd::string GetPaintFacesJson() const=0;
+    virtual bool ResolvePaintSurface(const PaintSurfacePoint&,PaintSurfaceSample&) const=0;
+    virtual bool FindPaintSurfacePoint(const AZ::Vector3&,const AZ::Vector3&,PaintSurfacePoint&,float&) const=0;
+    virtual bool BeginReceiverUvPaint(AZ::EntityId,const AZStd::string&,const AZ::Vector4&,AZ::u32)=0;
+    virtual bool SetReceiverUvPaintMode(AZ::u32)=0;
+    virtual AZStd::string GetReceiverUvPaintStatus() const=0;
+    virtual void ReleaseReceiverUvPaint()=0;
     virtual AZ::Vector3 GetAntiAliasingState() const = 0; // samples, Atom AA mode, SMAA enabled
 };
 using MeshRequestBus = AZ::EBus<MeshRequests>;
@@ -148,9 +156,19 @@ public:
     AZ::Vector3 GetProxyLodState() const override;
     AZStd::vector<AZ::u32> GetProxyFaceOwners() const override;
     AZ::Vector3 GetAntiAliasingState() const override;
+    AZStd::string GetPaintFacesJson() const override;
+    bool ResolvePaintSurface(const PaintSurfacePoint&,PaintSurfaceSample&) const override;
+    bool FindPaintSurfacePoint(const AZ::Vector3&,const AZ::Vector3&,PaintSurfacePoint&,float&) const override;
+    bool BeginReceiverUvPaint(AZ::EntityId,const AZStd::string&,const AZ::Vector4&,AZ::u32) override;
+    bool SetReceiverUvPaintMode(AZ::u32) override;
+    AZStd::string GetReceiverUvPaintStatus() const override;
+    void ReleaseReceiverUvPaint() override;
     MeshConfig m_configuration;
 private:
     struct Generation;
+    struct UvPaint;
+    AZStd::unique_ptr<UvPaint> m_uvPaint;
+    void TickReceiverUvPaint();
     void OnTick(float, AZ::ScriptTimePoint) override;
     void OnTransformChanged(const AZ::Transform&, const AZ::Transform&) override;
     void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData>) override;

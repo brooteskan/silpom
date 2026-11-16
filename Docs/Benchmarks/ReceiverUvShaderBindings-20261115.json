@@ -1,0 +1,38 @@
+{
+  "passed": true,
+  "shaders": [
+    {
+      "shader": "silpomuvbake",
+      "entry_point_resource_groups": [
+        "Bindless",
+        "DrawSrg",
+        "PassSrg",
+        "SceneMaterialSrg",
+        "SceneSrg",
+        "ViewSrg"
+      ]
+    },
+    {
+      "shader": "silpomuvbakelearned",
+      "entry_point_resource_groups": [
+        "Bindless",
+        "DrawSrg",
+        "PassSrg",
+        "SceneMaterialSrg",
+        "SceneSrg",
+        "ViewSrg"
+      ]
+    },
+    {
+      "shader": "silpomuvbakeshared",
+      "entry_point_resource_groups": [
+        "Bindless",
+        "DrawSrg",
+        "PassSrg",
+        "SceneMaterialSrg",
+        "SceneSrg",
+        "ViewSrg"
+      ]
+    }
+  ]
+}

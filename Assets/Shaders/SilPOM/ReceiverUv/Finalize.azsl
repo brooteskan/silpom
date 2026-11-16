@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: MIT
+// Explicit render-target -> shader-read transition before publishing bindings.
+#include <Atom/Features/SrgSemantics.azsli>
+#include <Atom/Features/PostProcessing/FullscreenVertex.azsli>
+ShaderResourceGroup PassSrg : SRG_PerPass
+{Texture2D m_Color;Texture2D m_NormalFront;Texture2D m_NormalBack;}
+float4 MainPS(VSOutput input):SV_Target0
+{return PassSrg::m_Color.Load(int3(0,0,0))+PassSrg::m_NormalFront.Load(int3(0,0,0))+PassSrg::m_NormalBack.Load(int3(0,0,0));}

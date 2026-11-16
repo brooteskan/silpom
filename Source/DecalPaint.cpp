@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #include <SilPOM/DecalPaint.h>
+#include <SilPOM/Mesh.h>
 #include <SilPOM/DecalPaintMath.h>
 #include <SilPOM/DecalCompositeMath.h>
 #include <SilPOM/DecalBake.h>
@@ -58,6 +59,7 @@ void CompactPaint(PaintConfig& c)
         {
             if(!s.m_id)s.m_id=c.m_nextId++;
             if(AZStd::find(layer.m_order.begin(),layer.m_order.end(),s.m_id)==layer.m_order.end())layer.m_order.push_back(s.m_id);
+            if(!s.m_explicitDabs&&AZStd::any_of(s.m_points.begin(),s.m_points.end(),[](const PaintPoint& p){return p.m_surface.IsValid();}))s.m_explicitDabs=true;
             if(!s.m_explicitDabs)
             {
                 AZStd::vector<PaintPoint> points;
@@ -116,7 +118,9 @@ void PaintConfig::Reflect(AZ::ReflectContext* context)
 {
     if(auto* sc=azrtti_cast<AZ::SerializeContext*>(context))
     {
-        sc->Class<PaintPoint>()->Version(1)->Field("Position",&PaintPoint::m_position)->Field("Normal",&PaintPoint::m_normal)
+        sc->Class<PaintSurfacePoint>()->Version(1)->Field("Receiver",&PaintSurfacePoint::receiver)
+            ->Field("Face",&PaintSurfacePoint::face)->Field("Uv",&PaintSurfacePoint::uv)->Field("Front",&PaintSurfacePoint::front);
+        sc->Class<PaintPoint>()->Version(2)->Field("Surface",&PaintPoint::m_surface)->Field("Position",&PaintPoint::m_position)->Field("Normal",&PaintPoint::m_normal)
             ->Field("Pressure",&PaintPoint::m_pressure)->Field("Start",&PaintPoint::m_start)->Field("Sequence",&PaintPoint::m_sequence);
         sc->Class<PaintStroke>()->Version(1)->Field("Name",&PaintStroke::m_name)->Field("Material",&PaintStroke::m_material)
             ->Field("Points",&PaintStroke::m_points)->Field("Color",&PaintStroke::m_color)->Field("Diameter",&PaintStroke::m_diameter)
@@ -134,8 +138,12 @@ void PaintConfig::Reflect(AZ::ReflectContext* context)
         sc->Class<PaintLayer>()->Version(1)->Field("Name",&PaintLayer::m_name)->Field("Visible",&PaintLayer::m_visible)
             ->Field("Locked",&PaintLayer::m_locked)->Field("Opacity",&PaintLayer::m_opacity)->Field("Strokes",&PaintLayer::m_strokes)
             ->Field("Id",&PaintLayer::m_id)->Field("Composite",&PaintLayer::m_composite)->Field("Order",&PaintLayer::m_order);
+        sc->Class<ReceiverUvBinding>()->Version(1)->Field("Receiver",&ReceiverUvBinding::receiver)
+            ->Field("Face",&ReceiverUvBinding::face)->Field("Rectangle",&ReceiverUvBinding::rectangle)
+            ->Field("Resolution",&ReceiverUvBinding::resolution);
         sc->Class<PaintConfig,AZ::ComponentConfig>()->Version(1)->Field("Layers",&PaintConfig::m_layers)
-            ->Field("NextId",&PaintConfig::m_nextId)->Field("FrozenThrough",&PaintConfig::m_frozenThrough);
+            ->Field("NextId",&PaintConfig::m_nextId)->Field("FrozenThrough",&PaintConfig::m_frozenThrough)
+            ->Field("ReceiverUv",&PaintConfig::m_receiverUv);
     }
 }
 void PaintController::Reflect(AZ::ReflectContext* context)
@@ -150,6 +158,7 @@ void PaintController::Reflect(AZ::ReflectContext* context)
             ->Event("GetDocumentJson",&PaintRequests::GetDocumentJson)
             ->Event("GetCompositeDabCount",&PaintRequests::GetCompositeDabCount)->Event("GetRenderHandleCount",&PaintRequests::GetRenderHandleCount)
             ->Event("GetRenderStatsJson",&PaintRequests::GetRenderStatsJson)
+            ->Event("BindReceiverUv",&PaintRequests::BindReceiverUv)
             ->Event("SetDocumentJson",&PaintRequests::SetDocumentJson);
 }
 void PaintComponent::Reflect(AZ::ReflectContext* c)
@@ -160,6 +169,7 @@ void PaintController::GetRequiredServices(AZ::ComponentDescriptor::DependencyArr
 void PaintController::Activate(AZ::EntityId entity)
 {
     m_entity=entity;
+    static AZStd::atomic_uint32_t nextReceiverToken{1};m_receiverToken=nextReceiverToken++;
     SetDocument(m_configuration);
     AZ::TransformBus::EventResult(m_world,entity,&AZ::TransformBus::Events::GetWorldTM);
     PaintRequestBus::Handler::BusConnect(entity);
@@ -178,6 +188,7 @@ void PaintController::Release()
 }
 void PaintController::Deactivate()
 {
+    if(m_configuration.m_receiverUv.receiver.IsValid())MeshRequestBus::Event(m_configuration.m_receiverUv.receiver,&MeshRequests::ReleaseReceiverUvPaint);
     AZ::Data::AssetBus::MultiHandler::BusDisconnect();m_bakeAssets.clear();
     AZ::TickBus::Handler::BusDisconnect();
     PaintRequestBus::Handler::BusDisconnect();
@@ -230,6 +241,12 @@ void PaintController::SetDocument(const PaintConfig& c)
     }
     m_revision=++PaintRevision;m_dirty=true;
 }
+bool PaintController::BindReceiverUv(AZ::EntityId receiver,const AZStd::string& face,const AZ::Vector4& rectangle,AZ::u32 resolution)
+{
+    bool exists=false;MeshRequestBus::EventResult(exists,receiver,&MeshRequests::BeginReceiverUvPaint,m_entity,face,rectangle,resolution);
+    if(!exists)return false;
+    m_configuration.m_receiverUv={receiver,face,rectangle,resolution};m_dirty=true;return true;
+}
 void PaintController::RestoreUndoDocument(const PaintConfig& snapshot)
 {
     auto next=snapshot;
@@ -263,7 +280,22 @@ AZStd::string PaintController::SetDocumentJson(const AZStd::string& json)
 }
 void PaintController::OnTick(float delta,AZ::ScriptTimePoint)
 {
-    if(m_bakeInvalidated.exchange(false)){m_bakeCache={};m_dirty=true;m_bakeIdle=0;m_bakeRequested=false;}
+    // A receiver transform/rebuild invalidates derived projector/cache data.
+    // The persistent source remains its face + UV, never the old world point.
+    const PaintPoint* anchor=nullptr;
+    for(const auto& layer:m_configuration.m_layers)
+    {if(!layer.m_composite.empty())anchor=&layer.m_composite.front().m_point;
+     else if(!layer.m_strokes.empty()&&!layer.m_strokes.front().m_points.empty())anchor=&layer.m_strokes.front().m_points.front();
+     if(anchor&&anchor->m_surface.IsValid())break;anchor=nullptr;}
+    if(anchor)
+    {
+        PaintSurfaceSample sample;bool valid=false;MeshRequestBus::EventResult(valid,anchor->m_surface.receiver,&MeshRequests::ResolvePaintSurface,anchor->m_surface,sample);
+        AZ::u64 hash=valid?sample.hitFace:0;
+        if(valid)for(float value:{sample.position.GetX(),sample.position.GetY(),sample.position.GetZ(),sample.normal.GetX(),sample.normal.GetY(),sample.normal.GetZ()})
+        {AZ::u32 bits;memcpy(&bits,&value,4);hash=(hash^bits)*1099511628211ULL;}
+        if(hash!=m_anchorState){m_anchorState=hash;m_dirty=true;}
+    }
+    if(m_bakeInvalidated.exchange(false)){++m_receiverAssetRevision;m_bakeCache={};m_dirty=true;m_bakeIdle=0;m_bakeRequested=false;}
     m_bakeIdle+=AZStd::clamp(delta,0.f,.1f);
     if(!m_processor) m_processor=AZ::RPI::Scene::GetFeatureProcessorForEntity<AZ::Render::DecalFeatureProcessorInterface>(m_entity);
     if(m_processor)
@@ -283,6 +315,11 @@ void PaintController::OnTick(float delta,AZ::ScriptTimePoint)
     }
     if(r_silpomPaintBake&&m_bakeIdle>.75f&&!m_bakeRequested){m_bakeRequested=true;m_dirty=true;}
     if(m_dirty && m_processor) {Rebuild();m_dirty=false;}
+    if(m_receiverInput&&m_receiverInput->buffer)
+    {
+        const auto& binding=m_configuration.m_receiverUv;
+        MeshRequestBus::Event(binding.receiver,&MeshRequests::BeginReceiverUvPaint,m_entity,binding.face,binding.rectangle,binding.resolution);
+    }
     if(m_bakeCache&&r_silpomPaintBake&&!r_silpomPaintCompositeReference)
         if(m_bakeCache->Tick(AZ::RPI::Scene::GetSceneForEntityId(m_entity),m_bakeIdle>.75f))m_dirty=true;
 }

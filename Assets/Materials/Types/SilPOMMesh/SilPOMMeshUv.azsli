@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#define SILPOM_RECEIVER_UV 1
+#if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
+static uint silpomUvPrefixOwner=0;
+#define DECAL_PAINT_PREFIX_OWNED(token) ((token)!=0 && (token)==silpomUvPrefixOwner)
+#endif
+#include "SilPOMMesh.azsli"
+#if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
+#if SILPOM_HIT_FORWARD
+#include "../../../Shaders/SilPOM/ReceiverUv/PaintSurface.azsli"
+#endif
+Surface EvaluateSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,const MaterialParameters params)
+{
+    Surface surface=EvaluateSurface_SilPomMesh(IN,SV,geo,params);
+#if SILPOM_HIT_FORWARD && !SILPOM_UV_BAKE && !SILPOM_UV_USAGE
+    SilPomApplyUvPaint(surface,params,IN.faceIndex,geo.isFrontFace);
+#endif
+    return surface;
+}
+#endif

@@ -1,0 +1,71 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+// Atlas ownership is resolved before shading: one receiver + canonical face.
+// Neither world position nor camera position chooses an image.
+uint SilPomUvUse(MaterialParameters params,uint face,float2 uv)
+{
+    if(params.m_receiverPaintMode==0||params.m_receiverPaintOwner==0||params.m_silpomHitFaceBase+face!=params.m_receiverPaintFace)return 0;
+    if(params.m_receiverPaintMode!=2)return 1;
+    ByteAddressBuffer table=Bindless::GetByteAddressBuffer(params.m_receiverPaintAtlas);
+    uint4 header=table.Load4(0);float4 rectangle=asfloat(table.Load4(16));
+    float2 q=(uv-rectangle.xy)*rectangle.zw;
+    return header.x==params.m_silpomHitFaceBase+face&&all(q>=0)&&all(q<=1)?2u:1u;
+}
+void SilPomReplayUvPrefix(inout Surface surface,MaterialParameters params,float3 dx,float3 dy)
+{
+    Decal composite=(Decal)0;composite.m_textureArrayIndex=params.m_receiverPaintPrefix;
+    ApplyPaintComposite(composite,surface,dx,dy);
+}
+void SilPomApplyUvPaint(inout Surface surface,MaterialParameters params,uint face,bool front)
+{
+    float3 dx=ddx(surface.position),dy=ddy(surface.position);
+    const float2 uv=silpomLitUv;float2 uvDx=ddx(uv),uvDy=ddy(uv);
+    uint use=SilPomUvUse(params,face,uv);if(use==0)return;
+    if(use==2)
+    {
+        ByteAddressBuffer table=Bindless::GetByteAddressBuffer(params.m_receiverPaintAtlas);
+        const uint4 header=table.Load4(0);const float4 rectangle=asfloat(table.Load4(16));
+        const float2 q=(uv-rectangle.xy)*rectangle.zw;
+        const uint4 first=table.Load4(32);
+        const float2 a=uvDx*rectangle.zw*float(first.w),b=uvDy*rectangle.zw*float(first.w);
+        const float lod=clamp(log2(max(1.0f,max(length(a),length(b)))),0.0f,float(header.z-1u));
+        const uint low=uint(floor(lod)),high=min(low+1u,header.z-1u);
+        float4 colors[2],normals[2];
+        [unroll] for(uint k=0;k<2;++k)
+        {
+            uint4 mip=table.Load4(32+(k==0?low:high)*16);
+            // Two-texel gutters keep the chart's samples within its own image.
+            float2 tex=(q*float(mip.w)+2.0f)/float(mip.w+4u);
+            colors[k]=GetMaterialTexture(mip.x).SampleLevel(PassSrg::LinearSampler,tex,0);
+            normals[k]=GetMaterialTexture(front?mip.y:mip.z).SampleLevel(PassSrg::LinearSampler,tex,0);
+        }
+        const float4 color=lerp(colors[0],colors[1],frac(lod)),normal=lerp(normals[0],normals[1],frac(lod));
+        surface.albedo=surface.albedo*(1-color.a)+color.rgb;
+        surface.normal=normalize(surface.normal*normal.a+normal.rgb);
+    }
+    else SilPomReplayUvPrefix(surface,params,dx,dy);
+    silpomUvPrefixOwner=params.m_receiverPaintOwner;
+}
+
+// Fixed prefix evaluation is shared by the bake's front and back material
+// samples. Source normals/height masks are read from this actual receiver.
+void SilPomBakeUvPrefix(inout Surface surface,MaterialParameters params,float3 dx,float3 dy,out float coverage,out float normalScale)
+{
+    surface.albedo=0;coverage=0;normalScale=1;
+    ByteAddressBuffer source=Bindless::GetByteAddressBuffer(params.m_receiverPaintPrefix);
+    uint4 header=source.Load4(0);float height=(header.z&4)!=0?SilPomPaintHeight():-1;
+    uint node=0;
+    [loop] while(node<header.x)
+    {
+        uint4 low=source.Load4(16+node*32),high=source.Load4(32+node*32);
+        if(any(surface.position<asfloat(low.xyz))||any(surface.position>asfloat(high.xyz))){node=low.w;continue;}
+        ++node;if(high.w>=header.w)continue;
+        const uint offset=header.y+high.w*96;uint4 meta=source.Load4(offset+80);
+        if(meta.w!=silpomPaintReceiverFace||!PaintHeightSelected(meta.x,height))continue;
+        Decal dab=LoadPaintDab(source,offset),unit=dab;unit.m_opacity=1;
+        float3 ignored;float alpha;SamplePaintAlpha(unit,surface,dx,dy,ignored,alpha);
+        coverage=coverage+(1-coverage)*alpha*dab.m_opacity;
+        normalScale*=1-alpha*dab.m_normalMapOpacity;
+        ApplyDecalData(dab,surface,dx,dy);
+    }
+}

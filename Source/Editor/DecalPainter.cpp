@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "DecalPainter.h"
 #include <SilPOM/DecalPaint.h>
+#include <SilPOM/Mesh.h>
 #include <SilPOM/DecalPaintMath.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Asset/AssetManager.h>
@@ -158,7 +159,7 @@ private:
     static PaintConfig Snapshot(const PaintConfig& c)
     {
         // Do not copy (or retain capacity for) the growing fixed paint buffer.
-        PaintConfig snapshot;snapshot.m_nextId=c.m_nextId;snapshot.m_frozenThrough=c.m_frozenThrough;
+        PaintConfig snapshot;snapshot.m_nextId=c.m_nextId;snapshot.m_frozenThrough=c.m_frozenThrough;snapshot.m_receiverUv=c.m_receiverUv;
         for(const auto& layer:c.m_layers)
         {
             PaintLayer live;live.m_name=layer.m_name;live.m_visible=layer.m_visible;live.m_locked=layer.m_locked;
@@ -676,6 +677,8 @@ void Painter::Begin(QPointF pixel,float pressure)
 {
     if(m_drawing)return;
     AZ::Vector3 p,n;if(!Pick(int(pixel.x()),int(pixel.y()),p,n))return;
+    PaintSurfacePoint contact;
+    if(!FindPaintSurface(p,n,contact)){m_status->setText("Paint requires an existing SiLPOM receiving surface.");return;}
     PaintStroke s;ReadBrush(s);if(!s.m_material.GetId().IsValid()){m_status->setText("Choose a processed material with a base-color texture.");return;}
     auto* d=Document(m_canvas);
     // Undo may remove the canvas as well as its dabs. Keep the preview alive
@@ -728,6 +731,8 @@ void Painter::AddPixel(QPointF pixel,float pressure)
         m_sampler.Push(sample,[&](const PaintMath::Point& p)
         {
             PaintPoint dab;dab.m_position={p.position.x,p.position.y,p.position.z};dab.m_normal={p.normal.x,p.normal.y,p.normal.z};
+            if(!FindPaintSurface(m_strokeInverse.GetInverse().TransformPoint(dab.m_position),
+                m_strokeInverse.GetInverse().TransformVector(dab.m_normal),dab.m_surface))return;
             dab.m_pressure=p.pressure;dab.m_start=p.start;dab.m_sequence=m_work.m_nextId++;
             stroke->m_points.push_back(dab);
         },stroke->m_diameter,stroke->m_spacing,stroke->m_pressureSize,stroke->m_minimumSize);
@@ -767,7 +772,7 @@ void Painter::HandlePointEdit(QPointF pixel)
     }
     const int row=m_points->currentRow();AZ::Vector3 p,n;
     if(auto* s=Stroke(m_work);s&&row>=0&&size_t(row)<s->m_points.size()&&Pick(int(pixel.x()),int(pixel.y()),p,n))
-    {s->m_points[row].m_position=m_strokeInverse.TransformPoint(p);s->m_points[row].m_normal=m_strokeInverse.TransformVector(n).GetNormalizedSafe();Write(m_work);}
+    {PaintSurfacePoint contact;if(!FindPaintSurface(p,n,contact))return;s->m_points[row].m_surface=contact;s->m_points[row].m_position=m_strokeInverse.TransformPoint(p);s->m_points[row].m_normal=m_strokeInverse.TransformVector(n).GetNormalizedSafe();Write(m_work);}
 }
 bool Painter::eventFilter(QObject* watched,QEvent* event)
 {

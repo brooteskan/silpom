@@ -2,6 +2,8 @@
 #pragma once
 #if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
 float SilPomPaintHeight();
+static uint silpomPaintReceiverFace=0;
+#define DECAL_PAINT_RECEIVER_FACE() silpomPaintReceiverFace
 #define DECAL_PAINT_HEIGHT() SilPomPaintHeight()
 #endif
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_MaterialInputs.azsli>
@@ -538,7 +540,7 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     silpomLitFace=f; silpomLitPatch=p; silpomLitUv=uv;
     silpomLitRotation=(float3x3)model;
     silpomLitOriginWS=mul(model,float4(f.origin,1)).xyz;
-    silpomLitValid=!failed;
+    silpomLitValid=!failed;silpomPaintReceiverFace=params.m_silpomHitFaceBase+IN.faceIndex;
 #endif
     float3 tangent=normalize(f.du-normal*dot(normal,f.du));
     float handedness=dot(cross(normal,tangent),f.dv)<0?-1:1;
@@ -574,7 +576,7 @@ COMMON_OPTIONS_EMISSIVE()
 #if SILPOM_LEVEL_FIVE
 #include "../../../Shaders/SilPOM/ProxyAppearance.azsli"
 #endif
-Surface EvaluateSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,const MaterialParameters params)
+Surface EvaluateSurface_SilPomMesh(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,const MaterialParameters params)
 {
     silpomPaintHeightTexture=params.m_silpomHeightMap;
 #if defined(SILPOM_LEARNED_MATERIAL)
@@ -622,6 +624,10 @@ Surface EvaluateSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,cons
     }
     return surface;
 }
+#if !defined(SILPOM_RECEIVER_UV)
+Surface EvaluateSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,const MaterialParameters params)
+{return EvaluateSurface_SilPomMesh(IN,SV,geo,params);}
+#endif
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_LightingEval.azsli>
 #include "SilPOMMesh_DirectionalLighting.azsli"
 #include "../../../Shaders/SilPOM/ForwardLighting.azsli"

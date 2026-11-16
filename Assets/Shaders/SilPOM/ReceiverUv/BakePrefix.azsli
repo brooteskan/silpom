@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+void SilPomBakeUvPrefixGuarded(inout Surface surface,MaterialParameters params,float3 dx,float3 dy,out float coverage,out float normalScale)
+{
+    surface.albedo=0;coverage=0;normalScale=1;
+    ByteAddressBuffer source=Bindless::GetByteAddressBuffer(params.m_receiverPaintPrefix);
+    uint4 header=source.Load4(0);float height=(header.z&4)!=0?SilPomPaintHeight():-1;
+    uint bytes;source.GetDimensions(bytes);
+    if(header.x>65536u||header.w>32768u||header.y>bytes||header.w>(bytes-header.y)/96u)return;
+    uint node=0,remaining=header.x;
+    [loop] while(node<header.x&&remaining-->0)
+    {
+        uint4 low=source.Load4(16+node*32),high=source.Load4(32+node*32);
+        if(any(surface.position<asfloat(low.xyz))||any(surface.position>asfloat(high.xyz))){node=low.w;continue;}
+        ++node;if(high.w>=header.w)continue;
+        const uint offset=header.y+high.w*96;uint4 meta=source.Load4(offset+80);
+        if(meta.w!=silpomPaintReceiverFace||!PaintHeightSelected(meta.x,height))continue;
+        Decal dab=LoadPaintDab(source,offset),unit=dab;unit.m_opacity=1;
+        float3 ignored;float alpha;SamplePaintAlpha(unit,surface,dx,dy,ignored,alpha);
+        coverage=coverage+(1-coverage)*alpha*dab.m_opacity;
+        normalScale*=1-alpha*dab.m_normalMapOpacity;
+        ApplyDecalData(dab,surface,dx,dy);
+    }
+}

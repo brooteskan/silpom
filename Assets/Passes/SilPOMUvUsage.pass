@@ -1,0 +1,64 @@
+{
+  "Type": "JsonSerialization",
+  "Version": 1,
+  "ClassName": "PassAsset",
+  "ClassData": {
+    "PassTemplate": {
+      "Name": "SilPOMUvUsageTemplate",
+      "PassClass": "RasterPass",
+      "Slots": [
+        {
+          "Name": "Hit",
+          "SlotType": "Input",
+          "ShaderInputName": "m_silpomHitBuffer",
+          "ScopeAttachmentUsage": "Shader"
+        },
+        {
+          "Name": "Depth",
+          "SlotType": "Input",
+          "ScopeAttachmentUsage": "DepthStencil"
+        },
+        {
+          "Name": "Usage",
+          "SlotType": "InputOutput",
+          "ScopeAttachmentUsage": "RenderTarget",
+          "LoadStoreAction": {
+            "LoadAction": "Load",
+            "StoreAction": "Store"
+          }
+        }
+      ],
+      "Connections": [
+        {
+          "LocalSlot": "Hit",
+          "AttachmentRef": {
+            "Pass": "PipelineGlobal",
+            "Attachment": "SilPOMHitBuffer"
+          }
+        },
+        {
+          "LocalSlot": "Depth",
+          "AttachmentRef": {
+            "Pass": "SilPOMHitForward",
+            "Attachment": "DepthStencilInputOutput"
+          }
+        },
+        {
+          "LocalSlot": "Usage",
+          "AttachmentRef": {
+            "Pass": "SilPOMUvUsageClear",
+            "Attachment": "Hit"
+          }
+        }
+      ],
+      "PassData": {
+        "$type": "RasterPassData",
+        "DrawListTag": "silpomUvUsage",
+        "BindViewSrg": true,
+        "PassSrgShaderAsset": {
+          "FilePath": "Shaders/SilPOM/HitReuse/SilPOMHitForwardSrg.shader"
+        }
+      }
+    }
+  }
+}

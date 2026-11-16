@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include <SilPOM/ReceiverUvPaint.h>
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Component/TickBus.h>
@@ -20,6 +21,7 @@ struct PaintPoint
 {
     AZ_TYPE_INFO(PaintPoint,"{26BE20E4-1543-465A-B623-5BCD3D887E62}");
     AZ::Vector3 m_position=AZ::Vector3::CreateZero(),m_normal=AZ::Vector3::CreateAxisZ();
+    PaintSurfacePoint m_surface;
     float m_pressure=1;
     bool m_start=false;
     AZ::u64 m_sequence=0;
@@ -78,6 +80,7 @@ public:
     // insertion. The painter explicitly adds its first layer on creation.
     AZStd::vector<PaintLayer> m_layers;
     AZ::u64 m_nextId=1,m_frozenThrough=0;
+    ReceiverUvBinding m_receiverUv;
 };
 // Used by both the editor and runtime, including migration of old prefabs.
 void CompactPaint(PaintConfig&);
@@ -102,6 +105,8 @@ public:
     virtual AZStd::string SetDocumentJson(const AZStd::string&)=0;
     virtual bool ConsumeCompositeRepair()=0;
     virtual void RestoreUndoDocument(const PaintConfig&)=0;
+    virtual AZStd::shared_ptr<const ReceiverPaintInput> GetReceiverPaintInput() const=0;
+    virtual bool BindReceiverUv(AZ::EntityId,const AZStd::string&,const AZ::Vector4&,AZ::u32)=0;
 };
 using PaintRequestBus=AZ::EBus<PaintRequests>;
 class PaintController final : private PaintRequestBus::Handler,private AZ::TransformNotificationBus::Handler,private AZ::TickBus::Handler,
@@ -132,6 +137,8 @@ public:
     bool ConsumeCompositeRepair() override {const bool repaired=m_repairedComposite;m_repairedComposite=false;return repaired;}
     void RestoreUndoDocument(const PaintConfig&) override;
     AZ::u64 GetRevision() const override { return m_revision; }
+    AZStd::shared_ptr<const ReceiverPaintInput> GetReceiverPaintInput() const override {return m_receiverInput;}
+    bool BindReceiverUv(AZ::EntityId,const AZStd::string&,const AZ::Vector4&,AZ::u32) override;
     PaintConfig m_configuration;
 private:
     void OnTransformChanged(const AZ::Transform&,const AZ::Transform& world) override { m_world=world;m_dirty=true;m_bakeIdle=0;m_bakeRequested=false; }
@@ -140,6 +147,10 @@ private:
     void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData>) override {m_bakeInvalidated=true;}
     void Release();
     void Rebuild();
+    AZStd::shared_ptr<ReceiverPaintInput> m_receiverInput;
+    AZ::u32 m_receiverToken=0;
+    AZ::u64 m_anchorState=0;
+    AZ::u64 m_receiverAssetRevision=0;
     AZ::EntityId m_entity;
     AZ::Transform m_world=AZ::Transform::CreateIdentity();
     AZ::Render::DecalFeatureProcessorInterface* m_processor=nullptr;

@@ -118,7 +118,12 @@ repository. It leaves unrelated files alone. Reapplying is a no-op after all
 output hashes match. Exact installed decal shaders from `cd425e4`
 are upgraded using the separately hashed modification patches in `migrations/`.
 An edited predecessor is rejected and preserved; unknown revisions are not guessed.
-The current `f9e3d7c` shader already matches the stable target and needs no change.
+The exact `f9e3d7c` shader is upgraded through a separately hashed migration.
+The current target adds receiving-face restrictions for surface-addressed dabs
+and a material hook for claiming a fixed prefix. Ordinary materials do not
+compile the prefix-claim hook. The receiver-UV proof and its validation contract
+are documented in `../../Docs/ReceiverUvPaint.md`; its bake is explicitly selected
+on a bound receiver and does not create a world-space cache.
 
 The rejected color/normal bake prototype is isolated under `experiments/`.
 Only `apply.py --experimental-paint-bake` installs it; verification needs the same

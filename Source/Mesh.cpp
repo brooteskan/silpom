@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: MIT
 #include <SilPOM/Mesh.h>
+#include <SilPOM/DecalPaint.h>
+#include <AzCore/Serialization/Json/JsonUtils.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
 #include <SilPOM/HeightPrecision.h>
 #include <SilPOM/AppearanceCodec.h>
 #include <SilPOM/ReliefLod.h>
@@ -29,6 +33,13 @@
 #include <Atom/RPI.Public/Image/ImageSystemInterface.h>
 #include <Atom/RPI.Public/Image/StreamingImage.h>
 #include <Atom/RPI.Public/Image/StreamingImagePool.h>
+#include <Atom/RPI.Public/Image/AttachmentImage.h>
+#include <Atom/RPI.Public/Image/AttachmentImagePool.h>
+#include <Atom/RPI.Public/Pass/FullscreenTrianglePass.h>
+#include <Atom/RPI.Reflect/Pass/FullscreenTrianglePassData.h>
+#include <Atom/RPI.Reflect/Material/ShaderCollection.h>
+#include <AzCore/Math/Matrix4x4.h>
+#include <chrono>
 #include <Atom/RPI.Public/Buffer/Buffer.h>
 #include <Atom/RPI.Reflect/Buffer/BufferAssetCreator.h>
 #include <Atom/RPI.Reflect/Model/ModelAssetCreator.h>
@@ -464,6 +475,22 @@ bool InstallHitPasses(AZ::RPI::Scene& scene, bool required)
             }
             if(pass)pass->SetEnabled(r_silpomMsaaInspect);
         }
+        // Explicit integer cache-use evidence, cleared to no-attempt for every
+        // sample and drawn only by a receiver's UV material. Timings disable it.
+        const char* usageNames[]={"SilPOMUvUsageClear","SilPOMUvUsage","SilPOMInspectUvUsage"};
+        const char* usageTemplates[]={"SilPOMUvUsageClearTemplate","SilPOMUvUsageTemplate","SilPOMInspectUvUsageTemplate"};
+        for(unsigned i=0;i<3;++i)
+        {
+            auto pass=pipeline->FindFirstPass(AZ::Name(usageNames[i]));
+            if(!pass&&r_silpomMsaaInspect)
+            {
+                if(!system->GetPassTemplate(AZ::Name(usageTemplates[i]))&&!system->LoadPassTemplateMappings("passes/silpomhittemplates.azasset"))return false;
+                if(i==1)pass=MakeHitPass(AZ::Name(usageNames[i]),AZ::Name(usageTemplates[i]),*pipeline->FindFirstPass(forwardName));
+                else {AZ::RPI::PassRequest request;request.m_passName=AZ::Name(usageNames[i]);request.m_templateName=AZ::Name(usageTemplates[i]);pass=system->CreatePassFromRequest(&request);}
+                if(!pass||!pipeline->AddPassAfter(pass,i==0?hitForwardName:AZ::Name(usageNames[i-1])))return false;
+            }
+            if(pass)pass->SetEnabled(r_silpomMsaaInspect);
+        }
     }
     return true;
 }
@@ -684,6 +711,8 @@ Material Snapshot(const AZ::Data::Asset<AZ::RPI::MaterialAsset>& source,
 }
 struct MeshController::Generation
 {
+    struct PaintFace {AZStd::string id;AZ::u32 source=0,batch=0,local=0,hit=0;};
+    AZStd::vector<PaintFace> paintFaces;
     struct ProxyPatch {AZStd::vector<AZ::u32> localFaces,sourceFaces;bool protectedBoundary=false,far=false;};
     struct ProxyBatch
     {
@@ -717,6 +746,7 @@ struct MeshController::Generation
     size_t spiralLightBatches = 0;
     AZStd::atomic_bool published{false};
 };
+#include "ReceiverUvPaint.inl"
 MeshController::MeshController() = default;
 MeshController::MeshController(const MeshConfig& config) : m_configuration(config) {}
 MeshController::~MeshController() = default;
@@ -809,7 +839,12 @@ void MeshController::Reflect(AZ::ReflectContext* context)
             ->Event("GetStatus", &MeshRequests::GetStatus)->Event("IsReady", &MeshRequests::IsReady)
             ->Event("GetProxyLodState",&MeshRequests::GetProxyLodState)
             ->Event("GetProxyFaceOwners",&MeshRequests::GetProxyFaceOwners)
-            ->Event("GetAntiAliasingState",&MeshRequests::GetAntiAliasingState);
+            ->Event("GetAntiAliasingState",&MeshRequests::GetAntiAliasingState)
+            ->Event("GetPaintFacesJson",&MeshRequests::GetPaintFacesJson)
+            ->Event("BeginReceiverUvPaint",&MeshRequests::BeginReceiverUvPaint)
+            ->Event("SetReceiverUvPaintMode",&MeshRequests::SetReceiverUvPaintMode)
+            ->Event("GetReceiverUvPaintStatus",&MeshRequests::GetReceiverUvPaintStatus)
+            ->Event("ReleaseReceiverUvPaint",&MeshRequests::ReleaseReceiverUvPaint);
 }
 void MeshComponent::Reflect(AZ::ReflectContext* context)
 {
@@ -934,6 +969,7 @@ void MeshController::Deactivate()
     m_checkHitPasses = false;
     AZ::TickBus::Handler::BusDisconnect(); MeshRequestBus::Handler::BusDisconnect();
     AZ::TransformNotificationBus::Handler::BusDisconnect(); AZ::Data::AssetBus::MultiHandler::BusDisconnect();
+    ReleaseReceiverUvPaint();
     Release(m_pending); Release(m_active); m_processor = nullptr; m_entity.SetInvalid(); m_status = "Inactive";
 }
 void MeshController::SetConfiguration(const MeshConfig& config)
@@ -1488,6 +1524,8 @@ bool MeshController::Prepare()
                     const auto base=AllocateHitFaceBase(packed.size()/36);
                     if(!Set(material,"mesh.hitFaceBase",base))return fail("SilPOM hit material contract mismatch");
                     if(proxy)candidate->proxyBatches.back().hitFaceBase=base;
+                    for(AZ::u32 i=0;i<faces.size();++i)candidate->paintFaces.push_back({asset.m_faces[faces[i]].m_id,
+                        faces[i],aznumeric_cast<AZ::u32>(candidate->handles.size()),i,base+i});
                 }
                 candidate->buffers.push_back(buffer); candidate->heights.push_back(height);
                 candidate->neuralSeed |= neuralSeed;
@@ -1630,6 +1668,12 @@ void MeshController::UpdateProxyLod()
                 m_status="Level 5A selection snapshot upload failed";return;
             }
             if(auto srg=batch.material->GetShaderResourceGroup())srg->Compile();
+            if(m_uvPaint&&m_uvPaint->original==batch.material&&m_uvPaint->material)
+            {
+                Set(m_uvPaint->material,"surface.proxyLodBuffer",indices.begin()->second);
+                m_uvPaint->material->Compile();
+                if(auto srg=m_uvPaint->material->GetShaderResourceGroup())srg->Compile();
+            }
             // The backend permits at most three in-flight frames. Keep eight
             // render preparations, in addition to RHI's deferred destruction.
             batch.retired.push_back({m_active->proxyFrame+8,batch.buffer});
@@ -1640,6 +1684,7 @@ void MeshController::UpdateProxyLod()
 }
 void MeshController::OnTick(float, AZ::ScriptTimePoint)
 {
+    TickReceiverUvPaint();
     const unsigned policy=UpdateHitSamplePolicy(AZ::RPI::Scene::GetSceneForEntityId(m_entity));
     if(m_hitSamplePolicy!=policy){m_hitSamplePolicy=policy;m_checkHitPasses=true;}
     if (m_dirty) { Release(m_pending); m_dirty = Prepare(); }

@@ -1,0 +1,46 @@
+{
+  "Type": "JsonSerialization",
+  "Version": 1,
+  "ClassName": "PassAsset",
+  "ClassData": {
+    "PassTemplate": {
+      "Name": "SilPOMReceiverUvBakeTemplate",
+      "PassClass": "FullScreenTriangle",
+      "Slots": [
+        {
+          "Name": "Color",
+          "SlotType": "Output",
+          "ScopeAttachmentUsage": "RenderTarget",
+          "LoadStoreAction": {
+            "LoadAction": "Load",
+            "StoreAction": "Store"
+          }
+        },
+        {
+          "Name": "NormalFront",
+          "SlotType": "Output",
+          "ScopeAttachmentUsage": "RenderTarget",
+          "LoadStoreAction": {
+            "LoadAction": "Load",
+            "StoreAction": "Store"
+          }
+        },
+        {
+          "Name": "NormalBack",
+          "SlotType": "Output",
+          "ScopeAttachmentUsage": "RenderTarget",
+          "LoadStoreAction": {
+            "LoadAction": "Load",
+            "StoreAction": "Store"
+          }
+        }
+      ],
+      "PassData": {
+        "$type": "FullscreenTrianglePassData",
+        "ShaderAsset": {
+          "FilePath": "Shaders/SilPOM/ReceiverUv/Finalize.shader"
+        }
+      }
+    }
+  }
+}

@@ -11,6 +11,7 @@
 
 function MaterialTypeSetup(context)
     lightingModel = context:GetLightingModelName()
+    if lightingModel == "SilPOMMeshUv" then lightingModel="SilPOMMesh" end
     Print('Material type uses lighting model "' .. lightingModel .. '".')
 
     context:ExcludeAllShaders()

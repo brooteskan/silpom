@@ -1,0 +1,55 @@
+{
+  "Type": "JsonSerialization",
+  "Version": 1,
+  "ClassName": "PassAsset",
+  "ClassData": {
+    "PassTemplate": {
+      "Name": "SilPOMUvUsageClearTemplate",
+      "PassClass": "FullScreenTriangle",
+      "Slots": [
+        {
+          "Name": "Hit",
+          "SlotType": "Output",
+          "ScopeAttachmentUsage": "RenderTarget",
+          "LoadStoreAction": {
+            "LoadAction": "DontCare"
+          }
+        }
+      ],
+      "Connections": [
+        {
+          "LocalSlot": "Hit",
+          "AttachmentRef": {
+            "Pass": "This",
+            "Attachment": "HitImage"
+          }
+        }
+      ],
+      "ImageAttachments": [
+        {
+          "Name": "HitImage",
+          "SizeSource": {
+            "Source": {
+              "Pass": "SilPOMHitForward",
+              "Attachment": "DepthStencilInputOutput"
+            }
+          },
+          "ImageDescriptor": {
+            "Format": "R32G32B32A32_UINT",
+            "SharedQueueMask": "Graphics"
+          },
+          "MultisampleSource": {
+            "Pass": "SilPOMHitForward",
+            "Attachment": "DepthStencilInputOutput"
+          }
+        }
+      ],
+      "PassData": {
+        "$type": "FullscreenTrianglePassData",
+        "ShaderAsset": {
+          "FilePath": "Shaders/SilPOM/HitReuse/SilPOMClearHits.shader"
+        }
+      }
+    }
+  }
+}

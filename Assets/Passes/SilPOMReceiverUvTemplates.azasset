@@ -1,0 +1,17 @@
+{
+  "Type": "JsonSerialization",
+  "Version": 1,
+  "ClassName": "AssetAliasesSourceData",
+  "ClassData": {
+    "AssetPaths": [
+      {
+        "Name": "SilPOMReceiverUvBakeTemplate",
+        "Path": "Passes/SilPOMReceiverUvBake.pass"
+      },
+      {
+        "Name": "SilPOMReceiverUvFinalizeTemplate",
+        "Path": "Passes/SilPOMReceiverUvFinalize.pass"
+      }
+    ]
+  }
+}

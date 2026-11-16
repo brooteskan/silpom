@@ -14,6 +14,13 @@ function MaterialTypeSetup(context)
     Print('Material type uses lighting model "' .. lightingModel .. '".')
 
     context:ExcludeAllShaders()
+    if lightingModel == "SilPOMMeshUv" then
+        context:IncludeShader("SilPOMUvBake")
+        context:IncludeShader("SilPOMUvBakeShared")
+        context:IncludeShader("SilPOMUvBakeLearned")
+        context:IncludeShader("SilPOMUvUsage")
+        lightingModel="SilPOMMesh"
+    end
 
     --TODO(MaterialPipeline): Add a way to configure this script through more than just lightingModel, for example
     --set a transparency built setting to "AlwaysOpaque", "AlwaysTransparent", or "Dynamic". That way some Material

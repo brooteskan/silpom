@@ -1,5 +1,13 @@
 # Color/normal paint bake experiment: 2026-11-15
 
+# Historical measurement limitation
+
+The cache-usage counts in this older report were inferred from lit RGB and are
+not reliable evidence of cache activity. Its generic hit readback also did not
+separately establish both MSAA sample records and depths. The timing data remain
+historical measurements. The receiver-UV proof uses explicit integer usage and
+bit-exact sample exports; see [ReceiverUvPaintBenchmark.md](ReceiverUvPaintBenchmark.md).
+
 **Result: rejected for production.** The prototype is disabled in native code.
 The default engine bundle retains the fast `f9e3d7c` spatial-composite shader;
 the experimental shader requires an explicit installer flag. No SiLPOM height
@@ -8,7 +16,7 @@ texture, relief geometry, learned weights or source paint document was changed.
 This implementation bakes fixed prefixes into world-space slice atlases. It is
 not a receiver-surface UV atlas. Retaining it as an experiment makes the failed
 trade-offs and test coverage available without imposing its GPU cost on normal
-builds. A surface/UV bake remains future work, not a completed optimization.
+builds. The subsequent receiver-UV proof is measured separately in ReceiverUvPaintBenchmark.md and also remains opt-in.
 
 ## Measurements
 

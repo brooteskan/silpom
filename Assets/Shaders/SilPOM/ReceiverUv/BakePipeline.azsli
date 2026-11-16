@@ -1,0 +1,65 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#define SILPOM_HIT_FORWARD 1
+#define MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE 1
+#define ENABLE_DECALS 1
+#define OUTPUT_DEPTH 0
+#define FORCE_OPAQUE 1
+#define OUTPUT_SUBSURFACE 0
+#define ENABLE_TRANSMISSION 0
+#define ENABLE_SHADER_DEBUGGING 1
+#define ENABLE_CLEAR_COAT 1
+#include <Atom/Features/SrgSemantics.azsli>
+#ifdef MATERIAL_TYPE_DEFINES_AZSLI_FILE_PATH
+#include MATERIAL_TYPE_DEFINES_AZSLI_FILE_PATH
+#endif
+#include <viewsrg_all.srgi>
+#include <scenesrg_all.srgi>
+#include "BakeSrg.azsli"
+#include <Atom/Features/Pipeline/Forward/ForwardPassVertexData.azsli>
+#include <Atom/Features/Pipeline/Forward/ForwardPassPipelineCallbacks.azsli>
+#undef GetObjectToWorldMatrix
+#define GetObjectToWorldMatrix(SV) PassSrg::m_receiverModel
+// A fullscreen bake has no mesh draw's ObjectSrg or instance-data root
+// constant. Lighting channels are irrelevant to color/normal compositing.
+#define GetLightingChannelMask(SV) 1u
+#include MATERIAL_TYPE_AZSLI_FILE_PATH
+#include "BakePrefix.azsli"
+#include <Atom/Features/PostProcessing/FullscreenVertex.azsli>
+struct BakeOutput {float4 color:SV_Target0;float4 normalFront:SV_Target1;float4 normalBack:SV_Target2;};
+BakeOutput MainPS(VSOutput input)
+{
+    if(input.m_position.y<PassSrg::m_receiverRows.x||input.m_position.y>=PassSrg::m_receiverRows.y)discard;
+    // Scene-material lookup must use this bake's material indices. The normal
+    // zero-argument getter reads ObjectSrg, absent from a fullscreen draw.
+    const MaterialParameters params=GetMaterialParameters(PassSrg::m_receiverMaterialType,PassSrg::m_receiverMaterialInstance);
+    if(params.m_materialType!=PassSrg::m_receiverMaterialType||params.m_materialInstance!=PassSrg::m_receiverMaterialInstance)discard;
+    const uint face=PassSrg::m_receiverFace;
+    const SilPomMeshFace f=SilPomLoadFace(params.m_meshBufferIndex,face);
+    const float2 low=min(f.uv0,min(f.uv1,f.uv2)),high=max(f.uv0,max(f.uv1,f.uv2));
+    const float2 uv=PassSrg::m_receiverRectangle.xy+(input.m_position.xy-2.0f)/float(PassSrg::m_receiverResolution)*PassSrg::m_receiverRectangle.zw;
+    SilPomPatch p;p.width=high.x-low.x;p.height=high.y-low.y;p.scale=params.m_silpomScale;p.reference=params.m_silpomReference;
+    p.tileU=p.width*params.m_silpomTileU;p.tileV=p.height*params.m_silpomTileV;
+    p.offsetU=low.x*params.m_silpomTileU+params.m_silpomOffsetU;p.offsetV=low.y*params.m_silpomTileV+params.m_silpomOffsetV;
+    p.addressMode=params.m_silpomAddressMode;p.maxCells=params.m_silpomMaxCells;
+    GetMaterialTexture(params.m_silpomHeightMap).GetDimensions(p.textureWidth,p.textureHeight);
+    const float3 h=SilPomFaceHeight(GetMaterialTexture(params.m_silpomHeightMap),p,uv,low);
+    const float3 local=f.origin+f.du*(uv.x-f.uv0.x)+f.dv*(uv.y-f.uv0.y)+SilPomFaceDirection(f,uv)*h.x;
+    const float3 normal=params.m_silpomUseHeightDerivedNormals?SilPomFaceNormal(GetMaterialTexture(params.m_silpomHeightMap),p,f,uv,low):f.normal;
+    const float3 tangent=normalize(f.du-normal*dot(normal,f.du));const float handedness=dot(cross(normal,tangent),f.dv)<0?-1:1;
+    PixelGeometryData geo=(PixelGeometryData)0;geo.positionWS=mul(PassSrg::m_receiverModel,float4(local,1)).xyz;
+    geo.vertexNormal=normalize(mul((float3x3)PassSrg::m_receiverModel,normal));geo.isFrontFace=true;
+    for(uint i=0;i<UvSetCount;++i){geo.uvs[i]=uv;geo.tangents[i]=normalize(mul((float3x3)PassSrg::m_receiverModel,tangent));geo.bitangents[i]=handedness*normalize(cross(geo.vertexNormal,geo.tangents[i]));}
+    silpomLitFace=f;silpomLitPatch=p;silpomLitUv=uv;silpomLitRotation=(float3x3)PassSrg::m_receiverModel;
+    silpomLitOriginWS=mul(PassSrg::m_receiverModel,float4(f.origin,1)).xyz;silpomLitValid=true;
+    silpomPaintReceiverFace=params.m_silpomHitFaceBase+face;silpomPaintHeightTexture=params.m_silpomHeightMap;
+    VsOutput IN=(VsOutput)0;IN.worldPosition=geo.positionWS;IN.color0=1;IN.faceIndex=face;VsSystemValues SV=(VsSystemValues)0;
+    Surface front=EvaluateSurface_SilPomMesh(IN,SV,geo,params);geo.isFrontFace=false;
+    Surface back=EvaluateSurface_SilPomMesh(IN,SV,geo,params);
+    const float3 baseFront=front.normal,baseBack=back.normal;
+    const float3 dx=ddx(geo.positionWS),dy=ddy(geo.positionWS);
+    float coverage,scale,coverageBack,scaleBack;
+    SilPomBakeUvPrefixGuarded(front,params,dx,dy,coverage,scale);SilPomBakeUvPrefixGuarded(back,params,dx,dy,coverageBack,scaleBack);
+    BakeOutput OUT;OUT.color=float4(front.albedo,coverage);OUT.normalFront=float4(front.normal-baseFront*scale,scale);
+    OUT.normalBack=float4(back.normal-baseBack*scaleBack,scaleBack);return OUT;
+}

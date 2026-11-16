@@ -1,0 +1,58 @@
+/*
+ * Copyright (c) Contributors to the Open 3D Engine Project.
+ * For complete copyright and license terms please see the LICENSE at the root of this distribution.
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ *
+ */
+#pragma once
+#define SILPOM_UV_USAGE 1
+#define SILPOM_HIT_FORWARD 1
+// Spatial paint groups use the shared-buffer protocol in the O3DE integration.
+
+#include <Atom/Features/SrgSemantics.azsli>
+
+#define MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE 1
+
+// TODO(MaterialPipeline): In the end, after all refactoring and rearranging of our shader code is done, some of these flags might become unnecessary and should be re-evaluated.
+#define OUTPUT_DEPTH 1
+#define FORCE_OPAQUE 1
+#define OUTPUT_SUBSURFACE 0
+#define ENABLE_TRANSMISSION 0
+#define ENABLE_SHADER_DEBUGGING 1
+#define ENABLE_CLEAR_COAT 1
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+#ifdef MATERIAL_TYPE_DEFINES_AZSLI_FILE_PATH
+#include MATERIAL_TYPE_DEFINES_AZSLI_FILE_PATH
+#endif
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+#include <viewsrg_all.srgi>
+#include <scenesrg_all.srgi>
+#include "../HitReuse/SilPOMHitForwardSrg.azsli"
+#include <Atom/Features/Pipeline/Forward/ForwardPassVertexData.azsli>
+#include <Atom/Features/Pipeline/Forward/ForwardPassPipelineCallbacks.azsli>
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+#include MATERIAL_TYPE_AZSLI_FILE_PATH
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+VsOutput VertexShader(VsInput IN,uint instanceId:SV_InstanceID)
+{VsSystemValues SV;SV.m_instanceId=instanceId;VsOutput OUT=EvaluateVertexGeometry(IN,SV,GetMaterialParameters());OUT.m_instanceId=instanceId;return OUT;}
+struct UvUsageOutput {uint4 usage:SV_Target0;float depth:SV_Depth;};
+UvUsageOutput PixelShader(VsOutput IN,bool front:SV_IsFrontFace,uint sampleIndex:SV_SampleIndex)
+{
+    silpomHitSampleIndex=sampleIndex;VsSystemValues SV;SV.m_instanceId=IN.m_instanceId;
+    const MaterialParameters params=GetMaterialParameters();
+    PixelGeometryData geo=EvaluatePixelGeometry(IN,SV,front,params);
+    const uint use=SilPomUvUse(params,IN.faceIndex,silpomLitUv);
+    UvUsageOutput OUT;OUT.depth=IN.position.z;OUT.usage=0;
+    if(use==0)return OUT;
+    const uint4 prefix=Bindless::GetByteAddressBuffer(params.m_receiverPaintPrefix).Load4(0);
+    OUT.usage=uint4(use,params.m_silpomHitFaceBase+IN.faceIndex,prefix.w,params.m_receiverPaintOwner);return OUT;
+}

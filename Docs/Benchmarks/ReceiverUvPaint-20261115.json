@@ -1,0 +1,671 @@
+{
+  "state": {
+    "passed": true,
+    "stage": "complete",
+    "variants": {},
+    "benchmark_performed": true,
+    "level_sha256": "c93f9933ff343e58e02cf5263f0210bfb156cf67900da7baeec21b14a0da8fc6",
+    "heightmaps_before": {
+      "Assets\\SilPOMPlanarAB\\height.png": "31675e93592a811662fe108623460b502191b2ad46f01941637344e952b5ee87",
+      "Assets\\SilPOMPlanarAB\\IrishFieldstoneTowerOpenShaft\\sculpted-stair-silpom\\height.png": "a464b440fdd2ec0a140e1390c5c726dcba8e31e510f2b3a6386cd9e4560a73b1",
+      "Assets\\SilPOMPlanarAB\\IrishFieldstoneTowerOpenShaft\\welded-doorway\\reveal\\height.png": "9bf430cc25aeb9d33c4afef7cab97f940da1d20da1da7849abb4e2ac3cc31eab",
+      "Assets\\SilPOMPlanarAB\\IrishFieldstoneTowerOpenShaft\\welded-doorway\\trim-blocks\\height.png": "7a08f128bbf82be7743cc322afc3e09c140a7bee96cac93ea5b137df6056e0b0",
+      "Assets\\SilPOMPlanarAB\\IrishFieldstoneTowerWelded\\wall\\height.png": "aec2a049073e85e3a5f4324ad40ddb76d387f6acbcfe5efffaaae7eb91c51799"
+    },
+    "surface_addresses_survived_consolidation": true,
+    "receiver": {
+      "face": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:2301:2721,5697,5696",
+      "hit_face": 5541,
+      "batch": 19,
+      "profile": 1,
+      "corners": [
+        {
+          "uv": [
+            0.018474331125617027,
+            0.4820946156978607
+          ],
+          "position": [
+            592.1483154296875,
+            849.7619018554688,
+            7.505000114440918
+          ]
+        },
+        {
+          "uv": [
+            0.05000000074505806,
+            1.0
+          ],
+          "position": [
+            592.00341796875,
+            849.5857543945312,
+            -0.15999998152256012
+          ]
+        },
+        {
+          "uv": [
+            0.05000000074505806,
+            0.4820946156978607
+          ],
+          "position": [
+            592.00341796875,
+            849.5857543945312,
+            7.505000114440918
+          ]
+        }
+      ]
+    },
+    "rectangle": [
+      0.03153006586401025,
+      0.6447837983824188,
+      0.04745282254647851,
+      0.6646756892147286
+    ],
+    "center": [
+      592.0517171223958,
+      849.6444702148438,
+      4.950000082453092
+    ],
+    "normal": [
+      -0.7722854399397237,
+      0.6352756876011448,
+      0.0
+    ],
+    "materials": [
+      {
+        "assetId": {
+          "guid": "{AB6BAF20-5EFE-5D5B-8CDB-8FB780ABAE7E}"
+        },
+        "assetHint": "assets/materials/decalpaint/surfacetexture_0002/surfacetexture_0002.azmaterial"
+      }
+    ],
+    "fixed": 2048,
+    "live": 100,
+    "lookup": "receiver instance + canonical face -> 2D texture; hit UV -> texel",
+    "cache": {
+      "state": "Receiver UV atlas active",
+      "mode": 2,
+      "hit_face": 5541,
+      "resolution": 512,
+      "ready": true,
+      "mips": 10,
+      "bytes": 8588856,
+      "bake_ms": 6563.446
+    },
+    "live_tail_keeps_fixed_atlas": true,
+    "saved_level_unchanged": true,
+    "heightmaps_unchanged": true,
+    "no_skipped_resource_bindings": true
+  },
+  "views": {
+    "close": {
+      "1-1": {
+        "samples": [
+          {
+            "sample": 0,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "no_attempt": 826798,
+            "prefix_replay": 94802,
+            "cache_used": 0,
+            "diffuse_error": {
+              "pixels": 808668,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "cached_diffuse_error": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            },
+            "cached_normal_degrees": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            }
+          },
+          {
+            "sample": 1,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "no_attempt": 826752,
+            "prefix_replay": 94848,
+            "cache_used": 0,
+            "diffuse_error": {
+              "pixels": 809037,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "cached_diffuse_error": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            },
+            "cached_normal_degrees": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            }
+          }
+        ]
+      },
+      "2-2": {
+        "samples": [
+          {
+            "sample": 0,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "no_attempt": 826798,
+            "prefix_replay": 69313,
+            "cache_used": 25489,
+            "diffuse_error": {
+              "pixels": 808668,
+              "mean": 1.1427700883359648e-05,
+              "rms": 8.841347880661488e-05,
+              "p99": 0.0004329681396484375,
+              "maximum": 0.003459930419921875
+            },
+            "cached_diffuse_error": {
+              "pixels": 25489,
+              "mean": 0.00036255703889764845,
+              "rms": 0.0004979975637979805,
+              "p99": 0.001514434814453125,
+              "maximum": 0.003459930419921875
+            },
+            "cached_normal_degrees": {
+              "pixels": 25489,
+              "mean": 1.876131296157837,
+              "rms": 2.593484401702881,
+              "p99": 8.83765983581543,
+              "maximum": 32.3375358581543
+            }
+          },
+          {
+            "sample": 1,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "no_attempt": 826752,
+            "prefix_replay": 69266,
+            "cache_used": 25582,
+            "diffuse_error": {
+              "pixels": 809037,
+              "mean": 1.1606871339608915e-05,
+              "rms": 8.976639219326898e-05,
+              "p99": 0.000438690185546875,
+              "maximum": 0.00464630126953125
+            },
+            "cached_diffuse_error": {
+              "pixels": 25582,
+              "mean": 0.0003670701407827437,
+              "rms": 0.0005048132152296603,
+              "p99": 0.00152587890625,
+              "maximum": 0.00464630126953125
+            },
+            "cached_normal_degrees": {
+              "pixels": 25582,
+              "mean": 1.9318214654922485,
+              "rms": 2.652139186859131,
+              "p99": 9.139344215393066,
+              "maximum": 30.924222946166992
+            }
+          }
+        ]
+      }
+    },
+    "ordinary": {
+      "1-1": {
+        "samples": [
+          {
+            "sample": 0,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "no_attempt": 891546,
+            "prefix_replay": 30054,
+            "cache_used": 0,
+            "diffuse_error": {
+              "pixels": 783774,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "cached_diffuse_error": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            },
+            "cached_normal_degrees": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            }
+          },
+          {
+            "sample": 1,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "no_attempt": 891542,
+            "prefix_replay": 30058,
+            "cache_used": 0,
+            "diffuse_error": {
+              "pixels": 784347,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "cached_diffuse_error": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            },
+            "cached_normal_degrees": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            }
+          }
+        ]
+      },
+      "2-2": {
+        "samples": [
+          {
+            "sample": 0,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "no_attempt": 891546,
+            "prefix_replay": 26675,
+            "cache_used": 3379,
+            "diffuse_error": {
+              "pixels": 783774,
+              "mean": 6.759270263501094e-07,
+              "rms": 1.6856880392879248e-05,
+              "p99": 0.0,
+              "maximum": 0.0044727325439453125
+            },
+            "cached_diffuse_error": {
+              "pixels": 3379,
+              "mean": 0.00015678427007514983,
+              "rms": 0.00025673111667856574,
+              "p99": 0.0008187866187654436,
+              "maximum": 0.0044727325439453125
+            },
+            "cached_normal_degrees": {
+              "pixels": 3379,
+              "mean": 2.873790740966797,
+              "rms": 4.6980133056640625,
+              "p99": 15.331085205078125,
+              "maximum": 58.790199279785156
+            }
+          },
+          {
+            "sample": 1,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "no_attempt": 891542,
+            "prefix_replay": 26703,
+            "cache_used": 3355,
+            "diffuse_error": {
+              "pixels": 784347,
+              "mean": 6.718295821883657e-07,
+              "rms": 1.6883328498806804e-05,
+              "p99": 0.0,
+              "maximum": 0.0038013458251953125
+            },
+            "cached_diffuse_error": {
+              "pixels": 3355,
+              "mean": 0.00015706333215348423,
+              "rms": 0.0002581463195383549,
+              "p99": 0.0008724975632503629,
+              "maximum": 0.0038013458251953125
+            },
+            "cached_normal_degrees": {
+              "pixels": 3355,
+              "mean": 3.01666522026062,
+              "rms": 5.151821613311768,
+              "p99": 19.996944427490234,
+              "maximum": 61.67814254760742
+            }
+          }
+        ]
+      }
+    },
+    "minified": {
+      "1-1": {
+        "samples": [
+          {
+            "sample": 0,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "no_attempt": 906730,
+            "prefix_replay": 14870,
+            "cache_used": 0,
+            "diffuse_error": {
+              "pixels": 807422,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "cached_diffuse_error": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            },
+            "cached_normal_degrees": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            }
+          },
+          {
+            "sample": 1,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "no_attempt": 906873,
+            "prefix_replay": 14727,
+            "cache_used": 0,
+            "diffuse_error": {
+              "pixels": 807710,
+              "mean": 0.0,
+              "rms": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "cached_diffuse_error": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            },
+            "cached_normal_degrees": {
+              "pixels": 0,
+              "mean": 0,
+              "rms": 0,
+              "p99": 0,
+              "maximum": 0
+            }
+          }
+        ]
+      },
+      "2-2": {
+        "samples": [
+          {
+            "sample": 0,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "no_attempt": 906730,
+            "prefix_replay": 13641,
+            "cache_used": 1229,
+            "diffuse_error": {
+              "pixels": 807422,
+              "mean": 1.7460816081893427e-07,
+              "rms": 6.803201813454507e-06,
+              "p99": 0.0,
+              "maximum": 0.0017375946044921875
+            },
+            "cached_diffuse_error": {
+              "pixels": 1229,
+              "mean": 0.00011471315519884229,
+              "rms": 0.00017437638598494232,
+              "p99": 0.0006005096365697682,
+              "maximum": 0.0017375946044921875
+            },
+            "cached_normal_degrees": {
+              "pixels": 1229,
+              "mean": 3.4841103553771973,
+              "rms": 5.163113594055176,
+              "p99": 17.468263626098633,
+              "maximum": 43.54438781738281
+            }
+          },
+          {
+            "sample": 1,
+            "hit_records_bit_exact": true,
+            "depth_bit_exact": true,
+            "no_attempt": 906873,
+            "prefix_replay": 13528,
+            "cache_used": 1199,
+            "diffuse_error": {
+              "pixels": 807710,
+              "mean": 1.7710902966427966e-07,
+              "rms": 7.306406587304082e-06,
+              "p99": 0.0,
+              "maximum": 0.0017185211181640625
+            },
+            "cached_diffuse_error": {
+              "pixels": 1199,
+              "mean": 0.00011931003973586485,
+              "rms": 0.00018963652837555856,
+              "p99": 0.0007000732584856451,
+              "maximum": 0.0017185211181640625
+            },
+            "cached_normal_degrees": {
+              "pixels": 1199,
+              "mean": 3.8549604415893555,
+              "rms": 5.81907844543457,
+              "p99": 21.040189743041992,
+              "maximum": 35.80487060546875
+            }
+          }
+        ]
+      }
+    }
+  },
+  "timings": {
+    "close-0-0": {
+      "gpu_span_ms": 16.0565,
+      "hit_forward_ms": 10.629999999999999,
+      "cpu_frame_period_ms": 16.296
+    },
+    "close-1-1": {
+      "gpu_span_ms": 16.7325,
+      "hit_forward_ms": 10.922,
+      "cpu_frame_period_ms": 17.11005
+    },
+    "close-2-2": {
+      "gpu_span_ms": 13.603,
+      "hit_forward_ms": 8.1175,
+      "cpu_frame_period_ms": 13.8819
+    },
+    "close-3-2": {
+      "gpu_span_ms": 13.658999999999999,
+      "hit_forward_ms": 8.266,
+      "cpu_frame_period_ms": 13.869250000000001
+    },
+    "close-4-1": {
+      "gpu_span_ms": 16.4825,
+      "hit_forward_ms": 10.7835,
+      "cpu_frame_period_ms": 16.73445
+    },
+    "close-5-0": {
+      "gpu_span_ms": 16.1265,
+      "hit_forward_ms": 10.688,
+      "cpu_frame_period_ms": 16.352800000000002
+    },
+    "minified-0-0": {
+      "gpu_span_ms": 8.64,
+      "hit_forward_ms": 3.974,
+      "cpu_frame_period_ms": 12.255749999999999
+    },
+    "minified-1-1": {
+      "gpu_span_ms": 9.756,
+      "hit_forward_ms": 5.0175,
+      "cpu_frame_period_ms": 11.40745
+    },
+    "minified-2-2": {
+      "gpu_span_ms": 9.22,
+      "hit_forward_ms": 4.718500000000001,
+      "cpu_frame_period_ms": 11.439499999999999
+    },
+    "minified-3-2": {
+      "gpu_span_ms": 9.258,
+      "hit_forward_ms": 4.714499999999999,
+      "cpu_frame_period_ms": 11.41895
+    },
+    "minified-4-1": {
+      "gpu_span_ms": 9.381,
+      "hit_forward_ms": 4.8535,
+      "cpu_frame_period_ms": 11.44025
+    },
+    "minified-5-0": {
+      "gpu_span_ms": 8.3705,
+      "hit_forward_ms": 3.8855,
+      "cpu_frame_period_ms": 11.742049999999999
+    },
+    "ordinary-0-0": {
+      "gpu_span_ms": 10.128,
+      "hit_forward_ms": 5.037,
+      "cpu_frame_period_ms": 11.1968
+    },
+    "ordinary-1-1": {
+      "gpu_span_ms": 10.8315,
+      "hit_forward_ms": 5.618,
+      "cpu_frame_period_ms": 11.562149999999999
+    },
+    "ordinary-2-2": {
+      "gpu_span_ms": 9.607,
+      "hit_forward_ms": 4.7385,
+      "cpu_frame_period_ms": 12.55485
+    },
+    "ordinary-3-2": {
+      "gpu_span_ms": 9.783999999999999,
+      "hit_forward_ms": 4.797499999999999,
+      "cpu_frame_period_ms": 11.916450000000001
+    },
+    "ordinary-4-1": {
+      "gpu_span_ms": 10.435500000000001,
+      "hit_forward_ms": 5.5715,
+      "cpu_frame_period_ms": 11.667750000000002
+    },
+    "ordinary-5-0": {
+      "gpu_span_ms": 9.8945,
+      "hit_forward_ms": 4.955500000000001,
+      "cpu_frame_period_ms": 11.3735
+    }
+  },
+  "visible_fixed_paint_samples": 51071,
+  "zero_prefix_no_attempt": true,
+  "aggregate": {
+    "close": {
+      "0": {
+        "gpu_span_ms": 16.0915,
+        "hit_forward_ms": 10.658999999999999,
+        "cpu_frame_period_ms": 16.3244
+      },
+      "1": {
+        "gpu_span_ms": 16.6075,
+        "hit_forward_ms": 10.85275,
+        "cpu_frame_period_ms": 16.92225
+      },
+      "2": {
+        "gpu_span_ms": 13.631,
+        "hit_forward_ms": 8.191749999999999,
+        "cpu_frame_period_ms": 13.875575000000001
+      }
+    },
+    "ordinary": {
+      "0": {
+        "gpu_span_ms": 10.01125,
+        "hit_forward_ms": 4.99625,
+        "cpu_frame_period_ms": 11.28515
+      },
+      "1": {
+        "gpu_span_ms": 10.633500000000002,
+        "hit_forward_ms": 5.59475,
+        "cpu_frame_period_ms": 11.61495
+      },
+      "2": {
+        "gpu_span_ms": 9.6955,
+        "hit_forward_ms": 4.768,
+        "cpu_frame_period_ms": 12.23565
+      }
+    },
+    "minified": {
+      "0": {
+        "gpu_span_ms": 8.50525,
+        "hit_forward_ms": 3.9297500000000003,
+        "cpu_frame_period_ms": 11.998899999999999
+      },
+      "1": {
+        "gpu_span_ms": 9.5685,
+        "hit_forward_ms": 4.9355,
+        "cpu_frame_period_ms": 11.423850000000002
+      },
+      "2": {
+        "gpu_span_ms": 9.239,
+        "hit_forward_ms": 4.7165,
+        "cpu_frame_period_ms": 11.429224999999999
+      }
+    }
+  },
+  "method": {
+    "baseline": "original native stamp renderer with the same surface-addressed dabs; original material and full stream",
+    "disabled": "UV material, fixed prefix replay, native live tail",
+    "enabled": "receiver face/UV atlas plus native live tail",
+    "order": [
+      0,
+      1,
+      2,
+      2,
+      1,
+      0
+    ],
+    "frames_per_run": 180,
+    "runs_per_mode_per_view": 2,
+    "viewport": [
+      1280,
+      720
+    ],
+    "msaa": 2,
+    "diagnostics_during_timing": false,
+    "gpu_span_is_not_cpu_work": true,
+    "distances_m": {
+      "close": 0.55,
+      "ordinary": 1.5,
+      "minified": 2.5
+    },
+    "scope": "one existing static tower face, one alpha layer, 2048 consolidated dabs, 100 live dabs, one shared stamp material"
+  },
+  "quality_gate": {
+    "normal_rms_limit_degrees": 1,
+    "normal_max_limit_degrees": 5,
+    "accepted": false,
+    "reason": "Normal error exceeds the retained quality gate; cache remains opt-in and is not a production optimization."
+  },
+  "implementation_sha256": {
+    "Source/ReceiverUvPaint.inl": "ba75faac80da672bd8df14ae6473e239ce256f9eea8922c4c61a8eefddb5f9a0",
+    "Source/DecalComposite.inl": "acb5e10b4f33008d06c8e15549d41724ddcf9f17907b2381ffd9e867c53133f1",
+    "Assets/Shaders/SilPOM/ReceiverUv/BakePipeline.azsli": "cb1915d332aa082099f134d07c01500cc700748ffc0e153bdf31ce1858ab02af",
+    "Assets/Shaders/SilPOM/ReceiverUv/BakePrefix.azsli": "9a69f4a977d2319e5c8c193b2017382710487d3622de8a7cad73eec9190fac92",
+    "Assets/Shaders/SilPOM/ReceiverUv/PaintSurface.azsli": "5ea06aff7e51598a1af5c9f1b3d78a437fe0ca94eec07637e36e839169eaa6fe",
+    "Tests/receiver_uv_benchmark.py": "a5d13cdaa6bb5126dde17003bc9e8c4405400efc35cc60ab000f908e10bd9f02",
+    "Tests/analyze_receiver_uv_benchmark.py": "dd6fb5377da351fe9d92962a1125a6b4eec8d884efdff7d8eda38bd51c5dcb22"
+  },
+  "module_sha256": "253b8b1e9b1dbbf5a7d27b89a0ddc5824b12da7c622bdf7ceb1872bb0f332781",
+  "evidence_directory": "scratch/decal-bake/uv-proof-4"
+}

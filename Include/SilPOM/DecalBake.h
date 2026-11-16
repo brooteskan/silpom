@@ -19,6 +19,8 @@ struct PaintProjection
 {
     AZ::Render::DecalData m_data;
     AZ::u32 m_flags=0,m_layer=0,m_layerEndNode=0,m_reserved=0;
+    // m_reserved contains the resolved receiver face in the GPU copy; CPU
+    // consolidation age is carried separately until that copy is produced.
 };
 static_assert(sizeof(PaintProjection)==96);
 struct PaintBakeRecord
