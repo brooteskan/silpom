@@ -1,0 +1,849 @@
+{
+  "date": "2026-11-16 America/Los_Angeles",
+  "branch": "codex/integrate-main-ryzen-5700g-20261116",
+  "main_commit": "486b178c7889cd778122fa2f55a84bbe4a0ab117",
+  "profile_source_commit": "c05b9a3b72fc376db9c70f25b2fc55b043d78a3f",
+  "local_work_checkpoint": "8cac5f221b8062c054f62df3ddd9c5231639569c",
+  "published_frustum_branch_unchanged": "cd425e46da3a53d6461bbb7d1e027e50afda839c",
+  "tg_silpom_pin": "e9684244b85e878b445606164b157b16438398d4",
+  "tg_manifest_sha256": "627fc62526d0dc10f738dcdc7a1ceb7c8f1973feb87f6723f4807bf28a5c2fdc",
+  "diversion": "dv.commit.73; project engine bundle updated locally from SILPOM main",
+  "engine_base": "061180bf24f1666eb30315b35da292eb14f4659c",
+  "terrain_base": "ee6887b4b743047f7dece1b179c0cf30cb281880",
+  "bundle": "tg-o3de-20261115",
+  "patch_sha256_lf": {
+    "engine": "35723f2ca3cc6feb9804d43863f904e000771ee31052b6b719bb7e1130bf1256",
+    "terrain-compositor": "dab37b902de3e3ca417531b6b08d9fed59c20dc02382c12426b3500a89137841"
+  },
+  "aggregate_files_verified": 95,
+  "hardware": {
+    "utc": "2026-11-16T19:05:29.3883802Z",
+    "cpu": [
+      {
+        "Name": "AMD Ryzen 7 5700G with Radeon Graphics         ",
+        "NumberOfCores": 8,
+        "NumberOfLogicalProcessors": 16
+      }
+    ],
+    "ram": [
+      {
+        "DeviceLocator": "DIMM_A1",
+        "PartNumber": "F4-3200C16-16GVK",
+        "Capacity": 17179869184,
+        "ConfiguredClockSpeed": 2133
+      },
+      {
+        "DeviceLocator": "DIMM_B1",
+        "PartNumber": "F4-3200C16-16GVK",
+        "Capacity": 17179869184,
+        "ConfiguredClockSpeed": 2133
+      }
+    ],
+    "gpu_inventory": [
+      {
+        "Name": "AMD Radeon(TM) Graphics",
+        "DriverVersion": "31.0.21923.11000",
+        "DriverDate": "2025-06-30T17:00:00-07:00",
+        "PNPDeviceID": "PCI\\VEN_1002&DEV_1638&SUBSYS_88091043&REV_C8\\4&3293EFF9&0&0041"
+      }
+    ],
+    "power": "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)",
+    "backend": "DX12",
+    "shader_model": "6_2",
+    "viewport": [
+      1280,
+      720
+    ],
+    "default_samples": 2,
+    "memory_snapshot": {
+      "utc": "2026-11-16T19:59:25.6618127Z",
+      "context": "asset processing; outside timing",
+      "available_mib": 18052.0,
+      "visible_mib": 32118.0
+    }
+  },
+  "native_build": {
+    "bundle": "tg-o3de-20261115",
+    "engine_base": "061180bf24f1666eb30315b35da292eb14f4659c",
+    "engine_patch_sha256": "35723f2ca3cc6feb9804d43863f904e000771ee31052b6b719bb7e1130bf1256",
+    "silpom_commit": "190ae52c3035d0852d5cf4998ad1c131723ef06d",
+    "dx12_shader_model": "6_2",
+    "engine_path": "D:\\engines\\o3de-tg-profile",
+    "project_path": "D:\\diversion\\TG\\TGProject",
+    "build_path": "D:\\diversion\\TG\\TGProject\\build\\profile-5700g-sm6_2",
+    "completed_utc": "2026-11-16T19:08:30.4280583Z"
+  },
+  "backend": "DX12",
+  "shader_model": "6_2",
+  "resolution": [
+    1280,
+    720
+  ],
+  "samples": 2,
+  "aa": "Current default; policy 0, SMAA off",
+  "height_derived_sampling": true,
+  "world_paint_baking": false,
+  "receiver_uv_baking": "unbound",
+  "scene_sha256": "a0894326d0eb68b7328949b1f1829a8021b7293ce16a567e0c2ea8c9148f6e7b",
+  "scene_json_sha256": "022b57a423ad8f35f7fcc5a2435cbc3f87fa0c4f0536307621a2bfc6f151f9e6",
+  "shader_sha256_lf": {
+    "Assets\\Shaders\\SilPOM\\DirectionalEstimator.azsli": "17d0a382fc7cfecd81409dd6dd2972bfb0002d8ae252585fd07107914a314e2f",
+    "Assets\\Shaders\\SilPOM\\FrustumDepthBound.azsli": "17816901f116f4c4df171a48ec3465d5da31b4f3e64d05483042fc74359cb107",
+    "Assets\\Materials\\Pipelines\\MainPipeline\\SilPOMHitDepth.azsli": "e6bf183b866f97b72afa3ab28a9487c2a96255e9fc1bcd4197ac8338d46175f1"
+  },
+  "post_timing_static_images": {
+    "exterior": 0,
+    "lower-facing": 0,
+    "lower-glancing": 0,
+    "upper-glancing": 0
+  },
+  "post_timing_comparison": {
+    "passed": true,
+    "after": "D:\\diversion\\TG\\TGProject\\user\\silpom-main-integration-20261116\\integrated-routes-2x-20261116-125537",
+    "images": 13,
+    "image_changed_pixels": 0,
+    "whole_atlas_payloads_identical": true,
+    "raw_report": "D:\\diversion\\TG\\TGProject\\user\\silpom-main-integration-20261116\\post-timing-2x-comparison.json",
+    "raw_report_sha256": "1e795daf564c08916b971ca21c76c606849f7eb7694dfe87971866a01dbb8a20"
+  },
+  "raw_root": "D:\\diversion\\TG\\TGProject\\user\\silpom-main-integration-20261116",
+  "main": {
+    "folder": "D:\\diversion\\TG\\TGProject\\user\\silpom-main-integration-20261116\\main-timings-2x-20261116-113730",
+    "source_commit": "486b178c7889cd778122fa2f55a84bbe4a0ab117",
+    "hardware": "AMD Radeon(TM) Graphics",
+    "controls": {
+      "Lighting estimator": 5,
+      "Height-derived normals (off = cheaper)": true,
+      "Level 2 predictor (experimental)": true,
+      "Gather validation (may be cheaper)": true,
+      "R16 height textures (less GPU memory)": true,
+      "Anti-aliasing": 0
+    },
+    "views": {
+      "exterior": {
+        "metrics": {
+          "hit_generation": {
+            "count": 360,
+            "median_ms": 18.477,
+            "p95_ms": 18.64405,
+            "min_ms": 18.238,
+            "max_ms": 18.863
+          },
+          "forward": {
+            "count": 360,
+            "median_ms": 26.3165,
+            "p95_ms": 31.5043,
+            "min_ms": 22.331,
+            "max_ms": 32.094
+          },
+          "graphics_span": {
+            "count": 360,
+            "median_ms": 65.2105,
+            "p95_ms": 70.2208,
+            "min_ms": 61.12,
+            "max_ms": 71.239
+          },
+          "cpu_period": {
+            "count": 360,
+            "median_ms": 65.81514999999999,
+            "p95_ms": 70.638965,
+            "min_ms": 61.3699,
+            "max_ms": 71.7646
+          }
+        },
+        "repeat_median_ranges": {
+          "hit_generation": {
+            "min_ms": 18.461,
+            "max_ms": 18.483
+          },
+          "silpom_forward_shading": {
+            "min_ms": 26.0135,
+            "max_ms": 29.7285
+          },
+          "graphics_pass_span": {
+            "min_ms": 64.725,
+            "max_ms": 68.36250000000001
+          },
+          "cpu_frame_period": {
+            "min_ms": 65.16915,
+            "max_ms": 68.67605
+          }
+        }
+      },
+      "lower-facing": {
+        "metrics": {
+          "hit_generation": {
+            "count": 360,
+            "median_ms": 59.907,
+            "p95_ms": 60.3254,
+            "min_ms": 59.397,
+            "max_ms": 60.716
+          },
+          "forward": {
+            "count": 360,
+            "median_ms": 100.27199999999999,
+            "p95_ms": 104.19485,
+            "min_ms": 97.278,
+            "max_ms": 106.384
+          },
+          "graphics_span": {
+            "count": 360,
+            "median_ms": 179.722,
+            "p95_ms": 183.66604999999998,
+            "min_ms": 175.721,
+            "max_ms": 187.836
+          },
+          "cpu_period": {
+            "count": 360,
+            "median_ms": 180.31255,
+            "p95_ms": 184.236285,
+            "min_ms": 176.1814,
+            "max_ms": 188.3825
+          }
+        },
+        "repeat_median_ranges": {
+          "hit_generation": {
+            "min_ms": 59.873000000000005,
+            "max_ms": 59.926
+          },
+          "silpom_forward_shading": {
+            "min_ms": 99.8845,
+            "max_ms": 100.517
+          },
+          "graphics_pass_span": {
+            "min_ms": 179.4365,
+            "max_ms": 180.228
+          },
+          "cpu_frame_period": {
+            "min_ms": 179.97665,
+            "max_ms": 180.84515
+          }
+        }
+      },
+      "lower-glancing": {
+        "metrics": {
+          "hit_generation": {
+            "count": 360,
+            "median_ms": 120.5495,
+            "p95_ms": 120.838,
+            "min_ms": 119.288,
+            "max_ms": 121.022
+          },
+          "forward": {
+            "count": 360,
+            "median_ms": 105.9495,
+            "p95_ms": 109.33605,
+            "min_ms": 102.116,
+            "max_ms": 111.1
+          },
+          "graphics_span": {
+            "count": 360,
+            "median_ms": 247.723,
+            "p95_ms": 251.48355,
+            "min_ms": 243.248,
+            "max_ms": 263.714
+          },
+          "cpu_period": {
+            "count": 360,
+            "median_ms": 248.34035,
+            "p95_ms": 252.222765,
+            "min_ms": 243.8264,
+            "max_ms": 264.3811
+          }
+        },
+        "repeat_median_ranges": {
+          "hit_generation": {
+            "min_ms": 120.53450000000001,
+            "max_ms": 120.576
+          },
+          "silpom_forward_shading": {
+            "min_ms": 105.816,
+            "max_ms": 106.172
+          },
+          "graphics_pass_span": {
+            "min_ms": 247.4875,
+            "max_ms": 247.922
+          },
+          "cpu_frame_period": {
+            "min_ms": 248.1094,
+            "max_ms": 248.57725
+          }
+        }
+      },
+      "upper-glancing": {
+        "metrics": {
+          "hit_generation": {
+            "count": 360,
+            "median_ms": 113.321,
+            "p95_ms": 115.81955,
+            "min_ms": 111.642,
+            "max_ms": 117.376
+          },
+          "forward": {
+            "count": 360,
+            "median_ms": 91.156,
+            "p95_ms": 92.45994999999999,
+            "min_ms": 88.934,
+            "max_ms": 94.296
+          },
+          "graphics_span": {
+            "count": 360,
+            "median_ms": 225.9315,
+            "p95_ms": 229.40834999999998,
+            "min_ms": 222.267,
+            "max_ms": 240.544
+          },
+          "cpu_period": {
+            "count": 360,
+            "median_ms": 226.50725,
+            "p95_ms": 229.95986000000002,
+            "min_ms": 222.8521,
+            "max_ms": 241.1464
+          }
+        },
+        "repeat_median_ranges": {
+          "hit_generation": {
+            "min_ms": 113.26599999999999,
+            "max_ms": 113.38900000000001
+          },
+          "silpom_forward_shading": {
+            "min_ms": 91.0675,
+            "max_ms": 91.34
+          },
+          "graphics_pass_span": {
+            "min_ms": 225.71949999999998,
+            "max_ms": 226.0985
+          },
+          "cpu_frame_period": {
+            "min_ms": 226.32245,
+            "max_ms": 226.80915
+          }
+        }
+      }
+    },
+    "scene_sha256": "a0894326d0eb68b7328949b1f1829a8021b7293ce16a567e0c2ea8c9148f6e7b",
+    "tower_configuration_sha256": "0584f1064982f7229d13ca9c426eb847cb655d31390895b8ce5e2d90ae1714ee",
+    "effective_tower_configuration_sha256": "b76f275b9af10b14731ac7dc5115e1e29eb6edb11cebd57cd05e22b3b32ec67e",
+    "captures": {
+      "gpu-exterior-1.json": "8f80407c9f7392afffbb5d44c651fd36ff196adcd846f9e2fa7b8ef7898aa5eb",
+      "gpu-exterior-2.json": "617c0333c6677492f3a11d6e5391376acc1966feef87619cbaa822372628ebf6",
+      "gpu-exterior-3.json": "3f50ea731c1f98ad98df28eab0c700b89c2552c051da2da27d7a95ebe9c035b6",
+      "gpu-lower-facing-1.json": "e794b96138ca11c987887863f2fa87d7ba419085309d44ba1d8e875c8d8cabef",
+      "gpu-lower-facing-2.json": "e36822306486b6396433476a44d846f572924c1efe006dd90fed364146dced6e",
+      "gpu-lower-facing-3.json": "9efad42d3a8fbb5c17afad599add223744879873361700ee63efef7991373862",
+      "gpu-lower-glancing-1.json": "27f4bb8dc15ee36d8f3fe47f4f950511a2d3264cbd8a73346077904b4a84c521",
+      "gpu-lower-glancing-2.json": "2d7965a07cccd712981c5db1a0392e2841aacc96d31d7aa78e20305fc998e456",
+      "gpu-lower-glancing-3.json": "63632af67a21231a5e07ac01e4fe255eb14ca442bca5e3f55e324ddeb8eb999e",
+      "gpu-upper-glancing-1.json": "2a711f501205752e92fe724c063a921916f165194128eeb8ba84437d2a8f3188",
+      "gpu-upper-glancing-2.json": "3ff906be623f8fdbec599c4de03f7af6c58ed35485b1edef64e0d440501a2977",
+      "gpu-upper-glancing-3.json": "2cd6045579d89d4df3b5071875d7e3227d3ece67b4918764acf3d84c3de28aaa"
+    }
+  },
+  "integrated": {
+    "folder": "D:\\diversion\\TG\\TGProject\\user\\silpom-main-integration-20261116\\integrated-timings-2x-20261116-123938",
+    "source_commit": "c05b9a3b72fc376db9c70f25b2fc55b043d78a3f",
+    "hardware": "AMD Radeon(TM) Graphics",
+    "controls": {
+      "Lighting estimator": 5,
+      "Height-derived normals (off = cheaper)": true,
+      "Level 2 predictor (experimental)": true,
+      "Gather validation (may be cheaper)": true,
+      "R16 height textures (less GPU memory)": true,
+      "Anti-aliasing": 0
+    },
+    "views": {
+      "exterior": {
+        "metrics": {
+          "hit_generation": {
+            "count": 360,
+            "median_ms": 18.675,
+            "p95_ms": 18.854499999999998,
+            "min_ms": 18.346,
+            "max_ms": 19.071
+          },
+          "forward": {
+            "count": 360,
+            "median_ms": 23.0465,
+            "p95_ms": 25.450200000000002,
+            "min_ms": 22.154,
+            "max_ms": 27.655
+          },
+          "graphics_span": {
+            "count": 360,
+            "median_ms": 62.552,
+            "p95_ms": 65.9817,
+            "min_ms": 60.934,
+            "max_ms": 78.54
+          },
+          "cpu_period": {
+            "count": 360,
+            "median_ms": 62.90605,
+            "p95_ms": 66.63346,
+            "min_ms": 61.1036,
+            "max_ms": 78.99
+          }
+        },
+        "repeat_median_ranges": {
+          "hit_generation": {
+            "min_ms": 18.671999999999997,
+            "max_ms": 18.677
+          },
+          "silpom_forward_shading": {
+            "min_ms": 23.025,
+            "max_ms": 23.0655
+          },
+          "graphics_pass_span": {
+            "min_ms": 62.513999999999996,
+            "max_ms": 62.6265
+          },
+          "cpu_frame_period": {
+            "min_ms": 62.849450000000004,
+            "max_ms": 63.04685
+          }
+        }
+      },
+      "lower-facing": {
+        "metrics": {
+          "hit_generation": {
+            "count": 360,
+            "median_ms": 59.899,
+            "p95_ms": 60.3333,
+            "min_ms": 59.429,
+            "max_ms": 60.703
+          },
+          "forward": {
+            "count": 360,
+            "median_ms": 100.10249999999999,
+            "p95_ms": 103.5962,
+            "min_ms": 97.162,
+            "max_ms": 105.119
+          },
+          "graphics_span": {
+            "count": 360,
+            "median_ms": 180.434,
+            "p95_ms": 184.31609999999998,
+            "min_ms": 176.233,
+            "max_ms": 195.08
+          },
+          "cpu_period": {
+            "count": 360,
+            "median_ms": 180.97445,
+            "p95_ms": 184.83515,
+            "min_ms": 176.7118,
+            "max_ms": 195.6012
+          }
+        },
+        "repeat_median_ranges": {
+          "hit_generation": {
+            "min_ms": 59.876000000000005,
+            "max_ms": 59.9435
+          },
+          "silpom_forward_shading": {
+            "min_ms": 99.9705,
+            "max_ms": 100.179
+          },
+          "graphics_pass_span": {
+            "min_ms": 180.30349999999999,
+            "max_ms": 180.59449999999998
+          },
+          "cpu_frame_period": {
+            "min_ms": 180.83505,
+            "max_ms": 181.05329999999998
+          }
+        }
+      },
+      "lower-glancing": {
+        "metrics": {
+          "hit_generation": {
+            "count": 360,
+            "median_ms": 120.553,
+            "p95_ms": 120.85024999999999,
+            "min_ms": 119.227,
+            "max_ms": 121.079
+          },
+          "forward": {
+            "count": 360,
+            "median_ms": 106.31450000000001,
+            "p95_ms": 109.7975,
+            "min_ms": 102.464,
+            "max_ms": 116.501
+          },
+          "graphics_span": {
+            "count": 360,
+            "median_ms": 248.5125,
+            "p95_ms": 252.61894999999998,
+            "min_ms": 244.278,
+            "max_ms": 266.313
+          },
+          "cpu_period": {
+            "count": 360,
+            "median_ms": 249.14825000000002,
+            "p95_ms": 253.289545,
+            "min_ms": 244.9003,
+            "max_ms": 267.0047
+          }
+        },
+        "repeat_median_ranges": {
+          "hit_generation": {
+            "min_ms": 120.52250000000001,
+            "max_ms": 120.57149999999999
+          },
+          "silpom_forward_shading": {
+            "min_ms": 106.2515,
+            "max_ms": 106.5355
+          },
+          "graphics_pass_span": {
+            "min_ms": 248.4125,
+            "max_ms": 248.6485
+          },
+          "cpu_frame_period": {
+            "min_ms": 249.05185,
+            "max_ms": 249.26175
+          }
+        }
+      },
+      "upper-glancing": {
+        "metrics": {
+          "hit_generation": {
+            "count": 360,
+            "median_ms": 112.51050000000001,
+            "p95_ms": 115.5882,
+            "min_ms": 111.496,
+            "max_ms": 117.302
+          },
+          "forward": {
+            "count": 360,
+            "median_ms": 91.336,
+            "p95_ms": 93.13435,
+            "min_ms": 88.776,
+            "max_ms": 102.218
+          },
+          "graphics_span": {
+            "count": 360,
+            "median_ms": 226.6645,
+            "p95_ms": 230.80884999999998,
+            "min_ms": 223.444,
+            "max_ms": 240.47
+          },
+          "cpu_period": {
+            "count": 360,
+            "median_ms": 227.28865,
+            "p95_ms": 231.41575,
+            "min_ms": 224.0898,
+            "max_ms": 241.1504
+          }
+        },
+        "repeat_median_ranges": {
+          "hit_generation": {
+            "min_ms": 112.477,
+            "max_ms": 112.54249999999999
+          },
+          "silpom_forward_shading": {
+            "min_ms": 91.196,
+            "max_ms": 91.416
+          },
+          "graphics_pass_span": {
+            "min_ms": 226.51999999999998,
+            "max_ms": 226.938
+          },
+          "cpu_frame_period": {
+            "min_ms": 227.1423,
+            "max_ms": 227.53910000000002
+          }
+        }
+      }
+    },
+    "scene_sha256": "a0894326d0eb68b7328949b1f1829a8021b7293ce16a567e0c2ea8c9148f6e7b",
+    "tower_configuration_sha256": "0584f1064982f7229d13ca9c426eb847cb655d31390895b8ce5e2d90ae1714ee",
+    "effective_tower_configuration_sha256": "b76f275b9af10b14731ac7dc5115e1e29eb6edb11cebd57cd05e22b3b32ec67e",
+    "captures": {
+      "gpu-exterior-1.json": "6dc9bf4a6d70b0db96d4ca82e63457813605aaaf5ab1f6a69e66b7fad8821eb0",
+      "gpu-exterior-2.json": "324f1b5ac99f455956f8ab31bcf23e25db33b0c236bf7f2a9846090530e5034c",
+      "gpu-exterior-3.json": "eafacd91b04cb62d772c54905a29a2a31680776b3922c3dc4e87c6479df9a2d0",
+      "gpu-lower-facing-1.json": "ac394df6c57a23c378883223bb5981fa3c3a59147150d29cd14824cd9f4f0b9e",
+      "gpu-lower-facing-2.json": "65d05b930be75c7f5847da7812873c75b1fc7c632b87f240a5823cead033bbbf",
+      "gpu-lower-facing-3.json": "b07ec4797e96163c4027c6da13a70f497084a2b713edaf068acda5569d577309",
+      "gpu-lower-glancing-1.json": "d10c16e257e6b067d866977f26efb6f787712eb7788d62b65aa0c11a6ef18a8e",
+      "gpu-lower-glancing-2.json": "f3bdb318a24876fb5682cf626d243ff3c1aa1803294142eb6ffbc977f6712d5e",
+      "gpu-lower-glancing-3.json": "6fc6443321229979e1268d231329bb99b5e1c9a2af0c689e75d8d2f0c8975db5",
+      "gpu-upper-glancing-1.json": "38a6f6388ac74d09f1362ee59a0abc403bc4d10a1808861b643d071f01ba7465",
+      "gpu-upper-glancing-2.json": "b857db0c07b29d14dc204fa27c4f7a68a7f5ba0481d7801c71e87ab60b602eb7",
+      "gpu-upper-glancing-3.json": "64a0be12325b5e330f0cc1a0207c4b436db200ffeb4c5dc155bffef5bbaabcc1"
+    }
+  },
+  "median_change_percent": {
+    "exterior": {
+      "hit_generation": 1.0716025328787238,
+      "forward": -12.42566450705831,
+      "graphics_span": -4.076797448263692,
+      "cpu_period": -4.420106920670985
+    },
+    "lower-facing": {
+      "hit_generation": -0.013354032083057188,
+      "forward": -0.16904021062709162,
+      "graphics_span": 0.39616741411734324,
+      "cpu_period": 0.36708482021912126
+    },
+    "lower-glancing": {
+      "hit_generation": 0.0029033716440141077,
+      "forward": 0.3445037494278047,
+      "graphics_span": 0.31870274459777637,
+      "cpu_period": 0.32531966714228755
+    },
+    "upper-glancing": {
+      "hit_generation": -0.7152248921206028,
+      "forward": 0.19746368862170183,
+      "graphics_span": 0.32443461845736987,
+      "cpu_period": 0.34497792013279405
+    }
+  },
+  "program_consistency": {
+    "main": {
+      "silpommeshuv_mainpipeline_silpomhitforwardangularproxyambient-nomsaa_dx12_0.azshadervariant": "3D3A47CDC38EBE95C6D5FA31A119B7C37CD02EE9F053BEA9DF3B5F1DAA490829",
+      "silpommeshuv_mainpipeline_silpomhitforwardangularambient_dx12_0.azshadervariant": "5489E9144FC997C3CA8550EB4A833D7D6FF9D807553DFF32479D548119AC38BB",
+      "silpommesh_mainpipeline_silpomhitforwardangularproxyambient_dx12_0.azshadervariant": "826104B68FA3817A65B1FC3C52FCFECAE4EA87E735482D1BC185C364CD3FEE8D",
+      "silpommeshuv_mainpipeline_silpomhitforwardangular_dx12_0.azshadervariant": "D400E80FD1C0277F899EE1B4D64F2912C6384D1D70DDDCE1FFBA135500F66CB5",
+      "silpommeshuv_mainpipeline_silpomhitforwardangular-nomsaa_dx12_0.azshadervariant": "6E4646096CEAF97E38BD2B2D1F294548023EA96A2261D84D3E9A62442BC19DCE",
+      "silpommesh_mainpipeline_silpomhitforwardangularproxy_dx12_0.azshadervariant": "CBEC4AF4EB6CF79EE4AC1E1CC81B0090EC44ED6794C9C1DAF6C9939067FDF7C7",
+      "silpommesh_mainpipeline_silpomhitforwardangular-nomsaa_dx12_0.azshadervariant": "BD103BC2E5677D83D78CE0BD11465F9EC72ACE3CB89AF6F88D383806BB1CE1BA",
+      "silpommeshuv_mainpipeline_silpomhitforwardangularambient-nomsaa_dx12_0.azshadervariant": "E04C9AABC9B1B030E2251F433253590D65192F3D8952B3145F1CE0FCA7865983",
+      "silpommesh_mainpipeline_silpomhitforwardangularambient-nomsaa_dx12_0.azshadervariant": "23DA308011F922C29CF7303BE9ACD5594B3C24AA6AE9E983BFDC4F0D65B07B35",
+      "silpommesh_mainpipeline_silpomhitforwardangularambient_dx12_0.azshadervariant": "B1F8EF978CF62860D1E333C4AAA7AA034EF75E45479E9F73CF0E1612AB4B8873",
+      "silpommeshuv_mainpipeline_silpomhitforwardangularproxy-nomsaa_dx12_0.azshadervariant": "D2D1A0CAE1502C50A4C495195066D1C31C3F9A149CD897A4242BB0758DB63342",
+      "silpommeshuv_mainpipeline_silpomhitforwardangularproxyambient_dx12_0.azshadervariant": "7E180D094E15957E8004A54E5801DC193AF77C64366007104D3E92A01ABFAB21",
+      "silpommeshuv_mainpipeline_silpomhitforwardangularproxy_dx12_0.azshadervariant": "A34AC96FACB4A2A201D32EA70CFEFC1CF18D2C0B6260F2A06F04F9A365CE8A8C",
+      "silpommesh_mainpipeline_silpomhitforwardangularproxyambient-nomsaa_dx12_0.azshadervariant": "DB4A8FDBF51ED5B56973494BEE0483A9A5C7CD0661E0F51A00590896A85713F7",
+      "silpommesh_mainpipeline_silpomhitforwardangular_dx12_0.azshadervariant": "CA1CAD3E725FE5574A30C4EC3C9E704632FAB2D6CEAC6F25B49A7E4CDEF8597E",
+      "silpommesh_mainpipeline_silpomhitforwardangularproxy-nomsaa_dx12_0.azshadervariant": "723075F193D9A5CBB57CF9496FD32AD641F3F5B5CF1615360B955F9F68AD81CD"
+    },
+    "integrated": {
+      "silpommeshuv_mainpipeline_silpomhitforwardangularproxyambient-nomsaa_dx12_0.azshadervariant": "648ABB1E8E22025D9116CA6A691CB96036E0F4E6C8849BA7526D1E131D5E4C39",
+      "silpommeshuv_mainpipeline_silpomhitforwardangularambient_dx12_0.azshadervariant": "1EEB9048CF8662C72B3E0D37E8B74F7853507480DDCE4817A0B0C1D5B91D4401",
+      "silpommesh_mainpipeline_silpomhitforwardangularproxyambient_dx12_0.azshadervariant": "98F8FD66E3C9E6C5C6C11748DA2B392F330B086422161F825F1C38C8AA88012F",
+      "silpommeshuv_mainpipeline_silpomhitforwardangular_dx12_0.azshadervariant": "D400E80FD1C0277F899EE1B4D64F2912C6384D1D70DDDCE1FFBA135500F66CB5",
+      "silpommeshuv_mainpipeline_silpomhitforwardangular-nomsaa_dx12_0.azshadervariant": "6E4646096CEAF97E38BD2B2D1F294548023EA96A2261D84D3E9A62442BC19DCE",
+      "silpommesh_mainpipeline_silpomhitforwardangularproxy_dx12_0.azshadervariant": "CBEC4AF4EB6CF79EE4AC1E1CC81B0090EC44ED6794C9C1DAF6C9939067FDF7C7",
+      "silpommesh_mainpipeline_silpomhitforwardangular-nomsaa_dx12_0.azshadervariant": "BD103BC2E5677D83D78CE0BD11465F9EC72ACE3CB89AF6F88D383806BB1CE1BA",
+      "silpommeshuv_mainpipeline_silpomhitforwardangularambient-nomsaa_dx12_0.azshadervariant": "61080935E4D332DE729CFA65FF99A697A72B0F9264B30E32C1A328F031105F04",
+      "silpommesh_mainpipeline_silpomhitforwardangularambient-nomsaa_dx12_0.azshadervariant": "56CE3C50E3BD1A0E27727C54C4EEAA931E21024F9A94040142DE6B262922AFC6",
+      "silpommesh_mainpipeline_silpomhitforwardangularambient_dx12_0.azshadervariant": "42D9717EA79D027A508202528EA3B4896C21A6737A72819EEF2C6B369E4484BD",
+      "silpommeshuv_mainpipeline_silpomhitforwardangularproxy-nomsaa_dx12_0.azshadervariant": "D2D1A0CAE1502C50A4C495195066D1C31C3F9A149CD897A4242BB0758DB63342",
+      "silpommeshuv_mainpipeline_silpomhitforwardangularproxyambient_dx12_0.azshadervariant": "A42ACBC93AE1212A691CE2056DA7D60F31369F6D0F9DEC023FA27787AC954829",
+      "silpommeshuv_mainpipeline_silpomhitforwardangularproxy_dx12_0.azshadervariant": "A34AC96FACB4A2A201D32EA70CFEFC1CF18D2C0B6260F2A06F04F9A365CE8A8C",
+      "silpommesh_mainpipeline_silpomhitforwardangularproxyambient-nomsaa_dx12_0.azshadervariant": "21219027C5F3742158ADDC50ED0144948F06A7D27F8561E266B06C9805B8C2DC",
+      "silpommesh_mainpipeline_silpomhitforwardangular_dx12_0.azshadervariant": "CA1CAD3E725FE5574A30C4EC3C9E704632FAB2D6CEAC6F25B49A7E4CDEF8597E",
+      "silpommesh_mainpipeline_silpomhitforwardangularproxy-nomsaa_dx12_0.azshadervariant": "723075F193D9A5CBB57CF9496FD32AD641F3F5B5CF1615360B955F9F68AD81CD"
+    },
+    "changed": [
+      "silpommeshuv_mainpipeline_silpomhitforwardangularproxyambient-nomsaa_dx12_0.azshadervariant",
+      "silpommeshuv_mainpipeline_silpomhitforwardangularambient_dx12_0.azshadervariant",
+      "silpommesh_mainpipeline_silpomhitforwardangularproxyambient_dx12_0.azshadervariant",
+      "silpommeshuv_mainpipeline_silpomhitforwardangularambient-nomsaa_dx12_0.azshadervariant",
+      "silpommesh_mainpipeline_silpomhitforwardangularambient-nomsaa_dx12_0.azshadervariant",
+      "silpommesh_mainpipeline_silpomhitforwardangularambient_dx12_0.azshadervariant",
+      "silpommeshuv_mainpipeline_silpomhitforwardangularproxyambient_dx12_0.azshadervariant",
+      "silpommesh_mainpipeline_silpomhitforwardangularproxyambient-nomsaa_dx12_0.azshadervariant"
+    ],
+    "unchanged": [
+      "silpommeshuv_mainpipeline_silpomhitforwardangular_dx12_0.azshadervariant",
+      "silpommeshuv_mainpipeline_silpomhitforwardangular-nomsaa_dx12_0.azshadervariant",
+      "silpommesh_mainpipeline_silpomhitforwardangularproxy_dx12_0.azshadervariant",
+      "silpommesh_mainpipeline_silpomhitforwardangular-nomsaa_dx12_0.azshadervariant",
+      "silpommeshuv_mainpipeline_silpomhitforwardangularproxy-nomsaa_dx12_0.azshadervariant",
+      "silpommeshuv_mainpipeline_silpomhitforwardangularproxy_dx12_0.azshadervariant",
+      "silpommesh_mainpipeline_silpomhitforwardangular_dx12_0.azshadervariant",
+      "silpommesh_mainpipeline_silpomhitforwardangularproxy-nomsaa_dx12_0.azshadervariant"
+    ],
+    "consistent_within_each_cohort": true
+  },
+  "visual_comparisons": {
+    "1": {
+      "images": 13,
+      "image_changed_pixels": 0,
+      "real_sample_planes": 12,
+      "depth_sample_positions": 11059200,
+      "unchanged_valid_records": 10005410,
+      "strict_comparison_passed": true,
+      "whole_atlas_payloads_identical": true,
+      "rendered_movement_steps": 29,
+      "movement_capture_stops": 8
+    },
+    "2": {
+      "images": 13,
+      "image_changed_pixels": 0,
+      "real_sample_planes": 24,
+      "depth_sample_positions": 22118400,
+      "unchanged_valid_records": 20010654,
+      "strict_comparison_passed": true,
+      "whole_atlas_payloads_identical": true,
+      "rendered_movement_steps": 29,
+      "movement_capture_stops": 8
+    },
+    "4": {
+      "images": 13,
+      "image_changed_pixels": 0,
+      "real_sample_planes": 48,
+      "depth_sample_positions": 44236800,
+      "unchanged_valid_records": 40000291,
+      "strict_comparison_passed": true,
+      "whole_atlas_payloads_identical": true,
+      "rendered_movement_steps": 29,
+      "movement_capture_stops": 8
+    }
+  },
+  "paint_grouping_validation": {
+    "passed": true,
+    "samples": 2,
+    "paint_baking_off": true,
+    "height_derived_sampling": true,
+    "views": {
+      "outside": {
+        "valid_samples": 151196,
+        "lost": 0,
+        "gained": 0,
+        "changed_winner_records": 0,
+        "diffuse_changed_samples": 0,
+        "diffuse_real_sample_planes_equal": true,
+        "normal_changed_samples": 0,
+        "normal_real_sample_planes_equal": true,
+        "passed": true
+      },
+      "inside": {
+        "valid_samples": 1843031,
+        "lost": 0,
+        "gained": 0,
+        "changed_winner_records": 0,
+        "diffuse_changed_samples": 0,
+        "diffuse_real_sample_planes_equal": true,
+        "normal_changed_samples": 0,
+        "normal_real_sample_planes_equal": true,
+        "passed": true,
+        "visible_paint_samples": 1843031
+      }
+    }
+  },
+  "asset_jobs": {
+    "native_build": {
+      "processed": 801,
+      "failed": 0,
+      "errors": 0
+    },
+    "main": {
+      "processed": 613,
+      "failed": 0,
+      "errors": 0
+    },
+    "integrated": {
+      "processed": 78,
+      "failed": 0,
+      "errors": 0
+    }
+  },
+  "targeted_cpu_gpu_tests": 8,
+  "gpu_model_queries_per_target": 5384,
+  "standalone_gpu_targets": [
+    "6_2",
+    "6_7"
+  ],
+  "renderer_binding_assertion_device_lost_errors": [],
+  "other_editor_error_summary": [
+    {
+      "folder": "integrated-paint-2x-20261116-121630",
+      "message": "[Error] (DiffuseProbeGrid) - DiffuseProbeGrid mode is set to Baked or Auto-Select, but it does not have baked texture assets. Please re-bake this DiffuseProbeGrid.",
+      "count": 16
+    },
+    {
+      "folder": "integrated-paint-2x-20261116-121948",
+      "message": "[Error] (DiffuseProbeGrid) - DiffuseProbeGrid mode is set to Baked or Auto-Select, but it does not have baked texture assets. Please re-bake this DiffuseProbeGrid.",
+      "count": 24
+    },
+    {
+      "folder": "integrated-paint-2x-20261116-121948",
+      "message": "[Error] (YarnEditor) - Cannot find the Yarn build script: D:\\diversion\\TG\\assets-source\\Yarn\\The Leucistic Raven\\BuildCredits.ps1",
+      "count": 1
+    },
+    {
+      "folder": "integrated-paint-2x-20261116-121948",
+      "message": "[Error] (Script) - assets/characters/falconry/falconryfirstperson.lua:368: attempt to perform arithmetic on a nil value (field 'normalFov')",
+      "count": 2906
+    },
+    {
+      "folder": "integrated-paint-2x-20261116-122805",
+      "message": "[Error] (YarnEditor) - Cannot find the Yarn build script: D:\\diversion\\TG\\assets-source\\Yarn\\The Leucistic Raven\\BuildCredits.ps1",
+      "count": 1
+    },
+    {
+      "folder": "integrated-paint-2x-20261116-123404",
+      "message": "[Error] (YarnEditor) - Cannot find the Yarn build script: D:\\diversion\\TG\\assets-source\\Yarn\\The Leucistic Raven\\BuildCredits.ps1",
+      "count": 1
+    },
+    {
+      "folder": "integrated-routes-1x-20261116-120625",
+      "message": "[Error] (YarnEditor) - Cannot find the Yarn build script: D:\\diversion\\TG\\assets-source\\Yarn\\The Leucistic Raven\\BuildCredits.ps1",
+      "count": 1
+    },
+    {
+      "folder": "integrated-routes-2x-20261116-120208",
+      "message": "[Error] (YarnEditor) - Cannot find the Yarn build script: D:\\diversion\\TG\\assets-source\\Yarn\\The Leucistic Raven\\BuildCredits.ps1",
+      "count": 1
+    },
+    {
+      "folder": "integrated-routes-2x-20261116-125537",
+      "message": "[Error] (YarnEditor) - Cannot find the Yarn build script: D:\\diversion\\TG\\assets-source\\Yarn\\The Leucistic Raven\\BuildCredits.ps1",
+      "count": 1
+    },
+    {
+      "folder": "integrated-routes-4x-20261116-120914",
+      "message": "[Error] (YarnEditor) - Cannot find the Yarn build script: D:\\diversion\\TG\\assets-source\\Yarn\\The Leucistic Raven\\BuildCredits.ps1",
+      "count": 1
+    },
+    {
+      "folder": "main-routes-1x-20261116-112628",
+      "message": "[Error] (YarnEditor) - Cannot find the Yarn build script: D:\\diversion\\TG\\assets-source\\Yarn\\The Leucistic Raven\\BuildCredits.ps1",
+      "count": 1
+    },
+    {
+      "folder": "main-routes-2x-20261116-112141",
+      "message": "[Error] (YarnEditor) - Cannot find the Yarn build script: D:\\diversion\\TG\\assets-source\\Yarn\\The Leucistic Raven\\BuildCredits.ps1",
+      "count": 1
+    },
+    {
+      "folder": "main-routes-4x-20261116-112923",
+      "message": "[Error] (YarnEditor) - Cannot find the Yarn build script: D:\\diversion\\TG\\assets-source\\Yarn\\The Leucistic Raven\\BuildCredits.ps1",
+      "count": 1
+    }
+  ],
+  "preservation": {
+    "checked": 18,
+    "raw_unchanged": 17,
+    "line_ending_only": [
+      {
+        "path": "D:\\diversion\\TG\\TGProject\\Gems\\silpom\\Assets\\Shaders\\SilPOM\\FrustumDepthBound.azsli",
+        "raw_before": "17816901f116f4c4df171a48ec3465d5da31b4f3e64d05483042fc74359cb107",
+        "raw_after": "b800e24715c00376e8088f93cc75e7d75e1a195fbc0c0de8f0a7329ec6140bcb",
+        "reason": "Git checkout expanded LF to CRLF; old and current Git blobs and normalized working file are identical"
+      }
+    ],
+    "semantic_changes": []
+  },
+  "historical_reference": "All 39 pixels/image comparisons, UVs, coverage and depth identical. New receiver allocations renumber every valid owner ID by +2. Strict historical failures are retained; fresh main/integrated comparison remains fully strict.",
+  "timing_protocol": {
+    "captures_per_view": 3,
+    "frames_per_capture": 120,
+    "valid_timestamps_per_view_metric": 360,
+    "camera_warmup_frames": 90,
+    "warmup_per_repeat": 120,
+    "reference_ready_wait_frames": 30,
+    "native_capture_warmup_frames": 16,
+    "screenshots_and_readbacks_during_timing": false,
+    "partial_required_passes": false
+  },
+  "limitations": [
+    "Graphics spans contain queue gaps and are not GPU busy time or FPS.",
+    "CPU frame periods include waiting and delayed query collection, not CPU busy time or exact paired frame costs.",
+    "Exterior forward repeat medians vary substantially; qualify its apparent change.",
+    "Native build C++ is identical between main and integration; only shader assets were rebuilt between cohorts.",
+    "First main 2x visual launcher did not retain exit code; fixture and all captures completed. First 1x exit 0 independently observed. Handle retention fixed before subsequent runs and all timestamps.",
+    "No new RenderDoc counters, ISA/occupancy measurements or Developer Mode changes."
+  ]
+}
