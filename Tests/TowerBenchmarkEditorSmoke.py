@@ -5,6 +5,32 @@ exec(compile(helper.read_text().split('\ndef main():')[0],str(helper),'exec'))
 LEVEL=PROJECT/'Levels/SilPOMTowerBenchmark/SilPOMTowerBenchmark.prefab'
 
 
+def paint_baking_off(eid):
+    world=str(general.get_cvar('r_silpomPaintBake')).lower()
+    receiver=json.loads(silpom.SilPomMeshRequestBus(bus.Event,'GetReceiverUvPaintStatus',eid))
+    assert world in ('false','0','0.0'),world
+    assert receiver['state']=='unbound',receiver
+    return {'world_cache':world,'receiver_uv':receiver}
+
+
+def camera_notice_timer():
+    """Acknowledge only the known camera reminder, without suppressing it."""
+    from PySide6 import QtCore,QtWidgets
+    settings=QtCore.QSettings()
+    keys=[k for k in settings.allKeys() if k.endswith('/RestoreViewportCamera')]
+    previous=settings.value(keys[0]) if keys else True
+    restore=str(previous).lower() in ('true','1')
+    timer=QtCore.QTimer()
+    def dismiss():
+        for widget in QtWidgets.QApplication.topLevelWidgets():
+            if isinstance(widget,QtWidgets.QMessageBox) and 'automatically restore your camera position' in widget.text():
+                if widget.checkBox():widget.checkBox().setChecked(False)
+                result['camera_reminder_acknowledged_without_suppression']=True
+                widget.done(QtWidgets.QMessageBox.Yes if restore else QtWidgets.QMessageBox.No)
+    timer.timeout.connect(dismiss);timer.start(250)
+    return timer
+
+
 def capture_route_view(name):
     """Exact real-sample export at 1x/2x/4x, diagnostic runs only."""
     screenshot(OUTPUT/(name+'.png'))
@@ -40,7 +66,7 @@ def main():
     assert hashlib.sha256(source).hexdigest()==fixture['scene_sha256']
     general.idle_enable(True)
     for name,value in (('ed_keepEditorActive',1),('ed_backgroundUpdatePeriod',-1),('r_displayInfo',0),
-                       ('vsync_interval',0),('sys_MaxFPS',-1)):
+                       ('vsync_interval',0),('sys_MaxFPS',-1),('r_silpomPaintBake',0)):
         command(name,value)
     assert general.open_level(str(LEVEL));general.idle_wait_frames(90)
     query=entity.SearchFilter();query.names=['Irish Fieldstone Tower (Open Shaft)']
@@ -70,6 +96,7 @@ def main():
     if not read(component,normals):
         write(component,normals,True)
     ready()
+    result['paint_baking_off']=paint_baking_off(tower)
     expected={'Lighting estimator':5,
         'Height-derived normals (off = cheaper)':True,
         'Level 2 predictor (experimental)':cfg['UseLevelTwoPredictor'],
@@ -137,6 +164,7 @@ def main():
         result['camera_movement_complete']=True
     if timing_only or renderdoc_view:
         renderer_clean()
+        result['final_paint_baking_off']=paint_baking_off(tower)
         assert LEVEL.read_bytes()==source
         assert (PROJECT/'Levels/VueLiveLink/VueLiveLink.prefab').read_bytes()==original
         result.update(passed=True,stage='complete',saved_level_unchanged=True,
@@ -151,9 +179,12 @@ def main():
     runtime_state=silpom.SilPomMeshRequestBus(bus.Event,'GetAntiAliasingState',runtime)
     result['gameplay_aa_state']=[int(runtime_state.x),int(runtime_state.y),int(runtime_state.z)]
     assert result['gameplay_aa_state']==[samples,0,0]
+    result['gameplay_paint_baking_off']=paint_baking_off(runtime)
     screenshot(OUTPUT/'gameplay.png')
     if camera_path:result['image_views'].append('gameplay')
+    notice_timer=camera_notice_timer()
     general.exit_game_mode();general.idle_enable(True);general.idle_wait(3.0);ready()
+    notice_timer.stop()
     renderer_clean()
     log=(PROJECT/'user/log/Editor.log').read_text(errors='replace')
     assert 'does not have baked texture assets' not in log
