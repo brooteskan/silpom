@@ -43,6 +43,36 @@ tower's source material asset or its heightmap. Save the level to save your
 work. Layers and saved texels travel with a texture-paint entity when it is
 saved as a prefab; legacy documents retain their layers and strokes instead.
 
+## Camera aids
+
+The painter has independent **Camera light** and **Camera collisions** toggles.
+Both work while the pane is visible, including when **Enable painting** is off.
+You can light the view while flying freely, use collision with the scene's own
+lighting, or enable both together.
+
+Camera light follows the main viewport camera's position and viewing direction.
+It provides a broad white light for inspecting and painting nearby surfaces.
+Its brightness control uses lux at 1 m directly in front of the camera, with a
+default of 10 lux and a range of 0 to 1,000,000 lux. Illumination falls with
+distance. You can adjust the value while the light is off; this does not enable
+the light or camera collisions. Adjusting it while the light is on takes effect
+immediately.
+The light is temporary and creates no scene entity. Hiding or closing the painter
+releases it; it is not saved with the level or paint document.
+
+Camera collision keeps normal fly navigation and constrains movement against
+blocking scene geometry. A 0.05 m camera radius (10 cm diameter) leaves clearance at walls, and
+movement can slide along them. This is a navigation aid with no gravity.
+It uses Editor physics colliders where available and SiLPOM geometry with
+conservative clearance for the full relief range; both support wall sliding.
+Other render-only geometry uses 18 sample paths around the camera sphere. This
+fallback stops movement at a hit, and can miss narrow features. Strong relief
+can stop the camera a little before the visible surface.
+It applies to the free Editor camera and pauses in Play
+mode or while a camera entity controls the viewport.
+Hiding or closing the painter releases the movement constraint. The two toggle
+selections are kept when the pane is hidden and resume when it is shown.
+
 ## Automatic Composite (legacy documents)
 
 Each paint entity retains the **newest 100 dabs** as editable paint. Every older
@@ -80,10 +110,25 @@ one paint entity, as before.
 
 ## Painting
 
+For a surface-texture paint document, **Brush shape** chooses **Hard round**,
+**Soft round**, **Hard square**, **Soft square**, **Random edge round**, or
+**Texture stamp**. The four round/square brushes use the selected paint color;
+the soft variants fade toward their edges. Random edge round has a solid center
+and scattered coverage near its edge. It calculates a fresh pattern for every
+dab, including each placement in a continuous stroke. The applied texels are
+saved, so undo/redo and loading a painting preserve that exact pattern.
+
+These five procedural brushes need no material or image asset and do not add
+normal detail. Changing their shape preserves the selected paint color.
+Diameter, rotation, opacity, pressure, spacing and height ranges still apply.
+Erase uses the selected shape and opacity to remove coverage. Shape selection
+is disabled for legacy projection documents, which keep their texture brushes.
+
 The **Decal library** shows thumbnail tiles for the included round brushes and
 SurfaceTexture 0001/0002 stamps. Click a tile to choose it for new paint. Textured
-stamps use white tint, full dab opacity and their normal map; adjust these below
-the library as needed. Brush choices affect future painting. Existing texture
+tiles select **Texture stamp** and use white tint, full dab opacity and their
+normal map; adjust these below the library as needed. Brush choices affect
+future painting. Existing texture
 paint is changed by erasing or repainting texels, or through its layer controls.
 In a legacy document, **Apply brush settings to selected stroke** changes that
 stroke's editable tail. Search filters tiles by name; **Refresh** discovers new
@@ -103,7 +148,8 @@ Erase selector under the Stamp/Paint/Edit-point selector). Both operations work
 with individual stamps and continuous strokes. Erase removes earlier color and
 normal paint in the selected layer, including fixed Composite paint in legacy documents, revealing
 the material and lower paint layers. Paint added after an erase remains visible.
-Opacity, the brush texture's alpha and tablet pressure control erase strength.
+Opacity, the selected shape or brush texture's alpha, and tablet pressure control
+erase strength.
 Blend, tint and normal-map opacity apply to painting; they are disabled for erase.
 
 The **Heightmap ranges** group has independent **Paint** and **Erase** rows of
@@ -144,9 +190,9 @@ all three bands. New brush placement requires a supported SiLPOM receiver.
   left-button/pen gestures inside the main level viewport while enabled.
 - **Esc** cancels the current gesture and disables painting. **Ctrl+Z/Ctrl+Y**
   use the Editor's undo/redo. One complete gesture is one undo operation.
-- Choose the included Soft/Hard round presets, or browse to an existing material
-  with a base-color texture containing the decal's alpha. Use the image preset
-  **Decal_AlbedoWithOpacity** for custom decal textures. Decal materials need a
+- Choose a procedural shape for solid-color painting, or **Texture stamp** and
+  an existing material with a base-color texture containing the decal's alpha.
+  Use the image preset **Decal_AlbedoWithOpacity** for custom decal textures. Decal materials need a
   valid normal texture too; the supplied brushes use the engine's flat normal.
 
 Diameter, opacity, normal map opacity, spacing, rotation, projection depth, tint,
@@ -262,3 +308,16 @@ comparison; the reference can be much slower on large paintings.
   event loop before testing focus, painting and ordinary viewport selection. It
   verifies that event timers continue and the rendered frame remains visible,
   then closes without saving the level.
+- `Tests/surface_brush_shapes_editor_smoke.py` checks procedural coverage in
+  native source texels, fresh random edges with a solid center, exact random-paint
+  undo/redo and JSON restore, shape-based erase, and every procedural choice
+  through the dock with a missing material and a selected paint color. It also
+  checks texture-library selection and legacy controls, restores existing paint
+  documents, and exits without saving VueLiveLink.
+- `Tests/decal_painter_camera_smoke.py` checks all four light/collision toggle
+  combinations with painting disabled, camera position/direction following,
+  adjustable lux while off and on, rendered illumination at two lux values,
+  collision-enabled blocking and unconstrained
+  movement when disabled, and cleanup when the pane is hidden. It creates no
+  scene entities, verifies existing paint documents and the saved level remain
+  unchanged, and closes without saving or entering gameplay.

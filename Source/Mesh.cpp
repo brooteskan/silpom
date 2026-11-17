@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #include <SilPOM/Mesh.h>
+#include <SilPOM/CameraCollisionMath.h>
 #include <SilPOM/DecalPaint.h>
 #include <AzCore/Serialization/Json/JsonUtils.h>
 #include <rapidjson/stringbuffer.h>
@@ -757,6 +758,7 @@ struct MeshController::Generation
     size_t spiralLightBatches = 0;
     AZStd::atomic_bool published{false};
 };
+#include "CameraCollision.inl"
 #include "ReceiverUvPaint.inl"
 #include "SurfacePaintRaster.inl"
 #include "SurfacePaintRender.inl"

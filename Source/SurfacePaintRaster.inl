@@ -20,11 +20,13 @@ bool MeshController::ApplySurfaceTextureBrush(const PaintSurfacePoint& anchor,AZ
     const auto* document=PaintRequestBus::FindFirstHandler(canvas);
     if(!document||!document->GetDocument().m_textureAuthoritative)
     {error="Authoritative paint document is unavailable";return false;}
+    const bool procedural=brush.shape!=SurfaceBrushShape::Shape::Texture;
     if(anchor.receiver!=m_entity||!anchor.IsValid()||!m_active||!m_active->paintConfig.m_surface.IsReady()
         ||!brush.position.IsFinite()||!brush.normal.IsFinite()||!brush.tangent.IsFinite()
         ||!std::isfinite(brush.diameter)||brush.diameter<=0||!std::isfinite(brush.depth)||brush.depth<=0
-        ||!source.width||!source.height||source.color.size()!=size_t(source.width)*source.height*4
-        ||(!source.normal.empty()&&(!source.normalWidth||!source.normalHeight||source.normal.size()!=size_t(source.normalWidth)*source.normalHeight*4)))
+        ||static_cast<uint32_t>(brush.shape)>static_cast<uint32_t>(SurfaceBrushShape::Shape::RandomEdgeRound)
+        ||(!procedural&&(!source.width||!source.height||source.color.size()!=size_t(source.width)*source.height*4
+            ||(!source.normal.empty()&&(!source.normalWidth||!source.normalHeight||source.normal.size()!=size_t(source.normalWidth)*source.normalHeight*4)))))
     {error="Brush input or receiving surface is unavailable";return false;}
     const auto& config=m_active->paintConfig;const auto& rigid=m_active->paintWorld;
     const auto centerFace=AZStd::find_if(m_active->paintFaces.begin(),m_active->paintFaces.end(),[&](const auto& f){return f.id==anchor.face;});
@@ -98,7 +100,8 @@ bool MeshController::ApplySurfaceTextureBrush(const PaintSurfacePoint& anchor,AZ
                 const unsigned band=h<1.f/3?0:(h<2.f/3?1:2);if(!(brush.heightMask&(1u<<band)))continue;
             }
             const float u=px*.5f+.5f,v=.5f-py*.5f;
-            const auto rgba=SurfaceBrushSample(source.color,source.width,source.height,u,v,true);
+            const auto rgba=procedural?AZ::Vector4(1,1,1,SurfaceBrushShape::Coverage(brush.shape,u,v,brush.seed)):
+                SurfaceBrushSample(source.color,source.width,source.height,u,v,true);
             const float alpha=rgba.GetW()*angle;auto& pixel=image.pixels[size_t(y)*image.width+x];const auto before=pixel;
             if(alpha<=0)continue;
             if(brush.erase)
@@ -106,7 +109,7 @@ bool MeshController::ApplySurfaceTextureBrush(const PaintSurfacePoint& anchor,AZ
             else
             {
                 SurfacePaintMath::PaintColor(pixel.color,{rgba.GetX()*brush.color.GetR(),rgba.GetY()*brush.color.GetG(),rgba.GetZ()*brush.color.GetB()},alpha*brush.opacity,brush.blendMode);
-                if(brush.normalOpacity>0)
+                if(!procedural&&brush.normalOpacity>0)
                 {
                     const auto value=source.normal.empty()?AZ::Vector4(.5f,.5f,1,1):SurfaceBrushSample(source.normal,source.normalWidth,source.normalHeight,u,v);
                     auto decode=[](float v){const float n=v*2-1;return std::abs(n)<=1.f/255+1e-6f?0.f:n;};

@@ -18,6 +18,9 @@ public:
 private:
     void NotifyRegisterViews() override;
     void OnPrepareForContextReset() override;
+    void OnContextReset() override;
+    void OnStartPlayInEditorBegin() override;
+    void OnStopPlayInEditor() override;
     void OnTick(float,AZ::ScriptTimePoint) override;
 };
 }

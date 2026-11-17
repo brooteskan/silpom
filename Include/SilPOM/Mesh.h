@@ -120,6 +120,7 @@ public:
     virtual AZStd::string GetPaintFacesJson() const=0;
     virtual bool ResolvePaintSurface(const PaintSurfacePoint&,PaintSurfaceSample&) const=0;
     virtual AZ::u64 GetPaintSurfaceRevision() const=0;
+    virtual bool SweepCameraSphere(const AZ::Vector3& start,const AZ::Vector3& end,float radius,float& fraction,AZ::Vector3& normal) const=0;
     virtual bool ApplySurfaceTextureBrush(const PaintSurfacePoint&,AZ::EntityId,const SurfacePaintBrush&,const SurfaceBrushPixels&,AZ::u64,AZStd::vector<SurfacePaintChart>&,AZStd::string&)=0;
     virtual AZStd::string GetSurfacePaintStatus() const=0;
     virtual bool FindPaintSurfacePoint(const AZ::Vector3&,const AZ::Vector3&,PaintSurfacePoint&,float&) const=0;
@@ -163,6 +164,7 @@ public:
     AZStd::string GetPaintFacesJson() const override;
     bool ResolvePaintSurface(const PaintSurfacePoint&,PaintSurfaceSample&) const override;
     AZ::u64 GetPaintSurfaceRevision() const override;
+    bool SweepCameraSphere(const AZ::Vector3& start,const AZ::Vector3& end,float radius,float& fraction,AZ::Vector3& normal) const override;
     bool ApplySurfaceTextureBrush(const PaintSurfacePoint&,AZ::EntityId,const SurfacePaintBrush&,const SurfaceBrushPixels&,AZ::u64,AZStd::vector<SurfacePaintChart>&,AZStd::string&) override;
     AZStd::string GetSurfacePaintStatus() const override;
     bool FindPaintSurfacePoint(const AZ::Vector3&,const AZ::Vector3&,PaintSurfacePoint&,float&) const override;

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "SurfaceBrushShape.h"
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Math/Color.h>
 #include <AzCore/Math/Vector3.h>
@@ -32,6 +33,8 @@ struct SurfacePaintBrush
     float diameter=.3f,depth=.12f,opacity=1,normalOpacity=0;
     AZ::Color color=AZ::Color::CreateOne();
     AZ::u32 blendMode=0,heightMask=7;
+    SurfaceBrushShape::Shape shape=SurfaceBrushShape::Shape::Texture;
+    uint64_t seed=0; // One ephemeral seed per dab, shared by every receiving face.
     bool erase=false;
 };
 // Ephemeral brush input, decoded from authoring images by the editor. No
