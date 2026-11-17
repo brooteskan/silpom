@@ -3,6 +3,32 @@
 #ifndef SILPOM_EXPERIMENT_WEIGHT
 #define SILPOM_EXPERIMENT_WEIGHT(i) asfloat(Bindless::GetByteAddressBuffer(bufferIndex).Load((i)*4u))
 #endif
+// Cache the original bias/receiver-input prefix, before any light-dependent
+// terms or ReLU. Continuing at input 8 preserves the decoder's accumulation
+// order; the remaining receiver terms intentionally stay in that sequence.
+struct SilPomSharedVisibilityPrefix {float hidden[12];};
+SilPomSharedVisibilityPrefix SilPomPrepareSharedVisibilityPrefix(float x[20],uint bufferIndex)
+{
+    SilPomSharedVisibilityPrefix prefix;
+    SP_UNROLL for(uint j=0;j<12;++j)
+    {
+        float z=SILPOM_EXPERIMENT_WEIGHT(550u+j);
+        SP_UNROLL for(uint k=0;k<8;++k)z+=x[k]*SILPOM_EXPERIMENT_WEIGHT(310u+j*20u+k);
+        prefix.hidden[j]=z;
+    }
+    return prefix;
+}
+float SilPomDecodeSharedVisibilityWithPrefix(float x[20],uint bufferIndex,SilPomSharedVisibilityPrefix prefix)
+{
+    float result=SILPOM_EXPERIMENT_WEIGHT(574u);
+    SP_UNROLL for(uint j=0;j<12;++j)
+    {
+        float z=prefix.hidden[j];
+        SP_UNROLL for(uint k=8;k<20;++k)z+=x[k]*SILPOM_EXPERIMENT_WEIGHT(310u+j*20u+k);
+        result+=max(z,0.0f)*SILPOM_EXPERIMENT_WEIGHT(562u+j);
+    }
+    return rcp(1.0f+exp(-clamp(result,-16.0f,16.0f)));
+}
 float SilPomDecodeSharedVisibility(float x[20],uint bufferIndex)
 {
     float result=SILPOM_EXPERIMENT_WEIGHT(574u);

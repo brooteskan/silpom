@@ -1,0 +1,140 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#include "MeshFace.azsli"
+#if !defined(SILPOM_CPU) || SILPOM_FACE_COEFFICIENT_CACHE
+
+// Separate generation-owned record, never part of the packed 144B face.
+struct SilPomFaceCoefficients
+{
+    float4 duArea;       // affine D_u.xyz, raw signed UV area
+    float4 dvTolerance;  // affine D_v.xyz, base Newton tolerance
+    uint4 metadata;      // availability/validity bits, version, reserved, reserved
+};
+static const uint SP_FACE_COEFFICIENT_READY=1u;
+static const uint SP_FACE_COEFFICIENT_AREA=2u;
+static const uint SP_FACE_COEFFICIENT_NEWTON=4u;
+static const uint SP_FACE_COEFFICIENT_GRADIENT=8u;
+static const uint SP_FACE_COEFFICIENT_VERSION=1u;
+
+#if defined(SILPOM_CPU) || defined(SILPOM_FACE_COEFFICIENT_CPU)
+#define SP_FACE_COEFF_OUT(T) T&
+#else
+#define SP_FACE_COEFF_OUT(T) out T
+#endif
+
+bool SilPomFaceCoefficientFinite(float a){return a==a&&abs(a)<=3.402823466e38f;}
+bool SilPomFaceCoefficientFinite3(float3 a)
+{return SilPomFaceCoefficientFinite(a.x)&&SilPomFaceCoefficientFinite(a.y)&&SilPomFaceCoefficientFinite(a.z);}
+bool SilPomFaceCoefficientGradientFinite(float a){return a==a&&abs(a)<=1e30f;}
+bool SilPomFaceCoefficientGradientFinite3(float3 a)
+{return SilPomFaceCoefficientGradientFinite(a.x)&&SilPomFaceCoefficientGradientFinite(a.y)&&SilPomFaceCoefficientGradientFinite(a.z);}
+
+float SilPomFaceUncachedUvArea(SilPomMeshFace f)
+{
+    return (f.uv1.x-f.uv0.x)*(f.uv2.y-f.uv0.y)-(f.uv1.y-f.uv0.y)*(f.uv2.x-f.uv0.x);
+}
+void SilPomFaceUncachedDirectionPartials(SilPomMeshFace f,float area,
+    SP_FACE_COEFF_OUT(float3) dU,SP_FACE_COEFF_OUT(float3) dV)
+{
+    // Retain the existing Newton expression, including the reciprocal's place.
+    dU=((f.d1-f.d0)*(f.uv2.y-f.uv0.y)-(f.d2-f.d0)*(f.uv1.y-f.uv0.y))*(1/area);
+    dV=((f.d2-f.d0)*(f.uv1.x-f.uv0.x)-(f.d1-f.d0)*(f.uv2.x-f.uv0.x))*(1/area);
+}
+float SilPomFaceUncachedBaseTolerance(SilPomMeshFace f)
+{
+    return 2e-6f*max(1.0f,max(length(f.du),length(f.dv)));
+}
+SilPomFaceCoefficients SilPomEmptyFaceCoefficients()
+{
+    SilPomFaceCoefficients c;
+    c.duArea=float4(0,0,0,0);c.dvTolerance=float4(0,0,0,0);c.metadata=uint4(0,0,0,0);
+    return c;
+}
+SilPomFaceCoefficients SilPomPrepareFaceCoefficients(SilPomMeshFace f)
+{
+    const float area=SilPomFaceUncachedUvArea(f);
+    float3 dU,dV;SilPomFaceUncachedDirectionPartials(f,area,dU,dV);
+    const float tolerance=SilPomFaceUncachedBaseTolerance(f);
+    SilPomFaceCoefficients c;
+    c.duArea=float4(dU.x,dU.y,dU.z,area);
+    c.dvTolerance=float4(dV.x,dV.y,dV.z,tolerance);
+    uint flags=SP_FACE_COEFFICIENT_READY;
+    if(SilPomFaceCoefficientFinite(area))flags|=SP_FACE_COEFFICIENT_AREA;
+    if(SilPomFaceCoefficientFinite(area)&&area!=0&&SilPomFaceCoefficientFinite3(dU)
+        &&SilPomFaceCoefficientFinite3(dV)&&SilPomFaceCoefficientFinite(tolerance))
+        flags|=SP_FACE_COEFFICIENT_NEWTON;
+    // This is the existing explicit-gradient guard, not a new Newton cutoff.
+    if(SilPomFaceCoefficientGradientFinite(area)&&abs(area)>=1e-20f
+        &&SilPomFaceCoefficientGradientFinite3(dU)&&SilPomFaceCoefficientGradientFinite3(dV))
+        flags|=SP_FACE_COEFFICIENT_GRADIENT;
+    c.metadata=uint4(flags,SP_FACE_COEFFICIENT_VERSION,0,0);
+    return c;
+}
+bool SilPomFaceCoefficientsReady(SilPomFaceCoefficients c)
+{
+    return (c.metadata.x&SP_FACE_COEFFICIENT_READY)!=0&&c.metadata.y==SP_FACE_COEFFICIENT_VERSION;
+}
+
+#if SILPOM_FACE_COEFFICIENT_CACHE
+#if defined(SILPOM_CPU) || defined(SILPOM_FACE_COEFFICIENT_CPU)
+void SilPomSetFaceCoefficients(SilPomMeshFace& f,SilPomFaceCoefficients c)
+#else
+void SilPomSetFaceCoefficients(inout SilPomMeshFace f,SilPomFaceCoefficients c)
+#endif
+{
+    f.cachedDuArea=c.duArea;f.cachedDvTolerance=c.dvTolerance;f.cachedCoefficientMetadata=c.metadata;
+}
+SilPomFaceCoefficients SilPomGetFaceCoefficients(SilPomMeshFace f)
+{
+    SilPomFaceCoefficients c;c.duArea=f.cachedDuArea;c.dvTolerance=f.cachedDvTolerance;c.metadata=f.cachedCoefficientMetadata;
+    return c;
+}
+#endif
+
+bool SilPomTryFaceCoefficientArea(SilPomMeshFace f,SP_FACE_COEFF_OUT(float) area)
+{
+    area=0;
+#if SILPOM_FACE_COEFFICIENT_CACHE
+    const SilPomFaceCoefficients c=SilPomGetFaceCoefficients(f);
+    if(SilPomFaceCoefficientsReady(c)&&(c.metadata.x&SP_FACE_COEFFICIENT_AREA)!=0)
+    {area=c.duArea.w;return true;}
+#endif
+    return false;
+}
+bool SilPomTryFaceNewtonCoefficients(SilPomMeshFace f,SP_FACE_COEFF_OUT(float3) dU,
+    SP_FACE_COEFF_OUT(float3) dV,SP_FACE_COEFF_OUT(float) baseTolerance)
+{
+    dU=float3(0,0,0);dV=float3(0,0,0);baseTolerance=0;
+#if SILPOM_FACE_COEFFICIENT_CACHE
+    const SilPomFaceCoefficients c=SilPomGetFaceCoefficients(f);
+    if(SilPomFaceCoefficientsReady(c)&&(c.metadata.x&SP_FACE_COEFFICIENT_NEWTON)!=0)
+    {
+        dU=float3(c.duArea.x,c.duArea.y,c.duArea.z);
+        dV=float3(c.dvTolerance.x,c.dvTolerance.y,c.dvTolerance.z);baseTolerance=c.dvTolerance.w;return true;
+    }
+#endif
+    return false;
+}
+bool SilPomFaceGradientDirectionPartials(SilPomMeshFace f,SP_FACE_COEFF_OUT(float3) dU,SP_FACE_COEFF_OUT(float3) dV)
+{
+#if SILPOM_FACE_COEFFICIENT_CACHE
+    const SilPomFaceCoefficients c=SilPomGetFaceCoefficients(f);
+    if(SilPomFaceCoefficientsReady(c)&&(c.metadata.x&SP_FACE_COEFFICIENT_GRADIENT)!=0)
+    {
+        dU=float3(c.duArea.x,c.duArea.y,c.duArea.z);
+        dV=float3(c.dvTolerance.x,c.dvTolerance.y,c.dvTolerance.z);return true;
+    }
+#endif
+    // Missing/unsupported/invalid cache data executes the original expression.
+    const float ax=f.uv1.x-f.uv0.x,ay=f.uv1.y-f.uv0.y;
+    const float bx=f.uv2.x-f.uv0.x,by=f.uv2.y-f.uv0.y;
+    const float area=ax*by-ay*bx;
+    dU=float3(0,0,0);dV=float3(0,0,0);
+    if(!SilPomFaceCoefficientGradientFinite(area)||abs(area)<1e-20f)return false;
+    dU=((f.d1-f.d0)*by-(f.d2-f.d0)*ay)*(1.0f/area);
+    dV=((f.d2-f.d0)*ax-(f.d1-f.d0)*bx)*(1.0f/area);
+    return SilPomFaceCoefficientGradientFinite3(dU)&&SilPomFaceCoefficientGradientFinite3(dV);
+}
+
+#undef SP_FACE_COEFF_OUT
+#endif

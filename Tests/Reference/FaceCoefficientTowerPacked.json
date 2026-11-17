@@ -1,0 +1,523 @@
+{
+  "kind": "export-derived canonical FP32 face test fixture; not a live GPU buffer dump",
+  "record_stride": 144,
+  "record_count": 128,
+  "source": "Assets\\SilPOMPlanarAB\\IrishFieldstoneTowerOpenShaft\\tower-open-shaft-no-landings-silpom.silpom.json",
+  "source_sha256": "afb799cfc6618f4c49861790a41a4a779273be42b8deb180e90509e4991a7adf",
+  "sha256": "5ac54a470f564ab8c9204b50ccf582a904ff6815fc1168cf84f624a70ec11b43",
+  "packing": "FP32 scalar expression order with reciprocal multiplication; unit object scale",
+  "faces": [
+    {
+      "source_index": 0,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:10000:1901,1913,1903"
+    },
+    {
+      "source_index": 104,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:10095:1951,1955,1956"
+    },
+    {
+      "source_index": 208,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:10189:1967,1976,1977"
+    },
+    {
+      "source_index": 313,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:10283:5592,5597,5593"
+    },
+    {
+      "source_index": 417,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:10377:6036,6037,6038"
+    },
+    {
+      "source_index": 522,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:10471:6097,6099,6098"
+    },
+    {
+      "source_index": 626,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:10565:6152,6156,6159"
+    },
+    {
+      "source_index": 730,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:10659:6219,6223,6222"
+    },
+    {
+      "source_index": 835,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:10753:6282,6286,6285"
+    },
+    {
+      "source_index": 939,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:10847:6345,6349,6348"
+    },
+    {
+      "source_index": 1044,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:10941:6412,6413,6414"
+    },
+    {
+      "source_index": 1148,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:11034:6464,6471,6467"
+    },
+    {
+      "source_index": 1253,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:11129:6528,6532,6535"
+    },
+    {
+      "source_index": 1357,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:11222:6593,6594,6597"
+    },
+    {
+      "source_index": 1461,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:11316:6656,6661,6657"
+    },
+    {
+      "source_index": 1566,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:11410:6724,6727,6725"
+    },
+    {
+      "source_index": 1670,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:11504:6784,6786,6787"
+    },
+    {
+      "source_index": 1775,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:1159:932,934,935"
+    },
+    {
+      "source_index": 1879,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:11693:6907,6911,6908"
+    },
+    {
+      "source_index": 1983,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:11787:6970,6974,6975"
+    },
+    {
+      "source_index": 2088,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:11881:7033,7037,7038"
+    },
+    {
+      "source_index": 2192,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:11975:7096,7100,7101"
+    },
+    {
+      "source_index": 2297,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:12069:7165,7167,7166"
+    },
+    {
+      "source_index": 2401,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:12162:584,7204,7207"
+    },
+    {
+      "source_index": 2506,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:12257:578,7246,579"
+    },
+    {
+      "source_index": 2610,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:12350:619,7283,7282"
+    },
+    {
+      "source_index": 2714,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:12444:7479,7480,7481"
+    },
+    {
+      "source_index": 2819,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:12539:7764,7765,7766"
+    },
+    {
+      "source_index": 2923,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:12590:7377,7389,7391"
+    },
+    {
+      "source_index": 3028,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:1263:991,995,992"
+    },
+    {
+      "source_index": 3132,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:12689:7592,7595,7594"
+    },
+    {
+      "source_index": 3236,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:12738:7684,7688,7687"
+    },
+    {
+      "source_index": 3341,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:12788:7310,7316,7318"
+    },
+    {
+      "source_index": 3445,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:12837:7512,7527,7525"
+    },
+    {
+      "source_index": 3550,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:12887:7713,7716,7725"
+    },
+    {
+      "source_index": 3654,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:1353:1036,1041,1037"
+    },
+    {
+      "source_index": 3759,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:1448:1100,1101,1102"
+    },
+    {
+      "source_index": 3863,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:1541:1148,1152,1153"
+    },
+    {
+      "source_index": 3967,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:1635:1196,1201,1197"
+    },
+    {
+      "source_index": 4072,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:172:5212,5281,5282"
+    },
+    {
+      "source_index": 4176,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:1823:484,612,500"
+    },
+    {
+      "source_index": 4281,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:1918:486,620,502"
+    },
+    {
+      "source_index": 4385,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:2010:488,489,505"
+    },
+    {
+      "source_index": 4489,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:2104:539,5872,5876"
+    },
+    {
+      "source_index": 4594,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:219:5234,5302,5303"
+    },
+    {
+      "source_index": 4698,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:2293:37,40,38"
+    },
+    {
+      "source_index": 4803,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:2388:5710,5711,5916"
+    },
+    {
+      "source_index": 4907,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:2481:5722,5934,5936"
+    },
+    {
+      "source_index": 5012,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:2576:2789,5955,5951"
+    },
+    {
+      "source_index": 5116,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:266:5254,5324,5255"
+    },
+    {
+      "source_index": 5220,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:2763:2737,5763,5762"
+    },
+    {
+      "source_index": 5325,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:2858:5771,6013,6007"
+    },
+    {
+      "source_index": 5429,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:2951:408,409,410"
+    },
+    {
+      "source_index": 5534,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:3045:2898,2903,2902"
+    },
+    {
+      "source_index": 5638,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:3139:2954,2955,2959"
+    },
+    {
+      "source_index": 5742,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:3232:3010,3015,3014"
+    },
+    {
+      "source_index": 5847,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:3327:3066,3067,3071"
+    },
+    {
+      "source_index": 5951,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:3420:3122,3127,3126"
+    },
+    {
+      "source_index": 6056,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:3515:3180,3181,3183"
+    },
+    {
+      "source_index": 6160,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:3609:3236,3237,3239"
+    },
+    {
+      "source_index": 6265,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:3703:3293,3294,3295"
+    },
+    {
+      "source_index": 6369,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:3798:3352,3354,3353"
+    },
+    {
+      "source_index": 6473,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:3891:3397,3494,3400"
+    },
+    {
+      "source_index": 6578,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:3986:3381,3426,3641"
+    },
+    {
+      "source_index": 6682,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:4079:3495,4024,3536"
+    },
+    {
+      "source_index": 6787,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:4173:137,139,140"
+    },
+    {
+      "source_index": 6891,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:4267:3500,3553,3609"
+    },
+    {
+      "source_index": 6995,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:4360:3871,3872,4058"
+    },
+    {
+      "source_index": 7100,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:4455:3430,3433,3645"
+    },
+    {
+      "source_index": 7204,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:4549:3682,3690,3687"
+    },
+    {
+      "source_index": 7309,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:4643:3950,3965,3964"
+    },
+    {
+      "source_index": 7413,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:4737:3558,3560,3948"
+    },
+    {
+      "source_index": 7518,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:4831:3953,3985,3966"
+    },
+    {
+      "source_index": 7622,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:4925:3823,3842,3841"
+    },
+    {
+      "source_index": 7726,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:5018:3555,3572,4078"
+    },
+    {
+      "source_index": 7831,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:5112:3923,3934,3927"
+    },
+    {
+      "source_index": 7935,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:5206:3729,3767,3737"
+    },
+    {
+      "source_index": 8040,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:5300:3536,4025,4021"
+    },
+    {
+      "source_index": 8144,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:5395:4060,4065,4073"
+    },
+    {
+      "source_index": 8248,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:5489:57,58,59"
+    },
+    {
+      "source_index": 8353,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:5583:4837,4869,4849"
+    },
+    {
+      "source_index": 8457,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:5677:228,232,229"
+    },
+    {
+      "source_index": 8562,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:5771:4225,4265,4232"
+    },
+    {
+      "source_index": 8666,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:5865:4310,4321,4311"
+    },
+    {
+      "source_index": 8771,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:595:5404,5473,5474"
+    },
+    {
+      "source_index": 8875,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:6052:4359,4942,4959"
+    },
+    {
+      "source_index": 8979,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:6146:4382,4416,4404"
+    },
+    {
+      "source_index": 9084,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:6240:4363,4444,4445"
+    },
+    {
+      "source_index": 9188,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:6334:4493,4499,4691"
+    },
+    {
+      "source_index": 9293,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:6429:4599,4797,4628"
+    },
+    {
+      "source_index": 9397,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:6522:4542,4971,4544"
+    },
+    {
+      "source_index": 9501,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:6616:329,332,333"
+    },
+    {
+      "source_index": 9606,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:6710:4131,4846,4827"
+    },
+    {
+      "source_index": 9710,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:6804:4156,4662,4677"
+    },
+    {
+      "source_index": 9815,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:689:5446,5515,5516"
+    },
+    {
+      "source_index": 9919,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:6993:4297,4760,4607"
+    },
+    {
+      "source_index": 10024,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:7087:4585,4828,4815"
+    },
+    {
+      "source_index": 10128,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:7180:4139,4862,4141"
+    },
+    {
+      "source_index": 10232,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:7274:4421,4916,4969"
+    },
+    {
+      "source_index": 10337,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:7369:4888,4960,4968"
+    },
+    {
+      "source_index": 10441,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:7462:5014,5084,5015"
+    },
+    {
+      "source_index": 10546,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:7557:5058,5126,5127"
+    },
+    {
+      "source_index": 10650,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:7650:5096,5166,5097"
+    },
+    {
+      "source_index": 10754,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:7744:2006,2010,2009"
+    },
+    {
+      "source_index": 10859,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:7839:2048,2061,2067"
+    },
+    {
+      "source_index": 10963,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:7932:2076,2078,2077"
+    },
+    {
+      "source_index": 11068,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:8026:2097,2116,2124"
+    },
+    {
+      "source_index": 11172,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:811:737,739,738"
+    },
+    {
+      "source_index": 11277,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:8214:2202,2699,2205"
+    },
+    {
+      "source_index": 11381,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:8308:2260,2267,2265"
+    },
+    {
+      "source_index": 11485,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:8401:2280,2287,2286"
+    },
+    {
+      "source_index": 11590,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:8497:2334,2713,2339"
+    },
+    {
+      "source_index": 11694,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:8590:2370,2372,2371"
+    },
+    {
+      "source_index": 11799,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:8685:1582,1590,1598"
+    },
+    {
+      "source_index": 11903,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:8779:2450,2457,2455"
+    },
+    {
+      "source_index": 12007,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:8872:1530,2568,1547"
+    },
+    {
+      "source_index": 12112,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:8967:2543,2547,2548"
+    },
+    {
+      "source_index": 12216,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:905:589,5797,5796"
+    },
+    {
+      "source_index": 12321,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:9154:1697,1709,2647"
+    },
+    {
+      "source_index": 12425,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:9248:1999,2004,2000"
+    },
+    {
+      "source_index": 12530,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:9342:1641,1654,5540"
+    },
+    {
+      "source_index": 12634,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:9436:1652,2640,1657"
+    },
+    {
+      "source_index": 12738,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:952:806,810,811"
+    },
+    {
+      "source_index": 12843,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:9624:1728,1742,1736"
+    },
+    {
+      "source_index": 12947,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:9718:1540,1541,1544"
+    },
+    {
+      "source_index": 13052,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:9812:1790,1815,1804"
+    },
+    {
+      "source_index": 13156,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:9906:1526,1859,1857"
+    },
+    {
+      "source_index": 13261,
+      "stable_id": "11608ab7-3f30-4ed0-aaa2-cda6f40e3984:9:5138,5208,5139"
+    }
+  ]
+}

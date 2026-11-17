@@ -1,0 +1,79 @@
+// SPDX-License-Identifier: MIT
+#include <Atom/Features/SrgSemantics.azsli>
+#include <viewsrg_all.srgi>
+#include "../MeshFace.azsli"
+#include "../FaceCoefficients.azsli"
+#include "../ImplicitProxyCoverage.azsli"
+
+ShaderResourceGroup PassSrg : SRG_PerPass
+{
+    ByteAddressBuffer m_faces;
+    RWByteAddressBuffer m_faceCoefficients;
+    RWByteAddressBuffer m_faceCacheOutput;
+    uint m_faceCount,m_cacheOffset,m_ownerBase,m_meshBufferIndex;
+    uint m_neuralModel,m_maxCells,m_proxyBufferIndex,m_proxyLodEnabled;
+    float m_scale,m_reference,m_reliefLodPixelBudget,m_maxReliefDistance;
+    float4x4 m_objectToWorld;
+}
+#include <Atom/Features/Bindless.azsli>
+
+SilPomMeshFace SilPomPrepareLoadFace(uint faceIndex)
+{
+    SilPomMeshFace face;const uint offset=faceIndex*144u;
+    face.origin=asfloat(PassSrg::m_faces.Load4(offset)).xyz;
+    face.du=asfloat(PassSrg::m_faces.Load4(offset+16u)).xyz;
+    face.dv=asfloat(PassSrg::m_faces.Load4(offset+32u)).xyz;
+    face.normal=asfloat(PassSrg::m_faces.Load4(offset+48u)).xyz;
+    const float4 uv=asfloat(PassSrg::m_faces.Load4(offset+64u));
+    face.uv0=uv.xy;face.uv1=uv.zw;
+    face.uv2=asfloat(PassSrg::m_faces.Load4(offset+80u)).xy;
+    face.d0=asfloat(PassSrg::m_faces.Load4(offset+96u)).xyz;
+    face.d1=asfloat(PassSrg::m_faces.Load4(offset+112u)).xyz;
+    face.d2=asfloat(PassSrg::m_faces.Load4(offset+128u)).xyz;
+    return face;
+}
+bool SilPomPrepareFinite(float value){return value==value&&abs(value)<=1e30f;}
+[numthreads(64,1,1)]
+void MainCS(uint3 dispatchThreadId:SV_DispatchThreadID)
+{
+    const uint faceIndex=dispatchThreadId.x;
+    if(faceIndex>=PassSrg::m_faceCount)return;
+    const SilPomMeshFace face=SilPomPrepareLoadFace(faceIndex);
+    const uint coefficientOffset=faceIndex*SP_FACE_COEFFICIENT_BYTES;
+    const uint4 coefficientMetadata=PassSrg::m_faceCoefficients.Load4(coefficientOffset+32u);
+    if((coefficientMetadata.x&SP_FACE_COEFFICIENT_READY)==0u||coefficientMetadata.y!=SP_FACE_COEFFICIENT_VERSION)
+    {
+        const SilPomFaceCoefficients coefficients=SilPomPrepareFaceCoefficients(face);
+        PassSrg::m_faceCoefficients.Store4(coefficientOffset,asuint(coefficients.duArea));
+        PassSrg::m_faceCoefficients.Store4(coefficientOffset+16u,asuint(coefficients.dvTolerance));
+        // Each work item owns its face. The frame graph serializes this
+        // generation buffer across view preparations and all later readers.
+        PassSrg::m_faceCoefficients.Store4(coefficientOffset+32u,coefficients.metadata);
+    }
+    SilPomImplicitCoverage coverage=(SilPomImplicitCoverage)0;
+    if(PassSrg::m_maxCells==65525u)
+    {
+        SilPomImplicitProfile profile;
+        profile.scale=PassSrg::m_scale;profile.reference=PassSrg::m_reference;
+        profile.pixelBudget=PassSrg::m_reliefLodPixelBudget;profile.maxDistance=PassSrg::m_maxReliefDistance;
+        profile.maxCells=PassSrg::m_maxCells;profile.neuralModel=PassSrg::m_neuralModel;
+        profile.proxyLodEnabled=PassSrg::m_proxyLodEnabled!=0u;
+        bool proxySelected=false;
+        if(profile.proxyLodEnabled)
+            proxySelected=Bindless::GetByteAddressBuffer(PassSrg::m_proxyBufferIndex).Load(faceIndex*4u)!=0u;
+        coverage=SilPomBuildImplicitCoverage(face,profile,PassSrg::m_objectToWorld,
+            ViewSrg::m_viewProjectionMatrix,ViewSrg::m_projectionMatrix[1][1],true,true,proxySelected);
+        // The depth certificate is independent of the chosen coverage shape,
+        // and remains evaluated even for a collapsed implicit proxy.
+        coverage.depth=SilPomImplicitNearestDepth(face,profile.scale,profile.reference,
+            PassSrg::m_objectToWorld,ViewSrg::m_viewProjectionMatrix);
+        bool finite=SilPomPrepareFinite(coverage.depth);
+        [unroll] for(uint corner=0;corner<4;++corner)
+            finite=finite&&SilPomPrepareFinite(coverage.ndc[corner].x)&&SilPomPrepareFinite(coverage.ndc[corner].y);
+        if(!finite)coverage.status=SP_IMPLICIT_CACHE_UNAVAILABLE;
+    }
+    const uint offset=PassSrg::m_cacheOffset+faceIndex*SP_IMPLICIT_CACHE_BYTES;
+    PassSrg::m_faceCacheOutput.Store4(offset,asuint(float4(coverage.ndc[0],coverage.ndc[1])));
+    PassSrg::m_faceCacheOutput.Store4(offset+16u,asuint(float4(coverage.ndc[2],coverage.ndc[3])));
+    PassSrg::m_faceCacheOutput.Store4(offset+32u,uint4(asuint(coverage.depth),coverage.status,0u,0u));
+}

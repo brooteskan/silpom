@@ -1,0 +1,4 @@
+// SPDX-License-Identifier: MIT
+// Runtime SRG layout only; the pass does not render this shader.
+#include "SilPOMHitDepthSrg.azsli"
+#include <Atom/RPI/DummyEntryFunctions.azsli>

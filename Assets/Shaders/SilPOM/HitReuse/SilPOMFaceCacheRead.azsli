@@ -1,0 +1,50 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#include "../ImplicitProxyCoverage.azsli"
+#include "../FaceCoefficients.azsli"
+
+// The enclosing table is private to this frame, actual view and published
+// generation. Entries are32B: owner/count/cacheByteOffset/faceBuffer followed
+// by coefficientBindlessIndex/generationLow/generationHigh/availability.
+bool SilPomFindImplicitFaceCache(uint faceBuffer,uint ownerBase,uint faceIndex,out uint offset)
+{
+    offset=0;
+    [loop] for(uint i=0;i<PassSrg::m_silpomFaceCacheBatchCount;++i)
+    {
+        const uint4 identity=PassSrg::m_silpomFaceCacheTable.Load4(i*32u);
+        const uint4 state=PassSrg::m_silpomFaceCacheTable.Load4(i*32u+16u);
+        if(state.w!=0u&&identity.x==ownerBase&&identity.w==faceBuffer&&faceIndex<identity.y)
+        {offset=identity.z+faceIndex*SP_IMPLICIT_CACHE_BYTES;return true;}
+    }
+    return false;
+}
+bool SilPomReadImplicitFaceCache(uint faceBuffer,uint ownerBase,uint faceIndex,out SilPomImplicitCoverage value)
+{
+    value=(SilPomImplicitCoverage)0;
+    uint offset;
+    if(!SilPomFindImplicitFaceCache(faceBuffer,ownerBase,faceIndex,offset))return false;
+    const uint status=PassSrg::m_silpomFaceCache.Load(offset+36u);
+    if(status!=SP_IMPLICIT_CACHE_LIVE&&status!=SP_IMPLICIT_CACHE_EMPTY)return false;
+    const float4 first=asfloat(PassSrg::m_silpomFaceCache.Load4(offset));
+    const float4 second=asfloat(PassSrg::m_silpomFaceCache.Load4(offset+16u));
+    value.ndc[0]=first.xy;value.ndc[1]=first.zw;
+    value.ndc[2]=second.xy;value.ndc[3]=second.zw;
+    value.depth=asfloat(PassSrg::m_silpomFaceCache.Load(offset+32u));
+    value.status=status;
+    return true;
+}
+SilPomFaceCoefficients SilPomReadImmutableFaceCoefficients(uint coefficientBuffer,uint faceIndex)
+{
+    SilPomFaceCoefficients result=SilPomEmptyFaceCoefficients();
+    // Count0 means no preparation was ordered before this consumer. Other
+    // material roots (UV bake, authored proxy and shadows) do not enable this
+    // lookup and retain their legacy arithmetic.
+    if(PassSrg::m_silpomFaceCacheBatchCount==0u||coefficientBuffer==0xffffffffu)return result;
+    const uint offset=faceIndex*SP_FACE_COEFFICIENT_BYTES;
+    const uint4 metadata=Bindless::GetByteAddressBuffer(coefficientBuffer).Load4(offset+32u);
+    if((metadata.x&SP_FACE_COEFFICIENT_READY)==0u||metadata.y!=SP_FACE_COEFFICIENT_VERSION)return result;
+    result.duArea=asfloat(Bindless::GetByteAddressBuffer(coefficientBuffer).Load4(offset));
+    result.dvTolerance=asfloat(Bindless::GetByteAddressBuffer(coefficientBuffer).Load4(offset+16u));
+    result.metadata=metadata;
+    return result;
+}

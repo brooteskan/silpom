@@ -8,6 +8,7 @@
 #pragma once
 #define SILPOM_UV_USAGE 1
 #define SILPOM_HIT_FORWARD 1
+#define ATOM_EXPLICIT_SHADOW_GRADIENTS 1
 // Spatial paint groups use the shared-buffer protocol in the O3DE integration.
 
 #include <Atom/Features/SrgSemantics.azsli>
@@ -68,7 +69,7 @@ UvUsageOutput PixelShader(VsOutput IN,bool front:SV_IsFrontFace,uint sampleIndex
         // forward shader. The saved source, not these outputs, is the oracle.
         Surface base=EvaluateSurface_SilPomMesh(IN,SV,geo,params);
         Surface painted=base;
-        OUT.gradients=float4(ddx(silpomLitUv),ddy(silpomLitUv));
+        OUT.gradients=silpomUvDerivatives;
         SilPomApplySurfaceTextures(painted,params,IN.faceIndex,geo.isFrontFace);
         // Preserve the exact evaluated UV too; hit-record UV decoding may
         // undergo a material tiling round trip before paint is sampled.

@@ -5,22 +5,116 @@
     "ClassData": {
         "PassTemplate": {
             "Name": "SilPOMFillWallHolesTemplate",
-            "PassClass": "FullScreenTriangle",
+            "PassClass": "SilPOMRepairFillPass",
             "Slots": [
-                { "Name": "Fill", "ShaderInputName": "m_fill", "SlotType": "Input", "ScopeAttachmentUsage": "Shader" },
-                { "Name": "Hit", "SlotType": "InputOutput", "ScopeAttachmentUsage": "RenderTarget",
-                  "LoadStoreAction": { "LoadAction": "Load" } },
-                { "Name": "Depth", "SlotType": "InputOutput", "ScopeAttachmentUsage": "DepthStencil",
-                  "LoadStoreAction": { "LoadAction": "Load", "LoadActionStencil": "Load" } }
+                {
+                    "Name": "Fill",
+                    "ShaderInputName": "m_fill",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader"
+                },
+                {
+                    "Name": "Hit",
+                    "SlotType": "InputOutput",
+                    "ScopeAttachmentUsage": "RenderTarget",
+                    "LoadStoreAction": {
+                        "LoadAction": "Load"
+                    }
+                },
+                {
+                    "Name": "Depth",
+                    "SlotType": "InputOutput",
+                    "ScopeAttachmentUsage": "DepthStencil",
+                    "LoadStoreAction": {
+                        "LoadAction": "Load",
+                        "LoadActionStencil": "Load"
+                    }
+                },
+                {
+                    "Name": "FillUvGradients",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_fillUvGradients"
+                },
+                {
+                    "Name": "HitUvGradients",
+                    "SlotType": "InputOutput",
+                    "ScopeAttachmentUsage": "RenderTarget",
+                    "LoadStoreAction": {
+                        "LoadAction": "Load"
+                    }
+                },
+                {
+                    "Name": "FillDepthGradients",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_fillDepthGradients"
+                },
+                {
+                    "Name": "HitDepthGradients",
+                    "SlotType": "InputOutput",
+                    "ScopeAttachmentUsage": "RenderTarget",
+                    "LoadStoreAction": {
+                        "LoadAction": "Load"
+                    }
+                }
             ],
             "Connections": [
-                { "LocalSlot": "Fill", "AttachmentRef": { "Pass": "SilPOMClassifyWallHoles", "Attachment": "Fill" } },
-                { "LocalSlot": "Hit", "AttachmentRef": { "Pass": "SilPOMHitDepth", "Attachment": "Hit" } },
-                { "LocalSlot": "Depth", "AttachmentRef": { "Pass": "SilPOMHitDepth", "Attachment": "Depth" } }
+                {
+                    "LocalSlot": "Fill",
+                    "AttachmentRef": {
+                        "Pass": "SilPOMClassifyWallHoles",
+                        "Attachment": "Fill"
+                    }
+                },
+                {
+                    "LocalSlot": "Hit",
+                    "AttachmentRef": {
+                        "Pass": "SilPOMHitDepth",
+                        "Attachment": "Hit"
+                    }
+                },
+                {
+                    "LocalSlot": "Depth",
+                    "AttachmentRef": {
+                        "Pass": "SilPOMHitDepth",
+                        "Attachment": "Depth"
+                    }
+                },
+                {
+                    "LocalSlot": "FillUvGradients",
+                    "AttachmentRef": {
+                        "Pass": "SilPOMClassifyWallHoles",
+                        "Attachment": "FillUvGradients"
+                    }
+                },
+                {
+                    "LocalSlot": "HitUvGradients",
+                    "AttachmentRef": {
+                        "Pass": "SilPOMHitDepth",
+                        "Attachment": "HitUvGradients"
+                    }
+                },
+                {
+                    "LocalSlot": "FillDepthGradients",
+                    "AttachmentRef": {
+                        "Pass": "SilPOMClassifyWallHoles",
+                        "Attachment": "FillDepthGradients"
+                    }
+                },
+                {
+                    "LocalSlot": "HitDepthGradients",
+                    "AttachmentRef": {
+                        "Pass": "SilPOMHitDepth",
+                        "Attachment": "HitDepthGradients"
+                    }
+                }
             ],
             "PassData": {
                 "$type": "FullscreenTrianglePassData",
-                "ShaderAsset": { "FilePath": "Shaders/SilPOM/HitReuse/SilPOMFillWallHoles.shader" }
+                "ShaderAsset": {
+                    "FilePath": "Shaders/SilPOM/HitReuse/SilPOMFillWallHoles.shader"
+                }
             }
         }
     }

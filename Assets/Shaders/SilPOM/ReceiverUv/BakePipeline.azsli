@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #define SILPOM_HIT_FORWARD 1
+#define ATOM_EXPLICIT_SHADOW_GRADIENTS 1
 #define MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE 1
 #define ENABLE_DECALS 1
 #define OUTPUT_DEPTH 0
@@ -53,6 +54,10 @@ BakeOutput MainPS(VSOutput input)
     silpomLitFace=f;silpomLitPatch=p;silpomLitUv=uv;silpomLitRotation=(float3x3)PassSrg::m_receiverModel;
     silpomLitOriginWS=mul(PassSrg::m_receiverModel,float4(f.origin,1)).xyz;silpomLitValid=true;
     silpomPaintReceiverFace=params.m_silpomHitFaceBase+face;silpomPaintHeightTexture=params.m_silpomHeightMap;
+    // This pass has one authored chart, rather than visibility winners. Its
+    // source-UV footprint is the atlas texel step, including gutter texels.
+    silpomUvDerivatives=float4(PassSrg::m_receiverRectangle.z/float(PassSrg::m_receiverResolution),0,
+        0,PassSrg::m_receiverRectangle.w/float(PassSrg::m_receiverResolution));
     VsOutput IN=(VsOutput)0;IN.worldPosition=geo.positionWS;IN.color0=1;IN.faceIndex=face;VsSystemValues SV=(VsSystemValues)0;
     Surface front=EvaluateSurface_SilPomMesh(IN,SV,geo,params);geo.isFrontFace=false;
     Surface back=EvaluateSurface_SilPomMesh(IN,SV,geo,params);

@@ -10,8 +10,17 @@ static uint silpomPaintReceiverFace=0,silpomPaintReceiverOwner=0;
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_MaterialInputs.azsli>
 #include <Atom/Features/Bindless.azsli>
 #include "../../../Shaders/SilPOM/ProxySelection.azsli"
+#if SILPOM_FACE_CACHE_PASS
+#define SILPOM_FACE_COEFFICIENT_CACHE 1
+#endif
 #include "../../../Shaders/SilPOM/MeshFace.azsli"
 #include "../../../Shaders/SilPOM/HitReuse/SilPOMHitRecord.azsli"
+#include "../../../Shaders/SilPOM/GradientContext.azsli"
+#include "../../../Shaders/SilPOM/FaceCoefficients.azsli"
+#include "../../../Shaders/SilPOM/ImplicitProxyCoverage.azsli"
+#if SILPOM_FACE_CACHE_PASS
+#include "../../../Shaders/SilPOM/HitReuse/SilPOMFaceCacheRead.azsli"
+#endif
 #if !SHADOWMAP
 #include "../../../Shaders/SilPOM/Heightfield.azsli"
 #include "../../../Shaders/SilPOM/PlanarFace.azsli"
@@ -41,6 +50,12 @@ static float3 silpomLitOriginWS;
 static bool silpomLitValid=false;
 static bool silpomLitProxy=false;
 static uint silpomPaintHeightTexture;
+static float4 silpomUvDerivatives;
+static float3 silpomPositionDx,silpomPositionDy;
+static float3 silpomNormalDx,silpomNormalDy;
+static bool silpomNormalProbesCoarse=false;
+static bool silpomExplicitGradients=false;
+static SilPomGradientContext silpomSourceGradient;
 float SilPomPaintHeight()
 {
     if(!silpomLitValid)return -1;
@@ -58,6 +73,25 @@ float SilPomPaintHeight()
 #endif
 #if SILPOM_HIT_DEPTH
 static float2 silpomDepthHitUv;
+static float4 silpomDepthUvGradients,silpomDepthDepthGradients;
+
+SilPomGradientContext SilPomHitGradient(SilPomHit hit,SilPomMeshFace f,SilPomPatch p,
+    uint heightTexture,float2 low,float2 coarseSpan,float4x4 model,float3 positionWS)
+{
+    const uint representation=hit.gradientRepresentation==SP_GRADIENT_BASE?SP_GRADIENT_BASE:SP_GRADIENT_RELIEF;
+    if(hit.status!=SP_HIT)return SilPomGradientCoarse(coarseSpan,SP_GRADIENT_DIAGNOSTIC);
+    float3 du=f.du,dv=f.dv;
+    if(representation==SP_GRADIENT_RELIEF)
+    {
+        float3 directionDu,directionDv;
+        if(!SilPomFaceGradientDirectionPartials(f,directionDu,directionDv))
+            return SilPomGradientCoarse(coarseSpan,representation);
+        const float3 height=SilPomFaceHeight(GetMaterialTexture(heightTexture),p,hit.faceUv,low);
+        SilPomGradientReliefTangents(f.du,f.dv,SilPomFaceDirection(f,hit.faceUv),directionDu,directionDv,height,du,dv);
+    }
+    return SilPomGradientFromWorld(positionWS,mul((float3x3)model,du),mul((float3x3)model,dv),
+        ViewSrg::m_viewProjectionMatrix,PassSrg::m_silpomViewport.zw,coarseSpan,representation);
+}
 #endif
 #if SILPOM_TOWER_LOD_NEAR || SILPOM_TOWER_LOD_SHELL
 float SilPomTowerLodDepth(MaterialParameters params)
@@ -75,7 +109,7 @@ float SilPomTowerLodOverlap(MaterialParameters params)
 }
 #endif
 static const uint SP_MESH_FACE_BYTES=144u;
-SilPomMeshFace SilPomLoadFace(uint buffer, uint index)
+SilPomMeshFace SilPomLoadFace(uint buffer,uint index,uint coefficientBuffer=0xffffffffu)
 {
     SilPomMeshFace f;
     uint offset=index*SP_MESH_FACE_BYTES;
@@ -89,123 +123,42 @@ SilPomMeshFace SilPomLoadFace(uint buffer, uint index)
     f.d0=asfloat(Bindless::GetByteAddressBuffer(buffer).Load4(offset+96)).xyz;
     f.d1=asfloat(Bindless::GetByteAddressBuffer(buffer).Load4(offset+112)).xyz;
     f.d2=asfloat(Bindless::GetByteAddressBuffer(buffer).Load4(offset+128)).xyz;
+#if SILPOM_FACE_COEFFICIENT_CACHE
+    SilPomSetFaceCoefficients(f,SilPomReadImmutableFaceCoefficients(coefficientBuffer,index));
+#endif
     return f;
 }
-#if SILPOM_NEURAL_NO_MARCH || SILPOM_HIT_FORWARD
-// With all six extrema in front of the near plane, their projected convex
-// hull bounds the displaced surface. Move the three barycentric half-planes
-// out to enclose that hull with one triangle.
-bool SilPomTowerCoverage(float4 corners[6], float2 quadCorner, inout float proxyArea, out float2 ndc)
+SilPomImplicitProfile SilPomImplicitMaterialProfile(const MaterialParameters params)
 {
-    ndc=0;
-    const float2 origin=corners[0].xy/corners[0].w;
-    const float2 edgeB=corners[2].xy/corners[2].w-origin;
-    const float2 edgeC=corners[4].xy/corners[4].w-origin;
-    const float area=edgeB.x*edgeC.y-edgeB.y*edgeC.x;
-    if(abs(area)<1e-6f) return false;
-
-    const float2 gradB=float2(edgeC.y,-edgeC.x)/area;
-    const float2 gradC=float2(-edgeB.y,edgeB.x)/area;
-    float3 lower=0;
-    [unroll] for(uint i=1;i<6;i+=2)
-    {
-        const float2 delta=corners[i].xy/corners[i].w-origin;
-        const float b=dot(delta,gradB),c=dot(delta,gradC);
-        lower=min(lower,float3(1.0f-b-c,b,c));
-    }
-    const float2 gradA=gradB+gradC;
-    lower-=2e-5f*float3(abs(gradA.x)+abs(gradA.y),abs(gradB.x)+abs(gradB.y),abs(gradC.x)+abs(gradC.y));
-    const float scale=1.0f-lower.x-lower.y-lower.z;
-    const float triangleArea=.5f*abs(area)*scale*scale;
-    if(triangleArea>=proxyArea) return false;
-    proxyArea=triangleArea;
-
-    // Keep the rectangle's winding and collapse its second triangle.
-    const bool useB=area>0.0f ? quadCorner.x>0 && quadCorner.y<=0 : quadCorner.y>0;
-    const bool useC=area>0.0f ? quadCorner.y>0 : quadCorner.x>0 && quadCorner.y<=0;
-    ndc=origin+edgeB*(lower.y+(useB?scale:0.0f))+edgeC*(lower.z+(useC?scale:0.0f));
+    SilPomImplicitProfile profile;
+    profile.scale=params.m_silpomScale;profile.reference=params.m_silpomReference;
+    profile.pixelBudget=params.m_silpomReliefLodPixelBudget;profile.maxDistance=params.m_silpomMaxReliefDistance;
+    profile.maxCells=params.m_silpomMaxCells;profile.neuralModel=params.m_silpomNeuralModel;
+    profile.proxyLodEnabled=params.m_silpomProxyLodEnabled;
+    return profile;
+}
+VsOutput SilPomImplicitVertex(uint faceIndex,float2 quadCorner,SilPomImplicitCoverage coverage,bool singleCorner=false)
+{
+    VsOutput output=(VsOutput)0;output.faceIndex=faceIndex;
+    output.position=float4(2,2,0,1);
+    if(coverage.status==SP_IMPLICIT_CACHE_EMPTY)return output;
+    const uint corner=singleCorner?0u:(quadCorner.x>0?1u:0u)+(quadCorner.y>0?2u:0u);
+    output.ndc=coverage.ndc[corner];
+    output.position=float4(output.ndc,.5,1);output.normal=float3(0,0,1);
+    output.tangent=float4(1,0,0,1);output.color0=1;
+    return output;
+}
+#if SILPOM_HIT_DEPTH && SILPOM_TOWER_LOD_NEAR
+bool SilPomTryCachedImplicitVertex(VsInput IN,const MaterialParameters params,out VsOutput output,out float depth)
+{
+    output=(VsOutput)0;depth=0;
+    if(params.m_silpomMaxCells!=SP_TOWER_LOD_4PX_RESOLVE)return false;
+    const uint faceIndex=(uint)round(IN.position.z);
+    SilPomImplicitCoverage coverage;
+    if(!SilPomReadImplicitFaceCache(params.m_meshBufferIndex,params.m_silpomHitFaceBase,faceIndex,coverage))return false;
+    output=SilPomImplicitVertex(faceIndex,IN.position.xy,coverage);
+    depth=coverage.depth;
     return true;
-}
-#endif
-#if SILPOM_TOWER_LOD_NEAR
-struct SilPomWallProxyBounds
-{
-    float3 axisX, axisY;
-    float3 minU, minV, maxU, maxV;
-};
-
-float2 SilPomProjectedEdge(float4 a, float4 b)
-{
-    // Use the homogeneous line so the axis remains defined across the near cut.
-    const float2 edge=b.xy*a.w-a.xy*b.w;
-    const float lengthSq=dot(edge,edge);
-    return lengthSq>1e-12f ? edge*rsqrt(lengthSq) : float2(1,0);
-}
-
-void SilPomGrowWallProxy(inout SilPomWallProxyBounds bounds, float2 xy)
-{
-    const float3 u=bounds.axisX*xy.x+bounds.axisY*xy.y;
-    const float3 v=bounds.axisX*xy.y-bounds.axisY*xy.x;
-    bounds.minU=min(bounds.minU,u); bounds.maxU=max(bounds.maxU,u);
-    bounds.minV=min(bounds.minV,v); bounds.maxV=max(bounds.maxV,v);
-}
-
-float SilPomVisibleQuadArea(float2 origin, float2 u, float2 v)
-{
-    float2 polygon[8];
-    polygon[0]=origin; polygon[1]=origin+u;
-    polygon[2]=origin+u+v; polygon[3]=origin+v;
-    uint count=4;
-    // A convex quadrilateral clipped to the viewport has at most eight vertices.
-    [loop] for(uint plane=0;plane<4;++plane)
-    {
-        float2 clipped[8];
-        uint nextCount=0;
-        const uint axis=plane>>1;
-        const float sign=(plane&1)==0 ? 1.0f : -1.0f;
-        float2 a=polygon[count-1];
-        float da=1.0f-sign*a[axis];
-        [loop] for(uint i=0;i<count;++i)
-        {
-            const float2 b=polygon[i];
-            const float db=1.0f-sign*b[axis];
-            if((da<0)!=(db<0)) clipped[nextCount++]=lerp(a,b,da/(da-db));
-            if(db>=0) clipped[nextCount++]=b;
-            a=b; da=db;
-        }
-        if(nextCount<3) return 0;
-        count=nextCount;
-        [loop] for(uint i=0;i<count;++i) polygon[i]=clipped[i];
-    }
-    float twiceArea=0;
-    float2 a=polygon[count-1];
-    [loop] for(uint i=0;i<count;++i)
-    {
-        const float2 b=polygon[i];
-        twiceArea+=a.x*b.y-a.y*b.x;
-        a=b;
-    }
-    return .5f*abs(twiceArea);
-}
-
-float2 SilPomChooseWallProxy(SilPomWallProxyBounds bounds, float2 corner, float area, float2 ndc)
-{
-    [loop] for(uint i=0;i<3;++i)
-    {
-        const float2 axisU=float2(bounds.axisX[i],bounds.axisY[i]);
-        const float2 axisV=float2(-axisU.y,axisU.x);
-        const float2 lo=float2(bounds.minU[i],bounds.minV[i])-2e-5f;
-        const float2 hi=float2(bounds.maxU[i],bounds.maxV[i])+2e-5f;
-        const float2 origin=lo.x*axisU+lo.y*axisV;
-        const float2 u=(hi.x-lo.x)*axisU, v=(hi.y-lo.y)*axisV;
-        const float visibleArea=SilPomVisibleQuadArea(origin,u,v);
-        if(visibleArea<area)
-        {
-            area=visibleArea;
-            ndc=origin+corner.x*u+corner.y*v;
-        }
-    }
-    return ndc;
 }
 #endif
 VsOutput EvaluateVertexGeometry(VsInput IN, VsSystemValues SV, const MaterialParameters params)
@@ -229,7 +182,11 @@ VsOutput EvaluateVertexGeometry(VsInput IN, VsSystemValues SV, const MaterialPar
         return output;
     }
 #endif
-    SilPomMeshFace f=SilPomLoadFace(params.m_meshBufferIndex,output.faceIndex);
+    SilPomMeshFace f=SilPomLoadFace(params.m_meshBufferIndex,output.faceIndex
+#if SILPOM_FACE_COEFFICIENT_CACHE
+        ,params.m_silpomFaceCoefficientBuffer
+#endif
+    );
 #if SILPOM_TOWER_LOD_NEAR
     if(SilPomProxySelected(params,output.faceIndex)){output.position=float4(2,2,0,1);return output;}
 #endif
@@ -243,131 +200,20 @@ VsOutput EvaluateVertexGeometry(VsInput IN, VsSystemValues SV, const MaterialPar
     output.position=mul(vp,float4(output.worldPosition,1));
     return output;
 #else
-    float2 low=float2(1,1),high=float2(-1,-1);
-    float4 corners[6];
-    bool clipped=false;
+    const SilPomImplicitProfile profile=SilPomImplicitMaterialProfile(params);
 #if SILPOM_TOWER_LOD_NEAR
-    const float cutoff=SilPomTowerLodDepth(params);
-    if(cutoff<=0)
-    {
-        output.position=float4(2,2,0,1);
-        return output;
-    }
-    const float nearLimit=cutoff+SilPomTowerLodOverlap(params);
-#endif
-    for(uint i=0;i<6;++i)
-    {
-        float2 uv=i/2==0?f.uv0:(i/2==1?f.uv1:f.uv2);
-        float h=params.m_silpomScale*((i&1)-params.m_silpomReference);
-        float3 D=i/2==0?f.d0:(i/2==1?f.d1:f.d2);
-        float3 p=f.origin+f.du*(uv.x-f.uv0.x)+f.dv*(uv.y-f.uv0.y)+D*h;
-        corners[i]=mul(vp,mul(model,float4(p,1)));
-    }
-#if SILPOM_TOWER_LOD_NEAR
-    const bool tightWall=SilPomIsTowerWallModel(params.m_silpomNeuralModel) && params.m_silpomMaxCells==SP_TOWER_LOD_4PX_RESOLVE;
-    SilPomWallProxyBounds wallBounds=(SilPomWallProxyBounds)0;
-    if(tightWall)
-    {
-        const float2 a=SilPomProjectedEdge(corners[0],corners[2]);
-        const float2 b=SilPomProjectedEdge(corners[2],corners[4]);
-        const float2 c=SilPomProjectedEdge(corners[4],corners[0]);
-        wallBounds.axisX=float3(a.x,b.x,c.x); wallBounds.axisY=float3(a.y,b.y,c.y);
-        wallBounds.minU=wallBounds.minV=1e30f;
-        wallBounds.maxU=wallBounds.maxV=-1e30f;
-    }
-#endif
-    for(uint i=0;i<6;++i)
-    {
-        const float4 clipPosition=corners[i];
-        if(clipPosition.w>1e-6 && clipPosition.z>=0 && clipPosition.z<=clipPosition.w
-#if SILPOM_TOWER_LOD_NEAR
-            && clipPosition.w<=nearLimit
-#endif
-        )
-        {
-            float2 xy=clipPosition.xy/clipPosition.w;
-            low=min(low,xy); high=max(high,xy);
-#if SILPOM_TOWER_LOD_NEAR
-            if(tightWall) SilPomGrowWallProxy(wallBounds,xy);
-#endif
-        }
-        else
-            clipped=true;
-    }
-    if(clipped)
-    {
-        // The relief is enclosed by the convex hull of these six positions.
-        // Intersect every corner pair to include all hull edges, even when the
-        // varying displacement directions make the hull non-prismatic.
-        // Atom uses reverse depth. The near plane is w-z=0 and the far plane is z=0.
-        for(uint i=0;i<6;++i)
-        {
-            float4 a=corners[i];
-            for(uint j=i+1;j<6;++j)
-            {
-                float4 b=corners[j];
-#if SILPOM_TOWER_LOD_NEAR
-                const uint planeCount=3;
+    const bool nearPolicy=true;
 #else
-                const uint planeCount=2;
+    const bool nearPolicy=false;
 #endif
-                for(uint plane=0;plane<planeCount;++plane)
-                {
-                    float da=plane==0?a.w-a.z:a.z;
-                    float db=plane==0?b.w-b.z:b.z;
-#if SILPOM_TOWER_LOD_NEAR
-                    if(plane==2)
-                    {
-                        da=nearLimit-a.w;
-                        db=nearLimit-b.w;
-                    }
-#endif
-                    if((da<0)!=(db<0))
-                    {
-                        float4 edge=lerp(a,b,da/(da-db));
-                        // At either cut, w>0 also places the point inside the opposite plane.
-                        if(edge.w>1e-6
-#if SILPOM_TOWER_LOD_NEAR
-                            && (plane==2 || edge.w<=nearLimit)
-#endif
-                        )
-                        {
-                            float2 xy=edge.xy/edge.w;
-                            low=min(low,xy); high=max(high,xy);
-#if SILPOM_TOWER_LOD_NEAR
-                            if(tightWall) SilPomGrowWallProxy(wallBounds,xy);
-#endif
-                        }
-                    }
-                }
-            }
-        }
-    }
-    if(any(low>high))
-    {
-        output.position=float4(2,2,0,1);
-        return output;
-    }
-    low=max(low-1e-5,float2(-1,-1)); high=min(high+1e-5,float2(1,1));
-    const float2 corner=IN.position.xy*.5+.5;
-    output.ndc=lerp(low,high,corner);
 #if SILPOM_NEURAL_NO_MARCH || SILPOM_HIT_FORWARD
-    const float2 extent=max(high-low,0.0f);
-    float proxyArea=extent.x*extent.y;
-    float2 triangleNdc;
-    if(!clipped && SilPomTowerNoMarch(params.m_silpomMaxCells) && params.m_silpomMaxCells!=SP_TOWER_RECTANGLE_CONTROL
-        && SilPomTowerCoverage(corners,IN.position.xy,proxyArea,triangleNdc))
-    {
-        output.ndc=triangleNdc;
-    }
+    const bool trianglePolicy=true;
+#else
+    const bool trianglePolicy=false;
 #endif
-#if SILPOM_TOWER_LOD_NEAR
-    if(tightWall && proxyArea>0)
-        output.ndc=SilPomChooseWallProxy(wallBounds,corner,proxyArea,output.ndc);
-#endif
-    output.position=float4(output.ndc,.5,1); output.normal=float3(0,0,1);
-    output.tangent=float4(1,0,0,1); output.color0=1;
-    return output;
+    const SilPomImplicitCoverage coverage=SilPomBuildImplicitCoverage(f,profile,model,vp,
+        ViewSrg::m_projectionMatrix[1][1],nearPolicy,trianglePolicy,false,true,IN.position.xy);
+    return SilPomImplicitVertex(output.faceIndex,IN.position.xy,coverage,true);
 #endif
 }
 
@@ -398,7 +244,11 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     // generic heightfield traversal path.
     if(SilPomTowerNoMarch(params.m_silpomMaxCells)) discard;
 #endif
-    SilPomMeshFace f=SilPomLoadFace(params.m_meshBufferIndex,IN.faceIndex);
+    SilPomMeshFace f=SilPomLoadFace(params.m_meshBufferIndex,IN.faceIndex
+#if SILPOM_FACE_COEFFICIENT_CACHE
+        ,params.m_silpomFaceCoefficientBuffer
+#endif
+    );
 #if SILPOM_LEVEL_FIVE
     // The winner records its actual representation. Do not infer it again
     // from CPU policy that may be preparing a later frame's selection.
@@ -407,6 +257,7 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     float4x4 model=GetObjectToWorldMatrix(SV);
     float2 low=min(f.uv0,min(f.uv1,f.uv2)),high=max(f.uv0,max(f.uv1,f.uv2));
     float2 span=high-low;
+    const float2 coarseSpan=max(span,rcp(max(abs(float2(params.m_silpomTileU,params.m_silpomTileV)),1e-20f)));
     SilPomPatch p;
     p.width=span.x; p.height=span.y;
     p.scale=params.m_silpomScale; p.reference=params.m_silpomReference;
@@ -438,6 +289,21 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     IN.position.z=asfloat(record.z&SP_HIT_RECORD_DEPTH);
     float4 hitH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,IN.position.z,1));
     geo.positionWS=hitH.xyz/hitH.w;
+    silpomExplicitGradients=true;
+    silpomSourceGradient=SilPomGradientUnpack(
+        PassSrg::m_silpomHitUvGradients.Load(int2(IN.position.xy),silpomHitSampleIndex),
+        PassSrg::m_silpomHitDepthGradients.Load(int2(IN.position.xy),silpomHitSampleIndex));
+    if(silpomSourceGradient.validity!=SP_GRADIENT_VALID)
+        silpomSourceGradient=SilPomGradientCoarse(coarseSpan,silpomSourceGradient.representation);
+    silpomUvDerivatives=silpomSourceGradient.uv;
+    const float2 pixelNdc=float2(2,-2)/PassSrg::m_silpomViewport.zw;
+    const float4 hitHx=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(pixelNdc.x,0,silpomSourceGradient.depth.x,0));
+    const float4 hitHy=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(0,pixelNdc.y,silpomSourceGradient.depth.y,0));
+    if(!SilPomGradientWorldPosition(hitH,hitHx,hitHy,silpomPositionDx,silpomPositionDy))
+    {
+        silpomSourceGradient=SilPomGradientCoarse(coarseSpan,silpomSourceGradient.representation);
+        silpomUvDerivatives=silpomSourceGradient.uv;
+    }
     // Tiled decal/light culling uses reciprocal clip W, not the proxy's W.
     IN.position.w=hitH.w;
     IN.silpomDiagnostic=float4(float(status),0,0,0);
@@ -482,6 +348,10 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
         ,params.m_silpomUseHeightDerivedNormals
     );
     if(hit.status==SP_MISS) discard;
+#if SILPOM_HIT_DEPTH
+    float3 gradientPositionWS=mul(model,float4(origin+direction*hit.t,1)).xyz;
+    SilPomGradientContext hitGradient=SilPomHitGradient(hit,f,p,params.m_silpomHeightMap,low,coarseSpan,model,gradientPositionWS);
+#endif
 #if SILPOM_TOWER_LOD_NEAR
     if(SilPomTowerUsesSmoothLod(params.m_silpomMaxCells) && hit.status==SP_HIT && viewRate>1e-6f)
     {
@@ -496,6 +366,55 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
         if(shell.status==SP_HIT)
         {
             const float weight=smoothstep(fadeStart,fadeEnd,shell.t);
+#if SILPOM_HIT_DEPTH
+            const float3 shellPositionWS=mul(model,float4(origin+direction*shell.t,1)).xyz;
+            const SilPomGradientContext shellGradient=SilPomHitGradient(shell,f,p,params.m_silpomHeightMap,low,coarseSpan,model,shellPositionWS);
+            if(hitGradient.validity==SP_GRADIENT_VALID && shellGradient.validity==SP_GRADIENT_VALID)
+            {
+                const float2 pixelNdc=float2(2,-2)/PassSrg::m_silpomViewport.zw;
+                const float4 ndcDx=float4(pixelNdc.x,0,0,0),ndcDy=float4(0,pixelNdc.y,0,0);
+                float3 originDx,originDy,midDx,midDy;
+                const float4 nearDx=mul(ViewSrg::m_viewProjectionInverseMatrix,ndcDx);
+                const float4 nearDy=mul(ViewSrg::m_viewProjectionInverseMatrix,ndcDy);
+                const bool nearGradientValid=SilPomGradientWorldPosition(nearH,nearDx,nearDy,originDx,originDy);
+                const bool midGradientValid=SilPomGradientWorldPosition(midH,nearDx,nearDy,midDx,midDy);
+                const float rayLength=length(midH.xyz/midH.w-originWS);
+                const float3 directionDx=(midDx-originDx-directionWS*dot(directionWS,midDx-originDx))/rayLength;
+                const float3 directionDy=(midDy-originDy-directionWS*dot(directionWS,midDy-originDy))/rayLength;
+                const float3 viewRow=ViewSrg::m_viewProjectionMatrix[3].xyz;
+                const float2 rateDerivative=float2(dot(viewRow,directionDx),dot(viewRow,directionDy));
+                const float2 nearDepthDerivative=-float2(nearDx.w,nearDy.w)/(nearH.w*nearH.w);
+                const float2 endDerivative=(-nearDepthDerivative-fadeEnd*rateDerivative)/viewRate;
+                const float2 startDerivative=endDerivative+12.0f*abs(p.scale)*rateDerivative/(viewRate*viewRate);
+                const float4 shellClip=mul(ViewSrg::m_viewProjectionMatrix,float4(shellPositionWS,1));
+                const float4 reliefClip=mul(ViewSrg::m_viewProjectionMatrix,float4(gradientPositionWS,1));
+                const float4 shellH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,shellClip.z/shellClip.w,1));
+                const float4 reliefH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,reliefClip.z/reliefClip.w,1));
+                float3 reliefDx,reliefDy,shellDx,shellDy;
+                const bool reliefGradientValid=SilPomGradientWorldPosition(reliefH,
+                    mul(ViewSrg::m_viewProjectionInverseMatrix,ndcDx+float4(0,0,hitGradient.depth.x,0)),
+                    mul(ViewSrg::m_viewProjectionInverseMatrix,ndcDy+float4(0,0,hitGradient.depth.y,0)),reliefDx,reliefDy);
+                const bool shellGradientValid=SilPomGradientWorldPosition(shellH,
+                    mul(ViewSrg::m_viewProjectionInverseMatrix,ndcDx+float4(0,0,shellGradient.depth.x,0)),
+                    mul(ViewSrg::m_viewProjectionInverseMatrix,ndcDy+float4(0,0,shellGradient.depth.y,0)),shellDx,shellDy);
+                const float2 shellDistanceDerivative=float2(dot(shellDx-originDx,directionWS),dot(shellDy-originDy,directionWS));
+                const float2 weightDerivative=SilPomGradientSmoothstep(fadeStart,fadeEnd,shell.t,
+                    startDerivative,endDerivative,shellDistanceDerivative);
+                float3 morphDx,morphDy;
+                SilPomGradientMorphPosition(gradientPositionWS,shellPositionWS,reliefDx,reliefDy,shellDx,shellDy,weight,weightDerivative,morphDx,morphDy);
+                hitGradient.uv=SilPomGradientMorphUv(hit.faceUv,shell.faceUv,hitGradient.uv,shellGradient.uv,weight,weightDerivative);
+                gradientPositionWS=lerp(gradientPositionWS,shellPositionWS,weight);
+                hitGradient.depth=SilPomGradientDepthFromClip(mul(ViewSrg::m_viewProjectionMatrix,float4(gradientPositionWS,1)),
+                    mul(ViewSrg::m_viewProjectionMatrix,float4(morphDx,0)),mul(ViewSrg::m_viewProjectionMatrix,float4(morphDy,0)));
+                hitGradient.representation=SP_GRADIENT_MORPH;
+                if(!nearGradientValid||!midGradientValid||!reliefGradientValid||!shellGradientValid
+                    ||!SilPomGradientFinite4(hitGradient.uv)||!SilPomGradientFinite2(hitGradient.depth)
+                    ||any(abs(hitGradient.uv)>float4(max(coarseSpan,1.0f),max(coarseSpan,1.0f)))
+                    ||any(abs(hitGradient.depth)>1.0f))
+                    hitGradient=SilPomGradientCoarse(coarseSpan,SP_GRADIENT_MORPH);
+            }
+            else hitGradient=SilPomGradientCoarse(coarseSpan,SP_GRADIENT_MORPH);
+#endif
             hit.t=lerp(hit.t,shell.t,weight);
             hit.faceUv=lerp(hit.faceUv,shell.faceUv,weight);
             hit.uv=lerp(hit.uv,shell.uv,weight);
@@ -515,9 +434,15 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     IN.silpomDiagnostic=float4(float(hit.status),float(hit.cells),hit.t,0);
 #if SILPOM_HIT_DEPTH
     silpomDepthHitUv=failed?hit.uv:hit.faceUv;
+    silpomDepthUvGradients=hitGradient.uv;
+    silpomDepthDepthGradients=SilPomGradientPackDepth(hitGradient);
 #endif
 #endif
     IN.worldPosition=geo.positionWS;
+#if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE && !SILPOM_HIT_FORWARD
+    silpomUvDerivatives=float4(ddx(tiledUv),ddy(tiledUv))/float4(params.m_silpomTileU,params.m_silpomTileV,params.m_silpomTileU,params.m_silpomTileV);
+    silpomPositionDx=ddx(geo.positionWS);silpomPositionDy=ddy(geo.positionWS);
+#endif
     IN.color0=failed?float4(1,0,1,1):float4(1,1,1,1);
     const float reliefFacing=dot(normal,direction);
     bool frontFace=reliefFacing<0;
@@ -574,17 +499,16 @@ COMMON_OPTIONS_EMISSIVE()
 #define EvaluateSurface EvaluateSurface_SilPomFaceBase
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_SurfaceEval.azsli>
 #undef EvaluateSurface
+#include "../../../Shaders/SilPOM/StandardPbrNormal.azsli"
 #endif
 #if SILPOM_LEVEL_FIVE
 #include "../../../Shaders/SilPOM/ProxyAppearance.azsli"
 #endif
-Surface EvaluateSurface_SilPomMesh(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,const MaterialParameters params)
+Surface SilPomEvaluateSurfaceCore(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,const MaterialParameters params)
 {
     silpomPaintHeightTexture=params.m_silpomHeightMap;
 #if defined(SILPOM_LEARNED_MATERIAL)
-    // Derivatives must be evaluated while all quad lanes are active, before
-    // neighboring pixels can take different near/proxy material branches.
-    float4 materialDerivatives=float4(ddx(geo.uvs[0]),ddy(geo.uvs[0]));
+    float4 materialDerivatives=silpomUvDerivatives;
 #endif
 #if SILPOM_LEVEL_FIVE
     if(silpomLitProxy)
@@ -617,7 +541,7 @@ Surface EvaluateSurface_SilPomMesh(VsOutput IN,VsSystemValues SV,PixelGeometryDa
 #endif
 #endif
 #else
-    Surface surface=EvaluateSurface_StandardPBR(IN,SV,geo,params);
+    Surface surface=EvaluateSurface_StandardPBR(IN,SV,geo,params,silpomUvDerivatives,true);
 #endif
     if(geo.isDisplacementClipped)
     {
@@ -625,6 +549,127 @@ Surface EvaluateSurface_SilPomMesh(VsOutput IN,VsSystemValues SV,PixelGeometryDa
         surface.emissiveLighting=diagnostic*8; surface.albedo=diagnostic;
     }
     return surface;
+}
+
+#include "../../../Shaders/SilPOM/GradientConsumers.azsli"
+#include "../../../Shaders/SilPOM/NormalQueryPolicy.azsli"
+#if SILPOM_HIT_FORWARD
+float4 SilPomGoboUvGradients(float4x4 worldToLightClip,float4 lightClip)
+{
+    return SilPomProjectedUvDerivatives(lightClip,mul(worldToLightClip,float4(silpomPositionDx,0)),
+        mul(worldToLightClip,float4(silpomPositionDy,0)));
+}
+
+float SilPomExplicitSpecularAA(float3 normal,float roughnessA2)
+{
+    bool centerAppearanceCoarse=false;
+#if SILPOM_LEVEL_FIVE
+    centerAppearanceCoarse=silpomLitProxy && silpomAppearanceGradientsCoarse;
+#endif
+    return SilPomNormalQueryRoughness(roughnessA2,true,silpomSourceGradient.validity,
+        silpomNormalProbesCoarse,centerAppearanceCoarse,silpomNormalDx,silpomNormalDy);
+}
+
+PixelGeometryData SilPomVirtualGeometry(PixelGeometryData center,float2 uvOffset,float3 positionOffset,
+    VsOutput IN,MaterialParameters params)
+{
+    PixelGeometryData geo=center;
+    geo.positionWS+=positionOffset;
+    const float2 uv=center.uvs[0]+uvOffset;
+    float3 normal=silpomLitFace.normal;
+    if(silpomLitValid && params.m_silpomUseHeightDerivedNormals
+#if SILPOM_LEVEL_FIVE
+        && !silpomLitProxy
+#endif
+    )
+        normal=SilPomFaceNormal(GetMaterialTexture(params.m_silpomHeightMap),silpomLitPatch,silpomLitFace,uv,
+            min(silpomLitFace.uv0,min(silpomLitFace.uv1,silpomLitFace.uv2)));
+    const float4 nearH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,1,1));
+    const float4 midH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,.5f,1));
+    const float3 toward=normalize(midH.xyz/midH.w-nearH.xyz/nearH.w);
+    const float3 direction=mul(transpose(silpomLitRotation),toward);
+    if(SilPomTowerNoMarch(silpomLitPatch.maxCells))
+    {
+        const float faceFacing=dot(silpomLitFace.normal,direction);
+        const float facing=dot(normal,direction)*(center.isFrontFace?-1.0f:1.0f);
+        const float transition=max(.25f*abs(faceFacing),1e-5f);
+        if(facing<transition)normal=normalize(lerp(silpomLitFace.normal,normal,smoothstep(0.0f,transition,facing)));
+    }
+    geo.vertexNormal=normalize(mul(silpomLitRotation,normal));
+    const float3 tangent=normalize(silpomLitFace.du-normal*dot(normal,silpomLitFace.du));
+    const float handedness=dot(cross(normal,tangent),silpomLitFace.dv)<0?-1:1;
+    for(uint i=0;i<UvSetCount;++i)
+    {
+        geo.uvs[i]=uv;geo.tangents[i]=normalize(mul(silpomLitRotation,tangent));
+        geo.bitangents[i]=handedness*normalize(cross(geo.vertexNormal,geo.tangents[i]));
+    }
+    return geo;
+}
+
+#endif
+
+Surface EvaluateSurface_SilPomMesh(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,const MaterialParameters params)
+{
+#if SILPOM_HIT_FORWARD && ENABLE_SPECULARAA
+    // Local numerical material-normal differential. Every evaluation retains
+    // this sample's owner, branch, footprint and pre-paint material stage.
+    // Center runs last to publish its complete material and lighting state.
+    silpomNormalDx=0;silpomNormalDy=0;silpomNormalProbesCoarse=false;
+    if(SilPomNormalQueryNeedsProbes(o_applySpecularAA,silpomLitValid,silpomSourceGradient.validity))
+    {
+        const float step=.25f;
+        const float2 centerUv=silpomLitUv;
+        float3 normals[4];
+#if SILPOM_LEVEL_FIVE
+        SilPomProxyNormalSetup proxySetup=(SilPomProxyNormalSetup)0;
+        if(silpomLitProxy)proxySetup=SilPomPrepareProxyNormalSetup(params);
+#endif
+#if defined(SILPOM_LEARNED_MATERIAL)
+        SilPomLearnedNormalSetup learnedSetup=(SilPomLearnedNormalSetup)0;
+        if(params.m_silpomMaterialUseNormal && AreNormalMapsEnabled()
+#if SILPOM_LEVEL_FIVE
+            && !silpomLitProxy
+#endif
+        )learnedSetup=SilPomPrepareLearnedNormalSetup(params,silpomUvDerivatives);
+#endif
+        [unroll] for(uint k=0;k<4;++k)
+        {
+            const float signedStep=(k&1u)==0u?step:-step;
+            const bool x=k<2u;
+            const float3 positionOffset=(x?silpomPositionDx:silpomPositionDy)*signedStep;
+#if SILPOM_LEVEL_FIVE
+            if(silpomLitProxy)
+            {
+                bool probeCoarse;
+                normals[k]=SilPomEvaluateProxyNormalPrepared(geo.positionWS+positionOffset,geo.isFrontFace,
+                    params,proxySetup,probeCoarse);
+                silpomNormalProbesCoarse=silpomNormalProbesCoarse||probeCoarse;
+            }
+            else
+#endif
+            {
+                const float2 uvOffset=(x?silpomUvDerivatives.xy:silpomUvDerivatives.zw)*signedStep;
+                VsOutput virtualIn=IN;
+                virtualIn.ndc+=(x?float2(2,0):float2(0,-2))*signedStep/PassSrg::m_silpomViewport.zw;
+                virtualIn.position.xy+=(x?float2(1,0):float2(0,1))*signedStep;
+                PixelGeometryData virtualGeo=SilPomVirtualGeometry(geo,uvOffset,positionOffset,virtualIn,params);
+                virtualIn.worldPosition=virtualGeo.positionWS;
+                silpomLitUv=centerUv+uvOffset;
+#if defined(SILPOM_LEARNED_MATERIAL)
+                normals[k]=SilPomEvaluateLearnedNormalPrepared(virtualGeo,params,learnedSetup);
+#else
+                normals[k]=SilPomEvaluateStandardNormal(virtualIn,SV,virtualGeo,params,silpomUvDerivatives);
+#endif
+            }
+        }
+        silpomLitUv=centerUv;
+        silpomNormalDx=(normals[0]-normals[1])/(2*step);
+        silpomNormalDy=(normals[2]-normals[3])/(2*step);
+        if(!SilPomGradientFinite3(silpomNormalDx)||!SilPomGradientFinite3(silpomNormalDy))
+        {silpomNormalProbesCoarse=true;silpomNormalDx=0;silpomNormalDy=0;}
+    }
+#endif
+    return SilPomEvaluateSurfaceCore(IN,SV,geo,params);
 }
 #if !defined(SILPOM_RECEIVER_UV)
 Surface EvaluateSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,const MaterialParameters params)

@@ -3387,3 +3387,219 @@ index 8772f15ca5f09c9825abc3c665e0411e0c18f4df..418b9b28c270c82f4edec3971adb5647
      "templates": [
          "Templates/GameplayGem",
          "Templates/AssetGem",
+diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/SpecularAA.azsli b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/SpecularAA.azsli
+--- a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/SpecularAA.azsli
++++ b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/SpecularAA.azsli
+@@ -27,6 +27,10 @@
+ //
+ float CalculateSpecularAA(float3 normal, float roughnessA2)
+ {
++#if defined(ATOM_CUSTOM_SPECULAR_AA)
++    // The material owns the local normal continuation when visibility is discontinuous.
++    return ATOM_CUSTOM_SPECULAR_AA(normal, roughnessA2);
++#else
+     // Constants for formula below
+     const float screenVariance = 0.25f;
+     const float varianceThresh = 0.18f;
+@@ -38,6 +42,7 @@
+     float kernelRoughnessA2 = min(2.0 * variance , varianceThresh );
+     float filteredRoughnessA2 = saturate ( roughnessA2 + kernelRoughnessA2 );
+     return filteredRoughnessA2;
++#endif
+ }
+ 
+ #endif
+diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/Shadow/DirectionalLightShadowCalculator.azsli b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/Shadow/DirectionalLightShadowCalculator.azsli
+--- a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/Shadow/DirectionalLightShadowCalculator.azsli
++++ b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/Shadow/DirectionalLightShadowCalculator.azsli
+@@ -51,6 +51,22 @@
+         m_worldPos = worldPos;
+     }
+ 
++#if defined(ATOM_EXPLICIT_SHADOW_GRADIENTS)
++    // Derivatives of the actual receiver mapping, in world units per raster pixel.
++    // Normal derivatives include any material-specific receiver-normal mapping.
++    void SetReceiverDerivatives(float3 positionDx,float3 positionDy,float3 normalDx,float3 normalDy)
++    {
++        m_receiverPositionDx=positionDx;m_receiverPositionDy=positionDy;
++        m_receiverNormalDx=normalDx;m_receiverNormalDy=normalDy;
++        m_explicitReceiverDerivatives=true;
++    }
++
++    void DisableExplicitReceiverDerivatives()
++    {
++        m_explicitReceiverDerivatives=false;
++    }
++#endif
++
+     void SetLightIndex(const int lightIndex)
+     {
+         m_lightIndex = lightIndex;
+@@ -85,6 +101,11 @@
+     float3 m_shadowPosDY[ViewSrg::MaxCascadeCount];
+     real3 m_worldNormal;
+     float3 m_worldPos;
++#if defined(ATOM_EXPLICIT_SHADOW_GRADIENTS)
++    float3 m_receiverPositionDx,m_receiverPositionDy;
++    float3 m_receiverNormalDx,m_receiverNormalDy;
++    bool m_explicitReceiverDerivatives;
++#endif
+ 
+     bool m_receiverShadowPlaneBiasEnable;
+     bool m_blendBetweenCascadesEnable;
+@@ -184,13 +205,30 @@
+ 
+         const float4 clipSpacePos = mul(lightViewToShadowmapMatrices[index], lightSpacePos);
+         m_shadowCoords[index] = clipSpacePos.xyz / clipSpacePos.w;
++#if defined(ATOM_EXPLICIT_SHADOW_GRADIENTS)
++        if(m_explicitReceiverDerivatives&&m_receiverShadowPlaneBiasEnable)
++        {
++            const float normalBias=ViewSrg::m_directionalLightShadows[m_lightIndex].m_normalShadowBias;
++            const float3 receiverDx=m_receiverPositionDx+ComputeNormalShadowOffset(normalBias,m_receiverNormalDx,size);
++            const float3 receiverDy=m_receiverPositionDy+ComputeNormalShadowOffset(normalBias,m_receiverNormalDy,size);
++            const float4 clipDx=mul(lightViewToShadowmapMatrices[index],mul(worldToLightViewMatrices[index],float4(receiverDx,0)));
++            const float4 clipDy=mul(lightViewToShadowmapMatrices[index],mul(worldToLightViewMatrices[index],float4(receiverDy,0)));
++            // Include homogeneous division; the constant shadow depth bias has zero derivative.
++            m_shadowPosDX[index]=(clipDx.xyz-m_shadowCoords[index]*clipDx.w)/clipSpacePos.w;
++            m_shadowPosDY[index]=(clipDy.xyz-m_shadowCoords[index]*clipDy.w)/clipSpacePos.w;
++        }
++#endif
+     }
+ 
+     GetShadowCascadeRange(m_shadowCoords, m_cascadeCount, size, m_minCascade, m_maxCascade);
+ 
+ // Todo: No ddx in compute, find a way to leverage world space normal for this
+ #if !USING_COMPUTE_SHADER_DIRECTIONAL_LIGHT
+-    if (m_receiverShadowPlaneBiasEnable)
++    if (m_receiverShadowPlaneBiasEnable
++#if defined(ATOM_EXPLICIT_SHADOW_GRADIENTS)
++        &&!m_explicitReceiverDerivatives
++#endif
++        )
+     {
+         for(int i = 0 ; i < m_cascadeCount; ++i)
+         {
+diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/Shadow/DirectionalLightShadow.azsli b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/Shadow/DirectionalLightShadow.azsli
+--- a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/Shadow/DirectionalLightShadow.azsli
++++ b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/Shadow/DirectionalLightShadow.azsli
+@@ -70,6 +70,9 @@
+ DirectionalShadowCalculator DirectionalLightShadow::MakeShadowCalculator(uint lightIndex, float3 worldPos, real3 normalVector)
+ {
+     DirectionalShadowCalculator calc;
++#if defined(ATOM_EXPLICIT_SHADOW_GRADIENTS)
++    calc.DisableExplicitReceiverDerivatives();
++#endif
+     calc.SetBlendBetweenCascadesEnable(o_blend_between_cascades_enable);
+     calc.SetShadowmaps(PassSrg::m_directionalLightShadowmap, PassSrg::m_directionalLightExponentialShadowmap);
+     calc.SetReceiverShadowPlaneBiasEnable(o_directional_shadow_receiver_plane_bias_enable);
+diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lighting/LightingData.azsli b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lighting/LightingData.azsli
+--- a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lighting/LightingData.azsli
++++ b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lighting/LightingData.azsli
+@@ -88,7 +88,7 @@
+ 
+         // sample BRDF map (indexed by smoothness values rather than roughness)
+         real2 brdfUV = real2(NdotV[i], (1.0 - roughnessLinear));
+-#ifdef CS_SAMPLERS
++#if defined(CS_SAMPLERS) || defined(ATOM_EXPLICIT_LIGHTING_LOOKUPS)
+         brdf[i] = real2(PassSrg::m_brdfMap.SampleLevel(PassSrg::LinearSampler, brdfUV, brdfMipLevel).rg);
+ #else
+         brdf[i] = real2(PassSrg::m_brdfMap.Sample(PassSrg::LinearSampler, brdfUV).rg);
+diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/Ibl.azsli b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/Ibl.azsli
+--- a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/Ibl.azsli
++++ b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/Ibl.azsli
+@@ -37,7 +37,7 @@
+     real3 diffuseResponse)
+ {
+     real3 irradianceDir = MultiplyVectorQuaternion(normal, real4(SceneSrg::m_iblOrientation));
+-    #ifdef CS_SAMPLERS
++    #if defined(CS_SAMPLERS) || defined(ATOM_EXPLICIT_LIGHTING_LOOKUPS)
+     real3 diffuseSample = real3(SceneSrg::m_diffuseEnvMap.SampleLevel(SceneSrg::m_samplerEnv, GetCubemapCoords(irradianceDir), 0).rgb);
+     #else
+     real3 diffuseSample = real3(SceneSrg::m_diffuseEnvMap.Sample(SceneSrg::m_samplerEnv, GetCubemapCoords(irradianceDir)).rgb);
+diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/Ltc.azsli b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/Ltc.azsli
+--- a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/Ltc.azsli
++++ b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/Ltc.azsli
+@@ -61,7 +61,7 @@
+ // Constructs an LTC matrix from the provided texture and coordinates.
+ float3x3 LtcMatrix(Texture2D<float4> ltcMatrix, float2 coord)
+ {
+-    #ifdef CS_SAMPLERS
++    #if defined(CS_SAMPLERS) || defined(ATOM_EXPLICIT_LIGHTING_LOOKUPS)
+     float4 t = ltcMatrix.SampleLevel(SceneSrg::LtcSampler, coord, 0);
+     #else
+     float4 t = ltcMatrix.Sample(SceneSrg::LtcSampler, coord);
+@@ -411,7 +411,7 @@
+     float specular = LtcEvaluateSpecularUnscaled(ltcCoords, ltcMatrix, polygon, vertexCount, doubleSided);
+ 
+     // Apply BRDF scale terms (BRDF magnitude and Schlick Fresnel)
+-    #ifdef CS_SAMPLERS
++    #if defined(CS_SAMPLERS) || defined(ATOM_EXPLICIT_LIGHTING_LOOKUPS)
+     float2 schlick = ltcAmpMatrix.SampleLevel(SceneSrg::LtcSampler, ltcCoords, 0).xy;
+     #else
+     float2 schlick = ltcAmpMatrix.Sample(SceneSrg::LtcSampler, ltcCoords).xy;
+@@ -429,7 +429,7 @@
+ 
+             // Apply BRDF scale terms (BRDF magnitude and Schlick Fresnel)
+             const float clearCoatSpecularF0 = 0.04;
+-        #ifdef CS_SAMPLERS
++        #if defined(CS_SAMPLERS) || defined(ATOM_EXPLICIT_LIGHTING_LOOKUPS)
+             float2 schlickCc = ltcAmpMatrix.SampleLevel(SceneSrg::LtcSampler, ltcCoordsCc, 0).xy;
+         #else
+             float2 schlickCc = ltcAmpMatrix.Sample(SceneSrg::LtcSampler, ltcCoordsCc).xy;
+@@ -647,7 +647,7 @@
+     specular = -specular;
+ 
+     // Apply BRDF scale terms (BRDF magnitude and Schlick Fresnel)
+-    #ifdef CS_SAMPLERS
++    #if defined(CS_SAMPLERS) || defined(ATOM_EXPLICIT_LIGHTING_LOOKUPS)
+     float2 schlick = ltcAmpMatrix.SampleLevel(SceneSrg::LtcSampler, ltcCoords, 0).xy;
+     #else
+     float2 schlick = ltcAmpMatrix.Sample(SceneSrg::LtcSampler, ltcCoords).xy;
+@@ -687,7 +687,7 @@
+ 
+             // Apply BRDF scale terms (BRDF magnitude and Schlick Fresnel)
+             const float clearCoatSpecularF0 = 0.04;
+-        #ifdef CS_SAMPLERS
++        #if defined(CS_SAMPLERS) || defined(ATOM_EXPLICIT_LIGHTING_LOOKUPS)
+             float2 schlickCc = ltcAmpMatrix.SampleLevel(SceneSrg::LtcSampler, ltcCoordsCc, 0).xy;
+         #else
+             float2 schlickCc = ltcAmpMatrix.Sample(SceneSrg::LtcSampler, ltcCoordsCc).xy;
+diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/SampleBrdfMap.azsli b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/SampleBrdfMap.azsli
+--- a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/SampleBrdfMap.azsli
++++ b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/SampleBrdfMap.azsli
+@@ -15,7 +15,7 @@
+ #if PIPELINE_HAS_PASS_SRG
+ float2 SampleBrdfMap(float2 brdfUV)
+ {
+-#ifdef CS_SAMPLERS
++#if defined(CS_SAMPLERS) || defined(ATOM_EXPLICIT_LIGHTING_LOOKUPS)
+     return PassSrg::m_brdfMap.SampleLevel(PassSrg::LinearSampler, brdfUV, 0).rg;
+ #else
+     return PassSrg::m_brdfMap.Sample(PassSrg::LinearSampler, brdfUV).rg;
+diff --git a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/GoboTexture.azsli b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/GoboTexture.azsli
+--- a/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/GoboTexture.azsli
++++ b/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/GoboTexture.azsli
+@@ -11,11 +11,21 @@
+ {
+     if (goboTexIndex < ViewSrg::MaxGoboTextureCount)
+     {
+-        float4 positionInView = mul(lightViewProjectionMatrix, float4(positionWs, 1.0));
++        const float4 positionClip = mul(lightViewProjectionMatrix, float4(positionWs, 1.0));
++#if defined(ATOM_CUSTOM_GOBOTEXTURE_GRADIENTS)
++        // A singular projection has no finite spatial footprint. Use the full
++        // mask at its center instead of manufacturing a denominator or LOD.
++        if(!all(positionClip==positionClip)||any(abs(positionClip)>1e30f)||abs(positionClip.w)<=1e-12f)
++            return ViewSrg::m_goboTextures[goboTexIndex].SampleGrad(goboSampler,float2(.5f,.5f),float2(1,0),float2(0,1));
++#endif
++        float4 positionInView = positionClip;
+         positionInView /= positionInView.w;
+         float2 goboUv = float2((positionInView.x + 1.0)/2.0, (positionInView.y + 1.0)/2.0);
+ 
+-        #ifdef CS_SAMPLERS
++        #if defined(ATOM_CUSTOM_GOBOTEXTURE_GRADIENTS)
++            const float4 gradients=ATOM_CUSTOM_GOBOTEXTURE_GRADIENTS(lightViewProjectionMatrix,positionClip);
++            return ViewSrg::m_goboTextures[goboTexIndex].SampleGrad(goboSampler,goboUv,gradients.xy,gradients.zw);
++        #elif defined(CS_SAMPLERS)
+             return ViewSrg::m_goboTextures[goboTexIndex].SampleLevel(goboSampler, goboUv, 0);
+         #else
+             return ViewSrg::m_goboTextures[goboTexIndex].Sample(goboSampler, goboUv);

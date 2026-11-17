@@ -1,0 +1,993 @@
+{
+  "date": "2026-11-15 America/Los_Angeles",
+  "starting_commit": "cd425e46da3a53d6461bbb7d1e027e50afda839c",
+  "decision": "accepted-matched-images-modest-native-gain",
+  "candidate_retained_in_production": true,
+  "candidate_is_uncommitted": true,
+  "final_outside_control": {
+    "scope": "Final outside-sandbox 1x candidate control, upper-glancing twice plus gameplay",
+    "folder": "D:\\TG\\TGProject\\user\\silpom-angular-ambient-20261115\\artifact-candidate-1x-20261115-133305",
+    "before": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\candidate-1x-20261115-072401",
+    "images": {
+      "upper-glancing": {
+        "equal": true,
+        "changed_pixels": 0,
+        "maximum_channel_delta": 0,
+        "changed_positions": []
+      },
+      "upper-glancing-repeat": {
+        "equal": true,
+        "changed_pixels": 0,
+        "maximum_channel_delta": 0,
+        "changed_positions": []
+      },
+      "gameplay": {
+        "equal": true,
+        "changed_pixels": 0,
+        "maximum_channel_delta": 0,
+        "changed_positions": []
+      }
+    },
+    "samples": {
+      "lost": 0,
+      "gained": 0,
+      "changed_winner_records": 0,
+      "changed_depth_bits": 0
+    },
+    "candidate_product_fingerprints_match_timed": {
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangular-nomsaa_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangular-nomsaa_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangular-nomsaa_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularambient-nomsaa_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularambient-nomsaa_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularambient-nomsaa_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularambient_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularambient_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularambient_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxy-nomsaa_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxy-nomsaa_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxy-nomsaa_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxyambient-nomsaa_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxyambient-nomsaa_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxyambient-nomsaa_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxyambient_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxyambient_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxyambient_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxy_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxy_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxy_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangular_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangular_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangular_vulkan_0.azshadervariant": true
+    },
+    "changed_preserved_inputs": [
+      "D:\\diversion\\TG\\TGProject\\Gems\\silpom\\Assets\\Shaders\\SilPOM\\DirectionalEstimator.azsli"
+    ],
+    "candidate_programs_match_timed_binary": true,
+    "images_equal": true
+  },
+  "raw_root": "D:\\diversion\\TG\\TGProject\\user\\silpom-angular-ambient-20261115",
+  "backend": "DX12",
+  "shader_model": "6.2",
+  "samples": 2,
+  "resolution": [
+    1280,
+    720
+  ],
+  "height_derived_normals": true,
+  "shader_sha256_lf": {
+    "baseline": "c4cad64f82162a206eaec8f1a9df50912cbcec063fc6e9e763a92ed46d5b8cc0",
+    "candidate": "17d0a382fc7cfecd81409dd6dd2972bfb0002d8ae252585fd07107914a314e2f"
+  },
+  "native_metrics": {
+    "exterior": {
+      "hit_generation": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 18.610500000000002,
+            "p95_ms": 18.793499999999998,
+            "min_ms": 18.336,
+            "max_ms": 18.929
+          },
+          "repeat_median_range": {
+            "min_ms": 18.604,
+            "max_ms": 18.618
+          }
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 18.515,
+            "p95_ms": 18.7311,
+            "min_ms": 18.241,
+            "max_ms": 18.986
+          },
+          "repeat_median_range": {
+            "min_ms": 18.5045,
+            "max_ms": 18.524
+          }
+        },
+        "median_change_percent": -0.5131511780983922
+      },
+      "forward": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 28.777,
+            "p95_ms": 31.607400000000002,
+            "min_ms": 22.262,
+            "max_ms": 32.655
+          },
+          "repeat_median_range": {
+            "min_ms": 28.124499999999998,
+            "max_ms": 28.9195
+          }
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 25.429000000000002,
+            "p95_ms": 30.75485,
+            "min_ms": 22.034,
+            "max_ms": 32.015
+          },
+          "repeat_median_range": {
+            "min_ms": 25.34,
+            "max_ms": 25.557499999999997
+          }
+        },
+        "median_change_percent": -11.634291274281539
+      },
+      "graphics_span": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 70.4255,
+            "p95_ms": 73.2297,
+            "min_ms": 63.723,
+            "max_ms": 76.841
+          },
+          "repeat_median_range": {
+            "min_ms": 70.02199999999999,
+            "max_ms": 70.5145
+          }
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 66.4195,
+            "p95_ms": 71.9748,
+            "min_ms": 62.969,
+            "max_ms": 82.966
+          },
+          "repeat_median_range": {
+            "min_ms": 66.368,
+            "max_ms": 66.56700000000001
+          }
+        },
+        "median_change_percent": -5.688280523389966
+      }
+    },
+    "lower-facing": {
+      "hit_generation": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 59.864000000000004,
+            "p95_ms": 60.30945,
+            "min_ms": 59.387,
+            "max_ms": 60.852
+          },
+          "repeat_median_range": {
+            "min_ms": 59.8505,
+            "max_ms": 59.8815
+          }
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 59.907,
+            "p95_ms": 60.42245,
+            "min_ms": 59.342,
+            "max_ms": 60.743
+          },
+          "repeat_median_range": {
+            "min_ms": 59.8945,
+            "max_ms": 59.9185
+          }
+        },
+        "median_change_percent": 0.07182948015500568
+      },
+      "forward": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 101.257,
+            "p95_ms": 106.2225,
+            "min_ms": 98.385,
+            "max_ms": 126.686
+          },
+          "repeat_median_range": {
+            "min_ms": 101.08099999999999,
+            "max_ms": 101.66900000000001
+          }
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 99.7235,
+            "p95_ms": 103.4403,
+            "min_ms": 96.44,
+            "max_ms": 111.231
+          },
+          "repeat_median_range": {
+            "min_ms": 99.598,
+            "max_ms": 99.744
+          }
+        },
+        "median_change_percent": -1.5144631976060974
+      },
+      "graphics_span": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 184.1955,
+            "p95_ms": 192.7124,
+            "min_ms": 179.685,
+            "max_ms": 225.513
+          },
+          "repeat_median_range": {
+            "min_ms": 182.66,
+            "max_ms": 185.0505
+          }
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 182.81,
+            "p95_ms": 186.728,
+            "min_ms": 178.647,
+            "max_ms": 198.524
+          },
+          "repeat_median_range": {
+            "min_ms": 182.67950000000002,
+            "max_ms": 183.0105
+          }
+        },
+        "median_change_percent": -0.752189928635616
+      }
+    },
+    "lower-glancing": {
+      "hit_generation": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 120.5335,
+            "p95_ms": 120.82929999999999,
+            "min_ms": 118.902,
+            "max_ms": 121.032
+          },
+          "repeat_median_range": {
+            "min_ms": 120.51650000000001,
+            "max_ms": 120.545
+          }
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 120.525,
+            "p95_ms": 120.82205,
+            "min_ms": 119.139,
+            "max_ms": 121.12
+          },
+          "repeat_median_range": {
+            "min_ms": 120.49549999999999,
+            "max_ms": 120.54050000000001
+          }
+        },
+        "median_change_percent": -0.007051981399364138
+      },
+      "forward": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 106.768,
+            "p95_ms": 109.91590000000001,
+            "min_ms": 102.721,
+            "max_ms": 114.5
+          },
+          "repeat_median_range": {
+            "min_ms": 106.7475,
+            "max_ms": 106.8255
+          }
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 104.9905,
+            "p95_ms": 107.6128,
+            "min_ms": 100.352,
+            "max_ms": 109.05
+          },
+          "repeat_median_range": {
+            "min_ms": 104.5915,
+            "max_ms": 105.40100000000001
+          }
+        },
+        "median_change_percent": -1.6648246665667665
+      },
+      "graphics_span": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 250.823,
+            "p95_ms": 254.6652,
+            "min_ms": 246.984,
+            "max_ms": 265.239
+          },
+          "repeat_median_range": {
+            "min_ms": 250.73149999999998,
+            "max_ms": 250.974
+          }
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 249.326,
+            "p95_ms": 253.60355,
+            "min_ms": 245.256,
+            "max_ms": 261.323
+          },
+          "repeat_median_range": {
+            "min_ms": 248.56400000000002,
+            "max_ms": 249.9925
+          }
+        },
+        "median_change_percent": -0.5968352184608339
+      }
+    },
+    "upper-glancing": {
+      "hit_generation": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 113.3575,
+            "p95_ms": 116.1531,
+            "min_ms": 112.158,
+            "max_ms": 117.646
+          },
+          "repeat_median_range": {
+            "min_ms": 113.2285,
+            "max_ms": 113.52199999999999
+          }
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 113.3875,
+            "p95_ms": 115.9807,
+            "min_ms": 111.696,
+            "max_ms": 117.341
+          },
+          "repeat_median_range": {
+            "min_ms": 113.36,
+            "max_ms": 113.465
+          }
+        },
+        "median_change_percent": 0.026464944974979865
+      },
+      "forward": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 90.65700000000001,
+            "p95_ms": 92.62985,
+            "min_ms": 87.989,
+            "max_ms": 102.193
+          },
+          "repeat_median_range": {
+            "min_ms": 90.2375,
+            "max_ms": 91.054
+          }
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 90.3115,
+            "p95_ms": 91.59975,
+            "min_ms": 87.952,
+            "max_ms": 101.312
+          },
+          "repeat_median_range": {
+            "min_ms": 90.2375,
+            "max_ms": 90.3555
+          }
+        },
+        "median_change_percent": -0.3811068091818748
+      },
+      "graphics_span": {
+        "baseline": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 229.8945,
+            "p95_ms": 235.5973,
+            "min_ms": 225.605,
+            "max_ms": 242.159
+          },
+          "repeat_median_range": {
+            "min_ms": 229.261,
+            "max_ms": 231.059
+          }
+        },
+        "candidate": {
+          "pooled": {
+            "count": 360,
+            "median_ms": 228.67200000000003,
+            "p95_ms": 231.94275,
+            "min_ms": 225.297,
+            "max_ms": 240.081
+          },
+          "repeat_median_range": {
+            "min_ms": 228.5245,
+            "max_ms": 229.022
+          }
+        },
+        "median_change_percent": -0.5317656577255914
+      }
+    }
+  },
+  "hardware": "AMD Radeon(TM) Graphics",
+  "native_baseline_directory": "D:\\diversion\\TG\\TGProject\\user\\silpom-angular-ambient-20261115\\timings-2x-20261115-113830",
+  "native_candidate_directory": "D:\\diversion\\TG\\TGProject\\user\\silpom-angular-ambient-20261115\\timings-2x-20261115-120727",
+  "native_scope": "Normal-clock leaf-pass timestamps; three 120-frame captures per view. Graphics span includes queue gaps and is not GPU busy time or FPS.",
+  "replay_scope": "Retained stable-power draw timings; read-only final hit ownership, no counters",
+  "replay_capture_sha256": "bfe021553de239202c95a9303370f04de0599d2f58cc02700b86153580165413",
+  "replay_profile_sha256": "8c2a353ac20dc539a4625fc5b0b8eccca568ebc3c3aba92fd8c8af1ad4f3e24c",
+  "angular_draws": [
+    {
+      "event": 2316,
+      "name": "ID3D12GraphicsCommandList::DrawIndexedInstanced()",
+      "path": "ID3D12GraphicsCommandList::DrawIndexedInstanced()",
+      "flags": "ActionFlags.Instanced|Indexed|Drawcall",
+      "indices": 3426,
+      "instances": 1,
+      "duration_ms": [
+        151.81568000000001,
+        151.87519999999998,
+        151.74608
+      ],
+      "median_ms": 151.81568000000001,
+      "min_ms": 151.74608,
+      "max_ms": 151.87519999999998,
+      "ps_invocations": [
+        1843200,
+        1843200,
+        1843200
+      ],
+      "shaders": {
+        "ShaderStage.Vertex": "ResourceId::3009",
+        "ShaderStage.Pixel": "ResourceId::3010"
+      },
+      "products": [
+        "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitforwardangularproxyambient_dx12_0.azshadervariant"
+      ],
+      "object_id": 53,
+      "material_type": 2,
+      "material_id": 22,
+      "mesh_buffer_index": 217,
+      "face_base": 5273,
+      "face_count": 571,
+      "max_cells": 65525,
+      "owned_final_hit_samples": 1806350,
+      "owned_viewport_fraction": 0.9800075954861112,
+      "samples_passed": [
+        1806350,
+        1806350,
+        1806350
+      ]
+    },
+    {
+      "event": 2324,
+      "name": "ID3D12GraphicsCommandList::DrawIndexedInstanced()",
+      "path": "ID3D12GraphicsCommandList::DrawIndexedInstanced()",
+      "flags": "ActionFlags.Instanced|Indexed|Drawcall",
+      "indices": 702,
+      "instances": 1,
+      "duration_ms": [
+        2.6614400000000002,
+        2.66312,
+        2.6627199999999998
+      ],
+      "median_ms": 2.6627199999999998,
+      "min_ms": 2.6614400000000002,
+      "max_ms": 2.66312,
+      "ps_invocations": [
+        1843200,
+        1843200,
+        1843200
+      ],
+      "shaders": {
+        "ShaderStage.Vertex": "ResourceId::3009",
+        "ShaderStage.Pixel": "ResourceId::3010"
+      },
+      "products": [
+        "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitforwardangularproxyambient_dx12_0.azshadervariant"
+      ],
+      "object_id": 42,
+      "material_type": 2,
+      "material_id": 16,
+      "mesh_buffer_index": 37,
+      "face_base": 3326,
+      "face_count": 117,
+      "max_cells": 65525,
+      "owned_final_hit_samples": 0,
+      "owned_viewport_fraction": 0.0,
+      "samples_passed": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "event": 2331,
+      "name": "ID3D12GraphicsCommandList::DrawIndexedInstanced()",
+      "path": "ID3D12GraphicsCommandList::DrawIndexedInstanced()",
+      "flags": "ActionFlags.Instanced|Indexed|Drawcall",
+      "indices": 78,
+      "instances": 1,
+      "duration_ms": [
+        2.64808,
+        2.64696,
+        2.64412
+      ],
+      "median_ms": 2.64696,
+      "min_ms": 2.64412,
+      "max_ms": 2.64808,
+      "ps_invocations": [
+        1843200,
+        1843200,
+        1843200
+      ],
+      "shaders": {
+        "ShaderStage.Vertex": "ResourceId::3009",
+        "ShaderStage.Pixel": "ResourceId::3010"
+      },
+      "products": [
+        "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitforwardangularproxyambient_dx12_0.azshadervariant"
+      ],
+      "object_id": 55,
+      "material_type": 2,
+      "material_id": 24,
+      "mesh_buffer_index": 172,
+      "face_base": 5880,
+      "face_count": 13,
+      "max_cells": 65525,
+      "owned_final_hit_samples": 0,
+      "owned_viewport_fraction": 0.0,
+      "samples_passed": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "event": 2355,
+      "name": "ID3D12GraphicsCommandList::DrawIndexedInstanced()",
+      "path": "ID3D12GraphicsCommandList::DrawIndexedInstanced()",
+      "flags": "ActionFlags.Instanced|Indexed|Drawcall",
+      "indices": 222,
+      "instances": 1,
+      "duration_ms": [
+        2.64328,
+        2.63972,
+        2.64648
+      ],
+      "median_ms": 2.64328,
+      "min_ms": 2.63972,
+      "max_ms": 2.64648,
+      "ps_invocations": [
+        1843200,
+        1843200,
+        1843200
+      ],
+      "shaders": {
+        "ShaderStage.Vertex": "ResourceId::3009",
+        "ShaderStage.Pixel": "ResourceId::3010"
+      },
+      "products": [
+        "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitforwardangularproxyambient_dx12_0.azshadervariant"
+      ],
+      "object_id": 39,
+      "material_type": 2,
+      "material_id": 15,
+      "mesh_buffer_index": 147,
+      "face_base": 3289,
+      "face_count": 37,
+      "max_cells": 65525,
+      "owned_final_hit_samples": 0,
+      "owned_viewport_fraction": 0.0,
+      "samples_passed": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "event": 2371,
+      "name": "ID3D12GraphicsCommandList::DrawIndexedInstanced()",
+      "path": "ID3D12GraphicsCommandList::DrawIndexedInstanced()",
+      "flags": "ActionFlags.Instanced|Indexed|Drawcall",
+      "indices": 30,
+      "instances": 1,
+      "duration_ms": [
+        2.64484,
+        2.63984,
+        2.6455200000000003
+      ],
+      "median_ms": 2.64484,
+      "min_ms": 2.63984,
+      "max_ms": 2.6455200000000003,
+      "ps_invocations": [
+        1843200,
+        1843200,
+        1843200
+      ],
+      "shaders": {
+        "ShaderStage.Vertex": "ResourceId::3009",
+        "ShaderStage.Pixel": "ResourceId::3010"
+      },
+      "products": [
+        "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitforwardangularproxyambient_dx12_0.azshadervariant"
+      ],
+      "object_id": 49,
+      "material_type": 2,
+      "material_id": 19,
+      "mesh_buffer_index": 229,
+      "face_base": 4324,
+      "face_count": 5,
+      "max_cells": 65525,
+      "owned_final_hit_samples": 0,
+      "owned_viewport_fraction": 0.0,
+      "samples_passed": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "event": 2378,
+      "name": "ID3D12GraphicsCommandList::DrawIndexedInstanced()",
+      "path": "ID3D12GraphicsCommandList::DrawIndexedInstanced()",
+      "flags": "ActionFlags.Instanced|Indexed|Drawcall",
+      "indices": 6,
+      "instances": 1,
+      "duration_ms": [
+        2.6560799999999998,
+        2.6512,
+        2.66116
+      ],
+      "median_ms": 2.6560799999999998,
+      "min_ms": 2.6512,
+      "max_ms": 2.66116,
+      "ps_invocations": [
+        1843200,
+        1843200,
+        1843200
+      ],
+      "shaders": {
+        "ShaderStage.Vertex": "ResourceId::3009",
+        "ShaderStage.Pixel": "ResourceId::3010"
+      },
+      "products": [
+        "materials/types/silpommesh/silpommesh_mainpipeline_silpomhitforwardangularproxyambient_dx12_0.azshadervariant"
+      ],
+      "object_id": 61,
+      "material_type": 2,
+      "material_id": 26,
+      "mesh_buffer_index": 75,
+      "face_base": 6090,
+      "face_count": 1,
+      "max_cells": 65525,
+      "owned_final_hit_samples": 0,
+      "owned_viewport_fraction": 0.0,
+      "samples_passed": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "angular_duration_sums_ms": [
+    165.0694,
+    165.11603999999997,
+    165.00608
+  ],
+  "angular_median_sum_ms": 165.0694,
+  "compiled_ambient": {
+    "baseline": {
+      "file": "D:\\TG\\TGProject\\user\\silpom-angular-ambient-20261115\\angular-proxy-ambient-baseline.ll",
+      "sha256": "2961593298181379e523c70d4dbd5379dc54e26cbfc6ed72e88b542dcb20191f",
+      "sample_load_line": 7456,
+      "loop_end_line": 7509,
+      "rsqrt_in_32_direction_loop": 1,
+      "rsqrt_in_preceding_65_lines": 0,
+      "loop_excerpt": "D:\\TG\\TGProject\\user\\silpom-angular-ambient-20261115\\ambient-baseline-excerpt.ll"
+    },
+    "candidate": {
+      "file": "D:\\TG\\TGProject\\user\\silpom-angular-ambient-20261115\\angular-proxy-ambient-candidate.ll",
+      "sha256": "42067fee35e42b4cd2fcae37a8cc69d02d4ca793e0abc5fe9cf9848f788afcc7",
+      "sample_load_line": 7493,
+      "loop_end_line": 7542,
+      "rsqrt_in_32_direction_loop": 0,
+      "rsqrt_in_preceding_65_lines": 4,
+      "loop_excerpt": "D:\\TG\\TGProject\\user\\silpom-angular-ambient-20261115\\ambient-candidate-excerpt.ll"
+    }
+  },
+  "gpu_validation": {
+    "shader_models": [
+      "6.2",
+      "6.7"
+    ],
+    "queries_per_model": 5384,
+    "maximum_cpu_oracle_error": 2.3067e-05,
+    "same_device_ambient_cases": 352,
+    "same_device_tolerance": 1.192092896e-07,
+    "strict_bitwise_diagnostic": {
+      "different_cases": 27,
+      "maximum_absolute_error": 5.960464477539063e-08,
+      "scope": "Initial SM6.2 same-device diagnostic, before setting the explicit epsilon gate; raw inputs and readbacks retained."
+    }
+  },
+  "historical_baseline_compatibility": {
+    "1": {
+      "commit": "f4ecb5b6be1f23d7632ec767290abd4ddd6f180e",
+      "forward_source_equal_lf": true,
+      "hit_source_equal": {
+        "Assets\\Shaders\\SilPOM\\FrustumDepthBound.azsli": true,
+        "Assets\\Materials\\Pipelines\\MainPipeline\\SilPOMHitDepth.azsli": true
+      },
+      "baseline": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\candidate-1x-20261115-072401"
+    },
+    "2": {
+      "commit": "877ce14ac48d16e2c9790f1cc5683ebfb356424e",
+      "forward_source_equal_lf": true,
+      "hit_source_equal": {
+        "Assets\\Shaders\\SilPOM\\FrustumDepthBound.azsli": true,
+        "Assets\\Materials\\Pipelines\\MainPipeline\\SilPOMHitDepth.azsli": true
+      },
+      "baseline": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\candidate-2x-20261115-080413"
+    },
+    "4": {
+      "commit": "f4ecb5b6be1f23d7632ec767290abd4ddd6f180e",
+      "forward_source_equal_lf": true,
+      "hit_source_equal": {
+        "Assets\\Shaders\\SilPOM\\FrustumDepthBound.azsli": true,
+        "Assets\\Materials\\Pipelines\\MainPipeline\\SilPOMHitDepth.azsli": true
+      },
+      "baseline": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\candidate-4x-20261115-072815"
+    }
+  },
+  "matched_baseline_directories": {
+    "2": "D:\\TG\\TGProject\\user\\silpom-angular-ambient-20261115\\baseline-2x-20261115-131811",
+    "1": "D:\\TG\\TGProject\\user\\silpom-angular-ambient-20261115\\baseline-1x-20261115-131309"
+  },
+  "original_outside_control": {
+    "scope": "Post-restore 1x upper-glancing control, repeated image plus gameplay; identical original production shader",
+    "folder": "D:\\TG\\TGProject\\user\\silpom-angular-ambient-20261115\\artifact-baseline-1x-20261115-130035",
+    "before": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\candidate-1x-20261115-072401",
+    "images": {
+      "upper-glancing": {
+        "equal": true,
+        "changed_pixels": 0,
+        "maximum_channel_delta": 0,
+        "changed_positions": []
+      },
+      "upper-glancing-repeat": {
+        "equal": true,
+        "changed_pixels": 0,
+        "maximum_channel_delta": 0,
+        "changed_positions": []
+      },
+      "gameplay": {
+        "equal": true,
+        "changed_pixels": 0,
+        "maximum_channel_delta": 0,
+        "changed_positions": []
+      }
+    },
+    "samples": {
+      "lost": 0,
+      "gained": 0,
+      "changed_winner_records": 0,
+      "changed_depth_bits": 0
+    },
+    "shader_product_fingerprints_restored": {
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangular-nomsaa_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangular-nomsaa_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangular-nomsaa_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularambient-nomsaa_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularambient-nomsaa_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularambient-nomsaa_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularambient_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularambient_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularambient_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxy-nomsaa_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxy-nomsaa_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxy-nomsaa_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxyambient-nomsaa_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxyambient-nomsaa_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxyambient-nomsaa_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxyambient_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxyambient_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxyambient_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxy_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxy_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxy_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangular_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangular_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangular_vulkan_0.azshadervariant": true
+    },
+    "changed_preserved_inputs": [],
+    "original_shader_and_assets_restored": true,
+    "images_equal": true
+  },
+  "original_sandbox_control": {
+    "scope": "Post-restore 1x upper-glancing control, repeated image plus gameplay; identical original production shader",
+    "folder": "D:\\TG\\TGProject\\user\\silpom-angular-ambient-20261115\\artifact-baseline-1x-20261115-130512",
+    "before": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\candidate-1x-20261115-072401",
+    "images": {
+      "upper-glancing": {
+        "equal": false,
+        "changed_pixels": 4,
+        "maximum_channel_delta": 48,
+        "changed_positions": [
+          [
+            66,
+            196
+          ],
+          [
+            67,
+            196
+          ],
+          [
+            66,
+            197
+          ],
+          [
+            67,
+            197
+          ]
+        ]
+      },
+      "upper-glancing-repeat": {
+        "equal": false,
+        "changed_pixels": 4,
+        "maximum_channel_delta": 48,
+        "changed_positions": [
+          [
+            66,
+            196
+          ],
+          [
+            67,
+            196
+          ],
+          [
+            66,
+            197
+          ],
+          [
+            67,
+            197
+          ]
+        ]
+      },
+      "gameplay": {
+        "equal": true,
+        "changed_pixels": 0,
+        "maximum_channel_delta": 0,
+        "changed_positions": []
+      }
+    },
+    "samples": {
+      "lost": 0,
+      "gained": 0,
+      "changed_winner_records": 0,
+      "changed_depth_bits": 0
+    },
+    "shader_product_fingerprints_restored": {
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangular-nomsaa_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangular-nomsaa_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangular-nomsaa_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularambient-nomsaa_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularambient-nomsaa_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularambient-nomsaa_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularambient_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularambient_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularambient_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxy-nomsaa_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxy-nomsaa_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxy-nomsaa_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxyambient-nomsaa_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxyambient-nomsaa_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxyambient-nomsaa_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxyambient_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxyambient_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxyambient_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxy_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxy_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangularproxy_vulkan_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangular_dx12_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangular_null_0.azshadervariant": true,
+      "D:\\diversion\\TG\\TGProject\\Cache\\pc\\materials\\types\\silpommesh\\silpommesh_mainpipeline_silpomhitforwardangular_vulkan_0.azshadervariant": true
+    },
+    "changed_preserved_inputs": [],
+    "original_shader_and_assets_restored": true,
+    "images_equal": false,
+    "candidate_image_comparison": {
+      "upper-glancing": {
+        "equal": true,
+        "changed_pixels": 0
+      },
+      "upper-glancing-repeat": {
+        "equal": true,
+        "changed_pixels": 0
+      },
+      "gameplay": {
+        "equal": true,
+        "changed_pixels": 0
+      }
+    }
+  },
+  "historical_image_checks": {
+    "1": {
+      "passed": false,
+      "changed_image_pixels": 36
+    },
+    "2": {
+      "passed": false,
+      "changed_image_pixels": 36
+    },
+    "4": {
+      "passed": true,
+      "changed_image_pixels": 0
+    }
+  },
+  "visual_checks": {
+    "1": {
+      "passed": true,
+      "images": 13,
+      "sample_plane_comparisons": 12,
+      "changed_image_pixels": 0,
+      "changed_winner_records": 0,
+      "changed_depth_bits": 0,
+      "before": "D:\\TG\\TGProject\\user\\silpom-angular-ambient-20261115\\baseline-1x-20261115-131309",
+      "after": "D:\\TG\\TGProject\\user\\silpom-angular-ambient-20261115\\candidate-1x-20261115-122031"
+    },
+    "2": {
+      "passed": true,
+      "images": 13,
+      "sample_plane_comparisons": 24,
+      "changed_image_pixels": 0,
+      "changed_winner_records": 0,
+      "changed_depth_bits": 0,
+      "before": "D:\\TG\\TGProject\\user\\silpom-angular-ambient-20261115\\baseline-2x-20261115-131811",
+      "after": "D:\\TG\\TGProject\\user\\silpom-angular-ambient-20261115\\candidate-2x-20261115-123100"
+    },
+    "4": {
+      "passed": true,
+      "images": 13,
+      "sample_plane_comparisons": 48,
+      "changed_image_pixels": 0,
+      "changed_winner_records": 0,
+      "changed_depth_bits": 0,
+      "before": "D:\\diversion\\TG\\TGProject\\user\\silpom-review-validation-20261115\\candidate-4x-20261115-072815",
+      "after": "D:\\TG\\TGProject\\user\\silpom-angular-ambient-20261115\\candidate-4x-20261115-124227"
+    }
+  },
+  "preserved_input_files": 161,
+  "expected_changed_preserved_inputs": [
+    "D:\\diversion\\TG\\TGProject\\Gems\\silpom\\Assets\\Shaders\\SilPOM\\DirectionalEstimator.azsli"
+  ]
+}

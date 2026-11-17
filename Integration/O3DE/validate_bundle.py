@@ -90,7 +90,7 @@ def main():
         applied = snapshot()
         apply()
         assert snapshot() == applied, "Reapplication changed files"
-        results.append(label+": complete application, all 95 output hashes, idempotent reapplication")
+        results.append(label+f": complete application, all {len(tracked)} output hashes, idempotent reapplication")
         (output/(label+"-apply.txt")).write_text(log,encoding="utf-8")
         # Each published predecessor must upgrade using a modification patch,
         # including files originally added by the aggregate. Whole-file context
@@ -174,7 +174,8 @@ def main():
     after_status = [run(["git", "-C", path, "status", "--porcelain", "--untracked-files=all"]) for path in inputs]
     assert before_status == after_status, "Original source checkout status changed"
     report = {"bundle":manifest["bundle"],"engine_base":manifest["components"][0]["upstream_commit"],
-              "engine_files":91,"terrain_integration_files":4,"passed":True,"checks":results,
+              "engine_files":len(manifest["components"][0]["files"]),
+              "terrain_integration_files":len(manifest["components"][1]["files"]),"passed":True,"checks":results,
               "limitations":["No O3DE rebuild performed by packaging validation.",
                              "Original visual reference used DX12 SM 6.7.",
                              "Full tower SM 6.2 and Ryzen GPU profiling must be validated on the other PC."]}

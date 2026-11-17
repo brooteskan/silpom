@@ -31,7 +31,12 @@ void SilPomApplySurfaceTextures(inout Surface surface,MaterialParameters params,
     const uint4 header=table.Load4(0);
     if(header.x!=0x53505431u||header.y>128u||header.y>(bytes-16u)/48u)return;
     const uint hitFace=params.m_silpomHitFaceBase+face;
-    const float2 uv=silpomLitUv,dx=ddx(uv),dy=ddy(uv);
+    const float2 uv=silpomLitUv;
+#if SILPOM_HIT_FORWARD
+    const float2 dx=silpomUvDerivatives.xy,dy=silpomUvDerivatives.zw;
+#else
+    const float2 dx=ddx(uv),dy=ddy(uv);
+#endif
     // Receiver coordinates are attached to the undeformed canonical face.
     // Relief/material normals remain live inputs to the single composition rule.
     const float3 localN=front?silpomLitFace.normal:-silpomLitFace.normal;

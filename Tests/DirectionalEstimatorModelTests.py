@@ -103,6 +103,20 @@ def main():
             ambient=predict(np.repeat(x,32,axis=0),np.tile(directions,(len(x),1)),np.zeros(len(x)*32,np.float32),mode,weights).reshape(len(x),32).mean(1)
             queries.append(np.column_stack((x,light,np.zeros(len(x)),np.full(len(x),-1),np.full(len(x),mode))).astype(np.float32))
             expected.append(ambient)
+            if mode==5:
+                queries.append(np.column_stack((x,light,np.zeros(len(x)),np.full(len(x),-2),np.full(len(x),mode))).astype(np.float32))
+                expected.append(np.zeros(len(x),np.float32))
+        # Same-device ambient comparison also exercises decoded caps
+        # beyond the learned fixture, including the reciprocal-root floor.
+        rng=np.random.default_rng(20261115)
+        axes=rng.normal(size=(256,4,3)).astype(np.float32)
+        thresholds=rng.uniform(0,1,size=(256,4)).astype(np.float32)
+        thresholds[:4]=np.array([0,.5,np.nextafter(np.float32(1),np.float32(0)),1],np.float32)[:,None]
+        widths=np.radians(rng.uniform(.1,8,size=(256,4))).astype(np.float32)
+        caps=np.column_stack((axes.reshape(-1,12),thresholds,widths)).astype(np.float32)
+        queries.append(np.column_stack((caps,np.tile([0,0,1],(len(caps),1)),np.zeros(len(caps)),
+            np.full(len(caps),-2),np.full(len(caps),-5))).astype(np.float32))
+        expected.append(np.zeros(len(caps),np.float32))
         with tempfile.TemporaryDirectory(prefix='silpom-directional-') as folder:
             for radius in (5,10,20,30):
                 for offset in (-2,-1,0,1,2):

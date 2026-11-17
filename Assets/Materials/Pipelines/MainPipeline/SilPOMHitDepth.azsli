@@ -7,12 +7,15 @@
  */
 #pragma once
 #define SILPOM_HIT_DEPTH 1
+#define SILPOM_FACE_CACHE_PASS 1
 // Application-owned; follows Atom's actual sample count. Default preserves
 // center SV_Position depth exactly on the established 1x route.
 option bool o_silpomSampleFrequency=false;
 #include <Atom/Features/SrgSemantics.azsli>
 
 #define MATERIALPIPELINE_SHADER_HAS_GEOMETRIC_PIXEL_STAGE 1
+// Depth has a viewport SRG but none of the forward lighting bindings selected
+// by this StandardPBR flag. Declare the viewport SRG explicitly below.
 #define PIPELINE_HAS_PASS_SRG 0
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -25,6 +28,7 @@ option bool o_silpomSampleFrequency=false;
 
 #include <viewsrg_all.srgi>
 #include <scenesrg_all.srgi>
+#include "../../../Shaders/SilPOM/HitReuse/SilPOMHitDepthSrg.azsli"
 #include <Atom/Features/Pipeline/Forward/ForwardPassVertexData.azsli>
 #include <Atom/Features/Pipeline/Forward/ForwardPassPipelineCallbacks.azsli>
 
@@ -32,6 +36,7 @@ option bool o_silpomSampleFrequency=false;
 
 #include MATERIAL_TYPE_AZSLI_FILE_PATH
 #include "../../../Shaders/SilPOM/HitReuse/SilPOMHitRecord.azsli"
+#include "../../../Shaders/SilPOM/GradientContext.azsli"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 struct PsOutput
@@ -45,6 +50,8 @@ struct PsOutput
     precise float m_depth : SV_DepthLessEqual;
 #endif
     uint4 m_hit : SV_Target0;
+    float4 m_uvGradients : SV_Target1;
+    float4 m_depthGradients : SV_Target2;
 };
 
 #if SILPOM_TOWER_LOD_SHELL
@@ -54,6 +61,7 @@ struct SilPomShellVertex
     sample float2 uv : TEXCOORD0;
     nointerpolation uint face : TEXCOORD1;
     noperspective sample float rasterDepth : TEXCOORD2;
+    nointerpolation uint instance : TEXCOORD3;
 };
 
 SilPomShellVertex VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
@@ -77,7 +85,7 @@ SilPomShellVertex VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
         || params.m_silpomMaxCells!=SP_TOWER_LOD_4PX_RESOLVE)
         return output;
 #endif
-    const SilPomMeshFace face=SilPomLoadFace(params.m_meshBufferIndex,uint(round(IN.position.z)));
+    const SilPomMeshFace face=SilPomLoadFace(params.m_meshBufferIndex,uint(round(IN.position.z)),params.m_silpomFaceCoefficientBuffer);
     const float4x4 localToWorld=GetObjectToWorldMatrix(sv);
     const float4x4 localToClip=mul(GetViewProjectionMatrix(sv),localToWorld);
     const float cutoff=SilPomTowerLodDepth(params);
@@ -138,6 +146,7 @@ SilPomShellVertex VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
     output.rasterDepth=output.position.z/output.position.w;
     output.uv=polyUv[corner];
     output.face=params.m_silpomHitFaceBase+uint(round(IN.position.z));
+    output.instance=instanceId;
     if(SilPomIsTowerWallModel(params.m_silpomNeuralModel)) output.face|=SP_HIT_RECORD_WALL;
     return output;
 }
@@ -151,16 +160,49 @@ uint4 ShellHit(SilPomShellVertex IN)
     return uint4(asuint(IN.uv),asuint(IN.position.z)|flags,(IN.face<<2)|SP_HIT);
 }
 
+SilPomGradientContext SilPomShellGradient(SilPomShellVertex IN)
+{
+    const MaterialParameters params=GetMaterialParameters();
+    const uint faceIndex=(IN.face&~SP_HIT_RECORD_WALL)-params.m_silpomHitFaceBase;
+    const SilPomMeshFace face=SilPomLoadFace(params.m_meshBufferIndex,faceIndex,params.m_silpomFaceCoefficientBuffer);
+    const float2 q=IN.uv-face.uv0;
+#if SILPOM_WALL_BACKUP_SHELL
+    const float height=min(0.0f,min(-params.m_silpomScale*params.m_silpomReference,
+        params.m_silpomScale*(1.0f-params.m_silpomReference)));
+    const uint representation=SP_GRADIENT_BACKUP;
+#else
+    const float height=0;
+    const uint representation=SP_GRADIENT_SHELL;
+#endif
+    const float2 coarseSpan=max(max(face.uv0,max(face.uv1,face.uv2))-min(face.uv0,min(face.uv1,face.uv2)),
+        rcp(max(abs(float2(params.m_silpomTileU,params.m_silpomTileV)),1e-20f)));
+    float3 dU,dV;
+    if(!SilPomFaceGradientDirectionPartials(face,dU,dV))
+        return SilPomGradientCoarse(coarseSpan,representation);
+    const float3 direction=face.d0+dU*q.x+dV*q.y;
+    const float3 position=face.origin+face.du*q.x+face.dv*q.y+direction*height;
+    VsSystemValues sv;sv.m_instanceId=IN.instance;
+    const float4x4 localToClip=mul(GetViewProjectionMatrix(sv),GetObjectToWorldMatrix(sv));
+    return SilPomGradientFromTangents(mul(localToClip,float4(position,1)),
+        mul(localToClip,float4(face.du+dU*height,0)),mul(localToClip,float4(face.dv+dV*height,0)),
+        PassSrg::m_silpomViewport.zw,coarseSpan,representation);
+}
+
 #if SILPOM_WALL_BACKUP_SHELL
 struct SilPomWallBackupOutput
 {
     uint4 hit : SV_Target0;
+    float4 uvGradients : SV_Target1;
+    float4 depthGradients : SV_Target2;
     precise float depth : SV_Depth;
 };
 SilPomWallBackupOutput PixelShader(SilPomShellVertex IN)
 {
     SilPomWallBackupOutput output;
     output.hit=ShellHit(IN);
+    const SilPomGradientContext gradients=SilPomShellGradient(IN);
+    output.uvGradients=gradients.uv;
+    output.depthGradients=SilPomGradientPackDepth(gradients);
     // Hardware raster depth can round differently from the interpolated
     // sample depth recorded by ShellHit. Publish one identical value to both
     // targets, or the depth-equal forward pass leaves covered samples black.
@@ -174,6 +216,9 @@ PsOutput PixelShader(SilPomShellVertex IN,uint sampleIndex:SV_SampleIndex)
     output.m_depth=o_silpomSampleFrequency?IN.rasterDepth:IN.position.z;
     // The reverse clip depth is nonnegative. Flag shell winners for the capture.
     output.m_hit=ShellHit(IN);
+    const SilPomGradientContext gradients=SilPomShellGradient(IN);
+    output.m_uvGradients=gradients.uv;
+    output.m_depthGradients=SilPomGradientPackDepth(gradients);
     return output;
 }
 #endif
@@ -181,20 +226,8 @@ PsOutput PixelShader(SilPomShellVertex IN,uint sampleIndex:SV_SampleIndex)
 #include "../../../Shaders/SilPOM/FrustumDepthBound.azsli"
 float SilPomNearestFaceDepth(SilPomMeshFace face, VsSystemValues systemValues, const MaterialParameters params)
 {
-    float3 low, high;
-    SilPomFaceBounds(face, params.m_silpomScale, params.m_silpomReference, low, high);
-
-    // Include the expanded AABB used by the ray test, so fallback depths are
-    // bounded too. The projection is reverse Z, so the nearest depth is largest.
-    const float3 extent = (high - low) * .5f + 2e-5f;
-    const float4x4 localToClip = mul(GetViewProjectionMatrix(systemValues), GetObjectToWorldMatrix(systemValues));
-    const float4 center = mul(localToClip, float4((high + low) * .5f, 1.0f));
-    const float minW = center.w - dot(abs(localToClip[3].xyz), extent);
-    const float maxZ = center.z + dot(abs(localToClip[2].xyz), extent);
-    const float legacy = minW > 1e-6f ? saturate(maxZ / minW + 1e-5f) : 1.0f;
-    if (legacy < 1.0f) return legacy;
-    return SilPomFrustumDepthBound((high + low) * .5f, extent,
-        GetObjectToWorldMatrix(systemValues), GetViewProjectionMatrix(systemValues));
+    return SilPomImplicitNearestDepth(face,params.m_silpomScale,params.m_silpomReference,
+        GetObjectToWorldMatrix(systemValues),GetViewProjectionMatrix(systemValues));
 }
 
 VsOutput VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
@@ -207,8 +240,17 @@ VsOutput VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
 #else
     const MaterialParameters params = GetMaterialParameters();
 #endif
-    VsOutput OUT = EvaluateVertexGeometry(IN, SV, params);
-    const SilPomMeshFace face = SilPomLoadFace(params.m_meshBufferIndex, OUT.faceIndex);
+    VsOutput OUT;
+#if SILPOM_TOWER_LOD_NEAR
+    float cachedDepth;
+    if(SilPomTryCachedImplicitVertex(IN,params,OUT,cachedDepth))
+    {
+        OUT.position.z=cachedDepth;OUT.m_instanceId=instanceId;
+        return OUT;
+    }
+#endif
+    OUT=EvaluateVertexGeometry(IN,SV,params);
+    const SilPomMeshFace face = SilPomLoadFace(params.m_meshBufferIndex,OUT.faceIndex,params.m_silpomFaceCoefficientBuffer);
     OUT.position.z = SilPomNearestFaceDepth(face, SV, params);
     OUT.m_instanceId = instanceId;
     return OUT;
@@ -236,6 +278,8 @@ PsOutput PixelShader(VsOutput IN, bool isFrontFace : SV_IsFrontFace,uint sampleI
     const uint flags = SilPomIsTowerWallModel(params.m_silpomNeuralModel) ? SP_HIT_RECORD_WALL : 0u;
     OUT.m_hit = uint4(asuint(silpomDepthHitUv), asuint(IN.position.z)|flags,
         ((params.m_silpomHitFaceBase + IN.faceIndex) << 2) | uint(IN.silpomDiagnostic.x));
+    OUT.m_uvGradients=silpomDepthUvGradients;
+    OUT.m_depthGradients=silpomDepthDepthGradients;
 
     return OUT;
 }

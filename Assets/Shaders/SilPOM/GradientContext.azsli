@@ -1,0 +1,272 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+
+// Every derivative is a change per RASTER PIXEL, evaluated at the current
+// sample. A context never describes a difference between visible neighbors.
+// The center UV and depth remain in the unchanged winning hit record.
+struct SilPomGradientContext
+{
+    float4 uv;       // source (du/dx,dv/dx,du/dy,dv/dy)
+    float2 depth;    // recorded projective depth (dz/dx,dz/dy)
+    uint representation;
+    uint validity;
+};
+
+static const uint SP_GRADIENT_INVALID=0u;
+static const uint SP_GRADIENT_VALID=1u;
+static const uint SP_GRADIENT_COARSE=2u;
+static const uint SP_GRADIENT_RELIEF=1u;
+static const uint SP_GRADIENT_BASE=2u;
+static const uint SP_GRADIENT_SHELL=3u;
+static const uint SP_GRADIENT_BACKUP=4u;
+static const uint SP_GRADIENT_MORPH=5u;
+static const uint SP_GRADIENT_PROXY=6u;
+static const uint SP_GRADIENT_PROXY_DEPTH=7u;
+static const uint SP_GRADIENT_DIAGNOSTIC=11u;
+static const uint SP_GRADIENT_REPRESENTATION_MASK=255u;
+static const uint SP_GRADIENT_REPAIR_COPY=256u;
+static const uint SP_GRADIENT_REPAIR_ARITHMETIC=512u;
+static const uint SP_GRADIENT_REPAIR_DEPTH_WEIGHTED=768u;
+
+#if defined(SILPOM_GRADIENT_CPU) || defined(SILPOM_CPU)
+#define SP_GRADIENT_OUT(T) T&
+#else
+#define SP_GRADIENT_OUT(T) out T
+#endif
+
+bool SilPomGradientFinite(float a) {return a==a && abs(a)<=1e30f;}
+bool SilPomGradientFinite2(float2 a) {return SilPomGradientFinite(a.x)&&SilPomGradientFinite(a.y);}
+bool SilPomGradientFinite3(float3 a) {return SilPomGradientFinite(a.x)&&SilPomGradientFinite(a.y)&&SilPomGradientFinite(a.z);}
+bool SilPomGradientFinite4(float4 a) {return SilPomGradientFinite(a.x)&&SilPomGradientFinite(a.y)&&SilPomGradientFinite(a.z)&&SilPomGradientFinite(a.w);}
+float2 SilPomGradientUvX(SilPomGradientContext a) {return float2(a.uv.x,a.uv.y);}
+float2 SilPomGradientUvY(SilPomGradientContext a) {return float2(a.uv.z,a.uv.w);}
+float4 SilPomGradientPackDepth(SilPomGradientContext a)
+{return float4(a.depth.x,a.depth.y,float(a.representation),float(a.validity));}
+
+SilPomGradientContext SilPomGradientCoarse(float2 coarseUvSpan,uint representation)
+{
+    // A singular surface does not have a finite useful differential. Choose
+    // a documented full-chart filtering footprint, never zero UV derivatives.
+    // Callers with material tiling below one enlarge coarseUvSpan to at least
+    // one complete texture period expressed in SOURCE UV. Diagnostic/world
+    // continuation is a constant recorded-depth plane anchored at the sample.
+    float u=SilPomGradientFinite(coarseUvSpan.x)?max(abs(coarseUvSpan.x),1.0f):1.0f;
+    float v=SilPomGradientFinite(coarseUvSpan.y)?max(abs(coarseUvSpan.y),1.0f):1.0f;
+    SilPomGradientContext result;
+    result.uv=float4(u,0,0,v);result.depth=float2(0,0);
+    result.representation=representation;result.validity=SP_GRADIENT_COARSE;
+    return result;
+}
+
+SilPomGradientContext SilPomGradientUnpack(float4 uv,float4 depth)
+{
+    if(!SilPomGradientFinite4(uv)||!SilPomGradientFinite4(depth)||depth.w<.5f)
+        return SilPomGradientCoarse(float2(1,1),SP_GRADIENT_DIAGNOSTIC);
+    SilPomGradientContext result;result.uv=uv;result.depth=float2(depth.x,depth.y);
+    result.representation=uint(max(depth.z,0.0f)+.5f);
+    result.validity=uint(min(max(depth.w,1.0f),2.0f)+.5f);
+    return result;
+}
+
+// Exact cell polynomial; the sampler chooses its one-sided cell with floor.
+// At an integer texel boundary the cell on the positive side is selected.
+float3 SilPomGradientBilinear(float4 texels,float2 fraction,float2 texelsPerSourceUv,
+    float scale,float reference)
+{
+    const float a=texels.x,b=texels.y-a,c=texels.z-a,d=texels.w-a-b-c;
+    return float3(scale*(a+b*fraction.x+c*fraction.y+d*fraction.x*fraction.y-reference),
+        scale*(b+d*fraction.y)*texelsPerSourceUv.x,
+        scale*(c+d*fraction.x)*texelsPerSourceUv.y);
+}
+
+bool SilPomGradientDirectionPartials(float2 uv0,float2 uv1,float2 uv2,
+    float3 d0,float3 d1,float3 d2,SP_GRADIENT_OUT(float3) du,SP_GRADIENT_OUT(float3) dv)
+{
+    const float ax=uv1.x-uv0.x,ay=uv1.y-uv0.y;
+    const float bx=uv2.x-uv0.x,by=uv2.y-uv0.y;
+    const float area=ax*by-ay*bx;
+    du=float3(0,0,0);dv=float3(0,0,0);
+    if(!SilPomGradientFinite(area)||abs(area)<1e-20f)return false;
+    du=((d1-d0)*by-(d2-d0)*ay)*(1.0f/area);
+    dv=((d2-d0)*ax-(d1-d0)*bx)*(1.0f/area);
+    return SilPomGradientFinite3(du)&&SilPomGradientFinite3(dv);
+}
+
+void SilPomGradientReliefTangents(float3 baseDu,float3 baseDv,float3 direction,
+    float3 directionDu,float3 directionDv,float3 height,
+    SP_GRADIENT_OUT(float3) du,SP_GRADIENT_OUT(float3) dv)
+{
+    // direction is affine and deliberately UNNORMALIZED, as in the solver.
+    du=baseDu+directionDu*height.x+direction*height.y;
+    dv=baseDv+directionDv*height.x+direction*height.z;
+}
+
+float2 SilPomGradientDepthFromClip(float4 clip,float4 clipDx,float4 clipDy)
+{
+    const float inverseW=1.0f/clip.w;
+    const float depth=clip.z*inverseW;
+    return float2((clipDx.z-depth*clipDx.w)*inverseW,
+        (clipDy.z-depth*clipDy.w)*inverseW);
+}
+
+SilPomGradientContext SilPomGradientFromTangents(float4 clip,float4 clipDu,float4 clipDv,
+    float2 viewportSize,float2 coarseUvSpan,uint representation)
+{
+    SilPomGradientContext result=SilPomGradientCoarse(coarseUvSpan,representation);
+    if(!SilPomGradientFinite4(clip)||!SilPomGradientFinite4(clipDu)||!SilPomGradientFinite4(clipDv)
+        ||!SilPomGradientFinite2(viewportSize)||viewportSize.x<=0||viewportSize.y<=0||clip.w<=1e-20f)
+        return result;
+    const float inverseW=1.0f/clip.w;
+    const float ndcX=clip.x*inverseW,ndcY=clip.y*inverseW;
+    const float a=(clipDu.x-ndcX*clipDu.w)*inverseW*viewportSize.x*.5f;
+    const float b=(clipDv.x-ndcX*clipDv.w)*inverseW*viewportSize.x*.5f;
+    const float c=(clipDu.y-ndcY*clipDu.w)*inverseW*viewportSize.y*(-.5f);
+    const float d=(clipDv.y-ndcY*clipDv.w)*inverseW*viewportSize.y*(-.5f);
+    const float largest=max(max(abs(a),abs(b)),max(abs(c),abs(d)));
+    if(!SilPomGradientFinite(largest)||largest<1e-12f)return result;
+    const float an=a/largest,bn=b/largest,cn=c/largest,dn=d/largest;
+    const float determinant=an*dn-bn*cn;
+    const float normSquared=an*an+bn*bn+cn*cn+dn*dn;
+    // Relative conditioning test; never manufacture a determinant by epsilon.
+    if(!SilPomGradientFinite(determinant)||abs(determinant)<=1e-6f*normSquared)return result;
+    const float inverse=1.0f/(determinant*largest);
+    const float ux=dn*inverse,vx=-cn*inverse,uy=-bn*inverse,vy=an*inverse;
+    if(!SilPomGradientFinite4(float4(ux,vx,uy,vy))
+        ||abs(ux)>result.uv.x||abs(uy)>result.uv.x||abs(vx)>result.uv.w||abs(vy)>result.uv.w)
+        return result;
+    const float depth=clip.z*inverseW;
+    const float depthU=(clipDu.z-depth*clipDu.w)*inverseW;
+    const float depthV=(clipDv.z-depth*clipDv.w)*inverseW;
+    result.uv=float4(ux,vx,uy,vy);
+    result.depth=float2(depthU*ux+depthV*vx,depthU*uy+depthV*vy);
+    if(!SilPomGradientFinite2(result.depth)||abs(result.depth.x)>1||abs(result.depth.y)>1)
+        return SilPomGradientCoarse(coarseUvSpan,representation);
+    result.validity=SP_GRADIENT_VALID;
+    return result;
+}
+
+bool SilPomGradientWorldPosition(float4 positionH,float4 derivativeHX,float4 derivativeHY,
+    SP_GRADIENT_OUT(float3) dx,SP_GRADIENT_OUT(float3) dy)
+{
+    dx=float3(0,0,0);dy=float3(0,0,0);
+    if(!SilPomGradientFinite4(positionH)||!SilPomGradientFinite4(derivativeHX)
+        ||!SilPomGradientFinite4(derivativeHY)||abs(positionH.w)<1e-20f)return false;
+    const float inverseW=1.0f/positionH.w;
+    const float3 center=float3(positionH.x,positionH.y,positionH.z)*inverseW;
+    dx=(float3(derivativeHX.x,derivativeHX.y,derivativeHX.z)-center*derivativeHX.w)*inverseW;
+    dy=(float3(derivativeHY.x,derivativeHY.y,derivativeHY.z)-center*derivativeHY.w)*inverseW;
+    return SilPomGradientFinite3(dx)&&SilPomGradientFinite3(dy);
+}
+
+float4 SilPomGradientMorphUv(float2 uvA,float2 uvB,float4 derivativeA,float4 derivativeB,
+    float weight,float2 weightDerivative)
+{
+    return float4(derivativeA.x*(1-weight)+derivativeB.x*weight+(uvB.x-uvA.x)*weightDerivative.x,
+        derivativeA.y*(1-weight)+derivativeB.y*weight+(uvB.y-uvA.y)*weightDerivative.x,
+        derivativeA.z*(1-weight)+derivativeB.z*weight+(uvB.x-uvA.x)*weightDerivative.y,
+        derivativeA.w*(1-weight)+derivativeB.w*weight+(uvB.y-uvA.y)*weightDerivative.y);
+}
+
+float2 SilPomGradientSmoothstep(float start,float end,float value,
+    float2 startDerivative,float2 endDerivative,float2 valueDerivative)
+{
+    const float span=end-start;
+    if(!SilPomGradientFinite(span)||span<=1e-20f)return float2(0,0);
+    const float q=(value-start)/span;
+    if(q<=0||q>=1)return float2(0,0);
+    const float slope=6.0f*q*(1.0f-q);
+    return float2(slope*((valueDerivative.x-startDerivative.x)-q*(endDerivative.x-startDerivative.x))/span,
+        slope*((valueDerivative.y-startDerivative.y)-q*(endDerivative.y-startDerivative.y))/span);
+}
+
+void SilPomGradientMorphPosition(float3 positionA,float3 positionB,
+    float3 dxA,float3 dyA,float3 dxB,float3 dyB,float weight,float2 weightDerivative,
+    SP_GRADIENT_OUT(float3) dx,SP_GRADIENT_OUT(float3) dy)
+{
+    dx=dxA*(1-weight)+dxB*weight+(positionB-positionA)*weightDerivative.x;
+    dy=dyA*(1-weight)+dyB*weight+(positionB-positionA)*weightDerivative.y;
+}
+
+SilPomGradientContext SilPomGradientCopied(SilPomGradientContext donor)
+{
+    donor.representation=(donor.representation&SP_GRADIENT_REPRESENTATION_MASK)|SP_GRADIENT_REPAIR_COPY;
+    return donor;
+}
+
+SilPomGradientContext SilPomGradientPerpendicular(SilPomGradientContext a,float2 weightDerivative)
+{
+    const float square=weightDerivative.x*weightDerivative.x+weightDerivative.y*weightDerivative.y;
+    if(square<=1e-20f)return a;
+    const float u=(a.uv.x*weightDerivative.x+a.uv.z*weightDerivative.y)/square;
+    const float v=(a.uv.y*weightDerivative.x+a.uv.w*weightDerivative.y)/square;
+    const float z=(a.depth.x*weightDerivative.x+a.depth.y*weightDerivative.y)/square;
+    a.uv=float4(a.uv.x-u*weightDerivative.x,a.uv.y-v*weightDerivative.x,
+        a.uv.z-u*weightDerivative.y,a.uv.w-v*weightDerivative.y);
+    a.depth=float2(a.depth.x-z*weightDerivative.x,a.depth.y-z*weightDerivative.y);
+    return a;
+}
+
+SilPomGradientContext SilPomGradientBlendAnchored(float2 uvA,float depthA,SilPomGradientContext a,
+    float2 uvB,float depthB,SilPomGradientContext b,float weight,float2 weightDerivative,
+    bool depthWeighted,uint repairKind,float2 centerUv,float centerDepth)
+{
+    const uint representation=((depthA<=depthB?a.representation:b.representation)&SP_GRADIENT_REPRESENTATION_MASK)|repairKind;
+    const float2 coarseSpan=float2(max(max(abs(a.uv.x),abs(a.uv.z)),max(abs(b.uv.x),abs(b.uv.z))),
+        max(max(abs(a.uv.y),abs(a.uv.w)),max(abs(b.uv.y),abs(b.uv.w))));
+    // A coarse donor has already selected a synthetic full-chart continuation.
+    // Its directional basis is not a physical slope to interpolate/project.
+    // Keep that policy explicit with a finite envelope and constant depth.
+    if(a.validity!=SP_GRADIENT_VALID||b.validity!=SP_GRADIENT_VALID)
+        return SilPomGradientCoarse(coarseSpan,representation);
+    a=SilPomGradientPerpendicular(a,weightDerivative);
+    b=SilPomGradientPerpendicular(b,weightDerivative);
+    SilPomGradientContext result;
+    result.representation=representation;
+    result.validity=SP_GRADIENT_VALID;
+    result.depth=float2(a.depth.x*(1-weight)+b.depth.x*weight+(depthB-depthA)*weightDerivative.x,
+        a.depth.y*(1-weight)+b.depth.y*weight+(depthB-depthA)*weightDerivative.y);
+    result.uv=SilPomGradientMorphUv(uvA,uvB,a.uv,b.uv,weight,weightDerivative);
+    if(depthWeighted)
+    {
+        if(!SilPomGradientFinite(centerDepth)||abs(centerDepth)<1e-20f)
+            return SilPomGradientCoarse(coarseSpan,representation);
+        const float qx=(1-weight)*(a.uv.x*depthA+uvA.x*a.depth.x)
+            +weight*(b.uv.x*depthB+uvB.x*b.depth.x)+(uvB.x*depthB-uvA.x*depthA)*weightDerivative.x;
+        const float qy=(1-weight)*(a.uv.y*depthA+uvA.y*a.depth.x)
+            +weight*(b.uv.y*depthB+uvB.y*b.depth.x)+(uvB.y*depthB-uvA.y*depthA)*weightDerivative.x;
+        const float qz=(1-weight)*(a.uv.z*depthA+uvA.x*a.depth.y)
+            +weight*(b.uv.z*depthB+uvB.x*b.depth.y)+(uvB.x*depthB-uvA.x*depthA)*weightDerivative.y;
+        const float qw=(1-weight)*(a.uv.w*depthA+uvA.y*a.depth.y)
+            +weight*(b.uv.w*depthB+uvB.y*b.depth.y)+(uvB.y*depthB-uvA.y*depthA)*weightDerivative.y;
+        result.uv=float4((qx-centerUv.x*result.depth.x)/centerDepth,
+            (qy-centerUv.y*result.depth.x)/centerDepth,(qz-centerUv.x*result.depth.y)/centerDepth,
+            (qw-centerUv.y*result.depth.y)/centerDepth);
+    }
+    if(!SilPomGradientFinite4(result.uv)||!SilPomGradientFinite2(result.depth))
+        return SilPomGradientCoarse(coarseSpan,representation);
+    return result;
+}
+
+SilPomGradientContext SilPomGradientBlend(float2 uvA,float depthA,SilPomGradientContext a,
+    float2 uvB,float depthB,SilPomGradientContext b,float weight,float2 weightDerivative,
+    bool depthWeighted,uint repairKind)
+{
+    const float depth=depthA*(1-weight)+depthB*weight;
+    float2 uv=float2(uvA.x*(1-weight)+uvB.x*weight,uvA.y*(1-weight)+uvB.y*weight);
+    if(depthWeighted&&abs(depth)>=1e-20f)
+        uv=float2((uvA.x*depthA*(1-weight)+uvB.x*depthB*weight)/depth,
+            (uvA.y*depthA*(1-weight)+uvB.y*depthB*weight)/depth);
+    return SilPomGradientBlendAnchored(uvA,depthA,a,uvB,depthB,b,weight,weightDerivative,
+        depthWeighted,repairKind,uv,depth);
+}
+
+#if !defined(SILPOM_GRADIENT_CPU) && !defined(SILPOM_CPU)
+SilPomGradientContext SilPomGradientFromWorld(float3 position,float3 du,float3 dv,
+    float4x4 worldToClip,float2 viewportSize,float2 coarseUvSpan,uint representation)
+{
+    return SilPomGradientFromTangents(mul(worldToClip,float4(position,1)),
+        mul(worldToClip,float4(du,0)),mul(worldToClip,float4(dv,0)),viewportSize,coarseUvSpan,representation);
+}
+#endif
+
+#undef SP_GRADIENT_OUT

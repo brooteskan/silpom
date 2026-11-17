@@ -55,6 +55,10 @@
       {
         "Name": "SilPOMInspectUvUsageTemplate",
         "Path": "Passes/SilPOMInspectUvUsage.pass"
+      },
+      {
+        "Name": "SilPOMFaceCacheTemplate",
+        "Path": "Passes/SilPOMFaceCache.pass"
       }
     ]
   }

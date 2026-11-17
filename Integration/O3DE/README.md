@@ -11,7 +11,7 @@ the pinned O3DE source revision and rebuild native modules and processed assets.
 - Bundle identifier: `tg-o3de-20261115`. Exact input/output hashes and patch
   hashes are in `manifest.json`. Text hashes normalize CRLF to LF.
 
-`engine.patch` covers 91 source/configuration files, including seven added
+`engine.patch` covers 99 source/configuration files, including seven added
 files, relative to the upstream Git commit, not a modified working checkout.
 It includes DX12 SM 6.2/6.7 selection and builder fingerprints; MSAA attachment,
 pass and probe-grid fixes; decal painting APIs and compositing shaders; tower
@@ -35,6 +35,24 @@ The 2026-11-15 revision adds shared-buffer spatial paint groups and exclusive
 cell clipping to `DecalComposite.azsli`. Use it with the spatial-grouping painter;
 the single-volume buffer format remains compatible. Stamps affect color/normals,
 not the SiLPOM heightmap or its relief bounds.
+
+The 2026-11-16 revision adds opt-in explicit-gradient shading hooks for SILPOM.
+`ATOM_CUSTOM_SPECULAR_AA` supplies the winning sample's owner-local material
+normal variance before receiver paint and forward decals.
+`ATOM_EXPLICIT_SHADOW_GRADIENTS` enables `SetReceiverDerivatives` on the
+directional shadow calculator. It differentiates the normal offset and complete
+homogeneous cascade projection; SILPOM also differentiates its preceding
+flat-caster receiver advance. Ordinary material shaders retain the engine path.
+
+`ATOM_EXPLICIT_LIGHTING_LOOKUPS` uses the same explicit sampling policy as
+Atom's compute paths: BRDF and LTC tables use their lookup level, and diffuse
+IBL uses cosine-preconvolved irradiance at level zero. The generated BRDF
+attachment has one mip, both shipped LTC DDS tables are 32 by 32 with one mip,
+and `IBLDiffuse.preset` applies a 180 degree cosine filter. Spatial material,
+paint and decal textures instead receive explicit source or receiver gradients.
+The separate authored-plane Jacobian still filters proxy appearance.
+`ATOM_CUSTOM_GOBOTEXTURE_GRADIENTS` differentiates the projected spatial light
+mask and uses `SampleGrad`; it does not assign a fixed lookup LOD to gobos.
 
 ## Preparing the profiling PC
 

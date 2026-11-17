@@ -1,9 +1,17 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#ifndef SILPOM_FACE_COEFFICIENT_CACHE
+#define SILPOM_FACE_COEFFICIENT_CACHE 0
+#endif
 // Lightweight descriptor shared by the flat shadow caster and camera solver.
 struct SilPomMeshFace
 {
     float3 origin, du, dv, normal;
     float2 uv0, uv1, uv2;
     float3 d0, d1, d2;
+#if SILPOM_FACE_COEFFICIENT_CACHE
+    // Invocation-local data only. The canonical packed descriptor stays 144B.
+    float4 cachedDuArea,cachedDvTolerance;
+    uint4 cachedCoefficientMetadata;
+#endif
 };

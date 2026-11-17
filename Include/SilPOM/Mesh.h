@@ -156,7 +156,7 @@ public:
     void Deactivate();
     void SetConfiguration(const MeshConfig&);
     const MeshConfig& GetConfiguration() const { return m_configuration; }
-    AZStd::string GetStatus() const override { return m_status; }
+    AZStd::string GetStatus() const override;
     bool IsReady() const override;
     AZ::Vector3 GetProxyLodState() const override;
     AZStd::vector<AZ::u32> GetProxyFaceOwners() const override;
@@ -190,7 +190,11 @@ private:
     void OnAssetError(AZ::Data::Asset<AZ::Data::AssetData>) override;
     void OnRenderPipelineChanged(AZ::RPI::RenderPipeline*, AZ::RPI::SceneNotification::RenderPipelineChangeType) override;
     void OnBeginPrepareRender() override;
+    void OnEndPrepareRender() override;
     void UpdateProxyLod();
+    void UpdateSceneSubscription();
+    bool HasTrainedRenderingDuty() const;
+    void EnforceStrictGenerationPolicy(bool finalBarrier=false);
     bool Prepare();
     void ConnectAssets();
     void Release(AZStd::unique_ptr<Generation>&);

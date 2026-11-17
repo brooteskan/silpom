@@ -5,7 +5,7 @@
     "ClassData": {
         "PassTemplate": {
             "Name": "SilPOMHitDepthMsaaTemplate",
-            "PassClass": "RasterPass",
+            "PassClass": "SilPOMHitRasterPass",
             "Slots": [
                 {
                     "Name": "Hit",
@@ -23,6 +23,22 @@
                         "LoadAction": "Load",
                         "LoadActionStencil": "Load"
                     }
+                },
+                {
+                    "Name": "HitUvGradients",
+                    "SlotType": "InputOutput",
+                    "ScopeAttachmentUsage": "RenderTarget",
+                    "LoadStoreAction": {
+                        "LoadAction": "Load"
+                    }
+                },
+                {
+                    "Name": "HitDepthGradients",
+                    "SlotType": "InputOutput",
+                    "ScopeAttachmentUsage": "RenderTarget",
+                    "LoadStoreAction": {
+                        "LoadAction": "Load"
+                    }
                 }
             ],
             "Connections": [
@@ -39,6 +55,20 @@
                         "Pass": "DepthPass",
                         "Attachment": "Output"
                     }
+                },
+                {
+                    "LocalSlot": "HitUvGradients",
+                    "AttachmentRef": {
+                        "Pass": "SilPOMClearHits",
+                        "Attachment": "HitUvGradients"
+                    }
+                },
+                {
+                    "LocalSlot": "HitDepthGradients",
+                    "AttachmentRef": {
+                        "Pass": "SilPOMClearHits",
+                        "Attachment": "HitDepthGradients"
+                    }
                 }
             ],
             "ImageAttachments": [],
@@ -50,8 +80,19 @@
                     {
                         "GlobalName": "SilPOMHitBuffer",
                         "Slot": "Hit"
+                    },
+                    {
+                        "GlobalName": "SilPOMHitUvGradients",
+                        "Slot": "HitUvGradients"
+                    },
+                    {
+                        "GlobalName": "SilPOMHitDepthGradients",
+                        "Slot": "HitDepthGradients"
                     }
-                ]
+                ],
+                "PassSrgShaderAsset": {
+                    "FilePath": "Shaders/SilPOM/HitReuse/SilPOMHitDepthSrg.shader"
+                }
             }
         }
     }

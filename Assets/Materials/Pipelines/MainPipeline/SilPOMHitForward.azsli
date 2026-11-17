@@ -7,6 +7,16 @@
  */
 #pragma once
 #define SILPOM_HIT_FORWARD 1
+#define SILPOM_FACE_CACHE_PASS 1
+// Material definitions can include MaterialUtils before the material body.
+// Select explicit shading policies before that first include is processed.
+float SilPomExplicitSpecularAA(float3 normal,float roughnessA2);
+#define ATOM_CUSTOM_SPECULAR_AA(normal,roughnessA2) SilPomExplicitSpecularAA(normal,roughnessA2)
+#define ATOM_EXPLICIT_SHADOW_GRADIENTS 1
+#define ATOM_EXPLICIT_LIGHTING_LOOKUPS 1
+float4 SilPomProjectedUvDerivatives(float4 clip,float4 clipDx,float4 clipDy);
+float4 SilPomGoboUvGradients(float4x4 worldToLightClip,float4 lightClip);
+#define ATOM_CUSTOM_GOBOTEXTURE_GRADIENTS(matrix,clip) SilPomGoboUvGradients(matrix,clip)
 // Spatial paint groups use the shared-buffer protocol in the O3DE integration.
 
 #include <Atom/Features/SrgSemantics.azsli>

@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#include <Atom/Features/MatrixUtility.azsli>
+
+// The normal branch of Atom's EvaluateSurface_BasePBR, with the same explicit
+// footprint and real-precision conversions. StandardPBR's later clearcoat
+// inputs have a separate normal and do not change Surface.normal. The shared
+// input helper retains normal-map overrides, UV0 transforms, flip/strength,
+// tangent-frame handling and backface adjustment without requesting color,
+// roughness, opacity, lighting or clearcoat inputs.
+float3 SilPomEvaluateStandardNormal(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,
+    const MaterialParameters params,float4 derivatives)
+{
+    const real3 vertexNormal=real3(geo.vertexNormal);
+    const float2 normalUv=geo.uvs[params.m_normalMapUvIndex];
+    const real3x3 uvMatrix=params.m_normalMapUvIndex==0
+        ?real3x3(params.m_uvMatrixRow0.xyz,params.m_uvMatrixRow1.xyz,params.m_uvMatrixRow2.xyz)
+        :CreateIdentity3x3_real();
+    return GetNormalInputWS(GetMaterialTexture(params.m_normalMap),GetMaterialTextureSampler(),normalUv,
+        params.m_flipNormalX,params.m_flipNormalY,geo.isFrontFace,vertexNormal,
+        geo.tangents[params.m_normalMapUvIndex],geo.bitangents[params.m_normalMapUvIndex],
+        uvMatrix,o_normal_useTexture,real(params.m_normalFactor),derivatives,true);
+}

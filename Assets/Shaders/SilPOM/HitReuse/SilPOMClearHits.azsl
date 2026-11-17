@@ -2,6 +2,13 @@
 #include <Atom/Features/SrgSemantics.azsli>
 #include <Atom/Features/PostProcessing/FullscreenVertex.azsli>
 
-// Pixel-frequency broadcast of the empty record to all covered samples.
+// Pixel-frequency broadcast of the empty record and its invalid gradient
+// context to all covered samples, starting the same attachment generation.
 // No depth attachment is written and no hit record is resolved.
-uint4 MainPS(VSOutput input):SV_Target0 { return uint4(0,0,0,0); }
+struct SilPomClearOutput
+{
+    uint4 hit:SV_Target0;
+    float4 uvGradients:SV_Target1;
+    float4 depthGradients:SV_Target2;
+};
+SilPomClearOutput MainPS(VSOutput input) { return (SilPomClearOutput)0; }

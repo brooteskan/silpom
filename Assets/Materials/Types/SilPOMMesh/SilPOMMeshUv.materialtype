@@ -736,6 +736,15 @@
             }
           },
           {
+            "name": "faceCoefficientBuffer",
+            "type": "UInt",
+            "defaultValue": 4294967295,
+            "connection": {
+              "type": "ShaderInput",
+              "name": "m_silpomFaceCoefficientBuffer"
+            }
+          },
+          {
             "name": "hitFaceBase",
             "type": "UInt",
             "defaultValue": 0,

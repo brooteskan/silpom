@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+// Normal queries retain each model's complete shared hidden layer, but request
+// only the existing normal output columns. Offsets and arithmetic match the
+// full decoders; weights and feature contracts are unchanged.
+#ifndef SILPOM_APPEARANCE_WEIGHT
+#define SILPOM_APPEARANCE_WEIGHT(i) asfloat(Bindless::GetByteAddressBuffer(bufferIndex).Load((i)*4u))
+#endif
+void SilPomDecodeMaterialNormal(float x[12],uint bufferIndex,SP_OUT float value[2])
+{
+    SP_UNROLL for(uint c=0;c<2;++c)value[c]=SILPOM_MATERIAL_WEIGHT(307u+c);
+    SP_UNROLL for(uint j=0;j<16;++j)
+    {
+        float z=SILPOM_MATERIAL_WEIGHT(192u+j);
+        SP_UNROLL for(uint k=0;k<12;++k)z+=x[k]*SILPOM_MATERIAL_WEIGHT(j*12u+k);
+        z=max(z,0.0f);
+        SP_UNROLL for(uint c=0;c<2;++c)value[c]+=z*SILPOM_MATERIAL_WEIGHT(211u+j*6u+c);
+    }
+    SP_UNROLL for(uint c=0;c<2;++c)value[c]=saturate(value[c]);
+}
+
+void SilPomDecodeAppearanceNormal(float x[18],uint bufferIndex,SP_OUT float value[2])
+{
+    SP_UNROLL for(uint c=0;c<2;++c)value[c]=SILPOM_APPEARANCE_WEIGHT(352u+c);
+    SP_UNROLL for(uint j=0;j<16;++j)
+    {
+        float z=SILPOM_APPEARANCE_WEIGHT(288u+j);
+        SP_UNROLL for(uint k=0;k<18;++k)z+=x[k]*SILPOM_APPEARANCE_WEIGHT(j*18u+k);
+        z=max(z,0.0f);
+        SP_UNROLL for(uint c=0;c<2;++c)value[c]+=z*SILPOM_APPEARANCE_WEIGHT(304u+j*3u+c);
+    }
+    SP_UNROLL for(uint c=0;c<2;++c)value[c]=rcp(1.0f+exp(-clamp(value[c],-16.0f,16.0f)));
+}
