@@ -1,0 +1,14 @@
+{
+  "materialType": "Materials/Types/StandardPBR.materialtype",
+  "materialTypeVersion": 5,
+  "propertyValues": {
+    "baseColor.color": [
+      0.59,
+      0.54,
+      0.44,
+      1.0
+    ],
+    "roughness.factor": 0.9,
+    "metallic.factor": 0.0
+  }
+}

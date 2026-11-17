@@ -1,0 +1,18 @@
+{
+  "parentMaterial": "../../IrishFieldstoneTowerWelded/door-mortar.material",
+  "materialType": "Materials/Types/StandardPBR.materialtype",
+  "materialTypeVersion": 5,
+  "propertyValues": {
+    "general.enableIBL": true,
+    "emissive.enable": false,
+    "emissive.intensity": 1.0,
+    "emissive.textureMap": "doorway-mortar-daylight.png",
+    "emissive.useTexture": true,
+    "emissive.color": [
+      0.225,
+      0.209,
+      0.18,
+      1.0
+    ]
+  }
+}

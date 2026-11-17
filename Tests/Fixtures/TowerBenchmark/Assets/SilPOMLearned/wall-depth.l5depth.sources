@@ -1,0 +1,4 @@
+{
+    "Material": ["../SilPOMPlanarAB/IrishFieldstoneTowerWelded/wall/basecolor.png", "../SilPOMPlanarAB/IrishFieldstoneTowerWelded/wall/normal.png", "../SilPOMPlanarAB/IrishFieldstoneTowerWelded/wall/roughness.png"],
+    "Training": ["../SilPOMPlanarAB/IrishFieldstoneTowerWelded/wall/height.png", "../SilPOMPlanarAB/IrishFieldstoneTowerOpenShaft/tower-open-shaft-no-landings-silpom.silpom.json"]
+}

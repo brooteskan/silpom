@@ -1,0 +1,19 @@
+{
+  "materialType": "Materials/Types/StandardPBR.materialtype",
+  "materialTypeVersion": 5,
+  "description": "Roof UV bake of the Hand of Sabazios bronze casting material",
+  "propertyValues": {
+    "general.doubleSided": false,
+    "normal.flipY": true,
+    "roughness.factor": 1.0,
+    "metallic.factor": 1.0,
+    "baseColor.textureMap": "basecolor.png",
+    "baseColor.useTexture": true,
+    "roughness.textureMap": "roughness.png",
+    "roughness.useTexture": true,
+    "metallic.textureMap": "metallic.png",
+    "metallic.useTexture": true,
+    "normal.textureMap": "normal.png",
+    "normal.useTexture": true
+  }
+}
