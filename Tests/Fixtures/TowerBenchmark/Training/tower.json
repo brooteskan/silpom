@@ -1,0 +1,17 @@
+{
+  "sidecar": "../Assets/SilPOMPlanarAB/IrishFieldstoneTowerOpenShaft/tower-open-shaft-no-landings-silpom.silpom.json",
+  "profiles": {
+    "1": {"height": "../Assets/SilPOMPlanarAB/IrishFieldstoneTowerWelded/wall/height.png",
+          "scale_metres": 0.1, "reference": 0.05, "address": "repeat", "tiling": [1, 1], "offset": [0, 0],
+          "surface": "Fieldstone walls and central shaft"},
+    "2": {"height": "../Assets/SilPOMPlanarAB/IrishFieldstoneTowerOpenShaft/sculpted-stair-silpom/height.png",
+          "scale_metres": 0.19, "reference": 0.5000076295109483, "address": "clamp", "tiling": [1, 1], "offset": [0, 0],
+          "surface": "Sculpted stair treads and risers (no tagged faces in this sidecar)"},
+    "3": {"height": "../Assets/SilPOMPlanarAB/IrishFieldstoneTowerOpenShaft/welded-doorway/trim-blocks/height.png",
+          "scale_metres": 0.052, "reference": 0.5000076295109483, "address": "clamp", "tiling": [1, 1], "offset": [0, 0],
+          "surface": "Door and window trim"},
+    "4": {"height": "../Assets/SilPOMPlanarAB/IrishFieldstoneTowerOpenShaft/welded-doorway/reveal/height.png",
+          "scale_metres": 0.1, "reference": 0.05, "address": "clamp", "tiling": [1, 1], "offset": [0, 0],
+          "surface": "Entrance lining"}
+  }
+}

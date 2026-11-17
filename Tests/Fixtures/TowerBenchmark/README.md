@@ -52,3 +52,29 @@ A host project needs the SilPOM gem enabled and two additions:
 
 Register both only in a test project. They would conflict with a project that
 already contains assets at the same relative paths.
+
+## Training the level's models
+
+`Training/tower.json` is this level's training manifest: the surface sidecar
+and the four height profiles, with paths inside this fixture. SilPOM's
+trainers read it in place of a project's authoring export.
+
+The sidecar has tagged faces for profiles 1 (wall, 1130 faces), 3 (trim, 2028)
+and 4 (reveal, 80). Profile 2 (stairs) has none, so its model cannot be trained
+from this geometry and no face in this level uses it.
+
+### Model 0
+
+`Tools/train_model_zero.py` trains model 0 from the wall atlas at model 0's
+calibration (0.02 m, reference 0.05, clamped):
+
+    python Tools/train_model_zero.py Tests/Fixtures/TowerBenchmark/Training/tower.json <teacher library> <output folder>
+
+The teacher library is `Tools/welded_tower_teacher.cpp` built as a shared
+library (a Windows DLL, or on Linux with
+`-D'__declspec(x)=__attribute__((visibility("default")))'`). The tool needs
+NumPy and Pillow. It writes the uncached seed network, the tile-to-expert
+layout, the RGBA16F seed cache with its import settings, the no-march hit
+model, `model-zero.json` (all tensors and provenance) and `training.json`
+(held-out accuracy). `--compare <SilPOM checkout>` also scores the weights
+currently compiled into that checkout on the same held-out rays.
