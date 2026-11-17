@@ -6,11 +6,15 @@
 ShaderResourceGroup PassSrg : SRG_PerPass
 {
     Texture2DMS<uint4> m_fill;
+    Texture2DMS<float4> m_fillUvGradients;
+    Texture2DMS<float4> m_fillDepthGradients;
 }
 
 struct PSOutput
 {
     uint4 hit : SV_Target0;
+    float4 uvGradients : SV_Target1;
+    float4 depthGradients : SV_Target2;
     float depth : SV_Depth;
 };
 
@@ -20,7 +24,11 @@ PSOutput MainPS(VSOutput input,uint sampleIndex:SV_SampleIndex)
     if (record.w == 0)
         discard;
     PSOutput output;
+    // The stored center, depth and differential publish through the same
+    // fragment and depth test; a losing repair cannot overwrite its context.
     output.hit = record;
+    output.uvGradients = PassSrg::m_fillUvGradients.Load(int2(input.m_position.xy),sampleIndex);
+    output.depthGradients = PassSrg::m_fillDepthGradients.Load(int2(input.m_position.xy),sampleIndex);
     output.depth = asfloat(record.z & SP_HIT_RECORD_DEPTH);
     return output;
 }

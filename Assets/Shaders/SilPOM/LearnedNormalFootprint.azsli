@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#include "MaterialDecode.azsli"
+
+struct SilPomLearnedNormalSetup
+{
+    float lod;
+    uint taps;
+    float2 tapOffsets[8];
+    float4 context;
+};
+
+SilPomLearnedNormalSetup SilPomPrepareLearnedNormalSetup(MaterialParameters params,float4 derivatives)
+{
+    SilPomLearnedNormalSetup result=(SilPomLearnedNormalSetup)0;
+    SilPomMaterialFootprint f=SilPomMaterialFootprintFor(derivatives.xy*float2(6656,6144),derivatives.zw*float2(6656,6144));
+    result.lod=clamp(f.lod-2.0f,0.0f,float(params.m_silpomMaterialFeatureMipCount-1u));
+    result.taps=f.taps;
+    // SilPomMaterialFootprintFor clamps the tap count to [1,8]. Keep the exact
+    // original expression and order; only the final shifted-UV addition moves.
+    for(uint i=0;i<f.taps;++i)
+        result.tapOffsets[i]=f.axis*((float(i)+.5f)/float(f.taps)-.5f)*f.major/float2(6656,6144);
+    result.context.x=clamp(log2(max(f.major,1.0f))/13.0f,0.0f,12.0f/13.0f);
+    result.context.y=clamp(log2(f.minor)/13.0f,0.0f,12.0f/13.0f);
+    result.context.z=f.axis.x*f.axis.x-f.axis.y*f.axis.y;
+    result.context.w=2*f.axis.x*f.axis.y;
+    return result;
+}

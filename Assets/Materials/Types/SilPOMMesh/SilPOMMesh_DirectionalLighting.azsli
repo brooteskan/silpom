@@ -1,30 +1,91 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "../../../Shaders/SilPOM/GradientConsumers.azsli"
 // Keep the engine's light/BRDF implementation, replacing only directional
 // visibility. Other lighting, IBL and emissive are evaluated normally.
 #define ApplyDirectionalLights ApplyDirectionalLights_StandardSilPom
 #include <Atom/Features/Pipeline/Forward/ForwardPassDirectionalLights.azsli>
 #undef ApplyDirectionalLights
+#if defined(SILPOM_NEURAL_VISIBILITY_ONLY)
+// One center-owned context is created only at direct-light entry. Compile-time
+// backend guards omit unused families; options gate lazy preparation.
+struct SilPomLightingReceiver
+{
+#if !SILPOM_SHARED_VISIBILITY || SILPOM_DIRECTIONAL_COMPARISON
+    SilPomNeuralPhysicalReceiver physical;
+#endif
+#if SILPOM_SHARED_VISIBILITY
+    SilPomSharedVisibilityReceiver sharedReceiver;
+#if SILPOM_DIRECTIONAL_COMPARISON
+    bool queryFramePrepared;
+    float3 T,B;
+#endif
+#endif
+#if SILPOM_LEVEL_FIVE && !SILPOM_DIRECTIONAL_COMPARISON
+    SilPomAppearanceLightReceiver appearance;
+#endif
+};
+void SilPomInitLightingReceiver(inout SilPomLightingReceiver receiver)
+{
+#if SILPOM_DIRECTIONAL_COMPARISON
+    if(o_silpomLightingEstimator==SilPomLightingEstimator::PhysicalRayNeural)
+        SilPomInitNeuralPhysicalReceiver(receiver.physical);
+#if SILPOM_SHARED_VISIBILITY
+    else if(o_silpomLightingEstimator!=SilPomLightingEstimator::CurrentRouting)
+        receiver.queryFramePrepared=false;
+    else SilPomInitSharedVisibilityReceiver(receiver.sharedReceiver);
+#endif
+#else
+#if SILPOM_LEVEL_FIVE
+    if(silpomLitProxy){SilPomInitAppearanceLightReceiver(receiver.appearance);return;}
+#endif
+#if SILPOM_SHARED_VISIBILITY
+    SilPomInitSharedVisibilityReceiver(receiver.sharedReceiver);
+#else
+    SilPomInitNeuralPhysicalReceiver(receiver.physical);
+#endif
+#endif
+}
+#define SILPOM_RECEIVER_PARAMETER ,inout SilPomLightingReceiver receiver
+#define SILPOM_RECEIVER_ARGUMENT ,receiver
+#else
+#define SILPOM_RECEIVER_PARAMETER
+#define SILPOM_RECEIVER_ARGUMENT
+#endif
 float SilPomLocalVisibility(Texture2D texture,SilPomPatch p,SilPomMeshFace face,float2 uv,float2 low,
-    float3 light,uint steps,float reach,MaterialParameters params)
+    float3 light,uint steps,float reach,MaterialParameters params SILPOM_RECEIVER_PARAMETER)
 {
 #if defined(SILPOM_NEURAL_VISIBILITY_ONLY) && SILPOM_DIRECTIONAL_COMPARISON
     if(o_silpomLightingEstimator==SilPomLightingEstimator::PhysicalRayNeural)
-        return SilPomNeuralOnlyVisibility(texture,p,face,uv,low,light,steps,reach,params.m_silpomNeuralModel,
-            SilPomNeuralOnlyThreshold(params.m_silpomNeuralModel));
+        return SilPomNeuralOnlyVisibilityPrepared(texture,p,face,uv,low,light,steps,reach,params.m_silpomNeuralModel,
+            SilPomNeuralOnlyThreshold(params.m_silpomNeuralModel),receiver.physical);
 #if SILPOM_SHARED_VISIBILITY
     if(o_silpomLightingEstimator!=SilPomLightingEstimator::CurrentRouting)
-        return SilPomDirectionalVisibility(light,steps,reach);
+    {
+        if(steps==0u)return 1;
+        if(!receiver.queryFramePrepared)
+        {
+            receiver.T=normalize(silpomLitFace.du);
+            receiver.B=normalize(cross(silpomLitFace.normal,receiver.T));
+            receiver.queryFramePrepared=true;
+        }
+        float3 L=normalize(float3(dot(light,receiver.T),dot(light,receiver.B),dot(light,silpomLitFace.normal)));
+        return SilPomDirectionalFrameVisibility(L,steps,reach);
+    }
 #endif
 #endif
 #if SILPOM_LEVEL_FIVE
     if(silpomLitProxy)return 1.0f; // directional correction reuses the acquired features below
 #endif
 #if SILPOM_SHARED_VISIBILITY
+#if defined(SILPOM_NEURAL_VISIBILITY_ONLY)
+    return SilPomSharedVisibilityPrepared(light,steps,reach,params,receiver.sharedReceiver);
+#else
     return SilPomSharedVisibility(light,steps,reach,params);
+#endif
 #elif defined(SILPOM_NEURAL_VISIBILITY_ONLY)
-    return SilPomNeuralOnlyVisibility(texture,p,face,uv,low,light,steps,reach,params.m_silpomNeuralModel,
-        SilPomNeuralOnlyThreshold(params.m_silpomNeuralModel));
+    return SilPomNeuralOnlyVisibilityPrepared(texture,p,face,uv,low,light,steps,reach,params.m_silpomNeuralModel,
+        SilPomNeuralOnlyThreshold(params.m_silpomNeuralModel),receiver.physical);
 #else
     if(o_silpomLocalShadowMethod==SilPomLocalShadowMethod::Baseline)
         return SilPomReliefVisibility(texture,p,face,uv,low,light,steps,reach);
@@ -36,7 +97,7 @@ float SilPomLocalVisibility(Texture2D texture,SilPomPatch p,SilPomMeshFace face,
 #endif
 }
 
-void ApplySpiralLightRay(Surface surface, inout LightingData lightingData, MaterialParameters params, float3 ray, float lux)
+void ApplySpiralLightRay(Surface surface, inout LightingData lightingData, MaterialParameters params, float3 ray, float lux SILPOM_RECEIVER_PARAMETER)
 {
     if (lux <= 0.0f || dot(ray, silpomLitFace.normal) <= 0.0f) return;
     const float rayLength = length(ray);
@@ -49,12 +110,18 @@ void ApplySpiralLightRay(Surface surface, inout LightingData lightingData, Mater
     const float2 low = min(silpomLitFace.uv0, min(silpomLitFace.uv1, silpomLitFace.uv2));
     const float shadowReach = min(0.30f, 8.0f * abs(silpomLitPatch.scale));
     const float relief = SilPomLocalVisibility(GetMaterialTexture(params.m_silpomHeightMap),
-        silpomLitPatch, silpomLitFace, silpomLitUv, low, toLight, params.m_silpomSpiralLightShadowSteps, shadowReach,params);
+        silpomLitPatch, silpomLitFace, silpomLitUv, low, toLight, params.m_silpomSpiralLightShadowSteps, shadowReach,params SILPOM_RECEIVER_ARGUMENT);
 #if SILPOM_LEVEL_FIVE
     #if SILPOM_DIRECTIONAL_COMPARISON
     float gain=1.0f;
 #else
-    float gain=silpomLitProxy?SilPomAppearanceLightGain(toLight,shadowReach,params.m_silpomSpiralLightShadowSteps!=0u,params).x:1.0f;
+    float gain=silpomLitProxy?
+#if defined(SILPOM_NEURAL_VISIBILITY_ONLY)
+        SilPomAppearanceLightGainPrepared(toLight,shadowReach,params.m_silpomSpiralLightShadowSteps!=0u,params,receiver.appearance).x:
+#else
+        SilPomAppearanceLightGain(toLight,shadowReach,params.m_silpomSpiralLightShadowSteps!=0u,params).x:
+#endif
+        1.0f;
 #endif
     lightingData.diffuseLighting += diffuse * relief * gain;
 #else
@@ -62,7 +129,7 @@ void ApplySpiralLightRay(Surface surface, inout LightingData lightingData, Mater
 #endif
 }
 
-void ApplySpiralLight(Surface surface, inout LightingData lightingData, MaterialParameters params)
+void ApplySpiralLight(Surface surface, inout LightingData lightingData, MaterialParameters params SILPOM_RECEIVER_PARAMETER)
 {
     const uint windowCount = params.m_silpomSpiralWindowCount;
     if (params.m_silpomSpiralLightBrightness <= 0.0f || (params.m_silpomSpiralLightPeakLux <= 0.0f && windowCount == 0)) return;
@@ -122,17 +189,26 @@ void ApplySpiralLight(Surface surface, inout LightingData lightingData, Material
     if(upperTotal>0.0f) upperLobes*=brightestUpper/upperTotal;
     const float2 lobes = lerp(lowerLobes,upperLobes,turnBlend);
     if(!any(lobes>0.0f)) return;
-    ApplySpiralLightRay(surface, lightingData, params, tangent + towardCorridor, lobes.x * endFade);
-    ApplySpiralLightRay(surface, lightingData, params, -tangent + towardCorridor, lobes.y * endFade);
+    ApplySpiralLightRay(surface, lightingData, params, tangent + towardCorridor, lobes.x * endFade SILPOM_RECEIVER_ARGUMENT);
+    ApplySpiralLightRay(surface, lightingData, params, -tangent + towardCorridor, lobes.y * endFade SILPOM_RECEIVER_ARGUMENT);
 }
 
 void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,float4 screenUv)
 {
     if(!silpomLitValid)
     {
+#if SILPOM_HIT_FORWARD
+        // Exhausted/invalid records are diagnostic samples, with no geometric
+        // receiver continuation. Their emissive diagnostic remains visible.
+#else
         ApplyDirectionalLights_StandardSilPom(surface,lightingData,screenUv);
+#endif
         return;
     }
+#if defined(SILPOM_NEURAL_VISIBILITY_ONLY)
+    SilPomLightingReceiver receiver;
+    SilPomInitLightingReceiver(receiver);
+#endif
     MaterialParameters params=GetMaterialParameters();
     float3 baseNormal=normalize(mul(silpomLitRotation,silpomLitFace.normal));
     float signedHeight=dot(surface.position-silpomLitOriginWS,baseNormal);
@@ -145,11 +221,18 @@ void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,floa
 #if ENABLE_SHADOWS
         if(o_enableShadows && index==ViewSrg::m_shadowIndexDirectionalLight)
         {
-            float advance=SilPomFlatReceiverAdvance(signedHeight,dot(toLight,baseNormal),1e-4f);
+            const float lightNormalDot=dot(toLight,baseNormal);
+            float advance=SilPomFlatReceiverAdvance(signedHeight,lightNormalDot,1e-4f);
             // Bypass the fullscreen shadow result: its receiver is the displaced
             // camera depth, which can lie below our flat caster.
             DirectionalShadowCalculator calc=DirectionalLightShadow::MakeShadowCalculator(
                 index,surface.position+toLight*advance,baseNormal);
+#if SILPOM_HIT_FORWARD
+            calc.SetReceiverDerivatives(
+                SilPomFlatReceiverDerivative(silpomPositionDx,baseNormal,toLight,signedHeight,lightNormalDot,1e-4f),
+                SilPomFlatReceiverDerivative(silpomPositionDy,baseNormal,toLight,signedHeight,lightNormalDot,1e-4f),
+                float3(0,0,0),float3(0,0,0));
+#endif
             visibility=calc.GetVisibility();
         }
 #if defined(SILPOM_NEURAL_VISIBILITY_ONLY)
@@ -169,7 +252,7 @@ void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,floa
             float2 low=min(silpomLitFace.uv0,min(silpomLitFace.uv1,silpomLitFace.uv2));
             visibility*=SilPomLocalVisibility(GetMaterialTexture(params.m_silpomHeightMap),
                 silpomLitPatch,silpomLitFace,silpomLitUv,low,
-                mul(transpose(silpomLitRotation),toLight),localSchedule,0.0f,params);
+                mul(transpose(silpomLitRotation),toLight),localSchedule,0.0f,params SILPOM_RECEIVER_ARGUMENT);
         }
 #endif
         DirectionalLightUtil light=DirectionalLightUtil::Init(srgLight,surface);
@@ -181,7 +264,7 @@ void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,floa
             {
                 float2 low=min(silpomLitFace.uv0,min(silpomLitFace.uv1,silpomLitFace.uv2));
                 visibility*=SilPomLocalVisibility(GetMaterialTexture(params.m_silpomHeightMap),silpomLitPatch,silpomLitFace,
-                    silpomLitUv,low,mul(transpose(silpomLitRotation),toLight),16u,0.0f,params);
+                    silpomLitUv,low,mul(transpose(silpomLitRotation),toLight),16u,0.0f,params SILPOM_RECEIVER_ARGUMENT);
             }
 #endif
             const real3 beforeDiffuse=lightingData.diffuseLighting;
@@ -193,7 +276,12 @@ void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,floa
 #if SILPOM_DIRECTIONAL_COMPARISON
             const float2 gain=float2(1,1);
 #else
-            const float2 gain=SilPomAppearanceLightGain(mul(transpose(silpomLitRotation),toLight),0.0f,params.m_silpomProxyDirectionalResponse,params);
+            const float2 gain=
+#if defined(SILPOM_NEURAL_VISIBILITY_ONLY)
+                SilPomAppearanceLightGainPrepared(mul(transpose(silpomLitRotation),toLight),0.0f,params.m_silpomProxyDirectionalResponse,params,receiver.appearance);
+#else
+                SilPomAppearanceLightGain(mul(transpose(silpomLitRotation),toLight),0.0f,params.m_silpomProxyDirectionalResponse,params);
+#endif
 #endif
             lightingData.diffuseLighting=beforeDiffuse+(lightingData.diffuseLighting-beforeDiffuse)*gain.x;
             SP_UNROLL for(uint view=0;view<MAX_SHADING_VIEWS;++view)
@@ -203,5 +291,7 @@ void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,floa
 #endif
         light.Apply(srgLight,surface,visibility,lightingData);
     }
-    ApplySpiralLight(surface, lightingData, params);
+    ApplySpiralLight(surface, lightingData, params SILPOM_RECEIVER_ARGUMENT);
 }
+#undef SILPOM_RECEIVER_PARAMETER
+#undef SILPOM_RECEIVER_ARGUMENT

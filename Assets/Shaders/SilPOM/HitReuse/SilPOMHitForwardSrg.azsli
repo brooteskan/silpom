@@ -12,6 +12,10 @@
 
 ShaderResourceGroup PassSrg : SRG_PerPass
 {
+    float4 m_silpomViewport;
+    ByteAddressBuffer m_silpomFaceCache;
+    ByteAddressBuffer m_silpomFaceCacheTable;
+    uint m_silpomFaceCacheBatchCount;
     // [GFX TODO][ATOM-2012] adapt to multiple shadowmaps
     Texture2DArray<float> m_directionalLightShadowmap;
     Texture2DArray<float> m_directionalLightExponentialShadowmap;
@@ -52,5 +56,7 @@ ShaderResourceGroup PassSrg : SRG_PerPass
 
     // AZSLc generates the existing 1x layout in its NoMSAA supervariant.
     Texture2DMS<uint4> m_silpomHitBuffer;
+    Texture2DMS<float4> m_silpomHitUvGradients;
+    Texture2DMS<float4> m_silpomHitDepthGradients;
 }
 static uint silpomHitSampleIndex;

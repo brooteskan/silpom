@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Prepared normal-query setup, direct proxy probe geometry and independent probe validity",
+  "normal_query_policy": "prepared-normal-stencil-with-probe-validity",
+  "samples": 2,
+  "viewport": [
+    1280,
+    720
+  ],
+  "views": [
+    "exterior",
+    "lower-facing",
+    "lower-glancing",
+    "upper-glancing",
+    "wide-representations"
+  ],
+  "owned_shaded_samples": 5557447,
+  "baseline_attachment_comparisons": 35,
+  "current_scheduler_attachment_comparisons": 70,
+  "full_surface_query_baseline": "TGProject/user/silpom-gradients-20261116/quality-final",
+  "preceding_normal_only_baseline": "TGProject/user/silpom-gradients-20261116/normal-only-quality",
+  "all_comparisons_bit_exact": true,
+  "intentional_policy_change": "Any coarse or nonfinite probe selects the existing bounded coarse AA response even with a valid center; source context is unchanged.",
+  "stored_derivatives_per_sample": 6,
+  "gradient_attachment_bytes_per_sample": 32,
+  "virtual_stencil_pixels": [
+    -0.25,
+    0.25
+  ],
+  "center_full_surface_evaluations": 1,
+  "center_evaluation_last": true,
+  "controlled_files_unchanged": 262,
+  "timings_collected": false,
+  "timing_status": "The preceding normal-only benchmark predates this setup refinement. No new speedup is claimed.",
+  "runtime_coverage_limit": "Fixed views include authored-plane proxies; morph, learned proxy depth and diagnostic/copy-repair categories were not selected. Proxy isolated fixture substitutes UV/LOD-dependent feature values; application images use actual textures.",
+  "proofs": {
+    "runtime": {
+      "path": "TGProject/user/silpom-gradients-20261116/prepared-normal-quality/refinement-report.json",
+      "sha256": "a3e24932e4adc3883951f767705e90f7246938671218a2d225a4e3f8a09f9fb8"
+    },
+    "independent_runtime_audit": {
+      "path": "scratch/normal-query-setup-validation/independent-review.json",
+      "sha256": "955179a1d004715b23c829672d23785a8187b77e58a38d47788ff317a75f2470"
+    },
+    "current_shader_compile_and_aa_gate": {
+      "path": "scratch/normal-query-setup-validation/normal-query-setup-proof.json",
+      "sha256": "3688263e1d708a54396695ec24252f99859df1ee7ccdb22bc2ecded686e8372c"
+    },
+    "learned_prepared_footprint": {
+      "path": "scratch/learned-prepared-footprint/proof.json",
+      "sha256": "29f54fb2e646b8d8062c5aa301c7f814e5b74b412b826332062435e5bba88285"
+    },
+    "proxy_prepared_setup": {
+      "path": "scratch/proxy-probe-refinement/proxy-prepared-proof.json",
+      "sha256": "4e0554eb5a2d6aae6c34c453b4c97fb0dc3101106638666f08173497ae0e55aa"
+    },
+    "normal_query_policy": {
+      "path": "scratch/silpom-gradient-math-20261116/normal-query-policy-report.json",
+      "sha256": "fb8ab144b807e23027add9a907395503f46d41b6e10dab983f3a1611a6899818"
+    },
+    "processed_asset_readiness": {
+      "path": "scratch/normal-query-setup-validation/asset-readiness.json",
+      "sha256": "82927918b27bd4604370dbb87fb35797234d09ef598735c66793453c902b79ef"
+    },
+    "controlled_hashes_before": {
+      "path": "scratch/normal-query-setup-validation/before.json",
+      "sha256": "b56dfd490e5ce9b3b9d783d59e7c74a24018b6e877b5cb3a79ea4b257c063918"
+    },
+    "controlled_hashes_after": {
+      "path": "scratch/normal-query-setup-validation/after.json",
+      "sha256": "b56dfd490e5ce9b3b9d783d59e7c74a24018b6e877b5cb3a79ea4b257c063918"
+    }
+  },
+  "production_source_sha256": {
+    "Assets/Materials/Types/SilPOMMesh/SilPOMMesh.azsli": "4aba1b9ecc1d39372fcc8e82b0af96bf99f72d1cc3799abe7dc3fc3c402467ca",
+    "Assets/Materials/Types/SilPOMMesh/SilPOMMesh_DirectionalLighting.azsli": "19691361ab23099e1275c40273b9b64ae721c7bd153cde6811d2876663d42857",
+    "Assets/Shaders/SilPOM/GradientContext.azsli": "63946b0380ee62900ccd1b6d408caf1cb56e00c7b20c1d27b577e0d3e5a83772",
+    "Assets/Shaders/SilPOM/RepairGradientContext.azsli": "f34225daf5d3a8aa215f9c727b9d3b172abb2b05e1278268a7df78ab72c266a9",
+    "Assets/Shaders/SilPOM/GradientConsumers.azsli": "60e02d3d79cd8b2c55e4b37828dc34260a0ed177acd3bd1c73a1b1ac586b530a",
+    "Assets/Shaders/SilPOM/StandardPbrNormal.azsli": "b7abd5640e357f7de13f0ec9e77c86ef7249c699f36a14187adff375d5aaf861",
+    "Assets/Shaders/SilPOM/MaterialNormalDecode.azsli": "e79a739b5b9ae71c52124c644a187f7228d337da9b88b0c897e4a5f159bf54b7",
+    "Assets/Shaders/SilPOM/LearnedNormalFootprint.azsli": "9b6de3a305f1bd75f5755442a7892283f1180015ca9a18e346f8c0ece0f92a0e",
+    "Assets/Shaders/SilPOM/NormalQueryPolicy.azsli": "94948ceac31da1c9f31c93363d680b62d51c55e8c83b8bf125e9254f900b0fe9",
+    "Assets/Shaders/SilPOM/LearnedMaterialSurface.azsli": "d3ef9b0ac47a66c37cbd0422c0d94bfe2bdb32dcbfd313bf99c44367655af5aa",
+    "Assets/Shaders/SilPOM/ProxyAppearance.azsli": "bf27871ffa5b9f7b5b8af4099efddea387f691992edb18e769970771dbb11502",
+    "Assets/Shaders/SilPOM/ForwardLighting.azsli": "3ab28407d7ea77056b09f46ad7d2b9723e521cc063dcc8a295804ed54da8c225",
+    "Assets/Shaders/SilPOM/ReceiverUv/PaintSurface.azsli": "57469a6f2674ea1cf1a4da05bf005841c552e0d60662536267e18ed233823a46",
+    "Assets/Shaders/SilPOM/ReceiverUv/BakePipeline.azsli": "6b7a496e785c165d2cefffe9d522be1eeefbb4ac751417bc4a2707700328c24d",
+    "Assets/Shaders/SilPOM/ReceiverUv/UsagePipeline.azsli": "c5f03664401583bae5de325fe69a6c0b63832e2a907014e955ea09d13d0c5f28",
+    "Assets/Materials/DecalPaint/hard_round.material": "1e58f4758412e4e915f4d27c685adb68e9d804ee2ff084ed1c800591ba89c78b",
+    "Assets/Materials/DecalPaint/hard_round.png": "f39880827ccad7108091aa5aee1659fcc4221331bc33cd52dc29a9e0fae8657f",
+    "Assets/Materials/Pipelines/MainPipeline/SilPOMHitForward.azsli": "5e3cfe07980cc6e426bf2d2009cd82758e92b500d351c231ae150a91fc50fae6",
+    "Assets/Materials/Pipelines/MainPipeline/SilPOMHitForwardAngularProxyAmbient.azsli": "01a01c0ae1aa9dcfde563fff8f6d3bdeaac8c69f7efe047cb4992b3f8782ae9f",
+    "Assets/Materials/Pipelines/MainPipeline/SilPOMHitDepthProxy.azsli": "54f843fd41dd6fb116cabdfce034f4f27777fedaff74964627915efd26b682dd",
+    "Assets/Shaders/SilPOM/HitReuse/SilPOMClassifyWallHoles.azsl": "8d9ef21c59489360f9c302217ba81e74747d7d24cb2841d34fdb62e9bb99fd69",
+    "Assets/Shaders/SilPOM/HitReuse/SilPOMFillWallHoles.azsl": "e56bdf8dea6e44eec582bfd0b6a438ed7b1e8f591b91fe80a72183bbdd25e48c",
+    "Assets/Shaders/SilPOM/HitReuse/SilPOMInspectSamples.azsl": "d1aaa28e1f9705db7ceae026cfef071a0ec954303e92acbc9165d47e7856f87c",
+    "Assets/Passes/SilPOMHitDepth.pass": "c16645cc589fc87b69137e914e2b31aa3ea7de99b711e21b5450bd5fc93b3693",
+    "Assets/Passes/SilPOMHitDepthMsaa.pass": "2aa0c8c3047e6038763918f9121dc87b42c24c5d54dad556bf46b1ed96ed9180",
+    "Assets/Passes/SilPOMHitDepthWallBackup.pass": "da4c0da0e67bc3e357995ff7a1498865f113721b3de0c2f290d7fef387ca1ca5",
+    "Assets/Passes/SilPOMHitForward.pass": "b7503b16cc2c99f695c8849db178f8ef569f34f6984381f49af53b3ee6ac338a",
+    "Assets/Passes/SilPOMClassifyWallHolesMsaa.pass": "535580f6ea8f0eb2fbf1acf935d7662307a0caf0a0a6403ec8eb3f036ce43627",
+    "Assets/Passes/SilPOMFillWallHoles.pass": "b4adaa05ea25730e73561f6433f2f99d367e7e1b1011d38bf67ab1194f1f6a9e",
+    "Assets/Passes/SilPOMInspectSamples.pass": "ac9b0f00907745440c81b5e48d28bfbb29b5d449f78a61ebd2d9a481cdeede42",
+    "Assets/Passes/SilPOMInspectUvUsage.pass": "2f5a10a61bc03da8ab81cdb4cbab7dabcc9e78afcb822c1675e6ae749cd33731",
+    "Source/ResolvePass.cpp": "0d41ad4822c0d482fb1bfe84e2576ba400cf6de0abfc3bb0126751c1b084c242"
+  }
+}

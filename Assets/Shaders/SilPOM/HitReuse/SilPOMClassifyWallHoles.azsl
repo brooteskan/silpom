@@ -2,11 +2,15 @@
 #include <Atom/Features/SrgSemantics.azsli>
 #include <Atom/Features/PostProcessing/FullscreenVertex.azsli>
 #include "SilPOMHitRecord.azsli"
+#include "../GradientContext.azsli"
+#include "../RepairGradientContext.azsli"
 
 ShaderResourceGroup PassSrg : SRG_PerPass
 {
     Texture2DMS<float2> m_sceneDepth;
     Texture2DMS<uint4> m_hits;
+    Texture2DMS<float4> m_hitUvGradients;
+    Texture2DMS<float4> m_hitDepthGradients;
 }
 
 bool IsWallHit(uint4 record)
@@ -17,6 +21,27 @@ bool IsWallHit(uint4 record)
 static uint silpomRepairSample;
 static const float MinimumPairAgreement = .90f;
 static const float MaximumGapDepthRatio = .80f;
+
+SilPomGradientContext GradientAt(int2 pixel)
+{
+    return SilPomGradientUnpack(PassSrg::m_hitUvGradients.Load(pixel,silpomRepairSample),
+        PassSrg::m_hitDepthGradients.Load(pixel,silpomRepairSample));
+}
+
+struct SilPomClassifyOutput
+{
+    uint4 hit:SV_Target0;
+    float4 uvGradients:SV_Target1;
+    float4 depthGradients:SV_Target2;
+};
+SilPomClassifyOutput RepairOutput(uint4 hit,SilPomGradientContext context)
+{
+    context=SilPomGradientConditionRepair(context);
+    SilPomClassifyOutput output;
+    output.hit=hit;output.uvGradients=context.uv;
+    output.depthGradients=SilPomGradientPackDepth(context);
+    return output;
+}
 
 float RecordDepth(uint4 record)
 {
@@ -31,8 +56,9 @@ float PairAgreement(uint4 a, uint4 b)
     return nearer > 0.0f ? min(za, zb) / nearer : 0.0f;
 }
 
-uint4 FillIsolatedSky(uint4 left, uint4 right, uint4 top, uint4 bottom)
+uint4 FillIsolatedSky(int2 pixel,uint4 left, uint4 right, uint4 top, uint4 bottom,out SilPomGradientContext context)
 {
+    context=(SilPomGradientContext)0;
     if (!IsWallHit(left) || !IsWallHit(right) || !IsWallHit(top) || !IsWallHit(bottom))
         return 0;
 
@@ -51,16 +77,25 @@ uint4 FillIsolatedSky(uint4 left, uint4 right, uint4 top, uint4 bottom)
     const uint za = a.z & SP_HIT_RECORD_DEPTH;
     const uint zb = b.z & SP_HIT_RECORD_DEPTH;
     uint4 fill = za <= zb ? a : b;
+    const int2 axis=useHorizontal?int2(1,0):int2(0,1);
+    const SilPomGradientContext aContext=GradientAt(pixel-axis),bContext=GradientAt(pixel+axis);
+    if(za<=zb)context=SilPomGradientCopied(aContext);
+    else context=SilPomGradientCopied(bContext);
     if (a.w == b.w)
     {
         fill.xy = asuint((asfloat(a.xy) + asfloat(b.xy)) * .5f);
         fill.z = (fill.z & ~SP_HIT_RECORD_DEPTH) | asuint((asfloat(za) + asfloat(zb)) * .5f);
+        context=SilPomGradientBlendAnchored(asfloat(a.xy),asfloat(za),aContext,
+            asfloat(b.xy),asfloat(zb),bContext,.5f,float2(axis)*.5f,false,SP_GRADIENT_REPAIR_ARITHMETIC,
+            asfloat(fill.xy),RecordDepth(fill));
     }
     return fill;
 }
 
-uint4 BridgeGap(int2 pixel, int2 axis, float centerDepth, uint centerOwner, uint4 a, uint4 b)
+uint4 BridgeGap(int2 pixel, int2 axis, float centerDepth, uint centerOwner, uint4 a, uint4 b,out SilPomGradientContext context)
 {
+    context=(SilPomGradientContext)0;
+    int2 aPixel=pixel-axis,bPixel=pixel+axis;
     float za = RecordDepth(a);
     float zb = RecordDepth(b);
     const bool nearA = IsWallHit(a) && centerDepth < MaximumGapDepthRatio * za;
@@ -76,6 +111,7 @@ uint4 BridgeGap(int2 pixel, int2 axis, float centerDepth, uint centerOwner, uint
     {
         gapDepth = max(gapDepth, PassSrg::m_sceneDepth.Load(pixel - axis,silpomRepairSample).r);
         a = PassSrg::m_hits.Load(pixel - 2 * axis,silpomRepairSample);
+        aPixel=pixel-2*axis;
         if (!IsWallHit(a))
             return 0;
         za = RecordDepth(a);
@@ -85,6 +121,7 @@ uint4 BridgeGap(int2 pixel, int2 axis, float centerDepth, uint centerOwner, uint
     {
         gapDepth = max(gapDepth, PassSrg::m_sceneDepth.Load(pixel + axis,silpomRepairSample).r);
         b = PassSrg::m_hits.Load(pixel + 2 * axis,silpomRepairSample);
+        bPixel=pixel+2*axis;
         if (!IsWallHit(b))
             return 0;
         zb = RecordDepth(b);
@@ -100,10 +137,15 @@ uint4 BridgeGap(int2 pixel, int2 axis, float centerDepth, uint centerOwner, uint
     uint4 fill = za <= zb ? a : b;
     fill.xy = asuint(lerp(asfloat(a.xy) * za, asfloat(b.xy) * zb, weight) / depth);
     fill.z = (fill.z & ~SP_HIT_RECORD_DEPTH) | asuint(depth);
+    const float2 separation=float2(bPixel-aPixel);
+    const float2 weightGradient=separation/dot(separation,separation);
+    const SilPomGradientContext aContext=GradientAt(aPixel),bContext=GradientAt(bPixel);
+    context=SilPomGradientBlendAnchored(asfloat(a.xy),za,aContext,asfloat(b.xy),zb,bContext,
+        weight,weightGradient,true,SP_GRADIENT_REPAIR_DEPTH_WEIGHTED,asfloat(fill.xy),RecordDepth(fill));
     return fill;
 }
 
-uint4 MainPS(VSOutput input,uint sampleIndex:SV_SampleIndex) : SV_Target0
+SilPomClassifyOutput MainPS(VSOutput input,uint sampleIndex:SV_SampleIndex)
 {
     silpomRepairSample=sampleIndex;
     const int2 pixel = int2(input.m_position.xy);
@@ -117,7 +159,7 @@ uint4 MainPS(VSOutput input,uint sampleIndex:SV_SampleIndex) : SV_Target0
         for(uint s=0;s<samples;++s)
         {
             const uint4 hit=PassSrg::m_hits.Load(pixel,s);
-            if(!IsWallHit(hit)||hit.w!=owner)return 0;
+            if(!IsWallHit(hit)||hit.w!=owner)return (SilPomClassifyOutput)0;
         }
     }
     const float centerDepth = PassSrg::m_sceneDepth.Load(pixel,silpomRepairSample).r;
@@ -128,17 +170,18 @@ uint4 MainPS(VSOutput input,uint sampleIndex:SV_SampleIndex) : SV_Target0
     const uint4 right = PassSrg::m_hits.Load(pixel + horizontal,silpomRepairSample);
     const uint4 top = PassSrg::m_hits.Load(pixel - vertical,silpomRepairSample);
     const uint4 bottom = PassSrg::m_hits.Load(pixel + vertical,silpomRepairSample);
+    SilPomGradientContext context=(SilPomGradientContext)0;
     if (centerDepth == 0.0f)
     {
-        const uint4 skyFill = FillIsolatedSky(left, right, top, bottom);
+        const uint4 skyFill = FillIsolatedSky(pixel,left, right, top, bottom,context);
         if (skyFill.w != 0)
-            return skyFill;
+            return RepairOutput(skyFill,context);
     }
 
     const uint centerOwner = PassSrg::m_hits.Load(pixel,silpomRepairSample).w;
-    uint4 fill = BridgeGap(pixel, horizontal, centerDepth, centerOwner, left, right);
+    uint4 fill = BridgeGap(pixel, horizontal, centerDepth, centerOwner, left, right,context);
     if (fill.w == 0)
-        fill = BridgeGap(pixel, vertical, centerDepth, centerOwner, top, bottom);
+        fill = BridgeGap(pixel, vertical, centerDepth, centerOwner, top, bottom,context);
 
     const int2 diagonals[2] = {int2(1, 1), int2(1, -1)};
     [unroll]
@@ -149,12 +192,12 @@ uint4 MainPS(VSOutput input,uint sampleIndex:SV_SampleIndex) : SV_Target0
             const int2 axis = diagonals[i];
             const uint4 a = PassSrg::m_hits.Load(pixel - axis,silpomRepairSample);
             const uint4 b = PassSrg::m_hits.Load(pixel + axis,silpomRepairSample);
-            fill = BridgeGap(pixel, axis, centerDepth, centerOwner, a, b);
+            fill = BridgeGap(pixel, axis, centerDepth, centerOwner, a, b,context);
         }
     }
     // The 4x variant initializes every sample instead of using a native clear
     // of the integer MSAA target. Preserve the established 1x discard behavior.
     if (fill.w == 0 && samples==1)
         discard;
-    return fill;
+    return RepairOutput(fill,context);
 }

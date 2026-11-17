@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+
+// Call after GradientContext.azsli has supplied the context and finite helpers.
+// A repaired rational field can amplify regular donor slopes near zero depth.
+// Bound the synthetic differential in source-UV units per raster pixel before
+// virtual material-normal evaluations use it. The forward owner expands this
+// coarse marker to its full chart and complete source-UV texture period.
+SilPomGradientContext SilPomGradientConditionRepair(SilPomGradientContext context)
+{
+    // Preserve defined coarse continuations and the zero invalid context used
+    // for empty/unowned output samples.
+    if(context.validity!=SP_GRADIENT_VALID)return context;
+    if(!SilPomGradientFinite4(context.uv)||!SilPomGradientFinite2(context.depth)
+        ||abs(context.uv.x)>1||abs(context.uv.y)>1||abs(context.uv.z)>1||abs(context.uv.w)>1
+        ||abs(context.depth.x)>1||abs(context.depth.y)>1)
+        return SilPomGradientCoarse(float2(1,1),context.representation);
+    return context;
+}

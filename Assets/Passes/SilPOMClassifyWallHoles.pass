@@ -5,7 +5,7 @@
     "ClassData": {
         "PassTemplate": {
             "Name": "SilPOMClassifyWallHolesTemplate",
-            "PassClass": "FullScreenTriangle",
+            "PassClass": "SilPOMRepairClassifyPass",
             "Slots": [
                 {
                     "Name": "SceneDepth",
@@ -26,6 +26,50 @@
                 },
                 {
                     "Name": "Fill",
+                    "SlotType": "Output",
+                    "ScopeAttachmentUsage": "RenderTarget",
+                    "LoadStoreAction": {
+                        "LoadAction": "Clear",
+                        "ClearValue": {
+                            "Value": [
+                                0,
+                                0,
+                                0,
+                                0
+                            ]
+                        }
+                    }
+                },
+                {
+                    "Name": "HitUvGradients",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_hitUvGradients"
+                },
+                {
+                    "Name": "FillUvGradients",
+                    "SlotType": "Output",
+                    "ScopeAttachmentUsage": "RenderTarget",
+                    "LoadStoreAction": {
+                        "LoadAction": "Clear",
+                        "ClearValue": {
+                            "Value": [
+                                0,
+                                0,
+                                0,
+                                0
+                            ]
+                        }
+                    }
+                },
+                {
+                    "Name": "HitDepthGradients",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_hitDepthGradients"
+                },
+                {
+                    "Name": "FillDepthGradients",
                     "SlotType": "Output",
                     "ScopeAttachmentUsage": "RenderTarget",
                     "LoadStoreAction": {
@@ -62,6 +106,34 @@
                         "Pass": "This",
                         "Attachment": "FillRecords"
                     }
+                },
+                {
+                    "LocalSlot": "HitUvGradients",
+                    "AttachmentRef": {
+                        "Pass": "SilPOMHitDepth",
+                        "Attachment": "HitUvGradients"
+                    }
+                },
+                {
+                    "LocalSlot": "FillUvGradients",
+                    "AttachmentRef": {
+                        "Pass": "This",
+                        "Attachment": "FillUvGradientsImage"
+                    }
+                },
+                {
+                    "LocalSlot": "HitDepthGradients",
+                    "AttachmentRef": {
+                        "Pass": "SilPOMHitDepth",
+                        "Attachment": "HitDepthGradients"
+                    }
+                },
+                {
+                    "LocalSlot": "FillDepthGradients",
+                    "AttachmentRef": {
+                        "Pass": "This",
+                        "Attachment": "FillDepthGradientsImage"
+                    }
                 }
             ],
             "ImageAttachments": [
@@ -75,6 +147,40 @@
                     },
                     "ImageDescriptor": {
                         "Format": "R32G32B32A32_UINT",
+                        "SharedQueueMask": "Graphics"
+                    },
+                    "MultisampleSource": {
+                        "Pass": "This",
+                        "Attachment": "Hit"
+                    }
+                },
+                {
+                    "Name": "FillUvGradientsImage",
+                    "SizeSource": {
+                        "Source": {
+                            "Pass": "This",
+                            "Attachment": "Hit"
+                        }
+                    },
+                    "ImageDescriptor": {
+                        "Format": "R32G32B32A32_FLOAT",
+                        "SharedQueueMask": "Graphics"
+                    },
+                    "MultisampleSource": {
+                        "Pass": "This",
+                        "Attachment": "Hit"
+                    }
+                },
+                {
+                    "Name": "FillDepthGradientsImage",
+                    "SizeSource": {
+                        "Source": {
+                            "Pass": "This",
+                            "Attachment": "Hit"
+                        }
+                    },
+                    "ImageDescriptor": {
+                        "Format": "R32G32B32A32_FLOAT",
                         "SharedQueueMask": "Graphics"
                     },
                     "MultisampleSource": {

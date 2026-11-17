@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "scope": "Specular-AA-gated owner-local normal-only queries",
+  "passed": true,
+  "samples": 2,
+  "viewport": [
+    1280,
+    720
+  ],
+  "views": [
+    "exterior",
+    "lower-facing",
+    "lower-glancing",
+    "upper-glancing",
+    "wide-representations"
+  ],
+  "owned_shaded_samples": 5557447,
+  "baseline_attachment_comparisons": 35,
+  "current_scheduler_attachment_comparisons": 70,
+  "stored_derivatives_per_sample": 6,
+  "gradient_attachment_bytes_per_sample": 32,
+  "virtual_stencil_pixels": [
+    -0.25,
+    0.25
+  ],
+  "center_full_surface_evaluations": 1,
+  "center_evaluation_last": true,
+  "timings_collected": false,
+  "timing_status": "Stopped at user request; preceding partial benchmark is not a timing of this refinement.",
+  "controlled_files_unchanged": 260,
+  "proofs": {
+    "runtime": {
+      "path": "TGProject/user/silpom-gradients-20261116/normal-only-quality/refinement-report.json",
+      "sha256": "f73f0e7e76d40c2cb92573c240ffbe721c0373a0cf74a7c1c1cb8f7e4d312537"
+    },
+    "aa_gate_shader_compile": {
+      "path": "scratch/normal-aa-refinement-validation/normal-aa-refinement-proof.json",
+      "sha256": "1898c0cd57013b1ddf716a2c6ec1d0825f23038184c43060c973bed39df36ee9"
+    },
+    "normal_decoder_gpu": {
+      "path": "scratch/normal-only-consumers/decoder-proof.json",
+      "sha256": "918a71722d91b35ba1bbec6b11d78c5006bdde305b1926b9058cf862cfeadcc5"
+    },
+    "standard_normal_source_and_compile": {
+      "path": "scratch/standard-normal-only-validation/report.json",
+      "sha256": "cc7f0466254782d9c3e23283cd54b91648944af6ee181a535f348098d1756f8c"
+    }
+  },
+  "bit_exact_decoder_column_checks": 49152,
+  "normal_input_arguments_match_engine": true,
+  "current_renderer_source_sha256": {
+    "Assets/Materials/Types/SilPOMMesh/SilPOMMesh.azsli": "b3424297149401a75a4f877c7b62f33626bf40693770b5890925b4200f50fa1a",
+    "Assets/Materials/Types/SilPOMMesh/SilPOMMesh_DirectionalLighting.azsli": "19691361ab23099e1275c40273b9b64ae721c7bd153cde6811d2876663d42857",
+    "Assets/Shaders/SilPOM/GradientContext.azsli": "63946b0380ee62900ccd1b6d408caf1cb56e00c7b20c1d27b577e0d3e5a83772",
+    "Assets/Shaders/SilPOM/RepairGradientContext.azsli": "f34225daf5d3a8aa215f9c727b9d3b172abb2b05e1278268a7df78ab72c266a9",
+    "Assets/Shaders/SilPOM/GradientConsumers.azsli": "60e02d3d79cd8b2c55e4b37828dc34260a0ed177acd3bd1c73a1b1ac586b530a",
+    "Assets/Shaders/SilPOM/StandardPbrNormal.azsli": "b7abd5640e357f7de13f0ec9e77c86ef7249c699f36a14187adff375d5aaf861",
+    "Assets/Shaders/SilPOM/MaterialNormalDecode.azsli": "e79a739b5b9ae71c52124c644a187f7228d337da9b88b0c897e4a5f159bf54b7",
+    "Assets/Shaders/SilPOM/LearnedMaterialSurface.azsli": "91e8fb0b8a0c79f0864180746d7551083421499aa44c7033482740e0387a2d6b",
+    "Assets/Shaders/SilPOM/ProxyAppearance.azsli": "3598ae268dd19019590ea164e2833505813dcc205fa0a87d8e4c4a2495473ee2",
+    "Assets/Shaders/SilPOM/ForwardLighting.azsli": "3ab28407d7ea77056b09f46ad7d2b9723e521cc063dcc8a295804ed54da8c225",
+    "Assets/Shaders/SilPOM/ReceiverUv/PaintSurface.azsli": "57469a6f2674ea1cf1a4da05bf005841c552e0d60662536267e18ed233823a46",
+    "Assets/Shaders/SilPOM/ReceiverUv/BakePipeline.azsli": "6b7a496e785c165d2cefffe9d522be1eeefbb4ac751417bc4a2707700328c24d",
+    "Assets/Shaders/SilPOM/ReceiverUv/UsagePipeline.azsli": "c5f03664401583bae5de325fe69a6c0b63832e2a907014e955ea09d13d0c5f28",
+    "Assets/Materials/DecalPaint/hard_round.material": "1e58f4758412e4e915f4d27c685adb68e9d804ee2ff084ed1c800591ba89c78b",
+    "Assets/Materials/DecalPaint/hard_round.png": "f39880827ccad7108091aa5aee1659fcc4221331bc33cd52dc29a9e0fae8657f",
+    "Assets/Materials/Pipelines/MainPipeline/SilPOMHitForward.azsli": "5e3cfe07980cc6e426bf2d2009cd82758e92b500d351c231ae150a91fc50fae6",
+    "Assets/Materials/Pipelines/MainPipeline/SilPOMHitForwardAngularProxyAmbient.azsli": "01a01c0ae1aa9dcfde563fff8f6d3bdeaac8c69f7efe047cb4992b3f8782ae9f",
+    "Assets/Materials/Pipelines/MainPipeline/SilPOMHitDepthProxy.azsli": "54f843fd41dd6fb116cabdfce034f4f27777fedaff74964627915efd26b682dd",
+    "Assets/Shaders/SilPOM/HitReuse/SilPOMClassifyWallHoles.azsl": "8d9ef21c59489360f9c302217ba81e74747d7d24cb2841d34fdb62e9bb99fd69",
+    "Assets/Shaders/SilPOM/HitReuse/SilPOMFillWallHoles.azsl": "e56bdf8dea6e44eec582bfd0b6a438ed7b1e8f591b91fe80a72183bbdd25e48c",
+    "Assets/Shaders/SilPOM/HitReuse/SilPOMInspectSamples.azsl": "d1aaa28e1f9705db7ceae026cfef071a0ec954303e92acbc9165d47e7856f87c",
+    "Assets/Passes/SilPOMHitDepth.pass": "c16645cc589fc87b69137e914e2b31aa3ea7de99b711e21b5450bd5fc93b3693",
+    "Assets/Passes/SilPOMHitDepthMsaa.pass": "2aa0c8c3047e6038763918f9121dc87b42c24c5d54dad556bf46b1ed96ed9180",
+    "Assets/Passes/SilPOMHitDepthWallBackup.pass": "da4c0da0e67bc3e357995ff7a1498865f113721b3de0c2f290d7fef387ca1ca5",
+    "Assets/Passes/SilPOMHitForward.pass": "b7503b16cc2c99f695c8849db178f8ef569f34f6984381f49af53b3ee6ac338a",
+    "Assets/Passes/SilPOMClassifyWallHolesMsaa.pass": "535580f6ea8f0eb2fbf1acf935d7662307a0caf0a0a6403ec8eb3f036ce43627",
+    "Assets/Passes/SilPOMFillWallHoles.pass": "b4adaa05ea25730e73561f6433f2f99d367e7e1b1011d38bf67ab1194f1f6a9e",
+    "Assets/Passes/SilPOMInspectSamples.pass": "ac9b0f00907745440c81b5e48d28bfbb29b5d449f78a61ebd2d9a481cdeede42",
+    "Assets/Passes/SilPOMInspectUvUsage.pass": "2f5a10a61bc03da8ab81cdb4cbab7dabcc9e78afcb822c1675e6ae749cd33731",
+    "Source/ResolvePass.cpp": "0d41ad4822c0d482fb1bfe84e2576ba400cf6de0abfc3bb0126751c1b084c242"
+  }
+}

@@ -117,8 +117,8 @@ int main()
             "An iteration cap must not accept an unchecked final correction");
         Require(flat.loads==4,"One iteration must evaluate only one bilinear height");
         uv={.25f,.25f};t=1.00001f;flat.loads=0;
-        Require(SilPomRefineFace(flat,p,face,ray,{0,0},uv,t,2,1)==SP_HIT && flat.loads==8,
-            "An additional iteration must validate the corrected intersection");
+        Require(SilPomRefineFace(flat,p,face,ray,{0,0},uv,t,2,1)==SP_HIT && flat.loads==4,
+            "An additional iteration must validate the corrected intersection while reusing its unchanged cell");
         uv={.25f,.25f};t=1.00001f;flat.loads=0;
         Require(SilPomRefineFace(flat,p,face,ray,{0,0},uv,t,1,10)==SP_HIT && flat.loads==4,
             "Looser tolerance must permit earlier acceptance of a close seed");

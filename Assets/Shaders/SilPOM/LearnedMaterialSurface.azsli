@@ -1,32 +1,73 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "MaterialDecode.azsli"
+#include "LearnedNormalFootprint.azsli"
+#include "MaterialNormalDecode.azsli"
 #if SILPOM_SHARED_VISIBILITY
 #include "SharedVisibility.azsli"
 #endif
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_SurfaceData.azsli>
-Surface SilPomEvaluateLearnedSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,MaterialParameters params,float4 derivatives)
+void SilPomAcquireLearnedMaterialInput(float2 uv,MaterialParameters params,float4 derivatives,
+    bool acquireVisibility,SP_OUT float x[12],out float4 horizon)
 {
-    float2 uv=geo.uvs[0];
     SilPomMaterialFootprint f=SilPomMaterialFootprintFor(derivatives.xy*float2(6656,6144),derivatives.zw*float2(6656,6144));
     float lod=clamp(f.lod-2.0f,0.0f,float(params.m_silpomMaterialFeatureMipCount-1u));
     float4 first=0,second=0;
-#if SILPOM_SHARED_VISIBILITY
-    float4 horizon=0;
-#endif
+    horizon=0;
     for(uint i=0;i<f.taps;++i)
     {
         float2 q=uv+f.axis*((float(i)+.5f)/float(f.taps)-.5f)*f.major/float2(6656,6144);
         first+=GetMaterialTexture(params.m_silpomMaterialFeatures0).SampleLevel(GetMaterialTextureSampler(),q,lod)/float(f.taps);
         second+=GetMaterialTexture(params.m_silpomMaterialFeatures1).SampleLevel(GetMaterialTextureSampler(),q,lod)/float(f.taps);
 #if SILPOM_SHARED_VISIBILITY
-        horizon+=GetMaterialTexture(params.m_silpomMaterialFeatures2).SampleLevel(GetMaterialTextureSampler(),q,lod)/float(f.taps);
+        if(acquireVisibility)horizon+=GetMaterialTexture(params.m_silpomMaterialFeatures2).SampleLevel(GetMaterialTextureSampler(),q,lod)/float(f.taps);
 #endif
     }
-    float x[12];SP_UNROLL for(uint k=0;k<4;++k){x[k]=first[k]*2-1;x[4+k]=second[k]*2-1;}
+    SP_UNROLL for(uint k=0;k<4;++k){x[k]=first[k]*2-1;x[4+k]=second[k]*2-1;}
     x[8]=clamp(log2(max(f.major,1.0f))/13.0f,0.0f,12.0f/13.0f);
     x[9]=clamp(log2(f.minor)/13.0f,0.0f,12.0f/13.0f);
     x[10]=f.axis.x*f.axis.x-f.axis.y*f.axis.y;x[11]=2*f.axis.x*f.axis.y;
+}
+
+float3 SilPomLearnedMaterialNormal(float2 decoded,PixelGeometryData geo,MaterialParameters params)
+{
+    real2 normal=real2(decoded.x*2-1,decoded.y*2-1);
+    if(params.m_flipNormalX)normal.y=-normal.y;if(params.m_flipNormalY)normal.x=-normal.x;
+    real3x3 uvMatrix=real3x3(params.m_uvMatrixRow0.xyz,params.m_uvMatrixRow1.xyz,params.m_uvMatrixRow2.xyz);
+    real3 worldNormal=params.m_silpomMaterialUseNormal&&AreNormalMapsEnabled()
+        ?GetWorldSpaceNormal(normal,geo.vertexNormal,geo.tangents[0],geo.bitangents[0],uvMatrix,real(params.m_normalFactor)):normalize(geo.vertexNormal);
+    return AdjustBackFaceNormal(worldNormal,geo.isFrontFace);
+}
+
+float3 SilPomEvaluateLearnedNormalPrepared(PixelGeometryData geo,MaterialParameters params,SilPomLearnedNormalSetup setup)
+{
+    if(!params.m_silpomMaterialUseNormal||!AreNormalMapsEnabled())
+        return AdjustBackFaceNormal(normalize(geo.vertexNormal),geo.isFrontFace);
+    float4 first=0,second=0;
+    for(uint i=0;i<setup.taps;++i)
+    {
+        const float2 q=geo.uvs[0]+setup.tapOffsets[i];
+        first+=GetMaterialTexture(params.m_silpomMaterialFeatures0).SampleLevel(GetMaterialTextureSampler(),q,setup.lod)/float(setup.taps);
+        second+=GetMaterialTexture(params.m_silpomMaterialFeatures1).SampleLevel(GetMaterialTextureSampler(),q,setup.lod)/float(setup.taps);
+    }
+    float x[12];SP_UNROLL for(uint k=0;k<4;++k){x[k]=first[k]*2-1;x[4+k]=second[k]*2-1;}
+    x[8]=setup.context.x;x[9]=setup.context.y;x[10]=setup.context.z;x[11]=setup.context.w;
+    float decoded[2];SilPomDecodeMaterialNormal(x,params.m_silpomMaterialDecoderBuffer,decoded);
+    return SilPomLearnedMaterialNormal(float2(decoded[0],decoded[1]),geo,params);
+}
+
+float3 SilPomEvaluateLearnedNormal(PixelGeometryData geo,MaterialParameters params,float4 derivatives)
+{
+    if(!params.m_silpomMaterialUseNormal||!AreNormalMapsEnabled())
+        return AdjustBackFaceNormal(normalize(geo.vertexNormal),geo.isFrontFace);
+    SilPomLearnedNormalSetup setup=SilPomPrepareLearnedNormalSetup(params,derivatives);
+    return SilPomEvaluateLearnedNormalPrepared(geo,params,setup);
+}
+
+Surface SilPomEvaluateLearnedSurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,MaterialParameters params,float4 derivatives)
+{
+    float x[12];float4 horizon;
+    SilPomAcquireLearnedMaterialInput(geo.uvs[0],params,derivatives,true,x,horizon);
     float decoded[6];SilPomDecodeMaterial(x,params.m_silpomMaterialDecoderBuffer,decoded);
 #if SILPOM_SHARED_VISIBILITY
     SP_UNROLL for(uint i=0;i<4;++i)silpomSharedState[i]=horizon[i]*2-1;
@@ -35,12 +76,7 @@ Surface SilPomEvaluateLearnedSurface(VsOutput IN,VsSystemValues SV,PixelGeometry
 #endif
     Surface surface=(Surface)0;surface.position=geo.positionWS;surface.lightingChannels=GetLightingChannelMask(SV);
     surface.vertexNormal=geo.vertexNormal;
-    real2 normal=real2(decoded[3]*2-1,decoded[4]*2-1);
-    if(params.m_flipNormalX)normal.y=-normal.y;if(params.m_flipNormalY)normal.x=-normal.x;
-    real3x3 uvMatrix=real3x3(params.m_uvMatrixRow0.xyz,params.m_uvMatrixRow1.xyz,params.m_uvMatrixRow2.xyz);
-    surface.normal=params.m_silpomMaterialUseNormal&&AreNormalMapsEnabled()
-        ?GetWorldSpaceNormal(normal,geo.vertexNormal,geo.tangents[0],geo.bitangents[0],uvMatrix,real(params.m_normalFactor)):normalize(geo.vertexNormal);
-    surface.normal=AdjustBackFaceNormal(surface.normal,geo.isFrontFace);
+    surface.normal=SilPomLearnedMaterialNormal(float2(decoded[3],decoded[4]),geo,params);
     real3 color=LinearSrgb_To_AcesCg(real3(decoded[0],decoded[1],decoded[2]));
     color=BlendBaseColor(color,real3(params.m_baseColor.rgb),real(params.m_baseColorFactor),o_baseColorTextureBlendMode,params.m_silpomMaterialUseBaseColor);
 #if ENABLE_VERTEX_COLOR

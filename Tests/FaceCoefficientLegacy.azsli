@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: MIT
+// Frozen pre-cache expressions. Deliberately do not call coefficient helpers.
+float LegacyFaceUvArea(SilPomMeshFace f)
+{return (f.uv1.x-f.uv0.x)*(f.uv2.y-f.uv0.y)-(f.uv1.y-f.uv0.y)*(f.uv2.x-f.uv0.x);}
+float3 LegacyFaceWeights(SilPomMeshFace f,float2 uv)
+{
+    float area=LegacyFaceUvArea(f);
+    float b=((uv.x-f.uv0.x)*(f.uv2.y-f.uv0.y)-(uv.y-f.uv0.y)*(f.uv2.x-f.uv0.x))/area;
+    float c=((f.uv1.x-f.uv0.x)*(uv.y-f.uv0.y)-(f.uv1.y-f.uv0.y)*(uv.x-f.uv0.x))/area;
+    return float3(1-b-c,b,c);
+}
+float3 LegacyFaceDirection(SilPomMeshFace f,float2 uv)
+{float3 w=LegacyFaceWeights(f,uv);return f.d0*w.x+f.d1*w.y+f.d2*w.z;}
+uint LegacyRefineFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,
+    SilPomRay ray,float2 low,SP_REF(float2) uv,SP_REF(float) t,uint maxIterations=16,float toleranceMultiplier=1.0f)
+{
+    float area=LegacyFaceUvArea(f);
+    float3 dU=((f.d1-f.d0)*(f.uv2.y-f.uv0.y)-(f.d2-f.d0)*(f.uv1.y-f.uv0.y))*(1/area);
+    float3 dV=((f.d2-f.d0)*(f.uv1.x-f.uv0.x)-(f.d1-f.d0)*(f.uv2.x-f.uv0.x))*(1/area);
+    float tolerance=2e-6f*max(1.0f,max(length(f.du),length(f.dv)))*toleranceMultiplier;
+    for(uint iteration=0;iteration<maxIterations;++iteration)
+    {
+        float3 h=SilPomFaceHeight(texture,p,uv,low);
+        float3 D=LegacyFaceDirection(f,uv);
+        float3 position=f.origin+f.du*(uv.x-f.uv0.x)+f.dv*(uv.y-f.uv0.y)+D*h.x;
+        float3 residual=position-(ray.origin+ray.direction*t);
+        if(dot(residual,residual)<=tolerance*tolerance)
+        {
+            float3 w=LegacyFaceWeights(f,uv);
+            uint status=min(w.x,min(w.y,w.z))>=-2e-6f&&t>=ray.tMin&&t<=ray.tMax?SP_HIT:SP_MISS;
+            return status;
+        }
+        float3 U=f.du+dU*h.x+D*h.y,V=f.dv+dV*h.x+D*h.z;
+        float determinant=dot(U,cross(V,ray.direction));
+        if(abs(determinant)<1e-9f)return SP_REFINE_REJECTED;
+        float deltaU=-dot(residual,cross(V,ray.direction))/determinant;
+        float deltaV=-dot(U,cross(residual,ray.direction))/determinant;
+        float deltaT=dot(U,cross(V,residual))/determinant;
+        float step=max(abs(deltaU)/p.width,abs(deltaV)/p.height);
+        float damping=step>.25f?.25f/step:1.0f;
+        uv.x+=deltaU*damping;uv.y+=deltaV*damping;t+=deltaT*damping;
+        if(uv.x<low.x-p.width||uv.x>low.x+2*p.width||uv.y<low.y-p.height||uv.y>low.y+2*p.height)
+            return SP_REFINE_REJECTED;
+    }
+    return SP_REFINE_REJECTED;
+}

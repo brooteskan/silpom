@@ -88,7 +88,7 @@ int main(int argc,char** argv)
 
         constexpr UINT count=4096;
         std::mt19937 rng(5714);std::uniform_real_distribution<float> uniform(-1,1);
-        struct Query {float x[23];};struct Result {float value[23];};
+        struct Query {float x[23];};struct Result {float value[42];};
         std::vector<Query> queries(count);for(auto& q:queries)for(float& x:q.x)x=uniform(rng);
         queries[0].x[0]=queries[0].x[1]=0;
         std::vector<float> weights(SilPOM::DepthCodec::Weights);for(float& w:weights)w=uniform(rng)*.15f;
@@ -108,7 +108,7 @@ int main(int argc,char** argv)
         list->SetPipelineState(pipeline.Get());list->Dispatch(count/64,1,1);
         barrier(output.Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);list->CopyResource(readback.Get(),output.Get());submit();
         Result* values=nullptr;Check(readback->Map(0,nullptr,reinterpret_cast<void**>(&values)));
-        float maxError=0;
+        float maxError=0,maxPrefixError=0;UINT negativePrefixes=0;
         for(UINT i=0;i<count;++i)
         {
             float expected[5];
@@ -146,6 +146,21 @@ int main(int argc,char** argv)
                     throw std::runtime_error("Depth/UV or frozen appearance query differs from independent plane/ridge reference");
             if(values[i].value[21]!=1.f||std::abs(values[i].value[22]-expected[3])>4e-5f)
                 throw std::runtime_error("Unit and learned directional response comparison failed");
+            for(UINT c=23;c<27;++c)
+                if(values[i].value[c]!=0.f)throw std::runtime_error("Normal-only decoder is not bit-exact with full decoder");
+            for(UINT c=27;c<36;++c)
+            {
+                maxPrefixError=std::max(maxPrefixError,values[i].value[c]);
+                if(!std::isfinite(values[i].value[c])||values[i].value[c]>2e-6f)
+                    throw std::runtime_error("Receiver-prefix decoder differs from uncached decoder");
+            }
+            negativePrefixes+=static_cast<UINT>(values[i].value[36]);
+            for(UINT c=37;c<42;++c)
+            {
+                const float limit=c==40?0.f:2e-6f;
+                if(!std::isfinite(values[i].value[c])||values[i].value[c]>limit)
+                    throw std::runtime_error("Shared receiver preparation, lazy gates, reuse or uncached recovery differs");
+            }
             const double u=queries[i].x[0],v=queries[i].x[1],epsilon=1e-4;
             // Independently intersect the projected plane at displaced screen
             // coordinates, then take a finite difference in UV.
@@ -159,8 +174,13 @@ int main(int argc,char** argv)
                     throw std::runtime_error("Proxy UV Jacobian differs from projected-plane finite difference");
             }
         }
+        if(!negativePrefixes)throw std::runtime_error("Receiver-prefix regression did not exercise negative preactivations");
         readback->Unmap(0,nullptr);CloseHandle(event);
-        std::cout<<count<<" appearance/shared/depth CPU-GPU comparisons passed; max decoder error="<<maxError<<"\n";return 0;
+        std::cout<<count<<" appearance/shared/depth CPU-GPU comparisons and "<<count*4
+            <<" bit-exact normal-only output checks and "<<count*9
+            <<" receiver-prefix/reused-light output checks passed; max decoder error="<<maxError
+            <<", max cached/uncached error="<<maxPrefixError<<"; "<<count*5
+            <<" production shared-receiver/gate/recovery checks passed\n";return 0;
     }
     catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
 }

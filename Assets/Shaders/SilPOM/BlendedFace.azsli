@@ -4,6 +4,9 @@
 // D(u,v) is AFFINE, not normalized after interpolation: this keeps the six
 // displaced corner extrema conservative, and makes shared edges identical.
 #include "MeshFace.azsli"
+#if SILPOM_FACE_COEFFICIENT_CACHE
+#include "FaceCoefficients.azsli"
+#endif
 #include "Quality.azsli"
 #include "EvaluationHooks.azsli"
 #if !defined(SILPOM_CPU) && defined(SILPOM_VALIDATION_GATHER)
@@ -46,11 +49,22 @@ bool SilPomTowerFillEnabled(uint mode)
 }
 float SilPomUvArea(SilPomMeshFace f)
 {
+#if SILPOM_FACE_COEFFICIENT_CACHE
+    float cachedArea;
+    if(SilPomTryFaceCoefficientArea(f,cachedArea))return cachedArea;
+#endif
     return (f.uv1.x-f.uv0.x)*(f.uv2.y-f.uv0.y)-(f.uv1.y-f.uv0.y)*(f.uv2.x-f.uv0.x);
 }
 float3 SilPomFaceWeights(SilPomMeshFace f, float2 uv)
 {
+#if SILPOM_FACE_COEFFICIENT_CACHE
+    // Keep this denominator in its original expression graph. A conditional
+    // cached-area load can alter reciprocal CSE/contraction inside Newton even
+    // when the stored area bits match; full stored-vs-inline GPU tests guard it.
+    float area=SilPomFaceUncachedUvArea(f);
+#else
     float area=SilPomUvArea(f);
+#endif
     float b=((uv.x-f.uv0.x)*(f.uv2.y-f.uv0.y)-(uv.y-f.uv0.y)*(f.uv2.x-f.uv0.x))/area;
     float c=((f.uv1.x-f.uv0.x)*(uv.y-f.uv0.y)-(f.uv1.y-f.uv0.y)*(uv.x-f.uv0.x))/area;
     return float3(1-b-c,b,c);
@@ -92,27 +106,84 @@ float3 SilPomShadingNormal(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,float2 
     if(!useHeight) return f.normal;
     return SilPomFaceNormal(texture,p,f,uv,low);
 }
+// Private to one bounded solve. Keep the unaddressed integer cell and raw
+// texels; fractions, bilinear coefficients and derivatives remain current.
+struct SilPomRefineHeightCell
+{
+    bool valid;
+    int ix,iy;
+    float h00,h10,h01,h11;
+};
+float3 SilPomRefineFaceHeight(SP_TEX texture,SilPomPatch p,float2 uv,float2 low,
+    SP_REF(SilPomRefineHeightCell) cell)
+{
+    float u=(uv.x-low.x)*p.tileU/p.width+p.offsetU;
+    float v=(uv.y-low.y)*p.tileV/p.height+p.offsetV;
+    float x=u*p.textureWidth-.5f,y=v*p.textureHeight-.5f;
+    int ix=int(floor(x)),iy=int(floor(y));float fx=x-floor(x),fy=y-floor(y);
+    if(!cell.valid || cell.ix!=ix || cell.iy!=iy)
+    {
+#if !defined(SILPOM_CPU) && defined(SILPOM_VALIDATION_GATHER)
+        bool gathered=false;
+        [branch] if(SILPOM_VALIDATION_GATHER)
+        {
+            int ax=SilPomAddress(ix,int(p.textureWidth),p.addressMode);
+            int ay=SilPomAddress(iy,int(p.textureHeight),p.addressMode);
+            if(ax+1<int(p.textureWidth) && ay+1<int(p.textureHeight)
+                && (p.addressMode==0 || (ix>=0 && iy>=0)))
+            {
+                // Match SilPomGatherFaceHeight's original interior footprint
+                // and channel ordering. Border quads retain integer loads.
+                float4 quad=texture.GatherRed(GetMaterialTextureSampler(),
+                    (float2(ax,ay)+1.0f)/float2(p.textureWidth,p.textureHeight));
+                cell.h00=quad.w;cell.h10=quad.z;cell.h01=quad.x;cell.h11=quad.y;
+                gathered=true;
+            }
+        }
+        if(!gathered)
+#endif
+        {
+            cell.h00=SilPomTexel(texture,p,ix,iy);cell.h10=SilPomTexel(texture,p,ix+1,iy);
+            cell.h01=SilPomTexel(texture,p,ix,iy+1);cell.h11=SilPomTexel(texture,p,ix+1,iy+1);
+        }
+        cell.ix=ix;cell.iy=iy;cell.valid=true;
+    }
+    float a=cell.h00,b=cell.h10-a,c=cell.h01-a,d=cell.h11-a-b-c;
+    return float3(p.scale*(a+b*fx+c*fy+d*fx*fy-p.reference),
+        p.scale*(b+d*fy)*p.textureWidth*p.tileU/p.width,
+        p.scale*(c+d*fx)*p.textureHeight*p.tileV/p.height);
+}
 // Bounded Newton refinement of a planar-kernel seed. Never accept an
 // unconverged iterate as geometry. This is a local heuristic, not a complete
 // intersection algorithm for arbitrary curved surfaces or folded volumes.
 uint SilPomRefineFace(SP_TEX texture, SilPomPatch p, SilPomMeshFace f,
     SilPomRay ray,float2 low,SP_REF(float2) uv,SP_REF(float) t,uint maxIterations=16,float toleranceMultiplier=1.0f)
 {
+    SilPomRefineHeightCell heightCell=SP_ZERO(SilPomRefineHeightCell);
+#if SILPOM_FACE_COEFFICIENT_CACHE
+    float3 dU,dV;float baseTolerance;
+    if(!SilPomTryFaceNewtonCoefficients(f,dU,dV,baseTolerance))
+    {
+        float area=SilPomUvArea(f);
+        dU=((f.d1-f.d0)*(f.uv2.y-f.uv0.y)-(f.d2-f.d0)*(f.uv1.y-f.uv0.y))*(1/area);
+        dV=((f.d2-f.d0)*(f.uv1.x-f.uv0.x)-(f.d1-f.d0)*(f.uv2.x-f.uv0.x))*(1/area);
+        baseTolerance=2e-6f*max(1.0f,max(length(f.du),length(f.dv)));
+    }
+    float tolerance=baseTolerance*toleranceMultiplier;
+#else
     float area=SilPomUvArea(f);
     float3 dU=((f.d1-f.d0)*(f.uv2.y-f.uv0.y)-(f.d2-f.d0)*(f.uv1.y-f.uv0.y))*(1/area);
     float3 dV=((f.d2-f.d0)*(f.uv1.x-f.uv0.x)-(f.d1-f.d0)*(f.uv2.x-f.uv0.x))*(1/area);
     float tolerance=2e-6f*max(1.0f,max(length(f.du),length(f.dv)))*toleranceMultiplier;
+#endif
     for(uint iteration=0;iteration<maxIterations;++iteration)
     {
         SILPOM_DIAGNOSTIC(1,iteration);
-#if !defined(SILPOM_CPU) && defined(SILPOM_VALIDATION_GATHER)
-        float3 h;
-        [branch] if(SILPOM_VALIDATION_GATHER) h=SilPomGatherFaceHeight(texture,p,uv,low);
-        else h=SilPomFaceHeight(texture,p,uv,low);
-#else
-        float3 h=SilPomFaceHeight(texture,p,uv,low);
-#endif
+        // Direction is independent of height. Keeping it before the cell
+        // lookup preserves approved tangent-sum association under DXC's
+        // fast-math CSE; stored-coefficient GPU regressions guard this order.
         float3 D=SilPomFaceDirection(f,uv);
+        float3 h=SilPomRefineFaceHeight(texture,p,uv,low,heightCell);
         float3 position=f.origin+f.du*(uv.x-f.uv0.x)+f.dv*(uv.y-f.uv0.y)+D*h.x;
         float3 residual=position-(ray.origin+ray.direction*t);
         if(dot(residual,residual)<=tolerance*tolerance)
@@ -499,6 +570,7 @@ SilPomHit SilPomTowerBaseHit(SilPomPatch p, SilPomMeshFace face, SilPomRay ray, 
     hit.t=t;
     hit.position=ray.origin+ray.direction*t;
     hit.faceUv=uv;
+    hit.gradientRepresentation=2u; // authored base plane, including ordinary-status grazing fill
     hit.uv=(uv-low)*float2(p.tileU/p.width,p.tileV/p.height)+float2(p.offsetU,p.offsetV);
     return hit;
 }

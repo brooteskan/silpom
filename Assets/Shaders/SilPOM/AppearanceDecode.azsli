@@ -38,6 +38,32 @@ void SilPomDecodeAppearanceSurface(float x[18],uint bufferIndex,SP_OUT float val
     }
     SP_UNROLL for(uint c=0;c<3;++c)value[c]=rcp(1.0f+exp(-clamp(value[c],-16.0f,16.0f)));
 }
+// The center owns only the original bias/input 0..10 prefix. Light direction,
+// reach and the later receiver terms retain their original accumulation order.
+// ReLU remains light-dependent and must not be applied to this prefix.
+struct SilPomAppearanceLightPrefix {float hidden[16];};
+SilPomAppearanceLightPrefix SilPomPrepareAppearanceLightPrefix(float x[22],uint bufferIndex)
+{
+    SilPomAppearanceLightPrefix prefix;
+    SP_UNROLL for(uint j=0;j<16;++j)
+    {
+        float z=SILPOM_APPEARANCE_WEIGHT(707u+j);
+        SP_UNROLL for(uint k=0;k<11;++k)z+=x[k]*SILPOM_APPEARANCE_WEIGHT(355u+j*22u+k);
+        prefix.hidden[j]=z;
+    }
+    return prefix;
+}
+void SilPomDecodeAppearanceLightWithPrefix(float x[22],uint bufferIndex,SilPomAppearanceLightPrefix prefix,SP_OUT float value[2])
+{
+    SP_UNROLL for(uint c=0;c<2;++c)value[c]=SILPOM_APPEARANCE_WEIGHT(755u+c);
+    SP_UNROLL for(uint j=0;j<16;++j)
+    {
+        float z=prefix.hidden[j];
+        SP_UNROLL for(uint k=11;k<22;++k)z+=x[k]*SILPOM_APPEARANCE_WEIGHT(355u+j*22u+k);
+        z=max(z,0.0f);SP_UNROLL for(uint c=0;c<2;++c)value[c]+=z*SILPOM_APPEARANCE_WEIGHT(723u+j*2u+c);
+    }
+    SP_UNROLL for(uint c=0;c<2;++c)value[c]=2.0f*rcp(1.0f+exp(-clamp(value[c],-16.0f,16.0f)));
+}
 void SilPomDecodeAppearanceLight(float x[22],uint bufferIndex,SP_OUT float value[2])
 {
     SP_UNROLL for(uint c=0;c<2;++c)value[c]=SILPOM_APPEARANCE_WEIGHT(755u+c);

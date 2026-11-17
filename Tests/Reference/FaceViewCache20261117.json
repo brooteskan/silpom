@@ -1,0 +1,128 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Generation-owned face coefficients and frame-local implicit near-depth coverage/bounds",
+  "face_cache_policy": "generation-coefficients-frame-local-implicit-near-v1",
+  "samples": 2,
+  "viewport": [
+    1280,
+    720
+  ],
+  "views": [
+    "exterior",
+    "lower-facing",
+    "lower-glancing",
+    "upper-glancing",
+    "wide-representations"
+  ],
+  "owned_shaded_samples": 5557447,
+  "baseline_attachment_comparisons": 35,
+  "off_on_off_attachment_comparisons": 70,
+  "uv_gradient_roundoff_limit_ulps": 2,
+  "rounded_samples_by_field": {
+    "hit": 1,
+    "uv-gradients": 1,
+    "depth-gradients": 1
+  },
+  "exact_depth_ownership_status_shading_and_metadata": true,
+  "cache_sequence": "off/full, on/disjoint-rectangles, off/repeated-full",
+  "runtime_evidence_scope": "Original five-view captured build restored byte-for-byte; no fresh post-restoration capture is claimed.",
+  "captured_renderer_native_fixture_files_identical": 266,
+  "capture_source_files_identical": 37,
+  "canonical_face_bytes": 144,
+  "coefficient_record_bytes": 48,
+  "view_record_bytes": 48,
+  "batch_table_bytes": 32,
+  "frame_local_only": true,
+  "retired_frame_allocations": 8,
+  "producer_scope": "Registered published maxCells65525 implicit LOD-near batches; shell/proxy coverage retains its original path.",
+  "original_gradient_sidecar_bytes_per_sample": 32,
+  "controlled_files_unchanged": 268,
+  "normal_query_policy": "prepared-normal-stencil-with-probe-validity",
+  "lighting_estimator": 5,
+  "runtime_activation": {
+    "exterior": [
+      420,
+      480
+    ],
+    "lower-facing": [
+      738,
+      780
+    ],
+    "lower-glancing": [
+      1078,
+      1080,
+      1140
+    ],
+    "upper-glancing": [
+      1418,
+      1440,
+      1500
+    ],
+    "wide-representations": [
+      1790,
+      1800,
+      1860
+    ]
+  },
+  "finite_and_clear_checks_passed": true,
+  "comparison_policy": "Bit-exact depth, ownership, status, representation, validity, cleared values and owned shaded outputs. Finite hit UV and numeric gradients permit at most2ULP; all current off/on/off comparisons remain bit-exact.",
+  "first_regression": "Initial strict test rejected one2ULP UV sample and related gradients. A broader fallback rewrite increased differences and was rejected. The original smaller cache implementation was restored exactly; the reported two-ULP bound is explicit.",
+  "timings_collected": false,
+  "performance_claim": null,
+  "coverage_limits": "Frozen standalone faces are export-derived, not live descriptor dumps. Five runtime views do not select morph, learned proxy-depth or diagnostic/copy-repair categories. The original snapshot did not fingerprint all asset cache products, external engine binaries or driver files; no changed recorded renderer/native/fixture dependency invalidated capture reuse.",
+  "evidence": {
+    "runtime": {
+      "path": "TGProject/user/silpom-gradients-20261116/face-cache-quality/bounded-report.json",
+      "sha256": "141c10b7f84d878538942ad1eec3fd683ea6b050d8faf277a32e795d7870bc8e"
+    },
+    "independent_runtime_review": {
+      "path": "scratch/face-cache-20261117/independent-bounded-initial.json",
+      "sha256": "b1222a55129fb8d1bdda19972ee280b8c627c50c5218f42745884a29aca9f6e4"
+    },
+    "coefficients": {
+      "path": "scratch/face-cache-20261117/proof-restored-initial.json",
+      "sha256": "d0c30ff7641ee402225d34b0407bd0ebaaef6d65f799aaa20a275959efc9076a"
+    },
+    "coverage_and_shader_compiles": {
+      "path": "scratch/face-cache-20261117/focused-restoration-shader-proof.json",
+      "sha256": "ada1675be1f90d87d2875a0a37085f7b88f8284130f774e2e5ec30b79dd1a9a4"
+    },
+    "initial_coverage_full_compile_matrix": {
+      "path": "scratch/face-cache-20261117/coverage-shader-proof.json",
+      "sha256": "2f8a6759ac4ca9ef064608de582a38d875b715f0f838c80a213b833490e79a32"
+    },
+    "source_restoration": {
+      "path": "scratch/face-cache-20261117/source-restoration-proof.json",
+      "sha256": "d4b4ffe4b1b687024f4f1c660858f19998084d82a17d85c8367b5f7c3c896c22"
+    },
+    "readiness": {
+      "path": "scratch/face-cache-20261117/asset-readiness-final.json",
+      "sha256": "82927918b27bd4604370dbb87fb35797234d09ef598735c66793453c902b79ef"
+    },
+    "controlled_files_before": {
+      "path": "scratch/face-cache-20261117/before-final.json",
+      "sha256": "2c14483f2164933c6c6ffed65c5c189c82f817bbe40cf74b2c5c566ff366917d"
+    },
+    "controlled_files_after": {
+      "path": "scratch/face-cache-20261117/after-final.json",
+      "sha256": "2c14483f2164933c6c6ffed65c5c189c82f817bbe40cf74b2c5c566ff366917d"
+    },
+    "first_capture_regression": {
+      "path": "scratch/face-cache-20261117/independent-review-regression.json",
+      "sha256": "aac578e59536f3b8188819b0ffedcb2e16edbef31b4b798f7856634e72320131"
+    },
+    "first_capture_changed_sample": {
+      "path": "scratch/face-cache-20261117/lower-glancing-regression.json",
+      "sha256": "08a2418d95e32ce52da07b33c79b31fef31acd43c7d8acda228d0b0e138bc9e6"
+    },
+    "rejected_fallback_experiment": {
+      "path": "scratch/face-cache-20261117/independent-pilot-review.json",
+      "sha256": "a9393aefb231e5199f0f29b70f96d41854c96ea9c3b7dfe622cc740eb5058643"
+    },
+    "native_compile": {
+      "path": "scratch/face-cache-20261117/native-compile-pso-reviewed.log",
+      "sha256": "912d85a0f442eefc8b5d4a671bcf81ab381cf10f1af3a8fec031f6500c4a14fa"
+    }
+  }
+}

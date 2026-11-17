@@ -12,7 +12,7 @@
       "upstream_commit": "061180bf24f1666eb30315b35da292eb14f4659c",
       "project_path": null,
       "patch": "engine.patch",
-      "patch_sha256": "35723f2ca3cc6feb9804d43863f904e000771ee31052b6b719bb7e1130bf1256",
+      "patch_sha256": "117c44e4cbff4ad55e5baf5bb89183661cae14e4ebf81ad6fdf44929aafc004d",
       "files": [
         {
           "path": "Code/Framework/AzFramework/Platform/Windows/AzFramework/Windowing/NativeWindow_Windows.cpp",
@@ -500,6 +500,46 @@
           "path": "engine.json",
           "before_sha256": "677806f5d89e3dbf9d746f8f7ad0a7528f14ecf83f5c6e4f6fcfdba755d17907",
           "after_sha256": "00175700a04c35a152a4a4dd24b33c82f5f6e2cb1f1e4086f32bed5ac3440e9d"
+        },
+        {
+          "path": "Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/SpecularAA.azsli",
+          "before_sha256": "c49a800dcf0f75468a8f9ebe13dfc8ea39427c68025c9b348df82dd02ac5667f",
+          "after_sha256": "4f933956760ad2338137863394a06b63b1c6253e27475b3231cbd2f0de55c630"
+        },
+        {
+          "path": "Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/Shadow/DirectionalLightShadowCalculator.azsli",
+          "before_sha256": "929ab6485f6c56d4b24095f2752889cc4fdded4a28bc11745bea08a97e22756f",
+          "after_sha256": "c37f4bc3265736100d3bbd331c0f45d0915cbf5a927ef8b38d6f7b3bf865e234"
+        },
+        {
+          "path": "Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/Shadow/DirectionalLightShadow.azsli",
+          "before_sha256": "624cc19cba86cbb02ff0c9fe3eb8b3dc23e794f60c5e17ed9862d6502eaf1e0f",
+          "after_sha256": "b8cdd840cfa6853546110913c18c28132de35eb05fb18ef45ee33a6f7c77bb92"
+        },
+        {
+          "path": "Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lighting/LightingData.azsli",
+          "before_sha256": "038cb881c836cc2e39ba118ee3698deb15fbbdd8ff981160305afe7bff1b8029",
+          "after_sha256": "e2e078ec89d24a4bcdfdcb6fa6c36b2057d83368870165c468483f4e25d4483e"
+        },
+        {
+          "path": "Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/Ibl.azsli",
+          "before_sha256": "683999e4ce5b6ed7759fb12c148fee3ef5fd5863345885736df3fb102965ae90",
+          "after_sha256": "ec052e0146e51120e2cdd94de732d0fe789a11e63253634fe190242c7e6fe796"
+        },
+        {
+          "path": "Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/Lights/Ltc.azsli",
+          "before_sha256": "efc2a22cd5842be0241b485a98a09eb02dcf306d7500f6d2b62e7238c174e22e",
+          "after_sha256": "45e294d76c203fb60998f447245b78705089218e76b6273e3c27a1b66294c5e1"
+        },
+        {
+          "path": "Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/SampleBrdfMap.azsli",
+          "before_sha256": "61dbac13683ffbe75bff86ac34aa61734a149ea2274b4d02f01c3f83ba6207dd",
+          "after_sha256": "c9076b2420dc0e75e2c9a5d02e3aa2208ae42c08d73754af742a426d525cbcd6"
+        },
+        {
+          "path": "Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/GoboTexture.azsli",
+          "before_sha256": "e2918ab0eed14b10b70df5af5e83fc77a85979aea88479e319c976ebcd5bcfee",
+          "after_sha256": "230cc4b9cb4840ef30c925faa5dda3efeebc59dd5027e50264f2b18973d2cdd8"
         }
       ]
     },

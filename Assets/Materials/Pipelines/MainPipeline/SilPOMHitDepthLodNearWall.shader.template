@@ -8,7 +8,7 @@
     "DrawList": "silpomHitDepth",
     "Supervariants": [
         {"Name": "", "AddBuildArguments": {"preprocessor": [
-            "-DSILPOM_MSAA_FAST_ADDRESSING=1", "-DSILPOM_MSAA_STATIC_WALL=1"
+            "-DSILPOM_FAST_ADDRESSING=1", "-DSILPOM_MSAA_STATIC_WALL=1"
         ]}},
         {"Name": "NoMSAA", "AddBuildArguments": {"azslc": ["--no-ms"]}}
     ]

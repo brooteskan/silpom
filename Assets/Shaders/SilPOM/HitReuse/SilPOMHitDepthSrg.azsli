@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#include <Atom/Features/SrgSemantics.azsli>
+ShaderResourceGroup PassSrg : SRG_PerPass
+{
+    // Actual raster viewport origin and extent, independent of attachment size.
+    float4 m_silpomViewport;
+    ByteAddressBuffer m_silpomFaceCache;
+    ByteAddressBuffer m_silpomFaceCacheTable;
+    uint m_silpomFaceCacheBatchCount;
+}

@@ -12,6 +12,9 @@
 
 ShaderResourceGroup PassSrg : SRG_PerPass
 {
+    // Shared material helpers type-check the screen-hit interface. The atlas
+    // entry point never loads it; unused resources are stripped from the bake.
+    float4 m_silpomViewport;
     // [GFX TODO][ATOM-2012] adapt to multiple shadowmaps
     Texture2DArray<float> m_directionalLightShadowmap;
     Texture2DArray<float> m_directionalLightExponentialShadowmap;
@@ -52,6 +55,8 @@ ShaderResourceGroup PassSrg : SRG_PerPass
 
     // AZSLc generates the existing 1x layout in its NoMSAA supervariant.
     Texture2DMS<uint4> m_silpomHitBuffer;
+    Texture2DMS<float4> m_silpomHitUvGradients;
+    Texture2DMS<float4> m_silpomHitDepthGradients;
     float4x4 m_receiverModel;
     float4 m_receiverRectangle;
     uint m_receiverFace;

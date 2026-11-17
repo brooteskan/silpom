@@ -23,7 +23,7 @@
         {
             "Name": "",
             "AddBuildArguments": {
-                "preprocessor": ["-DSILPOM_MSAA_FAST_ADDRESSING=1"]
+                "preprocessor": ["-DSILPOM_FAST_ADDRESSING=1"]
             }
         },
         {

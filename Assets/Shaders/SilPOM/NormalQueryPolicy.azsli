@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+
+// Include after GradientContext.azsli and GradientConsumers.azsli. Normal-map
+// enablement is deliberately absent: geometric normals can vary on their own.
+bool SilPomNormalQueryNeedsProbes(bool applySpecularAA,bool litValid,uint sourceValidity)
+{
+    return applySpecularAA&&litValid&&sourceValidity==SP_GRADIENT_VALID;
+}
+
+bool SilPomNormalQueryShouldCoarse(uint sourceValidity,bool probeCoarse,bool centerAppearanceCoarse)
+{
+    return sourceValidity!=SP_GRADIENT_VALID||probeCoarse||centerAppearanceCoarse;
+}
+
+float SilPomNormalQueryRoughness(float roughnessA2,bool applySpecularAA,uint sourceValidity,
+    bool probeCoarse,bool centerAppearanceCoarse,float3 normalDx,float3 normalDy)
+{
+    if(!applySpecularAA)return roughnessA2;
+    // A finite returned normal cannot establish a valid differential when any
+    // query's mapping was coarse. Keep Atom's bounded maximum AA contribution.
+    if(SilPomNormalQueryShouldCoarse(sourceValidity,probeCoarse,centerAppearanceCoarse))
+        return saturate(roughnessA2+.18f);
+    return SilPomSpecularAAFromDerivatives(roughnessA2,normalDx,normalDy);
+}

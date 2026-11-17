@@ -18,8 +18,14 @@ void SilPomReplayUvPrefix(inout Surface surface,MaterialParameters params,float3
 }
 void SilPomApplyUvPaint(inout Surface surface,MaterialParameters params,uint face,bool front)
 {
-    float3 dx=ddx(surface.position),dy=ddy(surface.position);
-    const float2 uv=silpomLitUv;float2 uvDx=ddx(uv),uvDy=ddy(uv);
+    const float2 uv=silpomLitUv;
+#if SILPOM_HIT_FORWARD
+    const float3 dx=silpomPositionDx,dy=silpomPositionDy;
+    const float2 uvDx=silpomUvDerivatives.xy,uvDy=silpomUvDerivatives.zw;
+#else
+    const float3 dx=ddx(surface.position),dy=ddy(surface.position);
+    const float2 uvDx=ddx(uv),uvDy=ddy(uv);
+#endif
     uint use=SilPomUvUse(params,face,uv);if(use==0)return;
     if(use==2)
     {

@@ -25,7 +25,8 @@ def check(project):
         # AP retains timestamps on byte-identical products. A completed shader
         # job newer than every input is also valid freshness evidence; otherwise
         # an unchanged NoMSAA product can look stale forever after an MSAA edit.
-        key=generated.relative_to(project/'Cache/Intermediate Assets').as_posix().lower()
+        key=generated.relative_to(project/'Cache/Intermediate Assets').as_posix().lower() \
+            if generated.is_relative_to(project/'Cache/Intermediate Assets') else generated.relative_to(root).as_posix().lower()
         return completed.get(key,0)>=max(latest,generated.stat().st_mtime)
     for source in (root/'Materials/Pipelines/MainPipeline').glob('SilPOMHit*.shader.template'):
         name=source.name.split('.')[0].lower()
@@ -37,17 +38,41 @@ def check(project):
             product=Path(str(base)+'_0.azshadervariant')
             if not same_variants or not fresh(product,Path(str(base)+'.azslin'),source,generated):pending.append(str(product))
     for source in (root/'Shaders/SilPOM/HitReuse').glob('*.shader'):
-        product=cache/'shaders/silpom/hitreuse'/(source.stem.lower()+'-nomsaa_dx12_0.azshadervariant')
-        stamp=source.with_suffix('.azsl').stat().st_mtime
-        if not product.exists() or product.stat().st_mtime<stamp:pending.append(str(product))
+        has_no_msaa=any(v.get('Name')=='NoMSAA' for v in json.loads(source.read_text()).get('Supervariants',[]))
+        base=cache/'shaders/silpom/hitreuse'/(source.stem.lower()+('-nomsaa' if has_no_msaa else '')+'_dx12')
+        product=Path(str(base)+'_0.azshadervariant')
+        if source.stem=='SilPOMFaceCachePrepare':
+            ready=fresh(product,Path(str(base)+'.azslin'),source,source)
+        else:
+            ready=product.exists() and product.stat().st_mtime>=source.with_suffix('.azsl').stat().st_mtime
+        if not ready:pending.append(str(product))
     failures=list(db.execute("SELECT s.SourceName,j.Status,j.ErrorCount FROM Jobs j JOIN Sources s ON s.SourceID=j.SourcePK "
         "WHERE (s.SourceName LIKE 'materials/types/silpommesh/%' OR s.SourceName LIKE 'Shaders/SilPOM/HitReuse/%') "
         "AND (j.Status!=4 OR j.ErrorCount>0)"))
     for suffix in ('','-nomsaa'):
-        reflection=cache/'shaders/silpom/hitreuse'/f'silpomhitforwardsrg{suffix}_dx12.srg.json'
-        if not reflection.exists() or not any(s['id']=='PassSrg' and s['bindingSlot']==4
-            for s in json.loads(reflection.read_text()).get('ShaderResourceGroups',[])):
-            pending.append(str(reflection)+' (missing preserved PassSrg)')
+        for name in ('silpomhitforwardsrg','silpomhitdepthsrg'):
+            reflection=cache/'shaders/silpom/hitreuse'/f'{name}{suffix}_dx12.srg.json'
+            groups=json.loads(reflection.read_text()).get('ShaderResourceGroups',[]) if reflection.exists() else []
+            group=next((s for s in groups if s['id']=='PassSrg' and s['bindingSlot']==4),None)
+            if group is None:
+                pending.append(str(reflection)+' (missing preserved PassSrg)')
+                continue
+            if not any(c['constantId']=='m_silpomViewport' and c['constantByteSize']==16
+                       for c in group.get('inputsForSRGConstants',[])):
+                pending.append(str(reflection)+' (missing raster viewport constant)')
+            if not any(c['constantId']=='m_silpomFaceCacheBatchCount' and c['constantByteSize']==4
+                       for c in group.get('inputsForSRGConstants',[])):
+                pending.append(str(reflection)+' (missing face-cache availability constant)')
+            buffers={b['id']:b['type'] for b in group.get('inputsForBufferViews',[])}
+            for name_of_buffer in ('m_silpomFaceCache','m_silpomFaceCacheTable'):
+                if buffers.get(name_of_buffer)!='ByteAddressBuffer':
+                    pending.append(str(reflection)+f' (missing face-cache buffer {name_of_buffer})')
+            if name=='silpomhitforwardsrg':
+                inputs={i['id']:i['type'] for i in group.get('inputsForImageViews',[])}
+                image='Texture2D<float4>' if suffix else 'Texture2DMS<float4>'
+                for sidecar in ('m_silpomHitUvGradients','m_silpomHitDepthGradients'):
+                    if inputs.get(sidecar)!=image:
+                        pending.append(str(reflection)+f' (wrong sample layout for {sidecar})')
     result=dict(ready=not pending and not failures,stale_products=pending,failed_jobs=failures)
     print(json.dumps(result,indent=2));return result['ready']
 

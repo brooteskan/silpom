@@ -1,0 +1,23 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "SilPOMFaceCacheTemplate",
+            "PassClass": "SilPOMFaceCachePass",
+            "Slots": [],
+            "PassData": {
+                "$type": "ComputePassData",
+                "ShaderAsset": {
+                    "FilePath": "Shaders/SilPOM/HitReuse/SilPOMFaceCachePrepare.shader"
+                },
+                "BindViewSrg": true,
+                "ThreadCountX": 1,
+                "ThreadCountY": 1,
+                "ThreadCountZ": 1,
+                "UseAsyncCompute": false
+            }
+        }
+    }
+}

@@ -1,0 +1,469 @@
+{
+  "schema_version": 1,
+  "passed": true,
+  "created_utc": "2026-11-17T06:52:31.121079+00:00",
+  "measurement_date_local": "2026-11-16",
+  "measurement_started_local": "2026-11-16T22:31:57.777229-08:00",
+  "measurement_finished_local": "2026-11-16T22:50:49.098234-08:00",
+  "normal_query_policy": "specular-aa-gated-normal-only-stencil",
+  "gradient_contract": "owner-local-first-order-per-raster-pixel",
+  "samples": 2,
+  "viewport": [
+    1280,
+    720
+  ],
+  "hardware_environment": {
+    "cpu": "AMD Ryzen 7 5700G with Radeon Graphics",
+    "gpu": "AMD Radeon(TM) Graphics",
+    "gpu_driver": "31.0.21923.11000",
+    "ram_gib": 32.0,
+    "ram_dimm_configured_mhz": [
+      2133,
+      2133
+    ],
+    "power_scheme": "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)",
+    "clock_note": "Configured RAM speed and power policy are recorded; fixed or instantaneous CPU/GPU clocks were not measured."
+  },
+  "scene_sha256": "a0894326d0eb68b7328949b1f1829a8021b7293ce16a567e0c2ea8c9148f6e7b",
+  "effective_tower_configuration_sha256": "b76f275b9af10b14731ac7dc5115e1e29eb6edb11cebd57cd05e22b3b32ec67e",
+  "controls": {
+    "Lighting estimator": 5,
+    "Height-derived normals (off = cheaper)": true,
+    "Level 2 predictor (experimental)": true,
+    "Gather validation (may be cheaper)": true,
+    "R16 height textures (less GPU memory)": true,
+    "Anti-aliasing": 4
+  },
+  "timed_view_poses": {
+    "exterior": {
+      "position": [
+        20.903980640452335,
+        -27.87197418726978,
+        13.386217296123505
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        36.86989764584402
+      ]
+    },
+    "lower-facing": {
+      "position": [
+        0.4706393281618754,
+        -1.3846306800842285,
+        9.975862579345703
+      ],
+      "rotation": [
+        -2.2906100426385296,
+        0.0,
+        -161.22697816865855
+      ]
+    },
+    "lower-glancing": {
+      "position": [
+        0.4706393281618754,
+        -1.3846306800842285,
+        9.975862579345703
+      ],
+      "rotation": [
+        9.090276920822323,
+        0.0,
+        -19.45792387038199
+      ]
+    },
+    "upper-glancing": {
+      "position": [
+        1.0041461785634358,
+        -1.0697278380393982,
+        18.18247866312663
+      ],
+      "rotation": [
+        9.090276920822323,
+        0.0,
+        5.103876269243813
+      ]
+    }
+  },
+  "timing_source_sha256": {
+    "Source/ResolvePass.cpp": "0d41ad4822c0d482fb1bfe84e2576ba400cf6de0abfc3bb0126751c1b084c242",
+    "Source/Mesh.cpp": "c046ef5c649db1209475553eb08d70b8a93fe18e76b2f9b54b751419e120a7eb",
+    "Include/SilPOM/ResolveRegion.h": "813ccd8719a7ef54782fbc2709fedac17bc55127a47ff8557138371b7fca531a",
+    "Include/SilPOM/ResolveRegions.h": "a66a600a6a777848907bd077dfbc435ebc46e8dee9d1676dee6a4c8e3815686b",
+    "Assets/Materials/Types/SilPOMMesh/SilPOMMesh.azsli": "b3424297149401a75a4f877c7b62f33626bf40693770b5890925b4200f50fa1a",
+    "Assets/Shaders/SilPOM/GradientContext.azsli": "63946b0380ee62900ccd1b6d408caf1cb56e00c7b20c1d27b577e0d3e5a83772",
+    "Assets/Shaders/SilPOM/RepairGradientContext.azsli": "f34225daf5d3a8aa215f9c727b9d3b172abb2b05e1278268a7df78ab72c266a9",
+    "Assets/Shaders/SilPOM/GradientConsumers.azsli": "60e02d3d79cd8b2c55e4b37828dc34260a0ed177acd3bd1c73a1b1ac586b530a",
+    "Assets/Shaders/SilPOM/StandardPbrNormal.azsli": "b7abd5640e357f7de13f0ec9e77c86ef7249c699f36a14187adff375d5aaf861",
+    "Assets/Shaders/SilPOM/MaterialNormalDecode.azsli": "e79a739b5b9ae71c52124c644a187f7228d337da9b88b0c897e4a5f159bf54b7",
+    "Assets/Shaders/SilPOM/LearnedMaterialSurface.azsli": "91e8fb0b8a0c79f0864180746d7551083421499aa44c7033482740e0387a2d6b",
+    "Assets/Shaders/SilPOM/BlendedFace.azsli": "d65cdeadac17a738d35832136aa688db771bcb8ebf2f1f594af65fe6345bde20",
+    "Assets/Shaders/SilPOM/ProxyAppearance.azsli": "3598ae268dd19019590ea164e2833505813dcc205fa0a87d8e4c4a2495473ee2",
+    "Assets/Materials/Pipelines/MainPipeline/SilPOMHitForward.azsli": "5e3cfe07980cc6e426bf2d2009cd82758e92b500d351c231ae150a91fc50fae6",
+    "Assets/Materials/Pipelines/MainPipeline/SilPOMHitDepth.azsli": "d149ce86e14e2faccd28ddac50851dbc03a3b5df53d7b39afd4a555064f27a10",
+    "Assets/Materials/Pipelines/MainPipeline/SilPOMHitDepthProxy.azsli": "54f843fd41dd6fb116cabdfce034f4f27777fedaff74964627915efd26b682dd",
+    "Assets/Shaders/SilPOM/HitReuse/SilPOMClassifyWallHoles.azsl": "8d9ef21c59489360f9c302217ba81e74747d7d24cb2841d34fdb62e9bb99fd69",
+    "Integration/O3DE/manifest.json": "5c87bb7163c53ef3b1e4f0512fbdddfe22408c842e4e83d15e14e6d0ef95fc10",
+    "Assets/Passes/SilPOMHitForward.pass": "b7503b16cc2c99f695c8849db178f8ef569f34f6984381f49af53b3ee6ac338a"
+  },
+  "validated_source_sha256": {
+    "Assets/Materials/Types/SilPOMMesh/SilPOMMesh.azsli": "b3424297149401a75a4f877c7b62f33626bf40693770b5890925b4200f50fa1a",
+    "Assets/Materials/Types/SilPOMMesh/SilPOMMesh_DirectionalLighting.azsli": "19691361ab23099e1275c40273b9b64ae721c7bd153cde6811d2876663d42857",
+    "Assets/Shaders/SilPOM/GradientContext.azsli": "63946b0380ee62900ccd1b6d408caf1cb56e00c7b20c1d27b577e0d3e5a83772",
+    "Assets/Shaders/SilPOM/RepairGradientContext.azsli": "f34225daf5d3a8aa215f9c727b9d3b172abb2b05e1278268a7df78ab72c266a9",
+    "Assets/Shaders/SilPOM/GradientConsumers.azsli": "60e02d3d79cd8b2c55e4b37828dc34260a0ed177acd3bd1c73a1b1ac586b530a",
+    "Assets/Shaders/SilPOM/StandardPbrNormal.azsli": "b7abd5640e357f7de13f0ec9e77c86ef7249c699f36a14187adff375d5aaf861",
+    "Assets/Shaders/SilPOM/MaterialNormalDecode.azsli": "e79a739b5b9ae71c52124c644a187f7228d337da9b88b0c897e4a5f159bf54b7",
+    "Assets/Shaders/SilPOM/LearnedMaterialSurface.azsli": "91e8fb0b8a0c79f0864180746d7551083421499aa44c7033482740e0387a2d6b",
+    "Assets/Shaders/SilPOM/ProxyAppearance.azsli": "3598ae268dd19019590ea164e2833505813dcc205fa0a87d8e4c4a2495473ee2",
+    "Assets/Shaders/SilPOM/ForwardLighting.azsli": "3ab28407d7ea77056b09f46ad7d2b9723e521cc063dcc8a295804ed54da8c225",
+    "Assets/Shaders/SilPOM/ReceiverUv/PaintSurface.azsli": "57469a6f2674ea1cf1a4da05bf005841c552e0d60662536267e18ed233823a46",
+    "Assets/Shaders/SilPOM/ReceiverUv/BakePipeline.azsli": "6b7a496e785c165d2cefffe9d522be1eeefbb4ac751417bc4a2707700328c24d",
+    "Assets/Shaders/SilPOM/ReceiverUv/UsagePipeline.azsli": "c5f03664401583bae5de325fe69a6c0b63832e2a907014e955ea09d13d0c5f28",
+    "Assets/Materials/DecalPaint/hard_round.material": "1e58f4758412e4e915f4d27c685adb68e9d804ee2ff084ed1c800591ba89c78b",
+    "Assets/Materials/DecalPaint/hard_round.png": "f39880827ccad7108091aa5aee1659fcc4221331bc33cd52dc29a9e0fae8657f",
+    "Assets/Materials/Pipelines/MainPipeline/SilPOMHitForward.azsli": "5e3cfe07980cc6e426bf2d2009cd82758e92b500d351c231ae150a91fc50fae6",
+    "Assets/Materials/Pipelines/MainPipeline/SilPOMHitForwardAngularProxyAmbient.azsli": "01a01c0ae1aa9dcfde563fff8f6d3bdeaac8c69f7efe047cb4992b3f8782ae9f",
+    "Assets/Materials/Pipelines/MainPipeline/SilPOMHitDepthProxy.azsli": "54f843fd41dd6fb116cabdfce034f4f27777fedaff74964627915efd26b682dd",
+    "Assets/Shaders/SilPOM/HitReuse/SilPOMClassifyWallHoles.azsl": "8d9ef21c59489360f9c302217ba81e74747d7d24cb2841d34fdb62e9bb99fd69",
+    "Assets/Shaders/SilPOM/HitReuse/SilPOMFillWallHoles.azsl": "e56bdf8dea6e44eec582bfd0b6a438ed7b1e8f591b91fe80a72183bbdd25e48c",
+    "Assets/Shaders/SilPOM/HitReuse/SilPOMInspectSamples.azsl": "d1aaa28e1f9705db7ceae026cfef071a0ec954303e92acbc9165d47e7856f87c",
+    "Assets/Passes/SilPOMHitDepth.pass": "c16645cc589fc87b69137e914e2b31aa3ea7de99b711e21b5450bd5fc93b3693",
+    "Assets/Passes/SilPOMHitDepthMsaa.pass": "2aa0c8c3047e6038763918f9121dc87b42c24c5d54dad556bf46b1ed96ed9180",
+    "Assets/Passes/SilPOMHitDepthWallBackup.pass": "da4c0da0e67bc3e357995ff7a1498865f113721b3de0c2f290d7fef387ca1ca5",
+    "Assets/Passes/SilPOMHitForward.pass": "b7503b16cc2c99f695c8849db178f8ef569f34f6984381f49af53b3ee6ac338a",
+    "Assets/Passes/SilPOMClassifyWallHolesMsaa.pass": "535580f6ea8f0eb2fbf1acf935d7662307a0caf0a0a6403ec8eb3f036ce43627",
+    "Assets/Passes/SilPOMFillWallHoles.pass": "b4adaa05ea25730e73561f6433f2f99d367e7e1b1011d38bf67ab1194f1f6a9e",
+    "Assets/Passes/SilPOMInspectSamples.pass": "ac9b0f00907745440c81b5e48d28bfbb29b5d449f78a61ebd2d9a481cdeede42",
+    "Assets/Passes/SilPOMInspectUvUsage.pass": "2f5a10a61bc03da8ab81cdb4cbab7dabcc9e78afcb822c1675e6ae749cd33731",
+    "Source/ResolvePass.cpp": "0d41ad4822c0d482fb1bfe84e2576ba400cf6de0abfc3bb0126751c1b084c242"
+  },
+  "evidence": {
+    "refinement_validation": {
+      "file": "TGProject/user/silpom-gradients-20261116/normal-only-quality/refinement-report.json",
+      "sha256": "f73f0e7e76d40c2cb92573c240ffbe721c0373a0cf74a7c1c1cb8f7e4d312537"
+    },
+    "timing_analysis": {
+      "file": "TGProject/user/silpom-gradients-20261116/benchmark-normal-only/report.json",
+      "sha256": "a7a5c5ccc846460d8e407e1f8787ba326e9074a88906321ad9a8c494e1b2c930"
+    },
+    "independent_raw_review": {
+      "file": "scratch/normal-only-benchmark-20261116/independent-review.json",
+      "sha256": "5e0c6ed05d2b8e7a9da375d295bc499a25aa4bd7d43f59fc3e395c24060e3c5f"
+    },
+    "timing_results": {
+      "file": "TGProject/user/silpom-gradients-20261116/benchmark-normal-only/results.json",
+      "sha256": "0c53cc85897efaecb0c5dce7d1e326419710bf0bcc6c3a512addd7f95a40fd93"
+    },
+    "validated_build_snapshot": {
+      "file": "scratch/silpom-gradients-20261116/after-normal-only.json",
+      "sha256": "4560086ea3b0fc6e51af070ed7ce9edc4906a4181b3ba86806e0329e92311dd1"
+    },
+    "before": {
+      "file": "scratch/normal-only-benchmark-20261116/before.json",
+      "sha256": "4560086ea3b0fc6e51af070ed7ce9edc4906a4181b3ba86806e0329e92311dd1"
+    },
+    "after": {
+      "file": "scratch/normal-only-benchmark-20261116/after.json",
+      "sha256": "4560086ea3b0fc6e51af070ed7ce9edc4906a4181b3ba86806e0329e92311dd1"
+    },
+    "hardware_environment": {
+      "file": "scratch/normal-only-benchmark-20261116/environment.json",
+      "sha256": "4b031534d39265537850729d19b7226a602a6a4079cacab54525c92a5b077e16"
+    }
+  },
+  "integrity": {
+    "controlled_paths": 260,
+    "validated_to_before_identical": true,
+    "before_to_after_identical": true
+  },
+  "independent_raw_validation": {
+    "raw_sha256_verified": true,
+    "metadata_verified": true,
+    "cross_capture_timestamp_freshness_verified": true,
+    "no_positive_inspector_readback_timestamps": true,
+    "source_sha256_verified": true,
+    "normal_query_policy_matches_current_source": true,
+    "full_protocol_order_verified": true,
+    "graphics_span_reconstruction_verified": true,
+    "existing_analyzer_crosscheck_passed": true
+  },
+  "validation": {
+    "normal_only_refinement_matches_prior_gradient_renderer": true,
+    "refinement_owned_samples_all_five_views": 5557447,
+    "fixed_view_raw_hit_depth_samples": 7372800,
+    "fixed_view_owned_shading_samples": 5541526,
+    "current_scheduling_bit_exact": true,
+    "fixed_legacy_raw_hit_depth_bit_exact": true,
+    "cases": {
+      "exterior": {
+        "fixture": "fixed-benchmark",
+        "owned_shading_samples": 69585,
+        "normal_only_refinement_different_samples": 0,
+        "current_full_rectangle_control_different_samples": 0,
+        "legacy_raw_hit_depth_different_samples": 0,
+        "gradient_validity": {
+          "valid": 69582,
+          "coarse": 3
+        }
+      },
+      "lower-facing": {
+        "fixture": "fixed-benchmark",
+        "owned_shading_samples": 1843191,
+        "normal_only_refinement_different_samples": 0,
+        "current_full_rectangle_control_different_samples": 0,
+        "legacy_raw_hit_depth_different_samples": 0,
+        "gradient_validity": {
+          "valid": 1843191,
+          "coarse": 0
+        }
+      },
+      "lower-glancing": {
+        "fixture": "fixed-benchmark",
+        "owned_shading_samples": 1822400,
+        "normal_only_refinement_different_samples": 0,
+        "current_full_rectangle_control_different_samples": 0,
+        "legacy_raw_hit_depth_different_samples": 0,
+        "gradient_validity": {
+          "valid": 1822381,
+          "coarse": 19
+        }
+      },
+      "upper-glancing": {
+        "fixture": "fixed-benchmark",
+        "owned_shading_samples": 1806350,
+        "normal_only_refinement_different_samples": 0,
+        "current_full_rectangle_control_different_samples": 0,
+        "legacy_raw_hit_depth_different_samples": 0,
+        "gradient_validity": {
+          "valid": 1806312,
+          "coarse": 38
+        }
+      },
+      "wide-representations": {
+        "fixture": "representation-probe",
+        "owned_shading_samples": 15921,
+        "normal_only_refinement_different_samples": 0,
+        "current_full_rectangle_control_different_samples": 0,
+        "legacy_raw_hit_depth_different_samples": null,
+        "gradient_validity": {
+          "valid": 15921,
+          "coarse": 0
+        }
+      }
+    },
+    "unobserved_runtime_representations": [
+      "morph",
+      "proxy-depth",
+      "diagnostic"
+    ],
+    "unobserved_runtime_repairs": [
+      "copied-donor"
+    ],
+    "paint_scope": "Earlier paint proof belongs to the previous product revision and is not reused for this refinement."
+  },
+  "timing": {
+    "method": "Native RHI GPU timestamps; interleaved full-screen/region captures in one Editor session",
+    "repeats_per_mode_per_view": 3,
+    "frames_per_capture": 120,
+    "captures": 24,
+    "frames": 2880,
+    "inspection_during_measurement": false,
+    "views": {
+      "exterior": {
+        "resolve_gpu": {
+          "full_median_ms": 29.8985,
+          "rectangle_median_ms": 10.046,
+          "saved_ms": 19.8525,
+          "speedup_x": 2.976159665538523,
+          "reduction_percent": 66.39965215646271,
+          "full_p05_ms": 28.86525,
+          "full_p95_ms": 32.368199999999995,
+          "rectangle_p05_ms": 9.95895,
+          "rectangle_p95_ms": 10.11,
+          "paired_speedup_range_x": [
+            2.9678510998307948,
+            2.9897943943844276
+          ],
+          "paired_reduction_range_percent": [
+            66.30558722919042,
+            66.5528839749567
+          ],
+          "paired_saved_range_ms": [
+            19.770999999999997,
+            19.984499999999997
+          ]
+        },
+        "graphics_span": {
+          "full_median_ms": 77.01650000000001,
+          "rectangle_median_ms": 56.484,
+          "saved_ms": 20.532500000000006,
+          "speedup_x": 1.3635100205367894,
+          "reduction_percent": 26.659871585958857,
+          "full_p05_ms": 75.46975,
+          "full_p95_ms": 79.9502,
+          "rectangle_p05_ms": 55.8072,
+          "rectangle_p95_ms": 57.50835,
+          "paired_speedup_range_x": [
+            1.3621043505953538,
+            1.3646500761088887
+          ],
+          "paired_reduction_range_percent": [
+            26.58418574443903,
+            26.72114137483786
+          ],
+          "paired_saved_range_ms": [
+            20.466499999999996,
+            20.60199999999999
+          ]
+        }
+      },
+      "lower-facing": {
+        "resolve_gpu": {
+          "full_median_ms": 162.95850000000002,
+          "rectangle_median_ms": 147.9875,
+          "saved_ms": 14.971000000000004,
+          "speedup_x": 1.1011639496579104,
+          "reduction_percent": 9.187001598566507,
+          "full_p05_ms": 160.30455,
+          "full_p95_ms": 169.54659999999998,
+          "rectangle_p05_ms": 147.2029,
+          "rectangle_p95_ms": 148.50715,
+          "paired_speedup_range_x": [
+            1.100605245914928,
+            1.1018791669623458
+          ],
+          "paired_reduction_range_percent": [
+            9.140901907231532,
+            9.24594728868553
+          ],
+          "paired_saved_range_ms": [
+            14.893500000000017,
+            15.0745
+          ]
+        },
+        "graphics_span": {
+          "full_median_ms": 264.96500000000003,
+          "rectangle_median_ms": 249.792,
+          "saved_ms": 15.17300000000003,
+          "speedup_x": 1.0607425377914426,
+          "reduction_percent": 5.726416696544837,
+          "full_p05_ms": 261.23255,
+          "full_p95_ms": 272.43315,
+          "rectangle_p05_ms": 247.92975,
+          "rectangle_p95_ms": 252.74925,
+          "paired_speedup_range_x": [
+            1.0603236007736976,
+            1.0609081262888147
+          ],
+          "paired_reduction_range_percent": [
+            5.68916892255162,
+            5.741131091330087
+          ],
+          "paired_saved_range_ms": [
+            15.079000000000008,
+            15.211500000000001
+          ]
+        }
+      },
+      "lower-glancing": {
+        "resolve_gpu": {
+          "full_median_ms": 168.6615,
+          "rectangle_median_ms": 148.4915,
+          "saved_ms": 20.169999999999987,
+          "speedup_x": 1.135832690760077,
+          "reduction_percent": 11.958864352564152,
+          "full_p05_ms": 165.63080000000002,
+          "full_p95_ms": 173.37775,
+          "rectangle_p05_ms": 147.81055,
+          "rectangle_p95_ms": 149.1035,
+          "paired_speedup_range_x": [
+            1.133808483346744,
+            1.136780018785412
+          ],
+          "paired_reduction_range_percent": [
+            11.801683027787183,
+            12.03223284409539
+          ],
+          "paired_saved_range_ms": [
+            19.872500000000002,
+            20.31450000000001
+          ]
+        },
+        "graphics_span": {
+          "full_median_ms": 346.81949999999995,
+          "rectangle_median_ms": 325.8155,
+          "saved_ms": 21.003999999999962,
+          "speedup_x": 1.0644659324065306,
+          "reduction_percent": 6.056176195398461,
+          "full_p05_ms": 342.4966,
+          "full_p95_ms": 352.975,
+          "rectangle_p05_ms": 323.99335,
+          "rectangle_p95_ms": 330.46015,
+          "paired_speedup_range_x": [
+            1.0620408914238404,
+            1.0650297557374004
+          ],
+          "paired_reduction_range_percent": [
+            5.8416669193089525,
+            6.10590975388997
+          ],
+          "paired_saved_range_ms": [
+            20.232000000000028,
+            21.182500000000005
+          ]
+        }
+      },
+      "upper-glancing": {
+        "resolve_gpu": {
+          "full_median_ms": 150.017,
+          "rectangle_median_ms": 135.0085,
+          "saved_ms": 15.008499999999998,
+          "speedup_x": 1.1111670746656692,
+          "reduction_percent": 10.004532819613777,
+          "full_p05_ms": 148.51315,
+          "full_p95_ms": 151.72035,
+          "rectangle_p05_ms": 133.8259,
+          "rectangle_p95_ms": 135.47125,
+          "paired_speedup_range_x": [
+            1.110981096443317,
+            1.111426464757995
+          ],
+          "paired_reduction_range_percent": [
+            9.989467579476447,
+            10.025536397701071
+          ],
+          "paired_saved_range_ms": [
+            14.985500000000002,
+            15.036500000000018
+          ]
+        },
+        "graphics_span": {
+          "full_median_ms": 328.1925,
+          "rectangle_median_ms": 313.24199999999996,
+          "saved_ms": 14.950500000000034,
+          "speedup_x": 1.0477282739862472,
+          "reduction_percent": 4.555405745103875,
+          "full_p05_ms": 323.93589999999995,
+          "full_p95_ms": 332.59345,
+          "rectangle_p05_ms": 308.8793,
+          "rectangle_p95_ms": 317.0583,
+          "paired_speedup_range_x": [
+            1.046230923262252,
+            1.0495440331007668
+          ],
+          "paired_reduction_range_percent": [
+            4.418806807783831,
+            4.720529252535905
+          ],
+          "paired_saved_range_ms": [
+            14.487500000000068,
+            15.494500000000016
+          ]
+        }
+      }
+    },
+    "graphics_span_note": "First-to-last graphics-pass timestamp interval including queue gaps; not GPU busy time, total leaf work or FPS.",
+    "statistics_note": "Pooled frame median/p95 plus paired per-capture medians; frames within one capture are correlated, so no independent-frame confidence interval is claimed."
+  },
+  "cost_note": "Two final sidecars remain 56.25 MiB at 1280x720/2x, before repair staging and bandwidth. The normal-only refinement changes query work, not the sidecar format."
+}

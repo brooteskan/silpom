@@ -2,6 +2,9 @@
 #pragma once
 #include "MaterialDecode.azsli"
 #include "AppearanceDecode.azsli"
+#include "MaterialNormalDecode.azsli"
+#include "GradientContext.azsli"
+static bool silpomAppearanceGradientsCoarse=false;
 static float silpomAppearanceFeatures[8];
 static float silpomAppearanceContext[7];
 static float3 silpomAppearanceView;
@@ -40,29 +43,177 @@ float2 SilPomAppearanceLightGain(float3 light,float reach,bool enabled,MaterialP
     float result[2];SilPomDecodeAppearanceLight(x,params.m_silpomAppearanceDecoderBuffer,result);
     return float2(result[0],result[1]);
 }
-Surface SilPomEvaluateProxySurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,MaterialParameters params)
+struct SilPomAppearanceLightReceiver
 {
-    uint width,height,samples;PassSrg::m_silpomHitBuffer.GetDimensions(width,height,samples);
+    bool cacheAvailable,prepared;
+    SilPomAppearanceLightPrefix prefix;
+};
+void SilPomInitAppearanceLightReceiver(inout SilPomAppearanceLightReceiver receiver)
+{
+    receiver.cacheAvailable=true;receiver.prepared=false;
+}
+float2 SilPomAppearanceLightGainPrepared(float3 light,float reach,bool enabled,MaterialParameters params,
+    inout SilPomAppearanceLightReceiver receiver)
+{
+    if(!receiver.cacheAvailable)return SilPomAppearanceLightGain(light,reach,enabled,params);
+    [branch] if(!enabled)return float2(1,1);
+    float3 direction=normalize(float3(dot(light,silpomAppearanceT),dot(light,silpomAppearanceB),dot(light,silpomLitFace.normal)));
+    if(direction.z<=0.0f)return float2(0,0);
+    // Full center acquisition already owns these features, view and footprint.
+    // Keep the joint visibility/reflectance head and its receiver prefix.
+    float x[22];SP_UNROLL for(uint i=0;i<8;++i)x[i]=silpomAppearanceFeatures[i];
+    SP_UNROLL for(uint i=0;i<3;++i){x[8+i]=silpomAppearanceView[i];x[11+i]=direction[i];}
+    SP_UNROLL for(uint i=0;i<7;++i)x[14+i]=silpomAppearanceContext[i];x[21]=reach/.3f;
+    if(!receiver.prepared)
+    {
+        receiver.prefix=SilPomPrepareAppearanceLightPrefix(x,params.m_silpomAppearanceDecoderBuffer);
+        receiver.prepared=true;
+    }
+    float result[2];SilPomDecodeAppearanceLightWithPrefix(x,params.m_silpomAppearanceDecoderBuffer,receiver.prefix,result);
+    return float2(result[0],result[1]);
+}
+void SilPomAcquireProxyMaterialInput(PixelGeometryData geo,MaterialParameters params,
+    out SilPomProxyQuery query,out float4 derivatives,SP_OUT float x[18])
+{
     const float3 towardCamera=normalize(ViewSrg::m_worldPosition.xyz-geo.positionWS);
     const float3 worldDu=mul(silpomLitRotation,silpomLitFace.du),worldDv=mul(silpomLitRotation,silpomLitFace.dv);
-    SilPomProxyQuery query=SilPomRestoreProxyQuery(geo.positionWS,towardCamera,silpomLitOriginWS,
-        worldDu,worldDv,mul(silpomLitRotation,silpomLitFace.normal),silpomLitFace.uv0);
+    const float3 worldNormal=mul(silpomLitRotation,silpomLitFace.normal);
+    bool queryConditioned=abs(dot(towardCamera,worldNormal))>1e-6f;
+    query.position=silpomLitOriginWS;query.uv=silpomLitFace.uv0;
+    if(queryConditioned)
+        query=SilPomRestoreProxyQuery(geo.positionWS,towardCamera,silpomLitOriginWS,
+            worldDu,worldDv,worldNormal,silpomLitFace.uv0);
+    if(!SilPomGradientFinite3(query.position)||!SilPomGradientFinite2(query.uv))
+    {
+        query.position=silpomLitOriginWS;query.uv=silpomLitFace.uv0;queryConditioned=false;
+    }
     float4 queryClip=mul(ViewSrg::m_viewProjectionMatrix,float4(query.position,1));
     float4 clipU=mul(ViewSrg::m_viewProjectionMatrix,float4(worldDu,0));
     float4 clipV=mul(ViewSrg::m_viewProjectionMatrix,float4(worldDv,0));
-    float4 derivatives=SilPomProxyUvDerivatives(clipU,clipV,IN.ndc,rcp(queryClip.w),float2(width,height));
+    // Keep the authored-plane Jacobian separate from the resolved-hit mapping.
+    // The shared projection test gives singular planes a full-chart footprint.
+    SilPomGradientContext appearanceGradient=SilPomGradientFromTangents(queryClip,clipU,clipV,
+        PassSrg::m_silpomViewport.zw,float2(1,1),SP_GRADIENT_PROXY);
+    if(!queryConditioned)appearanceGradient=SilPomGradientCoarse(float2(1,1),SP_GRADIENT_PROXY);
+    silpomAppearanceGradientsCoarse=appearanceGradient.validity!=SP_GRADIENT_VALID;
+    derivatives=appearanceGradient.uv;
     SilPomAcquireAppearance(query.uv,derivatives,params);
     float3 V=normalize(mul(transpose(silpomLitRotation),ViewSrg::m_worldPosition.xyz-query.position));
     silpomAppearanceView=float3(dot(V,silpomAppearanceT),dot(V,silpomAppearanceB),dot(V,silpomLitFace.normal));
-    float x[18];SP_UNROLL for(uint i=0;i<8;++i)x[i]=silpomAppearanceFeatures[i];
+    SP_UNROLL for(uint i=0;i<8;++i)x[i]=silpomAppearanceFeatures[i];
     SP_UNROLL for(uint i=0;i<3;++i)x[8+i]=silpomAppearanceView[i];
     SP_UNROLL for(uint i=0;i<7;++i)x[11+i]=silpomAppearanceContext[i];
-    float decoded[3];SilPomDecodeAppearanceSurface(x,params.m_silpomAppearanceDecoderBuffer,decoded);
+}
+
+float3 SilPomProxyMaterialNormal(float2 decoded,PixelGeometryData geo)
+{
+    float2 n=(decoded*2-1)*.95f;
+    float3 normal=normalize(float3(n,sqrt(max(.01f,1-dot(n,n)))));
+    real3 worldNormal=AdjustBackFaceNormal(mul(silpomLitRotation,
+        silpomAppearanceT*normal.x+silpomAppearanceB*normal.y+silpomLitFace.normal*normal.z),geo.isFrontFace);
+    return worldNormal;
+}
+
+// Owner-plane setup is shared by the four AA queries. Query conditioning,
+// projective footprint, feature filtering and view remain specific to a probe.
+struct SilPomProxyNormalSetup
+{
+    float3 worldDu,worldDv,worldNormal;
+    float4 clipU,clipV;
+    float3 planeVNormal;
+    float inverseMetric;
+    float3 T,B,faceMetric;
+    float3x3 worldToLocal;
+};
+SilPomProxyNormalSetup SilPomPrepareProxyNormalSetup(MaterialParameters params)
+{
+    SilPomProxyNormalSetup setup;
+    setup.worldDu=mul(silpomLitRotation,silpomLitFace.du);
+    setup.worldDv=mul(silpomLitRotation,silpomLitFace.dv);
+    setup.worldNormal=mul(silpomLitRotation,silpomLitFace.normal);
+    setup.clipU=mul(ViewSrg::m_viewProjectionMatrix,float4(setup.worldDu,0));
+    setup.clipV=mul(ViewSrg::m_viewProjectionMatrix,float4(setup.worldDv,0));
+    setup.planeVNormal=cross(setup.worldDv,setup.worldNormal);
+    setup.inverseMetric=rcp(dot(setup.worldDu,setup.planeVNormal));
+    const float u=length(silpomLitFace.du),v=length(silpomLitFace.dv);
+    setup.faceMetric=float3(log2(u)/16.0f,log2(v)/16.0f,
+        dot(silpomLitFace.du,silpomLitFace.dv)/(u*v));
+    setup.T=silpomLitFace.du/u;
+    setup.B=normalize(cross(silpomLitFace.normal,setup.T));
+    setup.worldToLocal=transpose(silpomLitRotation);
+    return setup;
+}
+void SilPomAcquireProxyNormalInputPrepared(float3 positionWS,MaterialParameters params,
+    SilPomProxyNormalSetup setup,SP_OUT float x[18],out bool coarse)
+{
+    const float3 towardCamera=normalize(ViewSrg::m_worldPosition.xyz-positionWS);
+    bool queryConditioned=abs(dot(towardCamera,setup.worldNormal))>1e-6f;
+    SilPomProxyQuery query;query.position=silpomLitOriginWS;query.uv=silpomLitFace.uv0;
+    if(queryConditioned)
+    {
+        // Keep the same scalar-triple-product order as SilPomRestoreProxyQuery.
+        query.position=positionWS+towardCamera*(dot(silpomLitOriginWS-positionWS,setup.worldNormal)
+            /dot(towardCamera,setup.worldNormal));
+        float3 delta=query.position-silpomLitOriginWS;
+        query.uv=silpomLitFace.uv0+float2(dot(delta,setup.planeVNormal),
+            dot(setup.worldDu,cross(delta,setup.worldNormal)))*setup.inverseMetric;
+    }
+    if(!SilPomGradientFinite3(query.position)||!SilPomGradientFinite2(query.uv))
+    {
+        query.position=silpomLitOriginWS;query.uv=silpomLitFace.uv0;queryConditioned=false;
+    }
+    float4 queryClip=mul(ViewSrg::m_viewProjectionMatrix,float4(query.position,1));
+    SilPomGradientContext gradient=SilPomGradientFromTangents(queryClip,setup.clipU,setup.clipV,
+        PassSrg::m_silpomViewport.zw,float2(1,1),SP_GRADIENT_PROXY);
+    if(!queryConditioned)gradient=SilPomGradientCoarse(float2(1,1),SP_GRADIENT_PROXY);
+    coarse=gradient.validity!=SP_GRADIENT_VALID;
+    SilPomMaterialFootprint f=SilPomMaterialFootprintFor(
+        gradient.uv.xy*float2(6656,6144),gradient.uv.zw*float2(6656,6144));
+    float lod=clamp(f.lod-3.0f,0.0f,float(params.m_silpomAppearanceFeatureMipCount-1u));
+    float4 first=0,second=0;
+    [loop] for(uint i=0;i<f.taps;++i)
+    {
+        float2 q=query.uv+f.axis*((float(i)+.5f)/float(f.taps)-.5f)*f.major/float2(6656,6144);
+        first+=GetMaterialTexture(params.m_silpomAppearanceFeatures0).SampleLevel(PassSrg::LinearSampler,q,lod)/float(f.taps);
+        second+=GetMaterialTexture(params.m_silpomAppearanceFeatures1).SampleLevel(PassSrg::LinearSampler,q,lod)/float(f.taps);
+    }
+    SP_UNROLL for(uint k=0;k<4;++k){x[k]=first[k]*2-1;x[4+k]=second[k]*2-1;}
+    float3 V=normalize(mul(setup.worldToLocal,ViewSrg::m_worldPosition.xyz-query.position));
+    float3 view=float3(dot(V,setup.T),dot(V,setup.B),dot(V,silpomLitFace.normal));
+    SP_UNROLL for(uint i=0;i<3;++i)x[8+i]=view[i];
+    x[11]=clamp(log2(max(f.major,1.0f))/13.0f,0.0f,12.0f/13.0f);
+    x[12]=clamp(log2(f.minor)/13.0f,0.0f,12.0f/13.0f);
+    x[13]=f.axis.x*f.axis.x-f.axis.y*f.axis.y;
+    x[14]=2*f.axis.x*f.axis.y;
+    SP_UNROLL for(uint i=0;i<3;++i)x[15+i]=setup.faceMetric[i];
+}
+float3 SilPomEvaluateProxyNormalPrepared(float3 positionWS,bool isFrontFace,MaterialParameters params,
+    SilPomProxyNormalSetup setup,out bool coarse)
+{
+    float x[18];SilPomAcquireProxyNormalInputPrepared(positionWS,params,setup,x,coarse);
+    float decoded[2];SilPomDecodeAppearanceNormal(x,params.m_silpomAppearanceDecoderBuffer,decoded);
     float2 n=(float2(decoded[0],decoded[1])*2-1)*.95f;
     float3 normal=normalize(float3(n,sqrt(max(.01f,1-dot(n,n)))));
+    // Match the full Surface.normal path's real3 rounding before returning.
+    real3 worldNormal=AdjustBackFaceNormal(mul(silpomLitRotation,
+        setup.T*normal.x+setup.B*normal.y+silpomLitFace.normal*normal.z),isFrontFace);
+    return worldNormal;
+}
+float3 SilPomEvaluateProxyNormal(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,MaterialParameters params)
+{
+    bool coarse;
+    return SilPomEvaluateProxyNormalPrepared(geo.positionWS,geo.isFrontFace,params,
+        SilPomPrepareProxyNormalSetup(params),coarse);
+}
+
+Surface SilPomEvaluateProxySurface(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,MaterialParameters params)
+{
+    SilPomProxyQuery query;float4 derivatives;float x[18];
+    SilPomAcquireProxyMaterialInput(geo,params,query,derivatives,x);
+    float decoded[3];SilPomDecodeAppearanceSurface(x,params.m_silpomAppearanceDecoderBuffer,decoded);
     Surface surface=(Surface)0;surface.position=geo.positionWS;surface.vertexNormal=geo.vertexNormal;
     surface.lightingChannels=GetLightingChannelMask(SV);
-    surface.normal=AdjustBackFaceNormal(mul(silpomLitRotation,silpomAppearanceT*normal.x+silpomAppearanceB*normal.y+silpomLitFace.normal*normal.z),geo.isFrontFace);
+    surface.normal=SilPomProxyMaterialNormal(float2(decoded[0],decoded[1]),geo);
     real3 color=real3(1,1,1);
     // The teacher's ordinary base-color factor also uses proxy-plane UV.
     // Resolved geo.positionWS / geo.uvs stay available to lights and decals.

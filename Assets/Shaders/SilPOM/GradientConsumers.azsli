@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+
+// The normal samples are acquired on the winning owner's local continuation,
+// before receiver paint and forward decals. Keep Atom's variance and clamp.
+float SilPomSpecularAAFromDerivatives(float roughnessA2,float3 normalDx,float3 normalDy)
+{
+    const float variance=0.25f*(dot(normalDx,normalDx)+dot(normalDy,normalDy));
+    return saturate(roughnessA2+min(2.0f*variance,0.18f));
+}
+
+// Differentiate the actual flat-caster receiver adjustment. The selected face
+// normal and the directional light are constant on this owner-local patch.
+// At the clamp boundary use the inactive one-sided branch consistently.
+float3 SilPomFlatReceiverDerivative(float3 positionDerivative,float3 baseNormal,
+    float3 toLight,float signedHeight,float lightNormalDot,float bias)
+{
+    if(lightNormalDot>1e-4f&&signedHeight<bias)
+        return positionDerivative-toLight*(dot(positionDerivative,baseNormal)/lightNormalDot);
+    return positionDerivative;
+}
+
+#if !defined(SILPOM_GRADIENT_CONSUMERS_CPU)
+#include "GradientContext.azsli"
+// Projected light masks are spatial textures. Differentiate their actual
+// homogeneous lookup and its NDC-to-UV half scale, without implicit sampling.
+float4 SilPomProjectedUvDerivatives(float4 clip,float4 clipDx,float4 clipDy)
+{
+    const float4 coarse=float4(1,0,0,1);
+    if(!SilPomGradientFinite4(clip)||!SilPomGradientFinite4(clipDx)
+        ||!SilPomGradientFinite4(clipDy)||abs(clip.w)<=1e-12f)return coarse;
+    const float2 ndc=clip.xy/clip.w;
+    const float4 result=float4((clipDx.xy-ndc*clipDx.w)*(.5f/clip.w),
+        (clipDy.xy-ndc*clipDy.w)*(.5f/clip.w));
+    if(!SilPomGradientFinite4(result)||any(abs(result)>1.0f))return coarse;
+    return result;
+}
+#endif

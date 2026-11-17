@@ -1,5 +1,139 @@
 # Neural validation controls
 
+## Strict neural lighting and receiver reuse
+
+`NeuralOnly` applies to the enabled generation, including the interval while a
+replacement is loading or validating. A previous generation remains visible
+only when its actual draw-packet products, shader variants and options certify
+the strict contract. Incompatible packets are suppressed; missing assets or
+validation failures never enable a baseline/hybrid replacement. Publication and
+packet/shader updates recheck capability. Unsupported estimator/profile
+combinations are rejected. Explicit directional/angular comparisons require the
+trained wall profile; the physical neural estimator also supports the existing
+stairs, trim and reveal profiles.
+
+A final end-of-render-preparation check also handles Atom's packet rebuilds
+that bypass its packet-update notification. Suppression must cover items already
+collected into draw lists: disabled flags alone are insufficient at that point,
+so suppressed owned draws carry zero instances. Motion items remain suppressed
+independently when a valid generation's other draws are restored.
+
+Scene-notification lifetime follows requested strict policy, active/pending
+suppression or restoration, and trained-rendering duties. The subscription is
+reconciled before validation/loading can return and retried when a scene becomes
+available. Publishing a nontrained generation no longer unconditionally
+disconnects it. Strict-only duties keep the final suppression callback alive
+without installing trained rendering passes.
+
+Lighting uses `SILPOM_NEURAL_VISIBILITY_ONLY`: enabled queries select the supported
+neural estimator, retain its analytic exits and bounded input acquisition, and
+never recover from uncertainty, saturation or a missing receiver cache by
+marching. The physical estimator retains up to four light-specific off-center
+height probes and its final neural decision. An unavailable cache evaluates the
+same estimator uncached. Shared, directional/angular and proxy-appearance
+lighting do not acquire physical-ray height probes. A pipeline-wide traversal
+guarantee additionally requires the certified trained depth products using
+`SILPOM_NEURAL_NO_MARCH`; lighting alone cannot certify an ordinary depth shader.
+Bounded trained-hit refinement and existing repair/proxy recovery are separate.
+`cacheAvailable` is normally true for these register-local receiver contexts;
+the uncached branches are explicit hooks exercised by tests, not runtime
+cache-allocation failure detection.
+
+Direct lighting creates one local receiver context after the invalid-hit guard,
+after normal-only AA probes have finished, center UV has been restored and full
+center material evaluation has published lighting state. Each MSAA invocation
+owns its context. Repaired hits and LOD shells use their final recorded owner,
+representation, UV and gradients. The BRDF continues to use the center surface
+after decals; probe coarse flags retain only their AA role.
+
+Preparation follows the selected backend:
+
+- Physical neural queries first check enablement/scale, then lazily prepare the
+  center displacement frame and determinant. Per-light rate/direction exits run
+  before acquiring starting height with the original shadow-height recipe.
+  Qualifying later lights reuse that height; reach, schedule, probe positions
+  and values remain per light. Normal and generic height helpers cannot seed it.
+- Shared visibility reuses its query frame, face metrics, projected displacement
+  direction, center UV and center shared material state. Directional/angular
+  comparisons share their query frame and retain the hidden layer/angular state
+  already decoded by full center evaluation.
+- Proxy appearance reuses full center features, footprint, view and frame. Its
+  light head remains the joint visibility/reflectance correction for diffuse
+  and specular response. Current routing selects its original noncomparison
+  shader; a directional visibility estimate does not replace this correction.
+
+Shared visibility caches 12 first-layer preactivations through inputs 0–7;
+proxy appearance caches 16 through inputs 0–10. Prefixes include the bias and
+are prepared after enablement and hemisphere gates. Each light continues the
+original suffix accumulation before ReLU and output evaluation. Receiver-only
+ReLU values and final visibility are never cached. Both spiral rays receive the
+same center context as directional lighting.
+
+Focused validation covers lazy height acquisition and exact CPU ray arithmetic,
+cached/uncached neural decisions, unavailable-cache behavior, independent sample
+ownership, transitive no-march shader boundaries, and AA state isolation.
+GPU prefix/reuse checks include SM6.2/SM6.7 and trained bundles; the observed
+cached/uncached output difference is at most `1.19209e-7` with default DXC
+optimization. Current-source material variants are compiled through MCPP,
+AZSLc and DXC separately from the asset cache. These checks do not establish
+combined application image equivalence or a speedup. No timing measurements
+were collected; the extra receiver register lifetime remains a tradeoff.
+
+## Height acquisition in bounded validation
+
+Each `SilPomRefineFace` call starts an empty cache containing an unaddressed
+integer cell and its four raw height texels. Iterations in the same cell reuse
+those texels; a changed cell reloads the complete quad. Current UV fractions,
+bilinear coefficients, height and derivatives retain their original expressions.
+Gather uses the existing interior footprint and channel order, with the original
+integer-load fallback at borders and one-texel dimensions. Candidates, retries,
+faces and MSAA invocations never share this cache. Lighting and normal helpers
+do not participate in its lifetime.
+
+Iteration limits, tolerances, damping, containment, ray intervals, candidate
+ordering and nearest-hit recovery remain unchanged. The independent face
+direction is evaluated before the cached height lookup to preserve the approved
+DXC tangent-sum association on the stored-coefficient path. GPU regressions
+cover that ordering; no precision mode or tolerance was changed to hide a
+rounding difference.
+
+Exact NPOT repeat addressing now defaults on through `SILPOM_FAST_ADDRESSING`,
+independently of MSAA. Clamp and power-of-two masking remain unchanged. In-range
+NPOT coordinates return directly; wrapped coordinates use one signed remainder
+and add the dimension only for a negative remainder. The existing constant
+divisors remain available. `SILPOM_GENERIC_REMAINDER=1` selects general remainder
+and `SILPOM_FAST_ADDRESSING=0` retains the double-modulo reference for tests.
+Coordinate construction, neighbor selection, shader products and supervariant
+names are unchanged.
+
+The legacy bounded traversal now tests blocks before acquiring a leaf quad.
+It retains adjacent-cell texel reuse after a successful leaf, invalidates the
+quad after block skips, and reloads only when a later leaf needs evaluation.
+Its DDA, root ordering and cell-budget accounting are unchanged. Strict trained
+rendering compiles out this generic traversal, so this last change has no direct
+strict-mode benefit.
+
+Focused checks passed:
+
+| Check | Scope |
+| --- | --- |
+| Newton CPU equivalence | 16,000 frozen/current solves with exact status, UV, ray time and diagnostics. Fixture height loads decreased from 116,596 to 68,520. Separate repaired-owner, texture, sample and retry calls start cold. |
+| Newton GPU equivalence | 3,145,728 frozen/current comparisons across Load/Gather, R32/R16 textures, repeat/clamp, stored/inline coefficient paths and SM6.2/SM6.7. Height, derivatives, solver results and diagnostics match bit for bit in these fixtures. |
+| Stored coefficient regression | Ten GPU runs cover cached, missing, disabled, Newton-fallback and area-fallback configurations on both shader models. Each run checks 8,704 Newton and 8,720 gradient results, including 128 frozen wall faces, with zero mismatches. |
+| Legacy traversal | 149,407 CPU rays match every hit field and cell count against the frozen eager-load reference; 8,192 GPU differential rays also pass. CPU fixture leaf loads decreased from 707,666 to 617,402, and fully rejected blocks acquire no height quad. |
+| Addressing | Four standalone addressing policies each cover 2.4 million signed coordinates against a 64-bit floor-division oracle, including seams, repeated negative wraps, extreme integers and one-texel dimensions. |
+| Integration boundaries | 18 related CPU CTest suites, 17 strict/AA/lifecycle checks, strict native C++ compilation and seven current-source material compilations pass, including default-MSAA and NoMSAA depth products. |
+
+The compiled checks cover these fixtures, not complete application image
+equivalence. Source-only analysis did not establish the numerical result: the
+stored-coefficient GPU oracle caught a one-ULP association change, which the
+independent direction/height ordering fixes. No timing measurements or speedup
+claim are attached to the fetch-count reductions. Reproduction artifacts are
+under `scratch/point-five-20261117`, `scratch/newton-height-cell-20261117` and
+`scratch/heightfield-fetches-20261117`.
+
+## Candidate solve controls
+
 Select a **SilPOM Mesh** entity in the level and adjust these component settings:
 
 | Control | Default baseline | Lower-cost comparison | Effect |

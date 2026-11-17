@@ -6,6 +6,41 @@
 #undef EvaluateLighting
 #define EvaluateLighting EvaluateLighting_SilPom
 
+// Atom's projection and paint helpers already accept explicit gradients. Avoid
+// its ApplyDecal wrapper, which acquires derivatives from unrelated quad lanes.
+#if SILPOM_HIT_FORWARD
+void SilPomApplyForwardDecal(uint index,inout Surface surface)
+{
+#if ENABLE_DECALS
+    Decal decal=ViewSrg::m_decals[index];
+    if(((decal.m_sortKeyPacked>>8u)&0xffu)==5u)
+        ApplyPaintComposite(decal,surface,silpomPositionDx,silpomPositionDy);
+    else
+        ApplyDecalData(decal,surface,silpomPositionDx,silpomPositionDy);
+#endif
+}
+
+void SilPomApplyForwardDecals(inout LightCullingTileIterator tileIterator,inout Surface surface)
+{
+#if ENABLE_DECALS
+#if ENABLE_LIGHT_CULLING
+    // The decal segment must be consumed even when decal shading is disabled.
+    tileIterator.LoadAdvance();
+    while(!tileIterator.IsDone())
+    {
+        const uint index=tileIterator.GetValue();
+        tileIterator.LoadAdvance();
+        if(o_enableDecals)SilPomApplyForwardDecal(index,surface);
+    }
+#else
+    if(o_enableDecals)
+        for(uint index=0;index<ENABLE_DECALS_CAP&&index<ViewSrg::m_visibleDecalCount;++index)
+            SilPomApplyForwardDecal(index,surface);
+#endif
+#endif
+}
+#endif
+
 LightingData EvaluateLighting_SilPom(inout Surface surface, float4 screenPosition,
     float3 viewPositions[MAX_SHADING_VIEWS])
 {
@@ -18,7 +53,11 @@ LightingData EvaluateLighting_SilPom(inout Surface surface, float4 screenPositio
 
     // Decal normals must inform the BRDF, and the modified surface must reach
     // the albedo/normal outputs used by fullscreen indirect lighting.
+#if SILPOM_HIT_FORWARD
+    SilPomApplyForwardDecals(tileIterator, surface);
+#else
     ApplyDecals_ForwardPass(tileIterator, surface);
+#endif
 
     LightingData lightingData;
 #if SILPOM_DIFFUSE_ACCESSIBILITY

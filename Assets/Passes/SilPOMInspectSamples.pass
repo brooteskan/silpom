@@ -33,6 +33,28 @@
                     "Name": "SampleDepth",
                     "SlotType": "Output",
                     "ScopeAttachmentUsage": "RenderTarget"
+                },
+                {
+                    "Name": "HitUvGradients",
+                    "ShaderInputName": "m_hitUvGradients",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader"
+                },
+                {
+                    "Name": "SampleUvGradients",
+                    "SlotType": "Output",
+                    "ScopeAttachmentUsage": "RenderTarget"
+                },
+                {
+                    "Name": "HitDepthGradients",
+                    "ShaderInputName": "m_hitDepthGradients",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader"
+                },
+                {
+                    "Name": "SampleDepthGradients",
+                    "SlotType": "Output",
+                    "ScopeAttachmentUsage": "RenderTarget"
                 }
             ],
             "Connections": [
@@ -62,6 +84,34 @@
                     "AttachmentRef": {
                         "Pass": "This",
                         "Attachment": "SampleDepthImage"
+                    }
+                },
+                {
+                    "LocalSlot": "HitUvGradients",
+                    "AttachmentRef": {
+                        "Pass": "SilPOMHitDepth",
+                        "Attachment": "HitUvGradients"
+                    }
+                },
+                {
+                    "LocalSlot": "SampleUvGradients",
+                    "AttachmentRef": {
+                        "Pass": "This",
+                        "Attachment": "SampleUvGradientsImage"
+                    }
+                },
+                {
+                    "LocalSlot": "HitDepthGradients",
+                    "AttachmentRef": {
+                        "Pass": "SilPOMHitDepth",
+                        "Attachment": "HitDepthGradients"
+                    }
+                },
+                {
+                    "LocalSlot": "SampleDepthGradients",
+                    "AttachmentRef": {
+                        "Pass": "This",
+                        "Attachment": "SampleDepthGradientsImage"
                     }
                 }
             ],
@@ -97,6 +147,40 @@
                     },
                     "ImageDescriptor": {
                         "Format": "R32_FLOAT",
+                        "SharedQueueMask": "Graphics"
+                    }
+                },
+                {
+                    "Name": "SampleUvGradientsImage",
+                    "SizeSource": {
+                        "Source": {
+                            "Pass": "This",
+                            "Attachment": "Hit"
+                        },
+                        "Multipliers": {
+                            "WidthMultiplier": 4,
+                            "HeightMultiplier": 1
+                        }
+                    },
+                    "ImageDescriptor": {
+                        "Format": "R32G32B32A32_FLOAT",
+                        "SharedQueueMask": "Graphics"
+                    }
+                },
+                {
+                    "Name": "SampleDepthGradientsImage",
+                    "SizeSource": {
+                        "Source": {
+                            "Pass": "This",
+                            "Attachment": "Hit"
+                        },
+                        "Multipliers": {
+                            "WidthMultiplier": 4,
+                            "HeightMultiplier": 1
+                        }
+                    },
+                    "ImageDescriptor": {
+                        "Format": "R32G32B32A32_FLOAT",
                         "SharedQueueMask": "Graphics"
                     }
                 }

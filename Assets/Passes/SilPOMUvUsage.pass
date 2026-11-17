@@ -5,12 +5,24 @@
   "ClassData": {
     "PassTemplate": {
       "Name": "SilPOMUvUsageTemplate",
-      "PassClass": "RasterPass",
+            "PassClass": "SilPOMHitRasterPass",
       "Slots": [
         {
           "Name": "Hit",
           "SlotType": "Input",
           "ShaderInputName": "m_silpomHitBuffer",
+          "ScopeAttachmentUsage": "Shader"
+        },
+        {
+          "Name": "HitUvGradients",
+          "SlotType": "Input",
+          "ShaderInputName": "m_silpomHitUvGradients",
+          "ScopeAttachmentUsage": "Shader"
+        },
+        {
+          "Name": "HitDepthGradients",
+          "SlotType": "Input",
+          "ShaderInputName": "m_silpomHitDepthGradients",
           "ScopeAttachmentUsage": "Shader"
         },
         {
@@ -29,6 +41,14 @@
         }
       ],
       "Connections": [
+        {
+          "LocalSlot": "HitUvGradients",
+          "AttachmentRef": { "Pass": "PipelineGlobal", "Attachment": "SilPOMHitUvGradients" }
+        },
+        {
+          "LocalSlot": "HitDepthGradients",
+          "AttachmentRef": { "Pass": "PipelineGlobal", "Attachment": "SilPOMHitDepthGradients" }
+        },
         {
           "LocalSlot": "Hit",
           "AttachmentRef": {

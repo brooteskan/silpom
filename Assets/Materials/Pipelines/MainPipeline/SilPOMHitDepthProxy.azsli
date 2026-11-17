@@ -3,18 +3,21 @@
 option bool o_silpomSampleFrequency=false;
 #include <Atom/Features/SrgSemantics.azsli>
 #define MATERIALPIPELINE_SHADER_HAS_GEOMETRIC_PIXEL_STAGE 1
+// The explicit viewport SRG does not contain forward lighting resources.
 #define PIPELINE_HAS_PASS_SRG 0
 #ifdef MATERIAL_TYPE_DEFINES_AZSLI_FILE_PATH
 #include MATERIAL_TYPE_DEFINES_AZSLI_FILE_PATH
 #endif
 #include <viewsrg_all.srgi>
 #include <scenesrg_all.srgi>
+#include "../../../Shaders/SilPOM/HitReuse/SilPOMHitDepthSrg.azsli"
 #include <Atom/Features/Pipeline/Forward/ForwardPassVertexData.azsli>
 #include <Atom/Features/Pipeline/Forward/ForwardPassPipelineCallbacks.azsli>
 #include <Atom/Feature/Common/Assets/Shaders/Materials/StandardPBR/StandardPBR_MaterialInputs.azsli>
 #include <Atom/Features/Bindless.azsli>
 #include "../../../Shaders/SilPOM/ProxySelection.azsli"
 #include "../../../Shaders/SilPOM/HitReuse/SilPOMHitRecord.azsli"
+#include "../../../Shaders/SilPOM/GradientContext.azsli"
 #if SILPOM_PROXY_DEPTH
 #define SP_UNROLL [unroll]
 #define SP_OUT out
@@ -26,9 +29,7 @@ struct ProxyVertex
     sample float2 uv:TEXCOORD0;
     nointerpolation uint face:TEXCOORD1;
     noperspective sample float rasterDepth:TEXCOORD3;
-#if SILPOM_PROXY_DEPTH
     nointerpolation uint instance:TEXCOORD2;
-#endif
 };
 ProxyVertex VertexShader(VsInput IN,uint instanceId:SV_InstanceID)
 {
@@ -47,22 +48,111 @@ ProxyVertex VertexShader(VsInput IN,uint instanceId:SV_InstanceID)
     output.position=mul(GetViewProjectionMatrix(sv),mul(GetObjectToWorldMatrix(sv),float4(position,1)));
     output.rasterDepth=output.position.z/output.position.w;
     output.face=params.m_silpomHitFaceBase+face;
-#if SILPOM_PROXY_DEPTH
     output.instance=instanceId;
-#endif
     return output;
 }
 #if SILPOM_PROXY_DEPTH || SILPOM_MSAA_PLANE_DEPTH
-struct ProxyOutput {precise float depth:SV_Depth;uint4 hit:SV_Target0;};
+struct ProxyOutput {precise float depth:SV_Depth;uint4 hit:SV_Target0;float4 uvGradients:SV_Target1;float4 depthGradients:SV_Target2;};
 #else
-struct ProxyOutput {precise float depth:SV_DepthLessEqual;uint4 hit:SV_Target0;};
+struct ProxyOutput {precise float depth:SV_DepthLessEqual;uint4 hit:SV_Target0;float4 uvGradients:SV_Target1;float4 depthGradients:SV_Target2;};
 #endif
+
+struct SilPomProxyGradientSurface
+{
+    float3 origin,du,dv,normal;
+    float2 uv0,coarseSpan;
+    float4x4 model,localToClip;
+#if SILPOM_PROXY_DEPTH
+    float3 directionDu,directionDv;
+    float3x3 rotation;
+    float2 gradientPadding;
+    float objectScale;
+#endif
+};
+
+SilPomGradientContext SilPomProxyAuthoredGradient(SilPomProxyGradientSurface surface,float2 uv)
+{
+    const float2 q=uv-surface.uv0;
+    const float3 p=surface.origin+surface.du*q.x+surface.dv*q.y;
+    return SilPomGradientFromTangents(mul(surface.localToClip,float4(p,1)),
+        mul(surface.localToClip,float4(surface.du,0)),mul(surface.localToClip,float4(surface.dv,0)),
+        PassSrg::m_silpomViewport.zw,surface.coarseSpan,SP_GRADIENT_PROXY);
+}
+
+#if SILPOM_PROXY_DEPTH
+// Exact authored-plane homography at an owner-local virtual raster offset.
+// This changes filtering inputs only; it never queries coverage or other hits.
+bool SilPomProxyOffsetUv(SilPomProxyGradientSurface surface,float2 uv,float2 pixelOffset,out float2 result)
+{
+    const float2 q=uv-surface.uv0;
+    const float4 p=mul(surface.localToClip,float4(surface.origin+surface.du*q.x+surface.dv*q.y,1));
+    const float4 u=mul(surface.localToClip,float4(surface.du,0));
+    const float4 v=mul(surface.localToClip,float4(surface.dv,0));
+    const float2 target=p.xy/p.w+pixelOffset*float2(2,-2)/PassSrg::m_silpomViewport.zw;
+    const float2 a=u.xy-target*u.w,b=v.xy-target*v.w,c=target*p.w-p.xy;
+    const float determinant=a.x*b.y-a.y*b.x;
+    result=uv;
+    if(!SilPomGradientFinite(determinant)||determinant==0)return false;
+    result+=float2(c.x*b.y-c.y*b.x,a.x*c.y-a.y*c.x)/determinant;
+    return SilPomGradientFinite2(result);
+}
+
+bool SilPomProxyVirtualMapping(SilPomProxyGradientSurface surface,float2 centerUv,float3 centerDirection,
+    float4 legacyFootprint,SilPomGradientContext centerPlane,float2 pixelOffset,
+    MaterialParameters params,out float3 mapped)
+{
+    mapped=0;
+    float2 uv;
+    if(!SilPomProxyOffsetUv(surface,centerUv,pixelOffset,uv))return false;
+    const SilPomGradientContext plane=SilPomProxyAuthoredGradient(surface,uv);
+    if(plane.validity!=SP_GRADIENT_VALID)return false;
+    const float2 q=uv-surface.uv0,delta=uv-centerUv;
+    const float3 D=centerDirection+surface.directionDu*delta.x+surface.directionDv*delta.y;
+    const float3 baseWS=mul(surface.model,float4(surface.origin+surface.du*q.x+surface.dv*q.y,1)).xyz;
+    const float3 V=mul(transpose(surface.rotation),normalize(ViewSrg::m_worldPosition.xyz-baseWS));
+    // Anchor at the original center's footprint to preserve learned center
+    // depth, while differentiating its analytic footprint variation locally.
+    const float4 footprint=legacyFootprint+plane.uv-centerPlane.uv;
+    const float heightFraction=SilPomLearnedProxyHeight(uv,footprint,surface.du,surface.dv,
+        surface.normal,D,V,params);
+    const SilPomProxyPlaneHit resolved=SilPomResolveProxyPlane(uv,surface.origin,surface.uv0,
+        surface.du,surface.dv,surface.normal,D,V,heightFraction,
+        params.m_silpomScale,params.m_silpomReference,surface.objectScale);
+    const float4 clip=mul(surface.localToClip,float4(resolved.position,1));
+    if(!SilPomGradientFinite4(clip)||clip.w<=1e-20f)return false;
+    mapped=float3(resolved.uv,clip.z/clip.w);
+    return SilPomGradientFinite3(mapped);
+}
+
+SilPomGradientContext SilPomProxyResolvedGradient(SilPomProxyGradientSurface surface,float2 uv,float3 direction,
+    float4 legacyFootprint,MaterialParameters params)
+{
+    SilPomGradientContext result=SilPomGradientCoarse(surface.coarseSpan,SP_GRADIENT_PROXY_DEPTH);
+    const SilPomGradientContext plane=SilPomProxyAuthoredGradient(surface,uv);
+    if(plane.validity!=SP_GRADIENT_VALID)return result;
+    // Deliberate owner-local numerical differentiation of the complete learned
+    // producer, including features, view, affine D and projective division.
+    // The symmetric 1/16-pixel stencil is independent of MSAA sample count.
+    const float step=1.0f/16.0f;
+    float3 px,nx,py,ny;
+    if(!SilPomProxyVirtualMapping(surface,uv,direction,legacyFootprint,plane,float2(step,0),params,px)
+        ||!SilPomProxyVirtualMapping(surface,uv,direction,legacyFootprint,plane,float2(-step,0),params,nx)
+        ||!SilPomProxyVirtualMapping(surface,uv,direction,legacyFootprint,plane,float2(0,step),params,py)
+        ||!SilPomProxyVirtualMapping(surface,uv,direction,legacyFootprint,plane,float2(0,-step),params,ny))return result;
+    const float3 dx=(px-nx)/(2*step),dy=(py-ny)/(2*step);
+    if(!SilPomGradientFinite3(dx)||!SilPomGradientFinite3(dy)
+        ||abs(dx.x)>result.uv.x||abs(dy.x)>result.uv.x
+        ||abs(dx.y)>result.uv.w||abs(dy.y)>result.uv.w||abs(dx.z)>1||abs(dy.z)>1)return result;
+    result.uv=float4(dx.xy,dy.xy);result.depth=float2(dx.z,dy.z);
+    result.validity=SP_GRADIENT_VALID;
+    return result;
+}
+#endif
+
 ProxyOutput PixelShader(ProxyVertex IN,uint sampleIndex:SV_SampleIndex)
 {
     ProxyOutput output;output.depth=o_silpomSampleFrequency?IN.rasterDepth:IN.position.z;
     float2 hitUv=IN.uv;
-#if SILPOM_PROXY_DEPTH
-    // Sample features and infer once. Coverage is the original triangle.
     MaterialParameters params=GetMaterialParameters();uint offset=(IN.face-params.m_silpomHitFaceBase)*144u;
     float3 origin=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset)).xyz;
     float3 du=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+16u)).xyz;
@@ -70,6 +160,16 @@ ProxyOutput PixelShader(ProxyVertex IN,uint sampleIndex:SV_SampleIndex)
     float3 N=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+48u)).xyz;
     float4 uv=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+64u));
     float2 uv2=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+80u)).xy;
+    VsSystemValues sv;sv.m_instanceId=IN.instance;
+    SilPomProxyGradientSurface surface=(SilPomProxyGradientSurface)0;
+    surface.origin=origin;surface.du=du;surface.dv=dv;surface.normal=N;surface.uv0=uv.xy;
+    surface.coarseSpan=max(max(uv.xy,max(uv.zw,uv2))-min(uv.xy,min(uv.zw,uv2)),
+        rcp(max(abs(float2(params.m_silpomTileU,params.m_silpomTileV)),1e-20f)));
+    surface.model=GetObjectToWorldMatrix(sv);
+    surface.localToClip=mul(GetViewProjectionMatrix(sv),surface.model);
+    SilPomGradientContext gradients=SilPomProxyAuthoredGradient(surface,IN.uv);
+#if SILPOM_PROXY_DEPTH
+    // Coverage, center UV and center depth preserve the established producer.
     float3 d0=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+96u)).xyz;
     float3 d1=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+112u)).xyz;
     float3 d2=asfloat(Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).Load4(offset+128u)).xyz;
@@ -77,22 +177,32 @@ ProxyOutput PixelShader(ProxyVertex IN,uint sampleIndex:SV_SampleIndex)
     float invArea=rcp(a.x*b.y-a.y*b.x);
     float2 bary=float2(q.x*b.y-q.y*b.x,a.x*q.y-a.y*q.x)*invArea;
     float3 D=d0+(d1-d0)*bary.x+(d2-d0)*bary.y;
-    VsSystemValues sv;sv.m_instanceId=IN.instance;
     float4x4 model=GetObjectToWorldMatrix(sv);
     float objectScale=length(mul((float3x3)model,float3(1,0,0)));
     float3x3 rotation=(float3x3)model/objectScale;
     float3 baseWS=mul(model,float4(origin+du*q.x+dv*q.y,1)).xyz;
     float3 V=mul(transpose(rotation),normalize(ViewSrg::m_worldPosition.xyz-baseWS));
-    float heightFraction=SilPomLearnedProxyHeight(IN.uv,float4(ddx(IN.uv),ddy(IN.uv)),du,dv,N,D,V,params);
+    // Compatibility exception: the learned depth model consumes this legacy
+    // authored-primitive footprint. Changing it would change winning centers.
+    // The sidecar below differentiates its explicit owner-local continuation.
+    const float4 legacyFootprint=float4(ddx(IN.uv),ddy(IN.uv));
+    float heightFraction=SilPomLearnedProxyHeight(IN.uv,legacyFootprint,du,dv,N,D,V,params);
     SilPomProxyPlaneHit resolved=SilPomResolveProxyPlane(IN.uv,origin,uv.xy,du,dv,N,D,V,heightFraction,
         params.m_silpomScale,params.m_silpomReference,objectScale);
     hitUv=resolved.uv;
     float4 clip=mul(GetViewProjectionMatrix(sv),mul(model,float4(resolved.position,1)));
     if(clip.w<=0.0f||clip.z<0.0f||clip.z>clip.w)discard;
     output.depth=clip.z/clip.w;
+    surface.objectScale=objectScale;surface.rotation=rotation;
+    const bool directionValid=SilPomGradientDirectionPartials(uv.xy,uv.zw,uv2,d0,d1,d2,
+        surface.directionDu,surface.directionDv);
+    if(directionValid)gradients=SilPomProxyResolvedGradient(surface,IN.uv,D,legacyFootprint,params);
+    else gradients=SilPomGradientCoarse(surface.coarseSpan,SP_GRADIENT_PROXY_DEPTH);
 #endif
     // Exclude raster proxies from the neural-wall hole-fill donors: authored
     // coverage must never be grown or reconstructed from neighboring hits.
     output.hit=uint4(asuint(hitUv),asuint(output.depth)|SP_HIT_RECORD_SHELL,(IN.face<<2)|1u);
+    output.uvGradients=gradients.uv;
+    output.depthGradients=SilPomGradientPackDepth(gradients);
     return output;
 }

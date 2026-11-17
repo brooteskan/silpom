@@ -2,6 +2,7 @@
 #include <SilPOM/Mesh.h>
 #include <SilPOM/DecalPaint.h>
 #include <AzCore/Serialization/Json/JsonUtils.h>
+#include <AzCore/Asset/AssetSerializer.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 #include <SilPOM/HeightPrecision.h>
@@ -9,6 +10,9 @@
 #include <SilPOM/AppearanceCodec.h>
 #include <SilPOM/ReliefLod.h>
 #include <SilPOM/DirectionalEstimatorContract.h>
+#include <SilPOM/StrictNeuralPolicy.h>
+#include <Atom/RPI.Reflect/Shader/ShaderOptionGroup.h>
+#include "ResolvePass.h"
 #include <Atom/Feature/PostProcessing/SMAAFeatureProcessorInterface.h>
 #include <Atom/RPI.Public/View.h>
 #include <Atom/RPI.Public/ViewportContext.h>
@@ -29,6 +33,8 @@
 #include <Atom/RPI.Public/Pass/Pass.h>
 #include <Atom/RPI.Public/Pass/PassSystemInterface.h>
 #include <Atom/RPI.Reflect/Pass/RasterPassData.h>
+#include <Atom/RPI.Reflect/Pass/ComputePassData.h>
+#include <Atom/RPI.Public/Buffer/BufferSystemInterface.h>
 #include <Atom/RPI.Reflect/Pass/PassTemplate.h>
 #include <Atom/RPI.Public/Material/Material.h>
 #include <Atom/RPI.Public/Image/ImageSystemInterface.h>
@@ -90,7 +96,7 @@ bool SupportsHitMsaa(unsigned samples)
     {
         auto* native=AZ::DX12::GetDeviceNativeHandle(*rhi->GetDevice(index));
         if(!native)return false;
-        const DXGI_FORMAT colors[]={DXGI_FORMAT_R32G32B32A32_UINT,DXGI_FORMAT_R16G16B16A16_FLOAT,
+        const DXGI_FORMAT colors[]={DXGI_FORMAT_R32G32B32A32_UINT,DXGI_FORMAT_R32G32B32A32_FLOAT,DXGI_FORMAT_R16G16B16A16_FLOAT,
             DXGI_FORMAT_R8G8B8A8_UNORM,DXGI_FORMAT_R10G10B10A2_UNORM};
         for(auto format:colors)
         {
@@ -379,9 +385,26 @@ AZ::RPI::Ptr<AZ::RPI::Pass> MakeHitPass(const AZ::Name& name, const AZ::Name& te
     return system->CreatePassFromRequest(&request);
 }
 
+AZ::RPI::Ptr<AZ::RPI::Pass> MakeFaceCachePass(const AZ::RPI::Pass& reference)
+{
+    auto* system=AZ::RPI::PassSystemInterface::Get();
+    const auto passTemplate=system->GetPassTemplate(AZ::Name("SilPOMFaceCacheTemplate"));
+    if(!passTemplate)return {};
+    const auto* source=azrtti_cast<const AZ::RPI::ComputePassData*>(passTemplate->m_passData.get());
+    if(!source)return {};
+    auto data=AZStd::make_shared<AZ::RPI::ComputePassData>(*source);
+    data->m_pipelineViewTag=reference.GetPipelineViewTag();
+    AZ::RPI::PassRequest request;
+    request.m_passName=AZ::Name("SilPOMFaceCache");
+    request.m_templateName=AZ::Name("SilPOMFaceCacheTemplate");
+    request.m_passData=AZStd::move(data);
+    return system->CreatePassFromRequest(&request);
+}
+
 bool InstallHitPasses(AZ::RPI::Scene& scene, bool required)
 {
     if ((!required && !r_silpomReuseDepthHits) || AZ::RHI::Factory::Get().GetName() != AZ::Name("dx12")) return false;
+    RegisterResolvePassCreator();
     auto* system = AZ::RPI::PassSystemInterface::Get();
     const AZ::Name hitDepthName("SilPOMHitDepth"), hitForwardName("SilPOMHitForward");
     const AZ::Name classifyName("SilPOMClassifyWallHoles"), fillName("SilPOMFillWallHoles");
@@ -432,6 +455,13 @@ bool InstallHitPasses(AZ::RPI::Scene& scene, bool required)
                 depth->QueueForRemoval();
                 return false;
             }
+        }
+        if(!pipeline->FindFirstPass(AZ::Name("SilPOMFaceCache")))
+        {
+            auto prepare=MakeFaceCachePass(*pipeline->FindFirstPass(depthName));
+            // Preparation is optional. Missing templates or unsupported pass
+            // creation retain the established depth/forward path.
+            if(prepare)pipeline->AddPassBefore(prepare,hitDepthName);
         }
         if (required && !pipeline->FindFirstPass(fillName))
         {
@@ -599,6 +629,23 @@ Image MakeDepthHeightBounds(const AZ::RHI::ImageDescriptor& desc, AZStd::span<co
 }
 using Handle = AZ::Render::MeshFeatureProcessorInterface::MeshHandle;
 struct Vertex { AZ::Vector3 position, normal; AZ::Vector2 uv; };
+
+AZ::Data::Instance<AZ::RPI::Buffer> FaceCoefficientBuffer(size_t faces)
+{
+    // Only availability/version metadata is initially meaningful. The exact
+    // FP32 coefficients are prepared from the final packed faces on the GPU.
+    AZStd::vector<AZ::u32> zero(faces*12,0u);
+    AZ::RPI::BufferAssetCreator creator;creator.Begin(AZ::Uuid::CreateRandom());
+    AZ::RHI::BufferDescriptor descriptor;
+    descriptor.m_bindFlags=AZ::RHI::BufferBindFlags::ShaderReadWrite|AZ::RHI::BufferBindFlags::CopyRead;
+    descriptor.m_byteCount=zero.size()*sizeof(AZ::u32);
+    creator.SetBuffer(zero.data(),descriptor.m_byteCount,descriptor);
+    creator.SetBufferViewDescriptor(AZ::RHI::BufferViewDescriptor::CreateRaw(0,aznumeric_cast<AZ::u32>(descriptor.m_byteCount)));
+    creator.SetUseCommonPool(AZ::RPI::CommonBufferPoolType::ReadWrite);
+    AZ::Data::Asset<AZ::RPI::BufferAsset> asset;
+    if(!creator.End(asset))return {};
+    return AZ::RPI::Buffer::FindOrCreate(asset);
+}
 AZ::Data::Asset<AZ::RPI::BufferAsset> Buffer(const void* data, size_t count, AZ::u32 stride, bool raw = false,bool dynamic=false)
 {
     AZ::RPI::BufferAssetCreator creator; creator.Begin(AZ::Uuid::CreateRandom());
@@ -713,6 +760,12 @@ Material Snapshot(const AZ::Data::Asset<AZ::RPI::MaterialAsset>& source,
 }
 struct MeshController::Generation
 {
+    struct BatchPolicy { bool displaced=false; AZ::u32 lightingEstimator=0; AZ::Name forwardTag; };
+    AZStd::vector<BatchPolicy> batchPolicies;
+    // Publication intent survives temporary shader-product unavailability.
+    // Certification is separate and gates every actual enabled draw.
+    AZStd::atomic_bool strictRequired{false}, strictCertified{false};
+    bool hiddenForInstancing=false;
     struct PaintFace {AZStd::string id;AZ::u32 source=0,batch=0,local=0,hit=0;};
     AZStd::vector<PaintFace> paintFaces;
     // Receiver-wide projection ownership survives canonical triangle edges.
@@ -725,6 +778,7 @@ struct MeshController::Generation
     struct ProxyPatch {AZStd::vector<AZ::u32> localFaces,sourceFaces;bool protectedBoundary=false,far=false;};
     struct ProxyBatch
     {
+        ResolveBatchPtr resolveBatch;
         AZ::Data::Instance<AZ::RPI::Buffer> buffer;
         Material material;
         AZ::u32 bufferIndex=0;
@@ -739,6 +793,9 @@ struct MeshController::Generation
     AZ::Vector3 proxyState=AZ::Vector3::CreateZero();
     using PacketHandler = AZ::Render::ModelDataInstanceInterface::MeshDrawPacketUpdatedEvent::Handler;
     AZStd::vector<Handle> handles;
+    // One registry entry per complete object/material/owner batch. The pass
+    // replaces its original resolve item independently for each render view.
+    AZStd::vector<ResolveBatchPtr> resolveBatches;
     AZStd::vector<AZStd::unique_ptr<PacketHandler>> packetHandlers;
     AZStd::vector<Material> materials;
     AZStd::vector<AZ::Data::Asset<AZ::RPI::ModelAsset>> models;
@@ -755,6 +812,76 @@ struct MeshController::Generation
     size_t spiralLightBatches = 0;
     AZStd::atomic_bool published{false};
 };
+namespace
+{
+AZ::Name StrictForwardTag(const Material& material)
+{
+    const auto flag=[&](const char* name)
+    {
+        const auto index=material->FindPropertyIndex(AZ::Name(name));
+        return index.IsValid()&&material->GetPropertyValue(index).Is<bool>()&&material->GetPropertyValue(index).GetValue<bool>();
+    };
+    const auto estimator=material->FindPropertyIndex(AZ::Name("surface.lightingEstimator"));
+    const auto light=estimator.IsValid()?material->GetPropertyValue(estimator).GetValue<AZ::u32>():0u;
+    const bool proxy=flag("surface.proxyLodEnabled"),shared=flag("surface.sharedVisibility"),ambient=flag("surface.diffuseAccessibility");
+    if(light==5)return AZ::Name(proxy?(ambient?"silpom_hit_forward_angular_proxy_ambient":"silpom_hit_forward_angular_proxy"):
+        (ambient?"silpom_hit_forward_angular_ambient":"silpom_hit_forward_angular"));
+    if(proxy&&!shared)return AZ::Name("silpom_hit_forward_level_five");
+    if(shared)
+        return AZ::Name(proxy?(light?(ambient?"silpom_hit_forward_shared_proxy_ambient":"silpom_hit_forward_shared_proxy_compare"):"silpom_hit_forward_shared_proxy"):
+            (light?(ambient?"silpom_hit_forward_shared_ambient":"silpom_hit_forward_shared_compare"):"silpom_hit_forward_shared"));
+    return AZ::Name(flag("surface.learnedMaterial")?"silpom_hit_forward_learned_material":"silpom_hit_forward_neural_only");
+}
+bool CertifyStrictPacket(const AZ::RPI::MeshDrawPacket& packet,bool displaced,AZ::u32 lightingEstimator,
+    const AZ::Name& forwardTag,AZ::RHI::DrawListTag motionTag)
+{
+    if(!displaced)return true; // Ordinary authored batches perform no SILPOM query.
+    const auto* draw=packet.GetRHIDrawPacket();
+    const auto& shaders=packet.GetActiveShaderList();
+    if(!draw||draw->GetDrawItemCount()!=shaders.size())return false;
+    StrictNeuralPolicy::PacketProof proof;
+    for(size_t i=0;i<shaders.size();++i)
+    {
+        if(draw->GetDrawListTag(i)==motionTag)continue; // Always disabled below.
+        const auto& active=shaders[i];
+        if(!active.m_shader||active.m_materialPipelineName!=AZ::Name("MainPipeline")
+            ||active.m_shader->GetDrawListTag()!=draw->GetDrawListTag(i))return false;
+        const auto& asset=active.m_shader->GetAsset();
+        if(!asset||!asset.IsReady())return false;
+        AZStd::string path;
+        AZ::Data::AssetCatalogRequestBus::BroadcastResult(path,&AZ::Data::AssetCatalogRequests::GetAssetPathById,asset.GetId());
+        for(auto& character:path)
+        {
+            if(character=='\\')character='/';
+            if(character>='A'&&character<='Z')character=char(character-'A'+'a');
+        }
+        const auto& supervariant=asset->GetSupervariantName(active.m_shader->GetSupervariantIndex());
+        if(asset->GetSupervariantIndex(supervariant)!=active.m_shader->GetSupervariantIndex())return false;
+        const auto capability=StrictNeuralPolicy::Classify(active.m_shaderTag.GetCStr(),path.c_str(),supervariant.GetCStr());
+        proof.Add(capability);
+        if(capability!=StrictNeuralPolicy::Capability::Visibility)continue;
+        if(active.m_shaderTag!=forwardTag)return false;
+        AZ::RPI::ShaderOptionGroup requested(asset->GetShaderOptionGroupLayout(),active.m_requestedShaderVariantId);
+        AZ::RPI::ShaderOptionGroup enabled(asset->GetShaderOptionGroupLayout(),active.m_activeShaderVariantId);
+        requested.SetUnspecifiedToDefaultValues();
+        const auto matches=[&](const char* name,AZ::u32 expected,bool required)
+        {
+            const auto index=requested.FindShaderOptionIndex(AZ::Name(name));
+            if(!index.IsValid())return !required;
+            const auto desired=requested.GetValue(index),baked=enabled.GetValue(index);
+            return desired.IsValid()&&desired.GetIndex()==expected&&(!baked.IsValid()||baked.GetIndex()==expected);
+        };
+        // Root variants legitimately use the draw-SRG fallback key. A baked
+        // option must agree too; product certification establishes the strict
+        // compile boundary independently of optional runtime options.
+        if(!matches("o_silpomLocalShadowMethod",3,false))return false;
+        const bool angular=lightingEstimator==5;
+        const bool fixedPhysical=active.m_shaderTag==AZ::Name("silpom_hit_forward_neural_only");
+        if(!angular&&!matches("o_silpomLightingEstimator",lightingEstimator,lightingEstimator!=0&&!fixedPhysical))return false;
+    }
+    return proof.Complete();
+}
+}
 #include "ReceiverUvPaint.inl"
 MeshController::MeshController() = default;
 MeshController::MeshController(const MeshConfig& config) : m_configuration(config) {}
@@ -867,7 +994,133 @@ bool MeshController::IsReady() const
 {
     // A retained last-known-good generation is visible, but is not readiness
     // for a newly requested configuration which failed validation.
-    return m_active && !m_dirty && !m_pending && m_status.starts_with("Ready:");
+    return m_active && !m_dirty && !m_pending && m_status.starts_with("Ready:")
+        &&StrictNeuralPolicy::CanEnable(m_active->published.load(),m_active->strictRequired.load(),m_active->strictCertified.load());
+}
+AZStd::string MeshController::GetStatus() const
+{
+    if(m_active&&m_active->strictRequired.load()&&!m_active->strictCertified.load())
+        return m_status+"; strict neural policy suppressed uncertified previous draw shaders";
+    return m_status;
+}
+bool MeshController::HasTrainedRenderingDuty() const
+{
+    return m_configuration.UsesTrainedProfiles()||(m_active&&m_active->trainedModelBatches)
+        ||(m_pending&&m_pending->trainedModelBatches);
+}
+void MeshController::UpdateSceneSubscription()
+{
+    StrictNeuralPolicy::SceneDuties duties;
+    duties.requestedStrict=m_configuration.m_localShadowMethod==LocalShadowMethod::NeuralOnly;
+    duties.requestedTrained=m_configuration.UsesTrainedProfiles();
+    if(m_active)
+    {
+        duties.activeStrict=m_active->strictRequired.load();
+        duties.activeRestoration=m_active->hiddenForInstancing;
+        duties.activeTrained=m_active->trainedModelBatches!=0;
+    }
+    if(m_pending)
+    {
+        duties.pendingStrict=m_pending->strictRequired.load();
+        duties.pendingRestoration=m_pending->hiddenForInstancing;
+        duties.pendingTrained=m_pending->trainedModelBatches!=0;
+    }
+    auto* scene=m_entity.IsValid()?AZ::RPI::Scene::GetSceneForEntityId(m_entity):nullptr;
+    if(!duties.NeedsNotifications()||!scene)
+    {
+        AZ::RPI::SceneNotificationBus::Handler::BusDisconnect();
+        if(!duties.TrainedRendering())m_checkHitPasses=false;
+        return;
+    }
+    if(!AZ::RPI::SceneNotificationBus::Handler::BusIsConnectedId(scene->GetId()))
+    {
+        AZ::RPI::SceneNotificationBus::Handler::BusDisconnect();
+        AZ::RPI::SceneNotificationBus::Handler::BusConnect(scene->GetId());
+    }
+}
+void MeshController::EnforceStrictGenerationPolicy(bool finalBarrier)
+{
+    UpdateSceneSubscription();
+    if(!m_processor)return;
+    const bool strict=m_configuration.m_localShadowMethod==LocalShadowMethod::NeuralOnly;
+    const auto motionTag=AZ::RHI::RHISystemInterface::Get()->GetDrawListTagRegistry()->FindTag(AZ::Name("motion"));
+    for(auto* generation:{m_active.get(),m_pending.get()})
+    {
+        if(!generation)continue;
+        const bool wasStrict=generation->strictRequired.exchange(strict);
+        if(strict&&AZ::Render::r_meshInstancingEnabled)
+        {
+            // Atom hides its per-mesh packet inventory while instancing is
+            // enabled. Reject that unsupported policy before culling rather
+            // than treating an inaccessible inventory as certified.
+            generation->strictCertified.store(false);
+            generation->hiddenForInstancing=true;
+            for(size_t batch=0;batch<generation->handles.size();++batch)
+            {
+                m_processor->SetVisible(generation->handles[batch],false);
+                SetResolveBatchPublished(generation->resolveBatches[batch],false);
+            }
+            continue;
+        }
+        if(generation->hiddenForInstancing)
+        {
+            generation->hiddenForInstancing=false;
+            for(const auto& handle:generation->handles)m_processor->SetVisible(handle,true);
+        }
+        // Leave baseline/hybrid draw controls untouched. Only leaving a
+        // previously applied strict policy needs restoration here.
+        if(!strict&&!wasStrict)continue;
+        bool certified=!generation->handles.empty()&&generation->batchPolicies.size()==generation->handles.size();
+        if(strict&&certified)
+            for(size_t batch=0;batch<generation->handles.size();++batch)
+            {
+                const auto& lods=m_processor->GetDrawPackets(generation->handles[batch]);
+                if(lods.empty()){certified=false;break;}
+                const auto& policy=generation->batchPolicies[batch];
+                for(const auto& lod:lods)
+                {
+                    if(lod.empty())certified=false;
+                    for(const auto& packet:lod)
+                        certified&=CertifyStrictPacket(packet,policy.displaced,policy.lightingEstimator,policy.forwardTag,motionTag);
+                }
+            }
+        generation->strictCertified.store(strict&&certified);
+        const bool enable=StrictNeuralPolicy::CanEnable(generation->published.load(),strict,certified);
+        for(size_t batch=0;batch<generation->handles.size();++batch)
+        {
+            // Keep initialization/packet updates running while suppressed.
+            // SetVisible(false) would prevent Atom from preparing recovery.
+            const auto& handle=generation->handles[batch];
+            for(const auto& lod:m_processor->GetDrawPackets(handle))for(const auto& packet:lod)
+                if(const auto* draw=packet.GetRHIDrawPacket())
+                {
+                    for(size_t i=0;i<draw->GetDrawItemCount();++i)
+                        m_processor->SetDrawItemEnabled(handle,draw->GetDrawListTag(i),enable&&draw->GetDrawListTag(i)!=motionTag);
+                    if(finalBarrier||!strict)
+                    {
+                        // Per-mesh shader flags can rebuild packets without
+                        // sending the update event, after our Begin handler.
+                        // End runs after collection, whose lists retain these
+                        // DrawItems. Native submission ignores m_enabled, so
+                        // also suppress already-collected draws at execution.
+                        // These private generated models require instancing
+                        // disabled and each original draw has one instance.
+                        const_cast<AZ::RHI::DrawPacket*>(draw)->SetInstanceCount(enable?1u:0u);
+                        for(size_t i=0;i<draw->GetDrawItemCount();++i)
+                            if(draw->GetDrawListTag(i)==motionTag)
+                            {
+                                AZ::RHI::DrawInstanceArguments disabled;
+                                disabled.m_instanceCount=0;
+                                const_cast<AZ::RHI::DrawItem*>(draw->GetDrawItem(i))->SetDrawInstanceArgs(disabled);
+                            }
+                    }
+                }
+            SetResolveBatchPublished(generation->resolveBatches[batch],enable);
+        }
+    }
+    // Leaving strict mode can finish the last restoration duty above. Keep
+    // the subscription until that work completes, then release it centrally.
+    UpdateSceneSubscription();
 }
 AZ::Vector3 MeshController::GetAntiAliasingState() const
 {
@@ -951,6 +1204,7 @@ void StopRenderingSettings() { RenderingTicker().BusDisconnect(); }
 void MeshController::Activate(AZ::EntityId entity)
 {
     m_entity = entity; m_dirty = true;
+    UpdateSceneSubscription();
     m_paintSurfaceRevision=++ReceiverSurfaceRevision;
     // Migrate an old component selection once; renderer controls own all later
     // changes. The serialized field remains readable but is no longer editable.
@@ -970,6 +1224,7 @@ void MeshController::Activate(AZ::EntityId entity)
 }
 void MeshController::Release(AZStd::unique_ptr<Generation>& generation)
 {
+    if (generation) for (const auto& batch : generation->resolveBatches) SetResolveBatchPublished(batch, false);
     if (generation && m_processor) for (auto& handle : generation->handles) if (handle.IsValid()) m_processor->ReleaseMesh(handle);
     generation.reset();
 }
@@ -985,10 +1240,14 @@ void MeshController::Deactivate()
 void MeshController::SetConfiguration(const MeshConfig& config)
 {
     m_configuration = config; m_dirty = true;
+    // Strictness takes effect before loading or validation can fail. Retention
+    // of an old generation is conditional on its actual shader capabilities.
+    EnforceStrictGenerationPolicy();
     m_paintSurfaceRevision=++ReceiverSurfaceRevision;
     if (m_entity.IsValid())
     {
         Release(m_pending);
+        UpdateSceneSubscription();
         ConnectAssets();
     }
 }
@@ -1006,6 +1265,7 @@ void MeshController::OnTransformChanged(const AZ::Transform&, const AZ::Transfor
             if (generation)
             {
                 generation->paintWorld=rigid;
+                for (const auto& batch : generation->resolveBatches) SetResolveBatchWorld(batch, rigid);
                 for (const auto& handle : generation->handles) m_processor->SetTransform(handle, rigid);
             }
 }
@@ -1026,11 +1286,15 @@ void MeshController::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
     m_dirty = true;
 }
 void MeshController::OnAssetError(AZ::Data::Asset<AZ::Data::AssetData>)
-{ Release(m_pending); m_dirty = false; m_status = "Asset load failed; previous complete generation retained. Check Asset Processor."; }
+{
+    EnforceStrictGenerationPolicy();
+    Release(m_pending); m_dirty = false;
+    m_status = "Asset load failed; only a policy-compatible previous generation may remain visible. Check Asset Processor.";
+}
 
 void MeshController::OnRenderPipelineChanged(AZ::RPI::RenderPipeline* pipeline, AZ::RPI::SceneNotification::RenderPipelineChangeType)
 {
-    if (pipeline && pipeline->GetDescriptor().m_materialPipelineTag == "MainPipeline")
+    if (HasTrainedRenderingDuty() && pipeline && pipeline->GetDescriptor().m_materialPipelineTag == "MainPipeline")
     {
         m_checkHitPasses = true;
     }
@@ -1038,6 +1302,9 @@ void MeshController::OnRenderPipelineChanged(AZ::RPI::RenderPipeline* pipeline, 
 
 bool MeshController::Prepare()
 {
+    // Strict requests need the final render barrier even if any validation or
+    // asset-loading branch below returns before constructing a replacement.
+    UpdateSceneSubscription();
     auto& c = m_configuration;
     if(static_cast<AZ::u32>(c.m_lightingEstimator)>5u)
     {m_status="Unknown lighting estimator; previous complete generation retained";return false;}
@@ -1155,6 +1422,7 @@ bool MeshController::Prepare()
     if (AZ::Render::r_meshInstancingEnabled)
     { m_status = "Planar face renderer currently requires r_meshInstancingEnabled=false"; return false; }
     auto candidate = AZStd::make_unique<Generation>(); candidate->id = asset.m_generation;
+    candidate->strictRequired.store(neuralVisibilityOnly);
     candidate->paintReceiver=AllocateHitFaceBase(1);
     candidate->paintConfig=c;candidate->paintScale=scale;
     candidate->paintWorld=m_world;candidate->paintWorld.SetUniformScale(1);
@@ -1223,8 +1491,13 @@ bool MeshController::Prepare()
             auto source = Snapshot(binding.m_material);
             if (!source) return fail("Cannot create authored material");
             Material material = source;
+            AZ::u32 resolveOwnerBase = 0;
+            FaceCacheBatchInputs faceCacheInputs;
             AZStd::vector<Vertex> vertices; AZStd::vector<AZ::u32> indices;
             AZ::Aabb bounds = AZ::Aabb::CreateNull();
+            AZ::Aabb resolveBounds = AZ::Aabb::CreateNull();
+            AZStd::vector<AZ::Aabb> resolveClusters;
+            if (key.second != 0) resolveClusters.reserve(faces.size());
             if (key.second == 0)
             {
                 for (auto index : faces) for (const auto& corner : asset.m_faces[index].m_corners)
@@ -1291,6 +1564,10 @@ bool MeshController::Prepare()
                 {
                     if (p.m_neuralModel<4 || p.m_neuralModel>7 || reliefScale<0)
                         return fail("Neural-only visibility has no model for this profile; assign an open-shaft model 4-7 with nonnegative relief");
+                    if(p.m_neuralModel!=4&&static_cast<AZ::u32>(c.m_lightingEstimator)>=2u)
+                        return fail("Selected directional/angular estimator is trained only for wall model 4; unsupported profiles cannot use a different estimator");
+                    if(static_cast<AZ::u32>(c.m_lightingEstimator)>=2u&&(!decoded||!c.m_useLevelFourShared))
+                        return fail("Selected directional/angular estimator requires its canonical wall material and shared features; unsupported materials cannot use a different estimator");
                     constexpr const char* images[] = {
                         "assets/silpomplanarab/irishfieldstonetowerwelded/wall/height.png.streamingimage",
                         "assets/silpomplanarab/irishfieldstonetoweropenshaft/sculpted-stair-silpom/height.png.streamingimage",
@@ -1363,12 +1640,37 @@ bool MeshController::Prepare()
                     for (const auto& xy : {AZ::Vector2(-1,-1),AZ::Vector2(1,-1),AZ::Vector2(-1,1),AZ::Vector2(1,1)})
                         vertices.push_back({AZ::Vector3(xy.GetX(),xy.GetY(),localFace),AZ::Vector3::CreateAxisZ(),(xy+AZ::Vector2(1))*.5f});
                     indices.insert(indices.end(),{base,base+1,base+2,base+2,base+1,base+3});
+                    AZ::Aabb resolveFaceBounds = AZ::Aabb::CreateNull();
                     for (const auto& corner : corners)
                     {
                         const auto point=corner.m_position*scale;
                         bounds.AddPoint(point+corner.m_direction*(-reliefScale*p.m_reference));
                         bounds.AddPoint(point+corner.m_direction*(reliefScale*(1-p.m_reference)));
+                        // Match the packed face reconstruction used by every
+                        // hit writer, including shell/proxy vertices. Include
+                        // multiply-add order differences and the ray slab's
+                        // 1e-5 local expansion before projecting on the CPU.
+                        const auto delta = corner.m_uv - uv0;
+                        const auto reconstructed = a + du * delta.GetX() + dv * delta.GetY();
+                        const float lowHeight = -reliefScale * p.m_reference;
+                        const float highHeight = reliefScale * (1 - p.m_reference);
+                        const auto magnitude = a.GetAbs() + du.GetAbs() * std::abs(delta.GetX())
+                            + dv.GetAbs() * std::abs(delta.GetY())
+                            + corner.m_direction.GetAbs() * AZStd::max(std::abs(lowHeight), std::abs(highHeight));
+                        const auto padding = magnitude * (1.0f / 262144.0f) + AZ::Vector3(2e-5f);
+                        for (const float height : {lowHeight, highHeight})
+                        {
+                            const auto displaced = reconstructed + corner.m_direction * height;
+                            resolveFaceBounds.AddPoint(displaced - padding);
+                            resolveFaceBounds.AddPoint(displaced + padding);
+                        }
                     }
+                    // Each face is a spatial cluster of the same published
+                    // batch, not another material/object identity. Keeping its
+                    // complete producer bound avoids a batch-wide box spanning
+                    // the camera when walls surround an interior viewpoint.
+                    resolveBounds.AddAabb(resolveFaceBounds);
+                    resolveClusters.push_back(resolveFaceBounds);
                 }
                 candidate->bytes+=packed.size()*sizeof(float);
                 auto data=Buffer(packed.data(),packed.size()/4,16,true);
@@ -1377,6 +1679,33 @@ bool MeshController::Prepare()
                 buffer->WaitForUpload();
                 const auto bindless=buffer->GetBufferView()->GetBindlessReadIndex();
                 if(bindless.size()!=1 || bindless.begin()->second==AZ::u32(-1)) return fail("One bindless-capable GPU is required");
+                // Producer accounting covers every hit-reuse mode, including
+                // those without the optional coefficient/view caches.
+                if(reuseDepthHits)
+                {
+                    faceCacheInputs.faces=buffer;
+                    faceCacheInputs.meshBufferIndex=bindless.begin()->second;
+                    faceCacheInputs.faceCount=aznumeric_cast<AZ::u32>(faces.size());
+                    faceCacheInputs.scale=reliefScale;faceCacheInputs.reference=p.m_reference;
+                    faceCacheInputs.maxCells=c.m_maxCells;faceCacheInputs.neuralModel=p.m_neuralModel;
+                    faceCacheInputs.reliefLodPixelBudget=c.m_reliefLodPixelBudget;
+                    faceCacheInputs.maxReliefDistance=c.m_maxReliefDistance;
+                }
+                if(reuseDepthHits && c.m_maxCells==65525u)
+                {
+                    auto coefficients=FaceCoefficientBuffer(faces.size());
+                    if(coefficients)
+                    {
+                        coefficients->WaitForUpload();
+                        const auto coefficientIndices=coefficients->GetBufferView()->GetBindlessReadIndex();
+                        if(coefficientIndices.size()==1&&coefficientIndices.begin()->second!=AZ::u32(-1))
+                        {
+                            faceCacheInputs.coefficients=coefficients;
+                            candidate->bytes+=faces.size()*48u;
+                            candidate->buffers.push_back(coefficients);
+                        }
+                    }
+                }
                 auto [heightEntry, newHeight] = heightImages.try_emplace(p.m_height.GetId());
                 const bool convertHeight = c.m_useR16HeightTextures && desc.m_format == AZ::RHI::Format::R32_FLOAT;
                 if (newHeight)
@@ -1390,6 +1719,12 @@ bool MeshController::Prepare()
                 if (!height) return fail("Cannot create height texture");
                 material=Snapshot(m_template,binding.m_material.Get(), p.m_height.GetId(), convertHeight ? height : Image{},decoded,proxy);
                 if(!material) return fail("Cannot create planar face material");
+                if(faceCacheInputs.coefficients)
+                {
+                    const auto coefficientIndices=faceCacheInputs.coefficients->GetBufferView()->GetBindlessReadIndex();
+                    if(!Set(material,"mesh.faceCoefficientBuffer",coefficientIndices.begin()->second))
+                        return fail("Face coefficient material contract mismatch");
+                }
                 if(proxy)
                 {
                     Generation::ProxyBatch batch;batch.flags.resize(faces.size(),0u);
@@ -1434,6 +1769,9 @@ bool MeshController::Prepare()
                         ||!Set(material,"surface.appearanceDecoderBuffer",wi.begin()->second)||!Set(material,"surface.appearanceFeatureMipCount",m_appearance->Header().mips))
                         return fail("Level 5 appearance material contract mismatch");
                     batch.material=material;batch.bufferIndex=bi.begin()->second;
+                    faceCacheInputs.proxyLodEnabled=true;
+                    faceCacheInputs.proxySelection=batch.buffer;
+                    faceCacheInputs.proxyBufferIndex=batch.bufferIndex;
                     candidate->buffers.push_back(batch.buffer);candidate->buffers.push_back(weights);
                     candidate->heights.push_back(first);candidate->heights.push_back(second);
                     candidate->proxyBatches.push_back(AZStd::move(batch));
@@ -1512,8 +1850,9 @@ bool MeshController::Prepare()
                     && Set(material,"surface.distantValidationToleranceMultiplier",c.m_distantValidationToleranceMultiplier)
                     && Set(material,"surface.spiralLightShadowSteps",c.m_spiralLightShadowSteps)
                     && Set(material,"surface.localShadowMethod",static_cast<AZ::u32>(c.m_localShadowMethod))
-                    // New full-surface heads are trained only for the canonical
-                    // wall. Other material profiles retain their current route.
+                    // PhysicalRayNeural is also the non-wall CurrentRouting
+                    // path. Unsupported directional/angular profiles were
+                    // rejected above rather than silently rerouted.
                     && Set(material,"surface.lightingEstimator",p.m_neuralModel==4u
                         ?static_cast<AZ::u32>(c.m_lightingEstimator):0u)
                     && Set(material,"surface.diffuseAccessibility",p.m_neuralModel==4u && c.m_diffuseAccessibility)
@@ -1542,6 +1881,7 @@ bool MeshController::Prepare()
                 {
                     const auto base=AllocateHitFaceBase(packed.size()/36);
                     if(!Set(material,"mesh.hitFaceBase",base))return fail("SilPOM hit material contract mismatch");
+                    resolveOwnerBase = base;
                     if(proxy)candidate->proxyBatches.back().hitFaceBase=base;
                     for(AZ::u32 i=0;i<faces.size();++i)candidate->paintFaces.push_back({asset.m_faces[faces[i]].m_id,
                         faces[i],aznumeric_cast<AZ::u32>(candidate->handles.size()),i,base+i});
@@ -1576,26 +1916,44 @@ bool MeshController::Prepare()
             m_processor->SetTransform(handle, rigid); m_processor->SetLocalAabb(handle, bounds);
             const size_t batchIndex = candidate->handles.size();
             candidate->models.push_back(model); candidate->materials.push_back(material); candidate->handles.push_back(AZStd::move(handle));
+            const auto estimatorIndex=material->FindPropertyIndex(AZ::Name("surface.lightingEstimator"));
+            candidate->batchPolicies.push_back({key.second!=0,estimatorIndex.IsValid()?material->GetPropertyValue(estimatorIndex).GetValue<AZ::u32>():0u,
+                key.second!=0?StrictForwardTag(material):AZ::Name{}});
+            candidate->resolveBatches.push_back(resolveOwnerBase
+                ? CreateResolveBatch(scene, candidate->paintReceiver, resolveOwnerBase,
+                    aznumeric_cast<AZ::u32>(faces.size()), resolveBounds, rigid, AZStd::move(resolveClusters),
+                    faceCacheInputs.neuralModel, c.m_maxCells == 65525u)
+                : ResolveBatchPtr{});
+            if(faceCacheInputs.faces)
+            {
+                SetResolveBatchFaceCacheInputs(candidate->resolveBatches.back(),faceCacheInputs);
+                if(faceCacheInputs.proxyLodEnabled)
+                    candidate->proxyBatches.back().resolveBatch=candidate->resolveBatches.back();
+            }
             const auto motionTag = AZ::RHI::RHISystemInterface::Get()->GetDrawListTagRegistry()->FindTag(AZ::Name("motion"));
             auto handler = AZStd::make_unique<Generation::PacketHandler>(
                 [generation = candidate.get(), batchIndex, processor = m_processor, motionTag](
                     const AZ::Render::ModelDataInstanceInterface&, AZ::u32, AZ::u32, const AZ::RPI::MeshDrawPacket& packet)
                 {
+                    UpdateResolveBatchPacket(generation->resolveBatches[batchIndex], packet);
+                    const auto& policy=generation->batchPolicies[batchIndex];
+                    const bool strict=generation->strictRequired.load();
+                    const bool certified=!strict||CertifyStrictPacket(packet,policy.displaced,policy.lightingEstimator,policy.forwardTag,motionTag);
+                    if(!certified)generation->strictCertified.store(false);
+                    const bool enable=StrictNeuralPolicy::CanEnable(generation->published.load(),strict,
+                        certified&&generation->strictCertified.load());
                     if (const auto* draw = packet.GetRHIDrawPacket())
                         for (size_t i = 0; i < draw->GetDrawItemCount(); ++i)
                         {
                             const auto tag = draw->GetDrawListTag(i);
                             processor->SetDrawItemEnabled(generation->handles[batchIndex], tag,
-                                generation->published.load() && tag != motionTag);
+                                enable && tag != motionTag);
                         }
+                    SetResolveBatchPublished(generation->resolveBatches[batchIndex],enable);
                 });
             candidate->handles.back()->ConnectMeshDrawPacketUpdatedHandler(*handler);
             candidate->packetHandlers.push_back(AZStd::move(handler));
         }
-    }
-    if (requiresTrainedHits && !AZ::RPI::SceneNotificationBus::Handler::BusIsConnected())
-    {
-        AZ::RPI::SceneNotificationBus::Handler::BusConnect(scene->GetId());
     }
     if((c.m_useLevelFourWallMaterial||c.m_useLevelFourShared) && !decodedBatches)return fail("Level 4 has no matching fieldstone-wall material; no representation was changed");
     if(c.m_useLevelFiveProxy&&candidate->proxyBatches.empty())return fail("Level 5A has no matching canonical wall batches");
@@ -1611,7 +1969,8 @@ AZStd::vector<AZ::u32> MeshController::GetProxyFaceOwners() const
         for(size_t i=0;i<batch.flags.size();++i)if(batch.flags[i])owners.push_back(batch.hitFaceBase+aznumeric_cast<AZ::u32>(i));
     return owners;
 }
-void MeshController::OnBeginPrepareRender(){UpdateProxyLod();}
+void MeshController::OnBeginPrepareRender(){EnforceStrictGenerationPolicy();UpdateProxyLod();}
+void MeshController::OnEndPrepareRender(){EnforceStrictGenerationPolicy(true);}
 void MeshController::UpdateProxyLod()
 {
     if(!m_active||m_active->proxyBatches.empty()||!m_configuration.m_surface.IsReady())return;
@@ -1697,17 +2056,21 @@ void MeshController::UpdateProxyLod()
             // render preparations, in addition to RHI's deferred destruction.
             batch.retired.push_back({m_active->proxyFrame+8,batch.buffer});
             batch.buffer=next;batch.bufferIndex=indices.begin()->second;
+            SetResolveBatchProxySelection(batch.resolveBatch,batch.buffer,batch.bufferIndex);
         }
     }
     m_active->proxyState=AZ::Vector3(float(selected),float(eligible),float(maxSelected));
 }
 void MeshController::OnTick(float, AZ::ScriptTimePoint)
 {
+    // Also covers changes to the public configuration and shader products
+    // which do not rebuild a packet until the next render preparation.
+    EnforceStrictGenerationPolicy();
     TickReceiverUvPaint();
     const unsigned policy=UpdateHitSamplePolicy(AZ::RPI::Scene::GetSceneForEntityId(m_entity));
-    if(m_hitSamplePolicy!=policy){m_hitSamplePolicy=policy;m_checkHitPasses=true;}
+    if(m_hitSamplePolicy!=policy){m_hitSamplePolicy=policy;m_checkHitPasses=HasTrainedRenderingDuty();}
     if (m_dirty) { Release(m_pending); m_dirty = Prepare(); }
-    if (m_checkHitPasses)
+    if (m_checkHitPasses && HasTrainedRenderingDuty())
     {
         // Play can rebuild the pass tree after the mesh generation is ready.
         // Restore its passes on the tick, outside the pipeline notification.
@@ -1734,27 +2097,41 @@ void MeshController::OnTick(float, AZ::ScriptTimePoint)
             for (const auto& lod : lods) for (const auto& packet : lod)
                 ready = ready && packet.GetRHIDrawPacket() && packet.GetRHIDrawPacket()->GetDrawItemCount() != 0;
         }
+        EnforceStrictGenerationPolicy();
+        if(m_pending->strictRequired.load()&&!m_pending->strictCertified.load())
+        {
+            ready=false;
+            m_status="Waiting for certified neural-only lighting and trained no-march depth shaders; previous incompatible generation suppressed";
+        }
         if (ready)
         {
             // All handles reference private immutable model/buffer assets. Stock
             // source-model reloads cannot replace just the ordinary half.
-            if (m_active) for (const auto& handle : m_active->handles) m_processor->SetVisible(handle, false);
+            if (m_active)
+            {
+                for (const auto& batch : m_active->resolveBatches) SetResolveBatchPublished(batch, false);
+                for (const auto& handle : m_active->handles) m_processor->SetVisible(handle, false);
+            }
             m_pending->published.store(true);
+            const bool enable=StrictNeuralPolicy::CanEnable(true,m_pending->strictRequired.load(),m_pending->strictCertified.load());
             const auto motionTag = AZ::RHI::RHISystemInterface::Get()->GetDrawListTagRegistry()->FindTag(AZ::Name("motion"));
-            for (const auto& handle : m_pending->handles)
+            for (size_t batchIndex = 0; batchIndex < m_pending->handles.size(); ++batchIndex)
+            {
+                const auto& handle = m_pending->handles[batchIndex];
                 for (const auto& lod : m_processor->GetDrawPackets(handle)) for (const auto& packet : lod)
+                {
+                    UpdateResolveBatchPacket(m_pending->resolveBatches[batchIndex], packet);
                     for (size_t i = 0; i < packet.GetRHIDrawPacket()->GetDrawItemCount(); ++i)
                     {
                         const auto tag = packet.GetRHIDrawPacket()->GetDrawListTag(i);
-                        m_processor->SetDrawItemEnabled(handle, tag, tag != motionTag);
+                        m_processor->SetDrawItemEnabled(handle, tag, enable && tag != motionTag);
                     }
+                }
+                SetResolveBatchPublished(m_pending->resolveBatches[batchIndex], enable);
+            }
             Release(m_active); m_active = AZStd::move(m_pending);
             m_paintSurfaceRevision=++ReceiverSurfaceRevision;
-            if (!m_active->trainedModelBatches)
-            {
-                AZ::RPI::SceneNotificationBus::Handler::BusDisconnect();
-                m_checkHitPasses = false;
-            }
+            UpdateSceneSubscription();
             m_status = AZStd::string::format("Ready: %zu batches, %zu planar tagged triangles, %zu descriptor bytes", m_active->handles.size(), m_active->faces, m_active->bytes);
             m_status += "; active generation " + m_active->id;
             m_status += AZStd::string::format("; %s, height payload %.2f MiB (source %.2f MiB); validation %s",

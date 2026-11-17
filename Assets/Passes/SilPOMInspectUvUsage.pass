@@ -104,7 +104,7 @@
       "PassData": {
         "$type": "FullscreenTrianglePassData",
         "ShaderAsset": {
-          "FilePath": "Shaders/SilPOM/HitReuse/SilPOMInspectSamples.shader"
+          "FilePath": "Shaders/SilPOM/HitReuse/SilPOMInspectUvUsage.shader"
         }
       }
     }
