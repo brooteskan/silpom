@@ -1,0 +1,12 @@
+{
+  "parentMaterial": "shaft-trim.material",
+  "materialType": "Materials/Types/StandardPBR.materialtype",
+  "materialTypeVersion": 5,
+  "propertyValues": {
+    "general.enableIBL": false,
+    "emissive.enable": false,
+    "emissive.intensity": 1.0,
+    "emissive.textureMap": "window-inner-trim-daylight.png",
+    "emissive.useTexture": true
+  }
+}

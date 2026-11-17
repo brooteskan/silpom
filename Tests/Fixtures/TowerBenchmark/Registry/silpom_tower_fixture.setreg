@@ -1,0 +1,28 @@
+{
+    "SilPOM": {
+        "LearnedBundles": {
+            "LevelFourMaterial": "assets/silpomlearned/wall.silpommaterial",
+            "LevelFourShared": "assets/silpomlearned/wall-shared.silpommaterial",
+            "LevelFiveAppearance": "assets/silpomlearned/wall-appearance.silpommaterial",
+            "LevelFiveDepth": "assets/silpomlearned/wall-depth.silpommaterial"
+        },
+        "LearnedWallMaterial": {
+            "BaseColor": "assets/silpomplanarab/irishfieldstonetowerwelded/wall/basecolor.png.streamingimage",
+            "Normal": "assets/silpomplanarab/irishfieldstonetowerwelded/wall/normal.png.streamingimage",
+            "Roughness": "assets/silpomplanarab/irishfieldstonetowerwelded/wall/roughness.png.streamingimage"
+        },
+        "TrainedModels": {
+            "1": { "ProfileId": 1, "Scale": 0.10,  "Reference": 0.05,               "AddressMode": 0, "Width": 6656, "Height": 6144 },
+            "2": { "ProfileId": 2, "Scale": 0.12,  "Reference": 0.5000076295109483, "AddressMode": 1, "Width": 2176, "Height": 1440 },
+            "3": { "ProfileId": 3, "Scale": 0.045, "Reference": 0.5000076295109483, "AddressMode": 1, "Width": 1728, "Height": 1728 },
+            "4": { "ProfileId": 1, "Scale": 0.10,  "Reference": 0.05,               "AddressMode": 0, "Width": 6656, "Height": 6144,
+                   "HeightAsset": "assets/silpomplanarab/irishfieldstonetowerwelded/wall/height.png.streamingimage" },
+            "5": { "ProfileId": 2, "Scale": 0.19,  "Reference": 0.5000076295109483, "AddressMode": 1, "Width": 4096, "Height": 4096,
+                   "HeightAsset": "assets/silpomplanarab/irishfieldstonetoweropenshaft/sculpted-stair-silpom/height.png.streamingimage" },
+            "6": { "ProfileId": 3, "Scale": 0.052, "Reference": 0.5000076295109483, "AddressMode": 1, "Width": 1728, "Height": 1728,
+                   "HeightAsset": "assets/silpomplanarab/irishfieldstonetoweropenshaft/welded-doorway/trim-blocks/height.png.streamingimage" },
+            "7": { "ProfileId": 4, "Scale": 0.10,  "Reference": 0.05,               "AddressMode": 1, "Width": 512,  "Height": 4096,
+                   "HeightAsset": "assets/silpomplanarab/irishfieldstonetoweropenshaft/welded-doorway/reveal/height.png.streamingimage" }
+        }
+    }
+}

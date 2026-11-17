@@ -1,0 +1,14 @@
+{
+  "materialType": "Materials/Types/StandardPBR.materialtype",
+  "materialTypeVersion": 5,
+  "propertyValues": {
+    "general.enableIBL": false,
+    "metallic.factor": 0.0,
+    "roughness.factor": 0.9,
+    "baseColor.textureMap": "stair-rock-tile.png",
+    "baseColor.useTexture": true,
+    "emissive.enable": false,
+    "emissive.intensity": -0.6,
+    "emissive.textureMap": "stair-rock-tile.png"
+  }
+}

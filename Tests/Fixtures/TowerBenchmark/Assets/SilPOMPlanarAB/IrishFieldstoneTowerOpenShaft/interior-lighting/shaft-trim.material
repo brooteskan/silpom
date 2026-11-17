@@ -1,0 +1,11 @@
+{
+  "materialType": "Materials/Types/StandardPBR.materialtype",
+  "materialTypeVersion": 5,
+  "parentMaterial": "../welded-doorway/trim-blocks/trim-blocks.material",
+  "propertyValues": {
+    "general.enableIBL": false,
+    "emissive.enable": false,
+    "emissive.intensity": -2.25,
+    "emissive.textureMap": "../../IrishFieldstoneTowerWelded/door-blocks/basecolor.png"
+  }
+}

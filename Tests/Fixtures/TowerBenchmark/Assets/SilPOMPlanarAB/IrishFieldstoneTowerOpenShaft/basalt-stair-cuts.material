@@ -1,0 +1,17 @@
+{
+  "description": "Continuous baked basalt atlas shared by the boulder and stair cuts.",
+  "materialType": "Materials/Types/StandardPBR.materialtype",
+  "materialTypeVersion": 5,
+  "propertyValues": {
+    "baseColor.textureMap": "boulder-basecolor.png",
+    "baseColor.useTexture": true,
+    "normal.textureMap": "boulder-normal.png",
+    "normal.useTexture": true,
+    "normal.flipY": true,
+    "normal.factor": 0.55,
+    "roughness.textureMap": "boulder-roughness.png",
+    "roughness.useTexture": true,
+    "roughness.factor": 1.0,
+    "metallic.factor": 0.0
+  }
+}

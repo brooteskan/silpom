@@ -1,0 +1,17 @@
+{
+  "description": "Tower skirt for the self-contained SilPOM test level. Stock StandardPBR only: no terrain gem, no project textures. The base color is the linear mean of the project's uniform ground texture that the original terrain-sampled skirt used (0.51); F0 = 0.08 x 0.5 and roughness 1 match the original. The original's normal fade to +Z over the bottom 0.15 m is not reproduced.",
+  "materialType": "Materials/Types/StandardPBR.materialtype",
+  "materialTypeVersion": 5,
+  "propertyValues": {
+    "baseColor.color": [
+      0.51,
+      0.51,
+      0.51,
+      1.0
+    ],
+    "baseColor.useTexture": false,
+    "metallic.factor": 0.0,
+    "roughness.factor": 1.0,
+    "specularF0.factor": 0.5
+  }
+}

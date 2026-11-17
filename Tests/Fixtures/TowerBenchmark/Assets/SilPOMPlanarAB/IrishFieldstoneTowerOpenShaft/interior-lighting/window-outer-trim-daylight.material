@@ -1,0 +1,12 @@
+{
+  "parentMaterial": "../welded-doorway/trim-blocks/trim-blocks.material",
+  "materialType": "Materials/Types/StandardPBR.materialtype",
+  "materialTypeVersion": 5,
+  "propertyValues": {
+    "general.enableIBL": true,
+    "emissive.enable": false,
+    "emissive.intensity": 1.0,
+    "emissive.textureMap": "window-outer-trim-daylight.png",
+    "emissive.useTexture": true
+  }
+}

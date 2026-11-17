@@ -1,0 +1,14 @@
+{
+  "materialType": "Materials/Types/StandardPBR.materialtype",
+  "materialTypeVersion": 5,
+  "propertyValues": {
+    "metallic.factor": 0.0,
+    "normal.flipY": true,
+    "baseColor.textureMap": "../../../IrishFieldstoneTowerWelded/door-blocks/basecolor.png",
+    "baseColor.useTexture": true,
+    "normal.textureMap": "normal.png",
+    "normal.useTexture": true,
+    "roughness.textureMap": "../../../IrishFieldstoneTowerWelded/door-blocks/roughness.png",
+    "roughness.useTexture": true
+  }
+}

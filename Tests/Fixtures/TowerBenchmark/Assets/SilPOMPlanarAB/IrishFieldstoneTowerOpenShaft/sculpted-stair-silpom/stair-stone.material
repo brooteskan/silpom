@@ -1,0 +1,11 @@
+{
+  "materialType": "Materials/Types/StandardPBR.materialtype",
+  "materialTypeVersion": 5,
+  "propertyValues": {
+    "metallic.factor": 0.0,
+    "baseColor.textureMap": "basecolor.png",
+    "baseColor.useTexture": true,
+    "roughness.textureMap": "roughness.png",
+    "roughness.useTexture": true
+  }
+}

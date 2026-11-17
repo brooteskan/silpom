@@ -1,0 +1,11 @@
+{
+  "materialType": "Materials/Types/StandardPBR.materialtype",
+  "materialTypeVersion": 5,
+  "parentMaterial": "../../IrishFieldstoneTowerWelded/wall/wall.material",
+  "propertyValues": {
+    "general.enableIBL": false,
+    "emissive.enable": false,
+    "emissive.intensity": -2.0,
+    "emissive.textureMap": "../../IrishFieldstoneTowerWelded/wall/basecolor.png"
+  }
+}
