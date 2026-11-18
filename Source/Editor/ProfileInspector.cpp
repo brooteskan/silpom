@@ -5,6 +5,7 @@
 #include <AzCore/Asset/AssetManagerBus.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Settings/SettingsRegistryMergeUtils.h>
 #include <AzCore/Utils/Utils.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
@@ -13,6 +14,14 @@
 #include <QBrush>
 #include <QColor>
 #include <QComboBox>
+#include <QGroupBox>
+#include <QPixmap>
+#include <QProcess>
+#include <QProgressBar>
+#include <QScrollArea>
+#include <QSettings>
+#include <QSplitter>
+#include <QTabWidget>
 #include <QDesktopServices>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -50,34 +59,7 @@ namespace
 {
 constexpr const char* ProfilePaneName = "SilPOM Profiles";
 
-// Role each shader model was trained for (silpom_profile.py MODELS).
-const char* ModelRole(int model) { return model == 1 || model == 4 ? "Wall" : model == 6 || model == 7 ? "Opening" : "Surface"; }
 const char* RoleName(AZ::u32 role) { return role == 1 ? "Wall" : role == 2 ? "Opening" : "Surface"; }
-// Network sets a new profile can carry, and the reference networks
-// (Tools/CompiledNetworks) its weights can start from for each role. The
-// references were trained for parts of the Irish Fieldstone tower; they are
-// starting points until the profile is retrained for its own image.
-enum NetworkSet { SeedOnly = 0, HitOnly = 1, Full = 2 };
-QVector<int> ReferenceModels(int set, const QString& role)
-{
-    if (set == SeedOnly) return role == "Surface" ? QVector<int>{0} : QVector<int>{};
-    if (set == HitOnly) return role == "Wall" ? QVector<int>{1} : role == "Surface" ? QVector<int>{2, 3} : QVector<int>{};
-    return role == "Wall" ? QVector<int>{4} : role == "Surface" ? QVector<int>{5} : QVector<int>{6, 7};
-}
-QString ReferenceDescription(int model)
-{
-    switch (model)
-    {
-    case 0: return "Tower wall atlas at 0.02 m, clamped (shader model 0)";
-    case 1: return "Welded tower wall (shader model 1)";
-    case 2: return "Welded tower stairs (shader model 2)";
-    case 3: return "Welded tower door (shader model 3)";
-    case 4: return "Open-shaft tower wall, with lighting estimators (shader model 4)";
-    case 5: return "Open-shaft tower stairs (shader model 5)";
-    case 6: return "Open-shaft tower door/window trim (shader model 6)";
-    default: return "Open-shaft tower entrance reveal (shader model 7)";
-    }
-}
 // Profile values are float32; 7 significant digits print them without double noise.
 QString Number(double value) { return QLocale::c().toString(value, 'g', 7); }
 QString NetworkList(AZ::u32 flags)
@@ -124,13 +106,32 @@ AZ::EntityId SelectedMesh()
     return AZ::EntityId();
 }
 
-// Creates a .silpomprofile and optionally assigns it to a profile ID.
-class CreateProfileDialog final : public QDialog
+// Training setup, remembered per user: the Python with NumPy and Pillow, and
+// the standalone build's folder with the SilPOM tool libraries.
+QString SettingOrEnvironment(const char* key, const char* variable)
+{
+    const QString saved = QSettings("O3DE", "SilPOM").value(key).toString();
+    return saved.isEmpty() ? QString::fromLocal8Bit(qgetenv(variable)) : saved;
+}
+QString GemFolder()
+{
+    AZStd::string found;
+    if (auto* registry = AZ::SettingsRegistry::Get())
+        AZ::SettingsRegistryMergeUtils::VisitActiveGems(*registry, [&found](AZStd::string_view name, AZStd::string_view path)
+        { if (name == "SilPOM") found = path; });
+    return QString::fromUtf8(found.c_str());
+}
+
+// Trains a surface profile for one profile ID of the selected mesh's surface,
+// from that ID's own faces, height image and calibration (Tools/silpom_train.py).
+class TrainProfileDialog final : public QDialog
 {
 public:
-    CreateProfileDialog(QWidget* parent, AZ::EntityId mesh, AZ::u32 profileId) : QDialog(parent), m_mesh(mesh)
+    TrainProfileDialog(QWidget* parent, const QJsonObject& entry, const QString& sidecar) : QDialog(parent), m_sidecar(sidecar)
     {
-        setWindowTitle("Create SilPOM surface profile");
+        m_id = AZ::u32(entry["id"].toInt());
+        const QJsonObject binding = entry["binding"].toObject(), profile = entry["profile"].toObject();
+        setWindowTitle(QString("Train SilPOM profile %1").arg(m_id));
         auto* form = new QFormLayout;
         const auto browseRow = [this](QLineEdit* edit, auto browse)
         {
@@ -141,24 +142,27 @@ public:
             connect(button, &QPushButton::clicked, this, browse);
             return row;
         };
-        m_height = new QLineEdit(this);
-        m_height->setPlaceholderText("Normalized height image in the project (PNG, TIF, EXR or DDS)");
+        auto* about = new QLabel(QString("Trains networks for the faces of <b>%1</b> tagged with profile %2, on their height image "
+            "at its calibration. Rays are cast at those faces and labelled with SilPOM's exact CPU intersection.")
+            .arg(QFileInfo(sidecar).fileName().toHtmlEscaped()).arg(m_id), this);
+        about->setWordWrap(true);
+        // The binding's settings, or the current profile's when retraining it.
+        const bool trained = !profile.isEmpty();
+        QString height = SourceOfProduct(trained && !profile["height"].toString().isEmpty() ? profile["height"].toString() : binding["height"].toString());
+        m_height = new QLineEdit(QDir::toNativeSeparators(height), this);
         form->addRow("Height image", browseRow(m_height, [this]
         {
-            const auto file = QFileDialog::getOpenFileName(this, "Height image", ProjectAssets(), "Height images (*.png *.tif *.tiff *.exr *.dds)");
-            if (!file.isEmpty()) { m_height->setText(QDir::toNativeSeparators(file)); OnHeight(); }
+            const auto file = QFileDialog::getOpenFileName(this, "Height image", QFileInfo(m_height->text()).absolutePath(), "Height images (*.png)");
+            if (!file.isEmpty()) m_height->setText(QDir::toNativeSeparators(file));
         }));
-        connect(m_height, &QLineEdit::editingFinished, this, [this] { OnHeight(); });
-        m_width = new QSpinBox(this); m_width->setRange(1, 65536);
-        m_pixels = new QSpinBox(this); m_pixels->setRange(1, 65536);
-        auto* size = new QHBoxLayout; size->addWidget(m_width); size->addWidget(new QLabel("x", this)); size->addWidget(m_pixels); size->addStretch();
-        form->addRow("Size (pixels)", size);
-        m_scale = new QDoubleSpinBox(this); m_scale->setRange(0.0001, 10); m_scale->setDecimals(4); m_scale->setSingleStep(0.01); m_scale->setValue(0.1);
-        m_scale->setSuffix(" m");
+        m_scale = new QDoubleSpinBox(this); m_scale->setRange(0.0001, 10); m_scale->setDecimals(4); m_scale->setSingleStep(0.01); m_scale->setSuffix(" m");
+        m_scale->setValue(trained ? profile["scale"].toDouble() : binding["scale"].toDouble(0.1));
         form->addRow("Displacement", m_scale);
-        m_reference = new QDoubleSpinBox(this); m_reference->setRange(0, 1); m_reference->setDecimals(4); m_reference->setSingleStep(0.05); m_reference->setValue(0.05);
+        m_reference = new QDoubleSpinBox(this); m_reference->setRange(0, 1); m_reference->setDecimals(4); m_reference->setSingleStep(0.05);
+        m_reference->setValue(trained ? profile["reference"].toDouble() : binding["reference"].toDouble(0.05));
         form->addRow("Reference height", m_reference);
         m_address = new QComboBox(this); m_address->addItems({"Repeat", "Clamp"});
+        m_address->setCurrentIndex(trained ? profile["addressMode"].toInt() : binding["addressMode"].toInt());
         form->addRow("Addressing", m_address);
         m_role = new QComboBox(this);
         m_role->addItem("Surface", "Surface");
@@ -167,159 +171,243 @@ public:
         m_role->setItemData(0, "Any relief surface: floors, steps, terrain, panels.", Qt::ToolTipRole);
         m_role->setItemData(1, "Thick walls: wall hit records and backup shells keep their silhouette from far away.", Qt::ToolTipRole);
         m_role->setItemData(2, "Door and window trim and reveals: coverage follows the opening's edges.", Qt::ToolTipRole);
-        m_role->setCurrentIndex(1);
+        m_role->setCurrentIndex(trained ? int(profile["role"].toInt()) : 0);
         form->addRow("Role", m_role);
         m_set = new QComboBox(this);
-        m_set->addItem("Model 0: seed and no-march hit networks", int(SeedOnly));
-        m_set->addItem("Hit network", int(HitOnly));
-        m_set->addItem("Hit network, Level 2 and visibility", int(Full));
-        m_set->setItemData(0, "A seed network (or baked seed cache) that predicts the first hit, and a no-march hit network. Tied to one calibration; Surface role only.", Qt::ToolTipRole);
-        m_set->setItemData(1, "Predicts where each ray hits the relief; the shader refines and checks it against the height image.", Qt::ToolTipRole);
-        m_set->setItemData(2, "Adds a second candidate predictor and neural visibility (needed for neural-only shadows).", Qt::ToolTipRole);
-        m_set->setCurrentIndex(2);
+        m_set->addItem("Hit network", "hit");
+        m_set->addItem("Hit network, Level 2 and visibility", "full");
+        m_set->addItem("Model 0: seed and no-march hit networks", "model0");
+        m_set->setItemData(0, "Predicts where each ray hits the relief; the shader refines and checks it against the height image.", Qt::ToolTipRole);
+        m_set->setItemData(1, "Adds a second candidate predictor and neural visibility (needed for neural-only shadows).", Qt::ToolTipRole);
+        m_set->setItemData(2, "A seed network (and, for a 6656 x 6144 image, a baked seed cache) and a no-march hit network. Surface role only.", Qt::ToolTipRole);
+        m_set->setCurrentIndex(trained && (AZ::u32(profile["flags"].toInt()) & SurfaceProfileAsset::LevelTwoFlag) ? 1 : 0);
         form->addRow("Networks", m_set);
-        m_start = new QComboBox(this);
-        form->addRow("Starting weights", m_start);
-        m_networks = new QLineEdit(this);
-        m_networks->setPlaceholderText("Optional: folder of trainer output headers (else the reference networks)");
-        form->addRow("Trained networks", browseRow(m_networks, [this]
+        m_quality = new QComboBox(this);
+        m_quality->addItem("Quick (fewer rays and steps; minutes)", true);
+        m_quality->addItem("Full (230,000 rays; can take an hour)", false);
+        form->addRow("Training", m_quality);
+        const QString existing = SourceOfProduct(entry["product"].toString());
+        const QFileInfo surface(sidecar);
+        const QString stem = surface.fileName().left(surface.fileName().size() - int(strlen(".silpom.json")));
+        QString file = surface.dir().filePath(QString("profiles/%1-%2.silpomprofile").arg(stem).arg(m_id));
+        if (!existing.isEmpty())
         {
-            const auto folder = QFileDialog::getExistingDirectory(this, "Trained networks folder", ProjectAssets());
-            if (!folder.isEmpty()) m_networks->setText(QDir::toNativeSeparators(folder));
-        }));
-        m_file = new QLineEdit(this);
+            const QFileInfo current(existing);
+            file = current.dir().filePath(current.completeBaseName() + "-trained.silpomprofile");
+        }
+        const QString base = file.left(file.size() - int(strlen(".silpomprofile")));
+        for (int n = 2; QFileInfo::exists(file); ++n) file = QString("%1-%2.silpomprofile").arg(base).arg(n);
+        m_file = new QLineEdit(QDir::toNativeSeparators(file), this);
         form->addRow("Profile file", browseRow(m_file, [this]
         {
-            const auto file = QFileDialog::getSaveFileName(this, "Profile file", m_file->text().isEmpty() ? ProjectAssets() : m_file->text(),
-                "SilPOM surface profiles (*.silpomprofile)");
+            const auto file = QFileDialog::getSaveFileName(this, "Profile file", m_file->text(), "SilPOM surface profiles (*.silpomprofile)");
             if (!file.isEmpty()) m_file->setText(QDir::toNativeSeparators(file.endsWith(".silpomprofile") ? file : file + ".silpomprofile"));
         }));
         m_assign = new QComboBox(this);
+        m_assign->addItem("This entity (Trained profile override)");
+        m_assign->addItem("The surface, for every use (.silpomprofiles)");
         m_assign->addItem("Do not assign");
-        if (m_mesh.IsValid())
+        m_assign->setCurrentIndex(0);  // an undoable prefab edit
+        form->addRow("Assign to", m_assign);
+        auto* setup = new QGroupBox("Training setup", this);
+        auto* setupForm = new QFormLayout(setup);
+        m_python = new QLineEdit(QDir::toNativeSeparators(SettingOrEnvironment("TrainingPython", "SILPOM_PYTHON")), this);
+        m_python->setPlaceholderText("python.exe with NumPy and Pillow");
+        setupForm->addRow("Python", browseRow(m_python, [this]
         {
-            m_assign->addItem("This entity (Trained profile override)");
-            m_assign->addItem("The surface, for every use (.silpomprofiles)");
-            m_assign->setCurrentIndex(1);
-        }
-        m_profileId = new QSpinBox(this); m_profileId->setRange(1, 65535); m_profileId->setValue(int(profileId));
-        auto* assign = new QHBoxLayout; assign->addWidget(m_assign, 1); assign->addWidget(new QLabel("Profile ID", this)); assign->addWidget(m_profileId);
-        form->addRow("Assign to", assign);
+            const auto file = QFileDialog::getOpenFileName(this, "Python", m_python->text(), "Python (python.exe)");
+            if (!file.isEmpty()) m_python->setText(QDir::toNativeSeparators(file));
+        }));
+        m_tools = new QLineEdit(QDir::toNativeSeparators(SettingOrEnvironment("TrainingTools", "SILPOM_TOOLS_BIN")), this);
+        m_tools->setPlaceholderText("Folder with silpom_welded_teacher.dll, silpom_level_one.dll, silpom_visibility.dll");
+        setupForm->addRow("SilPOM tools", browseRow(m_tools, [this]
+        {
+            const auto folder = QFileDialog::getExistingDirectory(this, "Standalone SilPOM build folder", m_tools->text());
+            if (!folder.isEmpty()) m_tools->setText(QDir::toNativeSeparators(folder));
+        }));
+        auto* setupNote = new QLabel("The tools are built with the gem's standalone CMake build (cmake -S Gems/silpom), "
+            "in its Release folder.", setup);
+        setupNote->setWordWrap(true);
+        setupForm->addRow(setupNote);
         m_note = new QLabel(this);
         m_note->setWordWrap(true);
         auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
-        buttons->button(QDialogButtonBox::Ok)->setText("Create");
-        connect(buttons, &QDialogButtonBox::accepted, this, [this] { Create(); });
+        m_train = buttons->button(QDialogButtonBox::Ok);
+        m_train->setText("Train");
+        connect(buttons, &QDialogButtonBox::accepted, this, [this] { Accept(); });
         connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
         auto* layout = new QVBoxLayout(this);
+        layout->addWidget(about);
         layout->addLayout(form);
+        layout->addWidget(setup);
         layout->addWidget(m_note);
         layout->addWidget(buttons);
-        connect(m_role, qOverload<int>(&QComboBox::currentIndexChanged), this, [this] { UpdateReferences(); });
-        connect(m_set, qOverload<int>(&QComboBox::currentIndexChanged), this, [this] { UpdateReferences(); });
-        connect(m_start, qOverload<int>(&QComboBox::currentIndexChanged), this, [this] { Update(); });
-        UpdateReferences();
-        connect(m_networks, &QLineEdit::textChanged, this, [this] { Update(); });
+        connect(m_role, qOverload<int>(&QComboBox::currentIndexChanged), this, [this] { Update(); });
+        connect(m_set, qOverload<int>(&QComboBox::currentIndexChanged), this, [this] { Update(); });
+        connect(m_file, &QLineEdit::textChanged, this, [this] { Update(); });
         Update();
-        resize(640, sizeHint().height());
+        resize(680, sizeHint().height());
     }
-    // The profile written, and how it was assigned (0 none, 1 override, 2 surface).
-    QString Profile() const { return m_written; }
-    int Assignment() const { return m_assign->currentIndex(); }
-    AZ::u32 ProfileId() const { return AZ::u32(m_profileId->value()); }
+    AZ::u32 ProfileId() const { return m_id; }
+    QString Profile() const { return QDir::fromNativeSeparators(m_file->text()); }
+    int Assignment() const { return m_assign->currentIndex(); }  // 0 override, 1 surface, 2 none
+    QString Python() const { return m_python->text(); }
+    QStringList Arguments() const
+    {
+        QStringList args{QDir(GemFolder()).filePath("Tools/silpom_train.py"),
+            "--surface", m_sidecar, "--profile-id", QString::number(m_id), "--height", QDir::fromNativeSeparators(m_height->text()),
+            "--scale", Number(m_scale->value()), "--reference", Number(m_reference->value()),
+            "--address", m_address->currentIndex() ? "clamp" : "repeat", "--role", m_role->currentData().toString(),
+            "--networks", m_set->currentData().toString(), "--tools", QDir::fromNativeSeparators(m_tools->text()),
+            "--profile", Profile()};
+        if (m_quality->currentData().toBool()) args << "--quick";
+        return args;
+    }
 
 private:
-    static QString ProjectAssets()
+    bool Available(QString* why = nullptr) const
     {
-        return QDir(QString::fromUtf8(AZ::Utils::GetProjectPath().c_str())).filePath("Assets");
-    }
-    void OnHeight()
-    {
-        const QString path = m_height->text();
-        QImageReader reader(path);
-        if (const auto size = reader.size(); size.isValid()) { m_width->setValue(size.width()); m_pixels->setValue(size.height()); }
-        if (m_file->text().isEmpty() && !path.isEmpty())
-        {
-            const QFileInfo image(path);
-            m_file->setText(QDir::toNativeSeparators(image.dir().filePath(image.completeBaseName() + ".silpomprofile")));
-        }
-        Update();
-    }
-    // The shader model the role, network set and starting weights select; -1 if none fits.
-    int SelectedModel() const { return m_start->count() ? m_start->currentData().toInt() : -1; }
-    void UpdateReferences()
-    {
-        // Model 0's seed path is a plain surface.
-        if (m_set->currentData().toInt() == SeedOnly && m_role->currentData().toString() != "Surface") m_role->setCurrentIndex(0);
-        const QSignalBlocker blocker(m_start);
-        m_start->clear();
-        for (const int model : ReferenceModels(m_set->currentData().toInt(), m_role->currentData().toString()))
-            m_start->addItem(ReferenceDescription(model), model);
-        Update();
+        const QString set = m_set->currentData().toString(), role = m_role->currentData().toString();
+        if (set == "model0" && role != "Surface") { if (why) *why = "Model 0 profiles are plain surfaces; choose the Surface role."; return false; }
+        if (set == "hit" && role == "Opening")
+        { if (why) *why = "Openings use the full network set: their coverage relies on the Level 2 and visibility networks."; return false; }
+        return true;
     }
     void Update()
     {
-        const int model = SelectedModel();
-        const bool image = !m_height->text().isEmpty() && QImageReader(m_height->text()).size().isValid();
-        m_width->setEnabled(!image);
-        m_pixels->setEnabled(!image);
-        m_start->setEnabled(m_start->count() > 1);
-        if (model < 0)
-        {
-            m_note->setText("No reference networks exist for this role with only a hit network. Choose the full network set, "
-                "or train an opening hit network with SilPOM's trainers.");
-            return;
-        }
-        QString note = model == 0
-            ? "Model 0 without a height image applies to each binding's own image of this size and calibration."
-            : "The profile supplies its height image, displacement, reference and addressing to every profile ID it is assigned to.";
-        note += m_networks->text().isEmpty()
-            ? " Its weights start as copies of the reference networks above, which were trained for another image: hits are still "
-              "refined against your height image, but expect more misses and fills until you retrain for it (Docs/SurfaceProfiles.md)."
-            : " Its weights come from the trained networks folder; networks it lacks fall back to the reference above.";
+        QString why;
+        const bool available = Available(&why);
+        m_train->setEnabled(available);
+        QString note = available ? QString() : why;
+        if (available && QFileInfo::exists(QDir::fromNativeSeparators(m_file->text())))
+            note = "Training replaces this profile and its weights file.";
         m_note->setText(note);
     }
-    void Create()
+    void Accept()
     {
-        const int model = SelectedModel();
-        if (model < 0) return void(QMessageBox::warning(this, windowTitle(), "Choose a role and network set that has starting weights."));
-        const QString file = QDir::fromNativeSeparators(m_file->text());
-        const QString height = QDir::fromNativeSeparators(m_height->text());
-        const QString networks = QDir::fromNativeSeparators(m_networks->text());
         const auto fail = [this](const QString& message) { QMessageBox::warning(this, windowTitle(), message); };
-        if (!file.endsWith(".silpomprofile")) return fail("Choose a profile file ending in .silpomprofile.");
-        if (height.isEmpty() && model != 0) return fail("Choose the height image the profile is for. Only model 0 can omit it.");
-        if (!height.isEmpty() && !QFileInfo::exists(height)) return fail("The height image does not exist.");
-        if (!networks.isEmpty() && !QFileInfo(networks).isDir()) return fail("The trained networks folder does not exist.");
-        if (QFileInfo::exists(file)
-            && QMessageBox::question(this, windowTitle(), "Replace the existing profile file? Its weights file is kept.") != QMessageBox::Yes)
+        if (!QFileInfo::exists(QDir::fromNativeSeparators(m_height->text()))) return fail("The height image does not exist.");
+        if (!Profile().endsWith(".silpomprofile")) return fail("Choose a profile file ending in .silpomprofile.");
+        if (m_python->text().isEmpty()) return fail("Choose the Python that has NumPy and Pillow.");
+        const QDir tools(QDir::fromNativeSeparators(m_tools->text()));
+        for (const char* library : {"silpom_welded_teacher.dll", "silpom_level_one.dll", "silpom_visibility.dll"})
+            if (m_tools->text().isEmpty() || !tools.exists(library))
+                return fail(QString("%1 is not in the SilPOM tools folder. Build the gem standalone and choose its Release folder.").arg(library));
+        if (GemFolder().isEmpty()) return fail("Cannot locate the SilPOM gem.");
+        if (QFileInfo::exists(Profile()) && QMessageBox::question(this, windowTitle(),
+                QString("%1 already exists. Training replaces it and its weights for every prefab that uses it. Continue?")
+                    .arg(QFileInfo(Profile()).fileName())) != QMessageBox::Yes)
             return;
-        const QDir folder = QFileInfo(file).dir();
-        if (!height.isEmpty() && folder.relativeFilePath(height).startsWith("../../../../"))
-            return fail("Keep the profile near its height image, in the same asset scan folder.");
-        QStringList lines{"  \"Version\": 1"};
-        if (!height.isEmpty()) lines << QString("  \"Height\": \"%1\"").arg(folder.relativeFilePath(height));
-        lines << QString("  \"Width\": %1").arg(m_width->value()) << QString("  \"HeightPixels\": %1").arg(m_pixels->value())
-              << QString("  \"Scale\": %1").arg(Number(m_scale->value())) << QString("  \"Reference\": %1").arg(Number(m_reference->value()))
-              << QString("  \"AddressMode\": %1").arg(m_address->currentIndex())
-              << QString("  \"Role\": \"%1\"").arg(ModelRole(model)) << QString("  \"ShaderModel\": %1").arg(model);
-        if (!networks.isEmpty()) lines << QString("  \"Networks\": \"%1\"").arg(folder.relativeFilePath(networks));
-        QFile out(file);
-        if (!folder.exists() || !out.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text))
-            return fail("Cannot write " + file);
-        out.write(("{\n" + lines.join(",\n") + "\n}\n").toUtf8());
-        out.close();
-        m_written = file;
+        if (Assignment() == 1 && QMessageBox::question(this, windowTitle(),
+                "Assigning to the surface changes this profile ID for every prefab that uses the surface. Continue?") != QMessageBox::Yes)
+            return;
+        QSettings settings("O3DE", "SilPOM");
+        settings.setValue("TrainingPython", m_python->text());
+        settings.setValue("TrainingTools", m_tools->text());
+        QDir().mkpath(QFileInfo(Profile()).absolutePath());
         accept();
     }
 
-    AZ::EntityId m_mesh;
-    QString m_written;
-    QLineEdit *m_height = nullptr, *m_networks = nullptr, *m_file = nullptr;
-    QSpinBox *m_width = nullptr, *m_pixels = nullptr, *m_profileId = nullptr;
+    QString m_sidecar;
+    AZ::u32 m_id = 0;
+    QLineEdit *m_height = nullptr, *m_file = nullptr, *m_python = nullptr, *m_tools = nullptr;
     QDoubleSpinBox *m_scale = nullptr, *m_reference = nullptr;
-    QComboBox *m_address = nullptr, *m_role = nullptr, *m_set = nullptr, *m_start = nullptr, *m_assign = nullptr;
+    QComboBox *m_address = nullptr, *m_role = nullptr, *m_set = nullptr, *m_quality = nullptr, *m_assign = nullptr;
     QLabel* m_note = nullptr;
+    QPushButton* m_train = nullptr;
+};
+
+// What a profile was trained on: Tools/silpom_train.py's images and report.
+class TrainingView final : public QTabWidget
+{
+public:
+    explicit TrainingView(QWidget* parent) : QTabWidget(parent) {}
+    // The training folder of a profile: its "Networks" folder's parent.
+    static QString FolderOfProfile(const QString& profile)
+    {
+        QFile file(profile);
+        if (!file.open(QIODevice::ReadOnly)) return {};
+        const QString networks = QJsonDocument::fromJson(file.readAll()).object()["Networks"].toString();
+        if (networks.isEmpty()) return {};
+        const QString folder = QFileInfo(QFileInfo(profile).dir().filePath(networks)).dir().absolutePath();
+        return QFileInfo::exists(QDir(folder).filePath("visuals")) ? folder : QString();
+    }
+    void Show(const QString& folder)
+    {
+        if (folder == m_folder) return;
+        m_folder = folder;
+        clear();
+        if (folder.isEmpty()) return;
+        const QDir visuals(QDir(folder).filePath("visuals"));
+        const struct { const char* file; const char* title; } pages[] = {
+            {"geometry.png", "Surface"}, {"surface.png", "Relief"}, {"rays.png", "Rays"}, {"angles.png", "Directions"},
+            {"errors.png", "Trained"}, {"errors-reference.png", "Reference"}};
+        for (const auto& page : pages)
+        {
+            const QPixmap image(visuals.filePath(page.file));
+            if (image.isNull()) continue;
+            auto* label = new QLabel;
+            label->setPixmap(image.scaledToWidth(qMin(image.width(), 640), Qt::SmoothTransformation));
+            label->setAlignment(Qt::AlignCenter);
+            auto* scroll = new QScrollArea;
+            scroll->setWidget(label);
+            scroll->setWidgetResizable(true);
+            addTab(scroll, page.title);
+        }
+        auto* summary = new QLabel(Summary(QDir(folder).filePath("report.json")));
+        summary->setWordWrap(true);
+        summary->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+        summary->setTextInteractionFlags(Qt::TextSelectableByMouse);
+        auto* scroll = new QScrollArea;
+        scroll->setWidget(summary);
+        scroll->setWidgetResizable(true);
+        insertTab(0, scroll, "Summary");
+        setCurrentIndex(0);
+    }
+
+private:
+    static QString Summary(const QString& path)
+    {
+        QFile file(path);
+        if (!file.open(QIODevice::ReadOnly)) return "No training report.";
+        const QJsonObject r = QJsonDocument::fromJson(file.readAll()).object();
+        const QJsonObject calibration = r["calibration"].toObject();
+        QStringList lines{QString("<b>Profile %1</b> of %2: %3 faces, %4 x %5 height image")
+            .arg(r["profile_id"].toInt()).arg(QFileInfo(r["surface"].toString()).fileName().toHtmlEscaped()).arg(r["faces"].toInt())
+            .arg(r["height_size"].toArray()[0].toInt()).arg(r["height_size"].toArray()[1].toInt()),
+            QString("Calibration: %1 m, reference %2, %3. Role %4, networks %5, %6 training, %7 minutes.")
+            .arg(Number(calibration["scale"].toDouble()), Number(calibration["reference"].toDouble()), calibration["address"].toString(),
+                 r["role"].toString(), r["networks"].toString(), r["preset"].toString(), QString::number(r["seconds"].toDouble() / 60, 'f', 1))};
+        const auto hit = [](const QJsonObject& network)
+        {
+            const QJsonObject all = network["held_out"].toObject()["all"].toObject();
+            return QString("%1% of held-out hits seeded within 1 mm, median seed error %2 mm, hit recall %3%")
+                .arg(Number(network["within_1mm"].toDouble() * 100)).arg(Number(all["seed_p50_mm"].toDouble()))
+                .arg(Number(all["hit_recall_at_005"].toDouble() * 100));
+        };
+        if (r.contains("hit_network"))
+        {
+            lines << "<b>Trained hit network:</b> " + hit(r["hit_network"].toObject());
+            const QJsonObject solver = r["hit_network"].toObject()["solver_held_out"].toObject();
+            lines << QString("In the solver: %1 of %2 hits uncovered, %3 base-plane fills.")
+                .arg(solver["uncovered_teacher_hits"].toInt()).arg(solver["teacher_hits"].toInt()).arg(solver["fallback_fills"].toInt());
+            lines << "<b>Reference network (trained for another image), on these rays:</b> " + hit(r["reference_hit_network"].toObject());
+        }
+        if (r.contains("physical_visibility"))
+        {
+            const QJsonObject held = r["physical_visibility"].toObject()["held_out"].toObject();
+            lines << QString("<b>Physical visibility:</b> %1 wrongly lit and %2 wrongly shadowed of %3 held-out queries.")
+                .arg(held["method_false_lit"].toInt()).arg(held["method_false_shadow"].toInt()).arg(held["rays"].toInt());
+        }
+        if (r.contains("model_zero"))
+        {
+            const QJsonObject seed = r["model_zero"].toObject()["seed_network"].toObject()["held_out"].toObject();
+            lines << QString("<b>Model 0 seed network:</b> median error %1 mm, %2% within 4 mm.")
+                .arg(Number(seed["seed_error_p50_mm"].toDouble())).arg(Number(seed["within_4mm"].toDouble() * 100));
+        }
+        return lines.join("<br><br>");
+    }
+    QString m_folder;
 };
 
 class ProfileInspector final : public QWidget, private AzToolsFramework::ToolsApplicationNotificationBus::Handler
@@ -338,22 +426,44 @@ public:
         m_tree->setHeaderLabels({"Profile", "Value"});
         m_tree->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
         m_tree->setWordWrap(true);
+        m_tree->setMinimumHeight(140);
         auto* buttons = new QHBoxLayout;
-        auto* create = new QPushButton("Create profile...", this);
+        m_trainButton = new QPushButton("Train profile...", this);
+        m_trainButton->setToolTip("Train networks for the selected profile ID from this surface's own faces and height image.");
         m_open = new QPushButton("Open profile file", this);
         m_reveal = new QPushButton("Show in folder", this);
-        buttons->addWidget(create);
+        buttons->addWidget(m_trainButton);
         buttons->addWidget(m_open);
         buttons->addWidget(m_reveal);
         buttons->addStretch();
-        layout->addWidget(m_entity);
-        layout->addWidget(m_status);
-        layout->addWidget(m_tree, 1);
-        layout->addLayout(buttons);
         m_progress = new QLabel(this);
         m_progress->setWordWrap(true);
-        layout->addWidget(m_progress);
-        connect(create, &QPushButton::clicked, this, [this] { CreateProfile(); });
+        m_bar = new QProgressBar(this);
+        m_bar->setRange(0, 100);
+        m_bar->hide();
+        m_cancel = new QPushButton("Cancel training", this);
+        m_cancel->hide();
+        auto* job = new QHBoxLayout;
+        job->addWidget(m_bar, 1);
+        job->addWidget(m_cancel);
+        m_view = new TrainingView(this);
+        auto* top = new QWidget(this);
+        auto* topLayout = new QVBoxLayout(top);
+        topLayout->setContentsMargins(0, 0, 0, 0);
+        topLayout->addWidget(m_entity);
+        topLayout->addWidget(m_status);
+        topLayout->addWidget(m_tree, 1);
+        topLayout->addLayout(buttons);
+        topLayout->addLayout(job);
+        topLayout->addWidget(m_progress);
+        auto* split = new QSplitter(Qt::Vertical, this);
+        split->addWidget(top);
+        split->addWidget(m_view);
+        split->setStretchFactor(0, 1);
+        split->setStretchFactor(1, 2);
+        layout->addWidget(split, 1);
+        connect(m_trainButton, &QPushButton::clicked, this, [this] { TrainProfile(); });
+        connect(m_cancel, &QPushButton::clicked, this, [this] { if (m_job) m_job->kill(); });
         connect(m_open, &QPushButton::clicked, this, [this] { if (const auto f = SelectedFile(); !f.isEmpty()) QDesktopServices::openUrl(QUrl::fromLocalFile(f)); });
         connect(m_reveal, &QPushButton::clicked, this, [this]
         { if (const auto f = SelectedFile(); !f.isEmpty()) QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(f).absolutePath())); });
@@ -364,7 +474,11 @@ public:
         AzToolsFramework::ToolsApplicationNotificationBus::Handler::BusConnect();
         Refresh();
     }
-    ~ProfileInspector() override { AzToolsFramework::ToolsApplicationNotificationBus::Handler::BusDisconnect(); }
+    ~ProfileInspector() override
+    {
+        AzToolsFramework::ToolsApplicationNotificationBus::Handler::BusDisconnect();
+        if (m_job) { m_job->disconnect(); m_job->kill(); m_job->waitForFinished(2000); }
+    }
 
 private:
     void AfterEntitySelectionChanged(const AzToolsFramework::EntityIdList&, const AzToolsFramework::EntityIdList&) override
@@ -379,9 +493,20 @@ private:
     }
     void UpdateButtons()
     {
-        const bool file = !SelectedFile().isEmpty();
-        m_open->setEnabled(file);
-        m_reveal->setEnabled(file);
+        const QString file = SelectedFile();
+        m_open->setEnabled(!file.isEmpty());
+        m_reveal->setEnabled(!file.isEmpty());
+        m_trainButton->setEnabled(m_mesh.IsValid() && !m_job && SelectedEntry().contains("id")
+            && SelectedEntry()["source"].toString() != "base mesh");
+        // What the selected profile was trained on, if SilPOM's trainer made it.
+        if (!m_job) m_view->Show(file.endsWith(".silpomprofile") ? TrainingView::FolderOfProfile(file) : QString());
+    }
+    QJsonObject SelectedEntry() const
+    {
+        const AZ::u32 id = SelectedProfileId();
+        for (const auto& value : QJsonDocument::fromJson(m_report.toUtf8()).object()["profiles"].toArray())
+            if (AZ::u32(value.toObject()["id"].toInt()) == id) return value.toObject();
+        return {};
     }
     AZ::u32 SelectedProfileId() const
     {
@@ -412,7 +537,10 @@ private:
         const QJsonObject root = QJsonDocument::fromJson(json.toUtf8()).object();
         m_entity->setText(QString("<b>%1</b> - surface %2").arg(QString::fromUtf8(name.c_str()).toHtmlEscaped(),
             root["surface"].toString().isEmpty() ? "(none)" : root["surface"].toString().toHtmlEscaped()));
-        m_status->setText("Status: " + root["status"].toString());
+        // The status can be long (generation hashes); the first clause, full text on hover.
+        const QString status = root["status"].toString();
+        m_status->setText("Status: " + status.section(';', 0, 0));
+        m_status->setToolTip(status);
         // Keep expansion and selection across refreshes of the same entity.
         QSet<QString> expanded;
         QString current;
@@ -486,14 +614,86 @@ private:
                 if (((*it)->parent() ? (*it)->parent()->text(0) + "/" : QString()) + (*it)->text(0) == current) m_tree->setCurrentItem(*it);
         UpdateButtons();
     }
-    void CreateProfile()
+    void TrainProfile()
     {
-        CreateProfileDialog dialog(this, m_mesh, SelectedProfileId());
-        if (dialog.exec() != QDialog::Accepted) return;
-        const QString file = dialog.Profile();
-        if (dialog.Assignment() == 2) return AssignToSurface(file, dialog.ProfileId());
-        m_progress->setText("Wrote " + QDir::toNativeSeparators(file) + ". The Asset Processor builds it and writes its weights.");
-        if (dialog.Assignment() == 1) WaitAndOverride(file, m_mesh, dialog.ProfileId(), 0);
+        AZ::Data::AssetId surface;
+        const QString sidecar = GetMeshSurface(m_mesh, surface) ? SourceOfAsset(surface) : QString();
+        if (!sidecar.endsWith(".silpom.json"))
+        {
+            m_progress->setText("The surface's .silpom.json source was not found; training needs the surface's faces.");
+            return;
+        }
+        auto* dialog = new TrainProfileDialog(this, SelectedEntry(), sidecar);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->setWindowModality(Qt::WindowModal);
+        const AZ::EntityId mesh = m_mesh;
+        connect(dialog, &QDialog::accepted, this, [this, dialog, mesh]
+        {
+            StartJob(dialog->Python(), dialog->Arguments(), dialog->Profile(), dialog->ProfileId(), dialog->Assignment(), mesh);
+        });
+        dialog->open();
+    }
+    void StartJob(const QString& python, const QStringList& arguments, const QString& profile, AZ::u32 profileId,
+        int assignment, AZ::EntityId mesh)
+    {
+        m_job = new QProcess(this);
+        m_job->setProgram(python);
+        m_job->setArguments(arguments);
+        m_job->setProcessChannelMode(QProcess::MergedChannels);
+        m_log.clear();
+        m_bar->setValue(0);
+        m_bar->show();
+        m_cancel->show();
+        m_view->Show({});
+        m_progress->setText(QString("Training profile %1...").arg(profileId));
+        connect(m_job, &QProcess::readyReadStandardOutput, this, [this]
+        {
+            while (m_job->canReadLine())
+            {
+                const QString line = QString::fromUtf8(m_job->readLine()).trimmed();
+                m_log << line;
+                if (line.startsWith("PROGRESS "))
+                {
+                    const int space = line.indexOf(' ', 9);
+                    m_bar->setValue(line.mid(9, space - 9).toInt());
+                    m_progress->setText(line.mid(space + 1));
+                }
+            }
+        });
+        connect(m_job, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
+            [this, profile, profileId, assignment, mesh](int code, QProcess::ExitStatus status)
+        {
+            m_log << QString::fromUtf8(m_job->readAll()).trimmed();
+            m_job->deleteLater();
+            m_job = nullptr;
+            m_bar->hide();
+            m_cancel->hide();
+            UpdateButtons();
+            if (status != QProcess::NormalExit || code != 0)
+            {
+                QStringList tail = m_log.mid(qMax(0, m_log.size() - 12));
+                m_progress->setText(QString("Training stopped (exit %1):\n%2").arg(code).arg(tail.join("\n")));
+                return;
+            }
+            m_view->Show(TrainingView::FolderOfProfile(profile));
+            if (assignment == 1) AssignToSurface(profile, profileId);
+            else if (assignment == 0) WaitAndOverride(profile, mesh, profileId, 0);
+            else m_progress->setText("Trained " + QDir::toNativeSeparators(profile) + ".");
+        });
+        connect(m_job, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error)
+        {
+            if (error == QProcess::FailedToStart && m_job)
+            {
+                m_progress->setText("Could not start Python: " + m_job->program());
+                m_job->deleteLater();
+                m_job = nullptr;
+                m_bar->hide();
+                m_cancel->hide();
+                UpdateButtons();
+            }
+        });
+        m_job->start();
+        UpdateButtons();
     }
     // The override needs the product's asset ID, which exists once the Asset
     // Processor has built the new profile.
@@ -560,7 +760,11 @@ private:
     QString m_report;
     QLabel *m_entity = nullptr, *m_status = nullptr, *m_progress = nullptr;
     QTreeWidget* m_tree = nullptr;
-    QPushButton *m_open = nullptr, *m_reveal = nullptr;
+    QPushButton *m_open = nullptr, *m_reveal = nullptr, *m_trainButton = nullptr, *m_cancel = nullptr;
+    QProgressBar* m_bar = nullptr;
+    TrainingView* m_view = nullptr;
+    QProcess* m_job = nullptr;
+    QStringList m_log;
 };
 } // namespace
 

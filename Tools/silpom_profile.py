@@ -8,6 +8,9 @@ weights file is missing.
       from the trained networks folder (--networks, else the profile's
       "Networks") if a header there defines it, else from
       Tools/CompiledNetworks (the networks formerly compiled into the shaders).
+      With a trained folder, a network it lacks is an error, and lighting
+      estimators or a seed cache layout it lacks are left out, unless
+      --fallback takes them from the reference.
       SilPOM's trainers write such headers (train_welded_tower.py,
       level_one.py, level_two.py, level_three.py, train_physical_visibility.py,
       train_directional_estimators.py, train_angular_edges.py,
@@ -53,6 +56,13 @@ import sys
 GEM = Path(__file__).resolve().parents[1]
 SHADERS = GEM / 'Tools/CompiledNetworks'  # networks formerly compiled into the shaders
 TRAINED = []  # folders of trainer output headers, searched before SHADERS
+# With trained networks, missing ones are errors (optional ones are left out)
+# unless FALLBACK takes them from the compiled reference instead.
+FALLBACK = [False]
+
+
+class MissingNetwork(ValueError):
+    pass
 WEIGHTS_VERSION = 1
 PROFILE_VERSION = 1
 ROLES = ('Surface', 'Wall', 'Opening')
@@ -117,6 +127,8 @@ def network_text(header, name):
             text = path.read_text()
             if pattern.search(text):
                 return text
+    if TRAINED and not FALLBACK[0]:
+        raise MissingNetwork(f'{name} is not in the trained networks ({", ".join(map(str, TRAINED))})')
     return (SHADERS / header).read_text()
 
 
@@ -162,7 +174,9 @@ def compiled_weights(model, layout=None):
         if layout is not None:
             weights['CacheLayout'] = layout
     if model == 4:
-        weights['Estimators'] = compiled_estimators()
+        estimators = compiled_estimators()
+        if estimators:
+            weights['Estimators'] = estimators
     return weights
 
 
@@ -171,9 +185,15 @@ def estimator_sizes(outputs):
 
 
 def compiled_estimators():
-    """The wall's lighting estimator heads, formerly compiled into the shaders."""
-    return {name: {k: header_array(header, prefix + k, n) for k, n in estimator_sizes(outputs).items()}
-            for name, header, prefix, outputs in ESTIMATORS.values()}
+    """The wall's lighting estimator heads: trained ones, else the reference ones formerly
+    compiled into the shaders. Heads a strict trained folder lacks are left out."""
+    heads = {}
+    for name, header, prefix, outputs in ESTIMATORS.values():
+        try:
+            heads[name] = {k: header_array(header, prefix + k, n) for k, n in estimator_sizes(outputs).items()}
+        except MissingNetwork:
+            pass
+    return heads
 
 
 def pack_estimators(estimators, width, height):
@@ -196,7 +216,10 @@ def compiled_layout():
 
 def layout_for(profile):
     """The compiled layout, if the profile's height image has its tile grid."""
-    layout = compiled_layout()
+    try:
+        layout = compiled_layout()
+    except MissingNetwork:
+        return None  # trained without a seed cache
     if [profile['Width'], profile['HeightPixels']] == [t * CACHE_TILE for t in layout['Tiles']]:
         return layout
     return None
@@ -264,12 +287,15 @@ def main(argv=None):
     write.add_argument('profile', type=Path)
     write.add_argument('--output', type=Path)
     write.add_argument('--networks', type=Path)
+    write.add_argument('--fallback', action='store_true', help='Take networks the folder lacks from the reference')
     check = sub.add_parser('check')
     check.add_argument('profile', type=Path)
     check.add_argument('--networks', type=Path)
+    check.add_argument('--fallback', action='store_true')
     args = cli.parse_args(argv)
     profile = load_profile(args.profile)
     TRAINED.clear()
+    FALLBACK[0] = args.fallback
     if args.networks:
         TRAINED.append(args.networks)
     elif profile.get('Networks'):
