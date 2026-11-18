@@ -183,9 +183,9 @@ The saved frames are `capture-2x-20261114-220921/upper-glancing_frame303.rdc`
 and `capture-1x-20261114-221142/upper-glancing_frame303.rdc`. Their adjacent
 `results.json` files verify scene/configuration, AA and normals-on controls.
 To make fresh frames, use the RenderDoc capture procedure in
-[TowerBenchmark.md](TowerBenchmark.md), setting `TG_SILPOM_TOWER_SAMPLES=2`
+[TowerBenchmark.md](TowerBenchmark.md), setting `SILPOM_TOWER_SAMPLES=2`
 and startup `r_multiSampleCount=2` for the default, then 1 for the separate
-comparison. Set `TG_SILPOM_TOWER_RENDERDOC_VIEW=upper-glancing`, timing flags to
+comparison. Set `SILPOM_TOWER_RENDERDOC_VIEW=upper-glancing`, timing flags to
 0 and a fresh ignored output folder. Do not change the saved scene.
 
 The batch profile configuration supports two saved captures under one temporary
@@ -207,7 +207,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Inspect profile and restoration state' }
 # Native administrator prompt requires user interaction; no desktop automation.
 ```
 
-`TowerBenchmarkCoverageProbe.py` takes `TG_SILPOM_COVERAGE_CONFIG` containing
+`TowerBenchmarkCoverageProbe.py` takes `SILPOM_COVERAGE_CONFIG` containing
 capture, capture_metadata, output, samples, event and depth_readbacks=true.
 Use event 473 for this 2x frame, 464 for this 1x frame. `auto_indices=3426`
 also validates the conservative-depth candidates; ambiguous candidates require

@@ -36,7 +36,7 @@ def inspect(stem):
 
 
 def gpu_cost(mode):
-    if os.environ.get('TG_SILPOM_MSAA_TIMING','0')!='1':return
+    if os.environ.get('SILPOM_MSAA_TIMING','0')!='1':return
     result['benchmark_performed']=True
     # Timestamp collection only: no screenshots, readbacks, inspection atlases
     # or active shader compilation during these steady-state frames.

@@ -116,14 +116,14 @@ comparison with completed depth. The compact checked-in record is
 `Tests/Reference/Ryzen5700GCoverage20261114.json`.
 
 ```powershell
-$project = 'D:/diversion/TG/TGProject'
-$repo = "$project/Gems/silpom"
+$repo = '<gem>'
+$project = "$repo/Tests/Fixtures/TowerBenchmark"
 $run = "$project/user/silpom-profile-ryzen-5700g-20261114"
 $capture = "$run/renderdoc-upper-glancing-20261114-160216"
 $rd = "$run/tools/RenderDoc-1.47/RenderDoc_1.47_64"
 $output = "$project/user/coverage-$(Get-Date -Format yyyyMMdd-HHmmss)"
 New-Item -ItemType Directory -Path $output | Out-Null
-$env:TG_SILPOM_COVERAGE_CONFIG = "$output/config.json"
+$env:SILPOM_COVERAGE_CONFIG = "$output/config.json"
 @{
     capture = "$capture/upper-glancing_frame303.rdc"
     capture_metadata = "$capture/results.json"
@@ -131,7 +131,7 @@ $env:TG_SILPOM_COVERAGE_CONFIG = "$output/config.json"
     event = 464
     before_event = 460
     depth_readbacks = $true
-} | ConvertTo-Json | Set-Content -LiteralPath $env:TG_SILPOM_COVERAGE_CONFIG
+} | ConvertTo-Json | Set-Content -LiteralPath $env:SILPOM_COVERAGE_CONFIG
 $probeScript = "$repo/Tests/TowerBenchmarkCoverageProbe.py"
 Start-Process "$rd/qrenderdoc.exe" -ArgumentList @('--python', ('"'+$probeScript+'"')) -WorkingDirectory $rd -WindowStyle Hidden -Wait
 python "$repo/Tests/analyze_tower_proxy_coverage.py" $output --output "$output/analysis"

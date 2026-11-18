@@ -7,7 +7,7 @@ import sys
 
 
 def check(project):
-    root=(project/'Gems/silpom/Assets').resolve();cache=project/'Cache/pc';pending=[]
+    root=(Path(__file__).resolve().parents[1]/'Assets').resolve();cache=project/'Cache/pc';pending=[]
     db=sqlite3.connect((project/'Cache/assetdb.sqlite').resolve().as_uri()+'?mode=ro',uri=True)
     completed={name.lower():stamp/1000.0 for name,status,errors,stamp in db.execute(
         'SELECT s.SourceName,j.Status,j.ErrorCount,j.LastLogTime FROM Jobs j JOIN Sources s ON s.SourceID=j.SourcePK '

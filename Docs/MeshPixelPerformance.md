@@ -151,7 +151,7 @@ and grazing `(16,-100,32)`, rotations `(-35,0,0)`, `(-35,0,0)` and `(-5,0,0)`.
 [Compact measurements](MeshPixelPerformanceData.json) accompany this report.
 Raw evidence, configurations, original/optimized shader snapshots, telemetry,
 replay scripts, captures and images are in
-`D:/TG/TGProject/user/MeshPixelProfiling/`. `native-b1` is optimized;
+`<project>/user/MeshPixelProfiling/`. `native-b1` is optimized;
 `attribution-01` and `native-a2` are original. `shader-aba-runtime.json` is the
 final same-frame validation. The profiling driver is terrain-compositor's
 `tools/ProfileTerrainGpu.py`; each run uses its corresponding saved JSON in
@@ -160,8 +160,8 @@ before launching a measurement session. Replay uses RenderDoc 1.25's AMD
 counters and the retained `ExtractRuntimeShaders.py` / `ReplayShaderABA.py`.
 
 ```powershell
-cmake --build D:/TG/TGProject/Gems/silpom/build/planar-core --config Release
-ctest --test-dir D:/TG/TGProject/Gems/silpom/build/planar-core -C Release --output-on-failure
+cmake --build <gem>/build/planar-core --config Release
+ctest --test-dir <gem>/build/planar-core -C Release --output-on-failure
 ```
 
 The optimized source and compiled project assets are left applied. Shader asset

@@ -1,6 +1,9 @@
 """Level 5A render correctness only. No timing capture or benchmark service."""
 import hashlib,json,math,os,struct,time,traceback
 from pathlib import Path
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import silpom_editor_paths as silpom_paths
 import azlmbr.atom as atom
 import azlmbr.bus as bus
 import azlmbr.editor as editor
@@ -10,12 +13,12 @@ import azlmbr.paths as paths
 import azlmbr.silpom as silpom
 from PySide6 import QtCore,QtWidgets,QtGui
 PROJECT=Path(paths.projectroot)
-LEVEL=PROJECT/'Levels/VueLiveLink/VueLiveLink.prefab'
-OUTPUT=Path(os.environ['TG_SILPOM_LEVEL_FIVE_TEST_OUTPUT']);OUTPUT.mkdir(parents=True,exist_ok=True)
+LEVEL=silpom_paths.LEVEL
+OUTPUT=Path(os.environ['SILPOM_LEVEL_FIVE_TEST_OUTPUT']);OUTPUT.mkdir(parents=True,exist_ok=True)
 DEPTH='Relief depth multiplier';METHOD='Local shadow method';MATERIAL='Level 4A wall material (experimental)'
 SHARED='Level 4B shared material / visibility (experimental)';LEARNED_DEPTH='Level 5B bounded proxy depth (experimental)'
 NEAR_SUN='Neural directional visibility (off = cheaper)';PROXY_SUN='Learned proxy directional response (off = cheaper)';STEPS='Relief shadow steps'
-LEAVE_OPEN=os.environ.get('TG_SILPOM_LEVEL_FIVE_LEAVE_OPEN')=='1'
+LEAVE_OPEN=os.environ.get('SILPOM_LEVEL_FIVE_LEAVE_OPEN')=='1'
 BRIGHT='Spiral light master brightness';NORMAL='Height-derived normals (off = cheaper)'
 result={'passed':False,'benchmark_performed':False,'stage':'startup'}
 originals={};properties={};component=None;canvas=None;initial_view={};cvars={}

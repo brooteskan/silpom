@@ -44,12 +44,12 @@ camera coordinates are doubled without changing height or orientation. With
 pixels and relief LOD budget set to 64, this probes authored-plane proxies and
 ordinary shell/base mappings. These are temporary diagnostic controls, recorded
 on each run. They are restored before the final fixture checks and again during
-error cleanup. Set `TG_SILPOM_GRADIENT_DIAGNOSTIC=0` to omit this case. Repair,
+error cleanup. Set `SILPOM_GRADIENT_DIAGNOSTIC=0` to omit this case. Repair,
 morph and backup coverage depends on the actual selected samples; use the
 representation counts to identify gaps requiring separate fixtures or solver
 tests.
 
-`TG_SILPOM_GRADIENT_PAINT_PROBE=1` is also enabled by default. This adds one
+`SILPOM_GRADIENT_PAINT_PROBE=1` is also enabled by default. This adds one
 painted lower-facing case after the fixed and wider cases; set the variable to
 zero to omit it. The wider overrides are restored first. A fresh unpainted hit
 readback selects a visible, well-contained profile-1 face and source UV. An
@@ -105,10 +105,10 @@ run the capture script in a dedicated Editor instance. Choose a fresh output
 directory, and use the rebuilt Editor appropriate for this project:
 
 ```powershell
-$env:TG_SILPOM_GRADIENT_OUTPUT = 'D:/TG/TGProject/user/silpom-gradient-context-2x/quality'
-& $editorExe --project-path='D:/TG/TGProject' --runpython 'D:/TG/TGProject/Gems/silpom/Tests/TowerGradientContextValidation.py'
-python D:/TG/TGProject/Gems/silpom/Tests/test_tower_gradient_context.py `
-    $env:TG_SILPOM_GRADIENT_OUTPUT "$env:TG_SILPOM_GRADIENT_OUTPUT/report.json"
+$env:SILPOM_GRADIENT_OUTPUT = '<project>/user/silpom-gradient-context-2x/quality'
+& $editorExe --project-path='<project>' --runpython '<gem>/Tests/TowerGradientContextValidation.py'
+python <gem>/Tests/test_tower_gradient_context.py `
+    $env:SILPOM_GRADIENT_OUTPUT "$env:SILPOM_GRADIENT_OUTPUT/report.json"
 ```
 
 The analyzer first requires successful restoration and unchanged saved level.
@@ -140,7 +140,7 @@ from these results.
 The analyzer's lightweight contract tests run without Editor or asset tools:
 
 ```powershell
-python D:/TG/TGProject/Gems/silpom/Tests/test_tower_gradient_context.py --self-test
+python <gem>/Tests/test_tower_gradient_context.py --self-test
 ```
 
 They exercise sample atlas packing, mixed-owner/provenance counting, rejection

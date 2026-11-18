@@ -1,6 +1,6 @@
 """Capture one warmed tower frame through an already injected RenderDoc API.
 
-Launch Editor via renderdoccmd capture, set TG_SILPOM_TOWER_RENDERDOC_VIEW,
+Launch Editor via renderdoccmd capture, set SILPOM_TOWER_RENDERDOC_VIEW,
 and run TowerBenchmarkEditorSmoke.py. This is separate from GPU timing runs.
 The function indices below are the stable RENDERDOC_API_1_1_2 prefix.
 """

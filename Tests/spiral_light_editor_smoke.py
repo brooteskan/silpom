@@ -5,6 +5,9 @@ from pathlib import Path
 import time
 import traceback
 
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import silpom_editor_paths as silpom_paths
 import azlmbr.bus as bus
 import azlmbr.editor as editor
 import azlmbr.entity as entity
@@ -14,7 +17,7 @@ import azlmbr.paths as paths
 import azlmbr.silpom as silpom
 
 project = Path(paths.projectroot)
-level = project / "Levels/VueLiveLink/VueLiveLink.prefab"
+level = silpom_paths.LEVEL
 package = project / "Assets/SilPOMPlanarAB/IrishFieldstoneTowerOpenShaft"
 prefab = package / "IrishFieldstoneTowerOpenShaft.prefab"
 output = project / "user/SilPOMSpiralSmoke/result.json"

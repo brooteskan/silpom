@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/brooteskan/o3de-patches",
+  "commit": "718eec22119cfb5a6903c5afb038c0c6e3920c10",
+  "bundle": "tg-o3de-20261115",
+  "engine_base": "061180bf24f1666eb30315b35da292eb14f4659c",
+  "engine_patch_sha256": "117c44e4cbff4ad55e5baf5bb89183661cae14e4ebf81ad6fdf44929aafc004d",
+  "components_used": ["engine"]
+}

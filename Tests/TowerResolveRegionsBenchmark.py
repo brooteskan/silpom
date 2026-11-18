@@ -1,9 +1,9 @@
 """Native GPU timestamps for original versus scissored tower batch resolves.
 
-Run in a dedicated Editor --runpython with TG_SILPOM_RESOLVE_BENCH_OUTPUT set
-to a fresh directory. Optional TG_SILPOM_RESOLVE_BENCH_VIEWS (comma-separated
-fixture names), TG_SILPOM_RESOLVE_BENCH_REPEATS (>=3, default3), and
-TG_SILPOM_RESOLVE_BENCH_FRAMES (>=120, default120). No inspection attachments,
+Run in a dedicated Editor --runpython with SILPOM_RESOLVE_BENCH_OUTPUT set
+to a fresh directory. Optional SILPOM_RESOLVE_BENCH_VIEWS (comma-separated
+fixture names), SILPOM_RESOLVE_BENCH_REPEATS (>=3, default3), and
+SILPOM_RESOLVE_BENCH_FRAMES (>=120, default120). No inspection attachments,
 screenshots, RenderDoc, scene saves, or asset reads occur during measurement.
 """
 import hashlib
@@ -13,6 +13,9 @@ from pathlib import Path
 import time
 import traceback
 
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import silpom_editor_paths as silpom_paths
 import azlmbr.bus as bus
 import azlmbr.editor as editor
 import azlmbr.entity as entity
@@ -21,9 +24,9 @@ import azlmbr.paths as paths
 import azlmbr.silpom as silpom
 
 PROJECT = Path(paths.projectroot)
-GEM = PROJECT / 'Gems/silpom'
+GEM = silpom_paths.GEM
 LEVEL = PROJECT / 'Levels/SilPOMTowerBenchmark/SilPOMTowerBenchmark.prefab'
-OUTPUT = Path(os.environ['TG_SILPOM_RESOLVE_BENCH_OUTPUT'])
+OUTPUT = Path(os.environ['SILPOM_RESOLVE_BENCH_OUTPUT'])
 OUTPUT.mkdir(parents=True, exist_ok=True)
 assert not (OUTPUT / 'results.json').exists(), 'Use a fresh benchmark directory'
 result = {'passed': False, 'stage': 'startup', 'runs': [], 'orders': [],
@@ -146,8 +149,6 @@ def capture(view_name, repeat, mode, frames):
 def main():
     global tower, component
     source = LEVEL.read_bytes()
-    vue_path = PROJECT / 'Levels/VueLiveLink/VueLiveLink.prefab'
-    vue_source = vue_path.read_bytes()
     fixture = json.loads(LEVEL.with_name('scene.json').read_text())
     assert hashlib.sha256(source).hexdigest() == fixture['scene_sha256']
     result['scene_sha256'] = fixture['scene_sha256']
@@ -177,12 +178,13 @@ def main():
             GEM / 'Assets/Materials/Pipelines/MainPipeline/SilPOMHitDepth.azsli',
             GEM / 'Assets/Materials/Pipelines/MainPipeline/SilPOMHitDepthProxy.azsli',
             GEM / 'Assets/Shaders/SilPOM/HitReuse/SilPOMClassifyWallHoles.azsl',
-            GEM / 'Integration/O3DE/manifest.json',
             GEM / 'Assets/Passes/SilPOMHitForward.pass')}
-    repeats = int(os.environ.get('TG_SILPOM_RESOLVE_BENCH_REPEATS', '3'))
-    frames = int(os.environ.get('TG_SILPOM_RESOLVE_BENCH_FRAMES', '120'))
+    import o3de_patches
+    result['o3de_patches'] = o3de_patches.evidence()
+    repeats = int(os.environ.get('SILPOM_RESOLVE_BENCH_REPEATS', '3'))
+    frames = int(os.environ.get('SILPOM_RESOLVE_BENCH_FRAMES', '120'))
     assert repeats >= 3 and frames >= 120
-    names = os.environ.get('TG_SILPOM_RESOLVE_BENCH_VIEWS',
+    names = os.environ.get('SILPOM_RESOLVE_BENCH_VIEWS',
                            'exterior,lower-facing,lower-glancing,upper-glancing').split(',')
     assert names and all(name in fixture['views'] for name in names)
     result.update(repeats=repeats, frames_per_capture=frames,
@@ -260,8 +262,8 @@ def main():
             for mode in modes:
                 capture(name, repeat, mode, frames)
     renderer_clean()
-    assert LEVEL.read_bytes() == source and vue_path.read_bytes() == vue_source
-    result.update(passed=True, stage='complete', saved_level_unchanged=True, vue_live_link_unchanged=True)
+    assert LEVEL.read_bytes() == source
+    result.update(passed=True, stage='complete', saved_level_unchanged=True)
 
 
 try:

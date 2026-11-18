@@ -13,6 +13,8 @@ ignored project user data. The Editor can remain closed; no Editor is launched.
 [CmdletBinding()]
 param(
     [string] $PythonExe = '',
+    [string] $ProjectPath = '',
+    [string] $EnginePath = '',
     [string] $Manifest = '',
     [string] $BuildPath = '',
     [string] $OutputPath = '',
@@ -27,12 +29,11 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $gem = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
-$project = (Resolve-Path -LiteralPath (Join-Path $gem '../..')).Path
-$workspace = Split-Path -Parent $project
+. (Join-Path $gem 'Tests/SilPOMEditorPaths.ps1')
+$project = Resolve-SilPOMProjectPath -ProjectPath $ProjectPath
 $cmake = (Get-Command cmake -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
 if (-not $PythonExe) {
-    . (Join-Path $project 'scripts/ProjectPaths.ps1')
-    $engine = Resolve-TGEnginePath -ProjectPath $project
+    $engine = Resolve-SilPOMEnginePath -ProjectPath $project -EnginePath $EnginePath
     $engineId = (& $cmake -P (Join-Path $engine 'cmake/CalculateEnginePathId.cmake') $engine | Select-Object -Last 1).Trim()
     if ($LASTEXITCODE -ne 0 -or -not $engineId) { throw 'Cannot find the O3DE Python environment; pass -PythonExe.' }
     $venvRoot = Join-Path ([Environment]::GetFolderPath('UserProfile')) '.o3de/Python/venv'
@@ -54,7 +55,7 @@ Write-Output "Using Python: $PythonExe"
 & $PythonExe -c 'import numpy; import PIL'
 if ($LASTEXITCODE -ne 0) { throw 'Use -PythonExe with a Python installation containing numpy and Pillow.' }
 if (-not $Manifest) {
-    $Manifest = Join-Path $workspace 'assets-source/Blender/tower-first/IrishFieldstoneKit/tower-export/welded-open-shaft-no-landings/experiment.json'
+    $Manifest = Join-Path $project 'Training/tower.json'
 }
 if (-not $BuildPath) { $BuildPath = Join-Path $project 'user/SilPOMLevelOne/build' }
 if (-not $OutputPath) { $OutputPath = Join-Path $project ('user/SilPOMLevelOne/runs/' + (Get-Date -Format 'yyyyMMdd-HHmmss')) }

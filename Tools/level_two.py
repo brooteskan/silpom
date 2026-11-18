@@ -1,4 +1,5 @@
 """Train/evaluate the 19 -> 24 -> 5 multi-candidate predictor on native descriptors."""
+from silpom_project import add_project_argument
 import argparse
 import ctypes
 import hashlib
@@ -151,6 +152,7 @@ def main():
     cli.add_argument("--steps",type=int,default=4500)
     cli.add_argument("--profiles",type=int,nargs="+",default=[1,2,3,4])
     cli.add_argument("--reuse-checkpoints",action="store_true",help="Re-evaluate saved checkpoints with current solver/reference checks")
+    add_project_argument(cli)
     args=cli.parse_args()
     if min(args.training_rays,args.rays,args.steps)<1 or any(i not in range(1,5) for i in args.profiles):
         cli.error("Positive ray counts/steps and open-shaft profile ids 1-4 are required")
@@ -160,7 +162,7 @@ def main():
     native=Native(args.binary_dir)
     report={"architecture":[19,24,5],"quality_budget":[6,4,1],"profiles":{}}
     models={}
-    project=Path(__file__).resolve().parents[3]
+    project=args.project.resolve()
     runtime_heights=[
         project/"Assets/SilPOMPlanarAB/IrishFieldstoneTowerWelded/wall/height.png",
         project/"Assets/SilPOMPlanarAB/IrishFieldstoneTowerOpenShaft/sculpted-stair-silpom/height.png",

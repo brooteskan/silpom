@@ -187,12 +187,12 @@ $kind = 'visuals'            # Use 'timings' only after visual validation
 $build = "$project/build/profile-5700g-sm6_2"
 $output = "$project/user/tower-$kind-${samples}x-$(Get-Date -Format yyyyMMdd-HHmmss)"
 New-Item -ItemType Directory -Path $output | Out-Null
-$env:TG_SILPOM_ESTIMATOR_OUTPUT = $output
-$env:TG_SILPOM_TOWER_SAMPLES = "$samples"
-$env:TG_SILPOM_MSAA_TIMING = if ($kind -eq 'timings') { '1' } else { '0' }
-$env:TG_SILPOM_TOWER_TIMING_ONLY = $env:TG_SILPOM_MSAA_TIMING
-$env:TG_SILPOM_TOWER_TIMING_REPEATS = '3'
-$env:TG_SILPOM_TOWER_RENDERDOC_VIEW = ''
+$env:SILPOM_ESTIMATOR_OUTPUT = $output
+$env:SILPOM_TOWER_SAMPLES = "$samples"
+$env:SILPOM_MSAA_TIMING = if ($kind -eq 'timings') { '1' } else { '0' }
+$env:SILPOM_TOWER_TIMING_ONLY = $env:SILPOM_MSAA_TIMING
+$env:SILPOM_TOWER_TIMING_REPEATS = '3'
+$env:SILPOM_TOWER_RENDERDOC_VIEW = ''
 $arguments = @("--project-path=$project", "--engine-path=$engine",
     "--project-build-path=$build", '--rhi=dx12',
     "--regset=/O3DE/Autoexec/ConsoleCommands/r_multiSampleCount=$samples",

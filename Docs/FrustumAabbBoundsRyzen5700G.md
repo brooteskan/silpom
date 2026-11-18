@@ -342,37 +342,37 @@ $python = 'C:/Users/david/AppData/Local/Programs/Python/Python312/python.exe'
 & $python Tests/MsaaAssetReadiness.py $project
 & $python Tests/test_frustum_depth_bound.py --geometry "$project/user/silpom-depth-bounds-20261114/analysis-final/geometry.npz" --output "$project/user/new-numerical-validation.json"
 
-$env:TG_SILPOM_ESTIMATOR_OUTPUT = "$project/user/new-frustum-visuals"
-New-Item -ItemType Directory $env:TG_SILPOM_ESTIMATOR_OUTPUT
-$env:TG_SILPOM_TOWER_SAMPLES = '2'
-$env:TG_SILPOM_TOWER_RENDERDOC_VIEW = ''
-$env:TG_SILPOM_TOWER_CAMERA_PATH = ''
-$env:TG_SILPOM_MSAA_TIMING = '0'
-$env:TG_SILPOM_TOWER_TIMING_ONLY = '0'
+$env:SILPOM_ESTIMATOR_OUTPUT = "$project/user/new-frustum-visuals"
+New-Item -ItemType Directory $env:SILPOM_ESTIMATOR_OUTPUT
+$env:SILPOM_TOWER_SAMPLES = '2'
+$env:SILPOM_TOWER_RENDERDOC_VIEW = ''
+$env:SILPOM_TOWER_CAMERA_PATH = ''
+$env:SILPOM_MSAA_TIMING = '0'
+$env:SILPOM_TOWER_TIMING_ONLY = '0'
 $editorArguments = @("--project-path=$project", "--engine-path=$engine", "--project-build-path=$build",
   '--rhi=dx12', '--regset=/O3DE/Autoexec/ConsoleCommands/r_multiSampleCount=2',
   '--runpython', "$project/Gems/silpom/Tests/TowerBenchmarkEditorSmoke.py")
 $editor = Start-Process "$build/bin/profile/Editor.exe" -ArgumentList $editorArguments -WorkingDirectory $project -WindowStyle Hidden -PassThru
 $editor.WaitForExit()
-& $python Tests/TowerBenchmarkVisualTests.py $env:TG_SILPOM_ESTIMATOR_OUTPUT
-& $python Tests/compare_tower_bounds.py "$project/user/silpom-rebenchmark-2f818d8-20261114/visuals-2x-20261114-205859" $env:TG_SILPOM_ESTIMATOR_OUTPUT --output "$project/user/new-frustum-visual-comparison.json"
+& $python Tests/TowerBenchmarkVisualTests.py $env:SILPOM_ESTIMATOR_OUTPUT
+& $python Tests/compare_tower_bounds.py "$project/user/silpom-rebenchmark-2f818d8-20261114/visuals-2x-20261114-205859" $env:SILPOM_ESTIMATOR_OUTPUT --output "$project/user/new-frustum-visual-comparison.json"
 
-$env:TG_SILPOM_ESTIMATOR_OUTPUT = "$project/user/new-frustum-timings"
-New-Item -ItemType Directory $env:TG_SILPOM_ESTIMATOR_OUTPUT
-$env:TG_SILPOM_MSAA_TIMING = '1'
-$env:TG_SILPOM_TOWER_TIMING_ONLY = '1'
-$env:TG_SILPOM_TOWER_TIMING_REPEATS = '3'
+$env:SILPOM_ESTIMATOR_OUTPUT = "$project/user/new-frustum-timings"
+New-Item -ItemType Directory $env:SILPOM_ESTIMATOR_OUTPUT
+$env:SILPOM_MSAA_TIMING = '1'
+$env:SILPOM_TOWER_TIMING_ONLY = '1'
+$env:SILPOM_TOWER_TIMING_REPEATS = '3'
 $editor = Start-Process "$build/bin/profile/Editor.exe" -ArgumentList $editorArguments -WorkingDirectory $project -WindowStyle Hidden -PassThru
 $editor.WaitForExit()
-& $python Tests/analyze_tower_profile.py $env:TG_SILPOM_ESTIMATOR_OUTPUT --output "$env:TG_SILPOM_ESTIMATOR_OUTPUT/summary.json"
+& $python Tests/analyze_tower_profile.py $env:SILPOM_ESTIMATOR_OUTPUT --output "$env:SILPOM_ESTIMATOR_OUTPUT/summary.json"
 ```
 
 The raw-root launch helpers preserve stdout/stderr, Editor logs, exit/results
 and explicit engine paths. For read-only RenderDoc verification, inject the
-same Editor using `renderdoccmd capture`, set `TG_SILPOM_TOWER_RENDERDOC_VIEW`
+same Editor using `renderdoccmd capture`, set `SILPOM_TOWER_RENDERDOC_VIEW`
 to `upper-glancing` with timing disabled, then run
 `qrenderdoc --python Tests/TowerBenchmarkCoverageProbe.py` with
-`TG_SILPOM_COVERAGE_CONFIG` pointing to the retained probe config (update capture
+`SILPOM_COVERAGE_CONFIG` pointing to the retained probe config (update capture
 and output paths). This needs no Developer Mode. Counter collection is separate
 and must not be attempted with Developer Mode off on this driver.
 
@@ -389,9 +389,9 @@ For the affected-route checks, use separate fresh outputs for each sample count,
 timing disabled, and set the following before the normal Editor launch command:
 
 ```powershell
-$env:TG_SILPOM_TOWER_CAMERA_PATH = "$project/Gems/silpom/Tests/Reference/TowerBenchmarkNearPlanePath.json"
-# Set TG_SILPOM_TOWER_SAMPLES and the startup r_multiSampleCount to 1, 2 or 4.
-# Keep TG_SILPOM_MSAA_TIMING=0 and TG_SILPOM_TOWER_TIMING_ONLY=0.
+$env:SILPOM_TOWER_CAMERA_PATH = "$project/Gems/silpom/Tests/Reference/TowerBenchmarkNearPlanePath.json"
+# Set SILPOM_TOWER_SAMPLES and the startup r_multiSampleCount to 1, 2 or 4.
+# Keep SILPOM_MSAA_TIMING=0 and SILPOM_TOWER_TIMING_ONLY=0.
 ```
 
 Use the same updated harness for reference/candidate runs (the retained raw-root

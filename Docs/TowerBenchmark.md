@@ -3,13 +3,13 @@
 The [2026-11-14 main rebenchmark](TowerBenchmarkRyzen5700G-2f818d8.md) records
 the validated 2x project default on `2f818d8` and a separate matched 1x run.
 
-Open `Levels/SilPOMTowerBenchmark/SilPOMTowerBenchmark.prefab` in TGProject.
-The scene contains the saved VueLiveLink tower at the origin, a small ground
-plane, a directional sun and the engine's daylight HDRI sky/environment light.
-Terrain, clouds, actors and unbaked diffuse-probe grids are omitted from this
-copy. The tower's authored window area lights are retained for visible interior
-comparisons. VueLiveLink and the tower's SilPOM configuration are
-not edited. The shader's authored spiral lighting remains enabled as saved.
+Open `Levels/SilPOMTowerBenchmark/SilPOMTowerBenchmark.prefab` in the fixture
+project `Tests/Fixtures/TowerBenchmark` (or in a project it was installed into).
+The scene contains the tower at the origin, a small ground plane, a directional
+sun and the engine's daylight HDRI sky/environment light. Terrain, clouds,
+actors and unbaked diffuse-probe grids are omitted. The tower's authored window
+area lights are retained for visible interior comparisons. The tower's SilPOM
+configuration is not edited. The shader's authored spiral lighting remains enabled as saved.
 Two named, unshadowed comparison fills illuminate the interior camera positions
 on all lighting channels so the column edges remain visible during inspection.
 
@@ -25,43 +25,37 @@ renderer-wide through `r_silpomAntiAliasing`; value 0 retains the project's
 Ryzen 7 5700G machine. This scene does not impose machine-wide renderer options
 or claim a measured speedup on that hardware.
 
-## Getting the scene on the other PC
+## Getting the scene
 
-Pull Diversion **main**, including `Assets/SilPOMLearned` and the tower source
-assets. Restore the Git gem revisions recorded in
-`TGProject/scripts/GitDependencies.json`. The current gem requires TG's patched
-O3DE APIs; a stock installed SDK is insufficient. Apply the complete frozen
-engine integration in `TGProject/EngineIntegration/O3DE`, mirrored in this
-repository at [Integration/O3DE](../Integration/O3DE/README.md), then rebuild
-the source engine, project modules and shader assets using its profiling build
-script. The bundle includes the other-PC handoff and verifies exact revisions
-and file hashes. Keep the SILPOM implementation pin at `e968424` for the initial
-comparison. Allow Asset Processor to finish before opening the scene. Use an
-engine build and shader target supported by the actual GPU and driver; the
+The scene and every asset it uses are in the fixture project
+[Tests/Fixtures/TowerBenchmark](../Tests/Fixtures/TowerBenchmark/README.md). Build
+the engine with the [o3de-patches](https://github.com/brooteskan/o3de-patches)
+bundle at the revision pinned in `Integration/O3DEPatches.json` (a stock engine
+is insufficient), build the fixture project, build its learned bundles as its
+README describes, and let Asset Processor finish before opening the scene. Use
+an engine build and shader target supported by the actual GPU and driver; the
 scene itself does not select or upgrade the engine's shader target. The original
-visual reference used SM 6.7; the full SM 6.2 compatibility run must be validated
-on the profiling PC before timings.
+visual reference used SM 6.7.
 
-GitHub contains the frozen scene, configuration manifest and installer in the
-SilPOM repository; the large tower textures, meshes and learned source assets
-remain in Diversion. To install the frozen scene into an existing TG checkout:
+To install the frozen scene into another project that already has the tower
+assets at the same project-relative paths:
 
 ```powershell
-python Gems/silpom/Tools/prepare_tower_benchmark.py --project .
+python <gem>/Tools/prepare_tower_benchmark.py --project <project>
 ```
 
-Run that command from `TGProject`. It refuses to overwrite a different scene
-unless `--replace` is supplied. `--generate` explicitly rebuilds the fixture
-from the local saved VueLiveLink tower; normal installation uses the frozen
-snapshot and does not depend on the target PC's VueLiveLink edits.
+It refuses to overwrite a different scene unless `--replace` is supplied.
+`--generate --source-level <level> --engine <engine>` explicitly rebuilds the
+frozen scene from a level that instances the tower prefab; normal installation
+uses the frozen snapshot.
 
 ## Repeatable checks
 
 `Tests/TowerBenchmarkEditorSmoke.py` opens the scene, checks the saved controls,
 captures all four camera views and checks Ctrl-G rendering. Run it with the
-Editor `--runpython` argument and `TG_SILPOM_ESTIMATOR_OUTPUT` set to a fresh
+Editor `--runpython` argument and `SILPOM_ESTIMATOR_OUTPUT` set to a fresh
 output directory. It never saves either level. Optional
-`TG_SILPOM_MSAA_TIMING=1` records 120-frame GPU timestamp captures at each view;
+`SILPOM_MSAA_TIMING=1` records 120-frame GPU timestamp captures at each view;
 leave that disabled for visual validation. GPU data includes the device name,
 resolution and sample count. Capture and timing runs should be separate when
 making performance comparisons.
@@ -80,17 +74,17 @@ process-local renderer setting; the component's saved **Current default** AA
 selection stays unchanged. Verify `depth_attachment.msaa == 1` in every capture.
 
 For repeated timing-only captures, use a separate fresh output directory and set
-`TG_SILPOM_MSAA_TIMING=1` and `TG_SILPOM_TOWER_TIMING_ONLY=1`. This skips all
+`SILPOM_MSAA_TIMING=1` and `SILPOM_TOWER_TIMING_ONLY=1`. This skips all
 screenshots, attachment readbacks and gameplay inspection. Each of the four
 `scene.json` cameras receives three 120-frame captures, with inspection disabled
-and a fresh warm-up before each capture. `TG_SILPOM_TOWER_TIMING_REPEATS` may
+and a fresh warm-up before each capture. `SILPOM_TOWER_TIMING_REPEATS` may
 increase the repeat count (minimum three). The native capture records GPU pass
 timestamps and graphics spans. The profiling harness also samples the RHI CPU
 frame-to-frame period at readback collection, including waits; delayed GPU
 readbacks are not paired CPU/GPU frames. Zero means that CPU metric is unavailable.
 Capture wall time includes the automation loop and is not CPU frame time.
 Summarize the resulting files with
-`python Gems/silpom/Tests/analyze_tower_profile.py <timing-directory> --output <report.json>`.
+`python <gem>/Tests/analyze_tower_profile.py <timing-directory> --output <report.json>`.
 The summary includes pooled medians/p95, each capture's statistics, the range of
 repeat medians and the complete leaf-pass breakdown. Graphics spans can contain
 queue gaps and must not be converted to GPU busy time or FPS.
@@ -201,40 +195,41 @@ timing. No shader edits or optimization were made.
 The capture harness remains available for a separate diagnostic run: launch
 Editor through `renderdoccmd capture -w -d <project> -c <fresh-output>/tower`,
 followed by the same explicit Editor arguments below, with
-`TG_SILPOM_MSAA_TIMING=0`, `TG_SILPOM_TOWER_TIMING_ONLY=0` and
-`TG_SILPOM_TOWER_RENDERDOC_VIEW=upper-glancing`. It verifies the injected API,
+`SILPOM_MSAA_TIMING=0`, `SILPOM_TOWER_TIMING_ONLY=0` and
+`SILPOM_TOWER_RENDERDOC_VIEW=upper-glancing`. It verifies the injected API,
 warms the selected scene.json camera and saves one frame. It never participates
 in baseline statistics. Counter behavior is documented in RenderDoc's
 [performance-counter guide](https://github.com/baldurk/renderdoc/blob/v1.47/docs/window/performance_counter_viewer.rst);
 source-level stepping is described in its
 [shader-debugging guide](https://github.com/baldurk/renderdoc/blob/v1.47/docs/how/how_debug_shader.rst).
 
-Reproduce from PowerShell after following TG's engine bundle README (restore
-Git dependencies before applying the aggregate). Preserve the SILPOM
-implementation pin and use this profiling branch for harness changes:
+Reproduce from PowerShell. `$patches` is a checkout of o3de-patches at the pinned
+commit; `$gem` is this repository; the project is the fixture project:
 
 ```powershell
-$project = 'D:/diversion/TG/TGProject'
-$engine = 'D:/engines/o3de-tg-profile'
-$python = 'C:/Users/david/AppData/Local/Programs/Python/Python312/python.exe'
-& $python "$project/EngineIntegration/O3DE/apply.py" --engine $engine --project $project --check-only
-powershell -NoProfile -ExecutionPolicy Bypass -File "$project/EngineIntegration/O3DE/Build-ProfilingEngine.ps1" -EnginePath $engine -ProjectPath $project -ShaderModel 6_2 -PlanOnly -Generator 'Visual Studio 18 2026' -Python $python
+$gem = 'D:/src/silpom'
+$project = "$gem/Tests/Fixtures/TowerBenchmark"
+$patches = 'D:/src/o3de-patches'
+$engine = 'D:/engines/o3de-patched'
+$python = 'python'
+& $python "$patches/apply.py" --engine $engine --skip terrain-compositor --check-only
+powershell -NoProfile -ExecutionPolicy Bypass -File "$patches/Build-ProfilingEngine.ps1" -EnginePath $engine -ProjectPath $project -Skip terrain-compositor -ShaderModel 6_2 -PlanOnly -Python $python
 # Inspect plan, close Editor/asset tools, then build:
-powershell -NoProfile -ExecutionPolicy Bypass -File "$project/EngineIntegration/O3DE/Build-ProfilingEngine.ps1" -EnginePath $engine -ProjectPath $project -ShaderModel 6_2 -Parallel 4 -Generator 'Visual Studio 18 2026' -Python $python
-& $python "$project/EngineIntegration/O3DE/apply.py" --engine $engine --project $project --verify-only
-$build = "$project/build/profile-5700g-sm6_2"
+powershell -NoProfile -ExecutionPolicy Bypass -File "$patches/Build-ProfilingEngine.ps1" -EnginePath $engine -ProjectPath $project -Skip terrain-compositor -ShaderModel 6_2 -Parallel 4 -Python $python
+& $python "$patches/apply.py" --engine $engine --skip terrain-compositor --verify-only
+$build = "$project/build/profile-sm6_2"
 $common = @("--project-path=$project", "--engine-path=$engine", "--project-build-path=$build", '--rhi=dx12', '--regset=/O3DE/Autoexec/ConsoleCommands/r_multiSampleCount=1')
-$env:TG_SILPOM_ESTIMATOR_OUTPUT = "$project/user/tower-visual-$(Get-Date -Format yyyyMMdd-HHmmss)"
-$env:TG_SILPOM_MSAA_TIMING = '0'
-$env:TG_SILPOM_TOWER_TIMING_ONLY = '0'
-$env:TG_SILPOM_TOWER_RENDERDOC_VIEW = ''
-Start-Process "$build/bin/profile/Editor.exe" -ArgumentList ($common + @('--runpython', "$project/Gems/silpom/Tests/TowerBenchmarkEditorSmoke.py")) -Wait
-& $python "$project/Gems/silpom/Tests/TowerBenchmarkVisualTests.py" $env:TG_SILPOM_ESTIMATOR_OUTPUT
+$env:SILPOM_ESTIMATOR_OUTPUT = "$project/user/tower-visual-$(Get-Date -Format yyyyMMdd-HHmmss)"
+$env:SILPOM_MSAA_TIMING = '0'
+$env:SILPOM_TOWER_TIMING_ONLY = '0'
+$env:SILPOM_TOWER_RENDERDOC_VIEW = ''
+Start-Process "$build/bin/profile/Editor.exe" -ArgumentList ($common + @('--runpython', "$gem/Tests/TowerBenchmarkEditorSmoke.py")) -Wait
+& $python "$gem/Tests/TowerBenchmarkVisualTests.py" $env:SILPOM_ESTIMATOR_OUTPUT
 # Review images/logs before proceeding; use a separate fresh timing directory.
-$env:TG_SILPOM_ESTIMATOR_OUTPUT = "$project/user/tower-timing-$(Get-Date -Format yyyyMMdd-HHmmss)"
-$env:TG_SILPOM_MSAA_TIMING = '1'
-$env:TG_SILPOM_TOWER_TIMING_ONLY = '1'
-$env:TG_SILPOM_TOWER_TIMING_REPEATS = '3'
-Start-Process "$build/bin/profile/Editor.exe" -ArgumentList ($common + @('--runpython', "$project/Gems/silpom/Tests/TowerBenchmarkEditorSmoke.py")) -Wait
-& $python "$project/Gems/silpom/Tests/analyze_tower_profile.py" $env:TG_SILPOM_ESTIMATOR_OUTPUT --output "$env:TG_SILPOM_ESTIMATOR_OUTPUT/summary.json"
+$env:SILPOM_ESTIMATOR_OUTPUT = "$project/user/tower-timing-$(Get-Date -Format yyyyMMdd-HHmmss)"
+$env:SILPOM_MSAA_TIMING = '1'
+$env:SILPOM_TOWER_TIMING_ONLY = '1'
+$env:SILPOM_TOWER_TIMING_REPEATS = '3'
+Start-Process "$build/bin/profile/Editor.exe" -ArgumentList ($common + @('--runpython', "$gem/Tests/TowerBenchmarkEditorSmoke.py")) -Wait
+& $python "$gem/Tests/analyze_tower_profile.py" $env:SILPOM_ESTIMATOR_OUTPUT --output "$env:SILPOM_ESTIMATOR_OUTPUT/summary.json"
 ```

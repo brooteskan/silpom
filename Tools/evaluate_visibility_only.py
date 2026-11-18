@@ -1,4 +1,5 @@
 """Calibrate and judge the existing Level 3 network without any runtime march."""
+from silpom_project import add_project_argument
 import argparse
 import hashlib
 import json
@@ -50,6 +51,7 @@ def main():
     cli.add_argument("manifest",type=Path);cli.add_argument("binary_dir",type=Path)
     cli.add_argument("trained_data",type=Path);cli.add_argument("output",type=Path)
     cli.add_argument("--relief-depth",type=float,default=.5)
+    add_project_argument(cli)
     a=cli.parse_args()
     if not np.isfinite(a.relief_depth) or a.relief_depth<=0 or a.relief_depth>2:
         cli.error("Relief depth must be positive and at most 2")
@@ -57,7 +59,7 @@ def main():
         cli.error("Write experiment datasets outside shipping assets")
     a.output.mkdir(parents=True,exist_ok=True)
     native=Native(a.binary_dir);geometry=Evaluator(a.binary_dir)
-    project=Path(__file__).resolve().parents[3]
+    project=a.project.resolve()
     paths=["IrishFieldstoneTowerWelded/wall","IrishFieldstoneTowerOpenShaft/sculpted-stair-silpom",
            "IrishFieldstoneTowerOpenShaft/welded-doorway/trim-blocks","IrishFieldstoneTowerOpenShaft/welded-doorway/reveal"]
     report={"architecture":[10,12,1],"relief_depth_multiplier":a.relief_depth,

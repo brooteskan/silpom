@@ -3,6 +3,7 @@
 Offline only: preserves production shaders, learned bundles and saved settings.
 Reference labels come from the existing continuous FP64 bilinear-cell teacher.
 """
+from silpom_project import TOWER_LEVEL, add_project_argument
 import argparse
 import base64
 import hashlib
@@ -73,11 +74,12 @@ def main():
     cli.add_argument("--receivers", type=int, default=6)
     cli.add_argument("--steps", type=int, default=600)
     cli.add_argument("--reuse", action="store_true")
+    add_project_argument(cli)
     args = cli.parse_args()
     if not 1 <= args.receivers <= 32 or args.steps < 1:
         cli.error("Receivers must be 1-32 and fitting steps positive")
     gem = Path(__file__).resolve().parents[1]
-    project = gem.parents[1]
+    project = args.project.resolve()
     if args.output.resolve().is_relative_to(gem / "Assets"):
         cli.error("Experiment output must stay outside shipping assets")
     args.output.mkdir(parents=True, exist_ok=True)
@@ -86,7 +88,7 @@ def main():
     height_path = project / "Assets/SilPOMPlanarAB/IrishFieldstoneTowerWelded/wall/height.png"
     profile.height = np.ascontiguousarray(np.asarray(Image.open(height_path), np.float32) / 65535)
     profile.atlas = np.asarray(profile.height.shape[::-1])
-    level_path = project / "Levels/VueLiveLink/VueLiveLink.prefab"
+    level_path = project / TOWER_LEVEL
     level = json.loads(level_path.read_bytes())
     tower = next(i for i in level["Instances"].values() if i["Source"].endswith("IrishFieldstoneTowerOpenShaft.prefab"))
     depth = 1.0

@@ -18,10 +18,10 @@ The template and authored source assets are not modified.
 six derived materials with explicit single/double-sided settings:
 
 ```powershell
-python Tests/material_initialization.py --prepare --project D:/TG/TGProject
-D:/TG/TGProject/build/windows/bin/profile/AssetProcessorBatch.exe --project-path=D:/TG/TGProject --regset-file=D:/TG/TGProject/Gems/silpom/Tests/planar_dx12.setreg
+python Tests/material_initialization.py --prepare --project <project>
+<project>/build/windows/bin/profile/AssetProcessorBatch.exe --project-path=<project> --regset-file=<gem>/Tests/planar_dx12.setreg
 $env:SILPOM_MATERIAL_OUTPUT = 'SilPOMMaterialInitialization'
-D:/TG/TGProject/build/windows/bin/profile/Editor.exe --project-path=D:/TG/TGProject --rhi=dx12 --skipWelcomeScreen --autotest_mode --runpython D:/TG/TGProject/Gems/silpom/Tests/material_initialization.py
+<project>/build/windows/bin/profile/Editor.exe --project-path=<project> --rhi=dx12 --skipWelcomeScreen --autotest_mode --runpython <gem>/Tests/material_initialization.py
 ```
 
 The script observes PSO warnings through `TraceMessageBus` without suppressing

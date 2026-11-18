@@ -29,20 +29,22 @@ from the implementation commit.
   warm-up, alternate A/B run order, raw per-pass GPU timestamps, screenshots,
   linear depth, and separate failure-mask captures. No level is saved.
 
-## Reproduction in TG
+## Reproduction
 
-Build `SilPOM` and `SilPOM.Editor` in the existing project build, then:
+The comparison needs a vertex-displacement reference material and material type
+from the host project; SilPOM ships neither. Build `SilPOM` and `SilPOM.Editor`
+in that project's build, then:
 
 ```powershell
-python Tools/prepare_planar_ab_fixture.py --project D:/TG/TGProject
-python Tools/prepare_planar_ab_level.py --project D:/TG/TGProject --name SilPOMPlanarAB_20260919
-D:/TG/TGProject/build/windows/bin/profile/AssetProcessorBatch.exe --project-path=D:/TG/TGProject --regset-file=D:/TG/TGProject/Gems/silpom/Tests/planar_dx12.setreg
+python Tools/prepare_planar_ab_fixture.py --project <project> --reference-material <project>/<path>/<displaced>.material --reference-type <material type>
+python Tools/prepare_planar_ab_level.py --project <project> --name SilPOMPlanarAB_20260919
+<project>/build/windows/bin/profile/AssetProcessorBatch.exe --project-path=<project> --regset-file=<gem>/Tests/planar_dx12.setreg
 $env:SILPOM_PLANAR_LEVEL = 'SilPOMPlanarAB_20260919'
 $env:SILPOM_PLANAR_GRIDS = '32,64,128,256,512'
 $env:SILPOM_PLANAR_SAMPLES = '600'
 $env:SILPOM_PLANAR_RUNS = '3'
-D:/TG/TGProject/build/windows/bin/profile/Editor.exe --project-path=D:/TG/TGProject -rhi=dx12 --runpython D:/TG/TGProject/Gems/silpom/Tests/planar_ab.py
-python Tests/analyze_planar_ab.py D:/TG/TGProject/user/SilPOMPlanarAB/<run> --images
+<project>/build/windows/bin/profile/Editor.exe --project-path=<project> -rhi=dx12 --runpython <gem>/Tests/planar_ab.py
+python Tests/analyze_planar_ab.py <project>/user/SilPOMPlanarAB/<run> --images
 python -m unittest discover -s Tests -p test_planar_analysis.py
 ```
 

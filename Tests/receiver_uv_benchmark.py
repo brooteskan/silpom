@@ -11,8 +11,8 @@ import copy
 import azlmbr.components as components
 import azlmbr.math as azmath
 from PySide6 import QtCore
-FIXED_COUNT=int(os.environ.get('TG_RECEIVER_UV_FIXED','2048'))
-RESOLUTION=int(os.environ.get('TG_RECEIVER_UV_RESOLUTION','512'))
+FIXED_COUNT=int(os.environ.get('SILPOM_RECEIVER_UV_FIXED','2048'))
+RESOLUTION=int(os.environ.get('SILPOM_RECEIVER_UV_RESOLUTION','512'))
 
 
 def sub(a,b):return tuple(x-y for x,y in zip(a,b))
@@ -140,7 +140,7 @@ def game():
             source_strokes.append(stroke)
         doc={'Layers':[{'Id':8000,'Name':'Receiver UV proof','Order':[s['Id'] for s in source_strokes]+[14000],
             'Strokes':source_strokes+[live]}],'NextId':epoch+10000,'FrozenThrough':epoch-1,'ReceiverUv':binding}
-        if os.environ.get('TG_RECEIVER_UV_SMOKE')!='1' and os.environ.get('TG_RECEIVER_UV_BAKE_SMOKE')!='1':
+        if os.environ.get('SILPOM_RECEIVER_UV_SMOKE')!='1' and os.environ.get('SILPOM_RECEIVER_UV_BAKE_SMOKE')!='1':
             assert silpom.SilPomPlanarBenchmarkBus(bus.Broadcast,'CreateReference',tower,
                 'assets/silpomplanarab/irishfieldstonetowerwelded/wall/wall.azmaterial',1,1.,1.)
             # Capture native rendering with no fixture paint before first
@@ -159,11 +159,11 @@ def game():
         result.update(receiver=face,rectangle=rectangle,center=center,normal=normal,materials=materials,
             fixed=FIXED_COUNT,live=100,lookup='receiver instance + canonical face -> 2D texture; hit UV -> texel')
         (OUTPUT/'fixture.json').write_text(json.dumps(doc));flush()
-        if os.environ.get('TG_RECEIVER_UV_SMOKE')=='1':
+        if os.environ.get('SILPOM_RECEIVER_UV_SMOKE')=='1':
             result.update(passed=True,binding_smoke=True,stage='binding smoke complete',saved_level_unchanged=LEVEL.read_bytes()==source,
                 cache=json.loads(silpom.SilPomMeshRequestBus(bus.Event,'GetReceiverUvPaintStatus',tower)))
             return
-        if os.environ.get('TG_RECEIVER_UV_BAKE_SMOKE')=='1':
+        if os.environ.get('SILPOM_RECEIVER_UV_BAKE_SMOKE')=='1':
             camera(center,normal,.55);evidence('smoke-original')
             result['stage']='validated atlas bake';flush()
             assert silpom.SilPomMeshRequestBus(bus.Event,'SetReceiverUvPaintMode',tower,2)

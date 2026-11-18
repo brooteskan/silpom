@@ -1,7 +1,7 @@
 """Unsaved 2x paint grouping integration check, with both bake paths off.
 
-Run in a dedicated Editor --runpython with TG_SILPOM_ESTIMATOR_OUTPUT set to a
-fresh user directory and TG_PAINT_GROUPING_MODES=0,1. Creates 256 deterministic
+Run in a dedicated Editor --runpython with SILPOM_ESTIMATOR_OUTPUT set to a
+fresh user directory and SILPOM_PAINT_GROUPING_MODES=0,1. Creates 256 deterministic
 mixed dabs on an unsaved canvas, then exports exact per-sample color, normal
 and hit atlases. A hidden-paint control proves visible paint. No timestamps.
 """
@@ -82,7 +82,7 @@ def game():
             'assets/silpomplanarab/irishfieldstonetowerwelded/wall/wall.azmaterial', 1, 1., 1.)
         general.idle_wait_frames(60)
         assert silpom.SilPomPlanarBenchmarkBus(bus.Broadcast, 'IsReady')
-        modes = os.environ.get('TG_PAINT_GROUPING_MODES', '0,1,1,0').split(',')
+        modes = os.environ.get('SILPOM_PAINT_GROUPING_MODES', '0,1,1,0').split(',')
         if (OUTPUT / 'hold-for-assets').exists():
             result['stage'] = 'waiting for asset-idle marker'; flush()
             deadline = time.monotonic() + 600

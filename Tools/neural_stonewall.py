@@ -73,7 +73,7 @@ def prepare(project, dll, destination, count=32768):
     manifest = {
         "heightSha256": hashlib.sha256(source.read_bytes()).hexdigest(),
         "teacherShaderSha256": hashlib.sha256(
-            (project / "Gems/silpom/Assets/Shaders/SilPOM/Heightfield.azsli").read_bytes()).hexdigest(),
+            (Path(__file__).resolve().parents[1] / "Assets/Shaders/SilPOM/Heightfield.azsli").read_bytes()).hexdigest(),
         "seed": 20261107, "rows": len(queries), "features": features(queries).shape[1],
         "target": "normalized height of the exact nearest intersection",
         "domain": {"u": [0, 1], "v": [0, 1], "slopeX": [.35, 9], "slopeY": [-1.6, 1.6]},

@@ -1,14 +1,17 @@
 """Legacy paint/erase, independent height selections and Composite persistence.
 
 Run with a dedicated Editor --runpython. Reuses the composite test's setup and
-capture helpers; never saves VueLiveLink and closes automatically.
+capture helpers; never saves the level and closes automatically.
 The shared setup explicitly selects legacy documents so projected operation,
 pressure, Composite and point metadata remain part of this fixture.
 """
 from pathlib import Path
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import silpom_editor_paths as silpom_paths
 import azlmbr.paths as paths
 
-base_path = Path(paths.projectroot) / "Gems/silpom/Tests/decal_painter_composite_smoke.py"
+base_path = silpom_paths.GEM/"Tests/decal_painter_composite_smoke.py"
 source = base_path.read_text(encoding="utf-8")
 helpers, startup = source.split("\ntry:\n    flush()", 1)
 exec(helpers.replace('"user/DecalPainterCompositeSmoke"', '"user/DecalPainterEraseHeightSmoke"'), globals())

@@ -1,7 +1,7 @@
-"""Matched gameplay paint benchmark; isolated Editor, never saves VueLiveLink.
+"""Matched gameplay paint benchmark; isolated Editor, never saves the level.
 
-TG_SILPOM_ESTIMATOR_OUTPUT: fresh evidence directory.
-TG_PAINT_GROUPING_MODES: original (pre-change binary), or 0,1,1,0 (ABBA).
+SILPOM_ESTIMATOR_OUTPUT: fresh evidence directory.
+SILPOM_PAINT_GROUPING_MODES: original (pre-change binary), or 0,1,1,0 (ABBA).
 Uses saved paint and a deterministic, spatially interleaved shared-material fixture.
 GPU timestamps exclude captures/rebuilds; screenshots and raw diffuse validate
 compositing separately. Run with no other renderer competing for the GPU.
@@ -59,7 +59,7 @@ def game():
             'assets/silpomplanarab/irishfieldstonetowerwelded/wall/wall.azmaterial', 1, 1., 1.)
         general.idle_wait_frames(60)
         assert silpom.SilPomPlanarBenchmarkBus(bus.Broadcast, 'IsReady')
-        modes = os.environ.get('TG_PAINT_GROUPING_MODES', '0,1,1,0').split(',')
+        modes = os.environ.get('SILPOM_PAINT_GROUPING_MODES', '0,1,1,0').split(',')
         if (OUTPUT / 'hold-for-assets').exists():
             result['stage'] = 'waiting for asset-idle marker'; flush()
             deadline = time.monotonic() + 600

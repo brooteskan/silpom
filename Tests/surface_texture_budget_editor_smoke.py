@@ -14,6 +14,9 @@ import struct
 import time
 import traceback
 
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import silpom_editor_paths as silpom_paths
 import azlmbr.bus as bus
 import azlmbr.editor as editor
 import azlmbr.entity as entity
@@ -24,8 +27,8 @@ import azlmbr.silpom as silpom
 from PySide6 import QtCore
 
 PROJECT=Path(paths.projectroot)
-LEVEL=PROJECT/'Levels/VueLiveLink/VueLiveLink.prefab'
-OUTPUT=Path(os.environ.get('TG_SILPOM_ESTIMATOR_OUTPUT',str(PROJECT/'user/SurfaceTextureBudgetSmoke')))
+LEVEL=silpom_paths.LEVEL
+OUTPUT=Path(os.environ.get('SILPOM_ESTIMATOR_OUTPUT',str(PROJECT/'user/SurfaceTextureBudgetSmoke')))
 OUTPUT.mkdir(parents=True,exist_ok=True)
 RESOLUTION=256
 WORD_COUNT=RESOLUTION*RESOLUTION*8

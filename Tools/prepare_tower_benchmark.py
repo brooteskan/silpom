@@ -1,4 +1,4 @@
-"""Install the frozen tower benchmark, or explicitly regenerate it from TG assets."""
+"""Install the frozen tower benchmark level into a project, or explicitly regenerate it from a source level."""
 import argparse
 import copy
 import hashlib
@@ -58,10 +58,10 @@ def angles(direction):
             (math.degrees(math.atan2(direction[1], direction[0])) + 90) % 360 - 180]
 
 
-def generate(project):
-    original = (project / 'Levels/VueLiveLink/VueLiveLink.prefab').read_bytes()
+def generate(project, source_level, engine):
+    original = source_level.read_bytes()
     live = json.loads(original)
-    defaults = json.loads((project / 'user/engine-source/Assets/Editor/Prefabs/Default_Level.prefab').read_bytes())
+    defaults = json.loads((engine / 'Assets/Editor/Prefabs/Default_Level.prefab').read_bytes())
     source = json.loads((project / TOWER).read_bytes())
     key, instance = next((k, copy.deepcopy(v)) for k, v in live['Instances'].items() if v['Source'] == TOWER)
     inspect = [p for p in instance['Patches'] if p['path'].startswith('/Entities/TowerMesh/Components/EditorMeshComponent/')
@@ -166,7 +166,7 @@ def generate(project):
             'Assets/SilPOMPlanarAB/IrishFieldstoneTowerWelded', 'Assets/SilPOMLearned'],
         'lighting': ['Sun', 'Sky and Environment | Daylight IBL', 'Comparison Fill | lower', 'Comparison Fill | upper'],
         'recommended_capture_resolution': [1280, 720], 'target_system': 'Ryzen 7 5700G'}
-    assert (project / 'Levels/VueLiveLink/VueLiveLink.prefab').read_bytes() == original
+    assert source_level.read_bytes() == original
     FIXTURE.mkdir(parents=True, exist_ok=True)
     (FIXTURE / (NAME+'.prefab')).write_bytes(data)
     (FIXTURE / 'scene.json').write_text(json.dumps(manifest, indent=2)+'\n')
@@ -177,7 +177,7 @@ def install(project, replace=False):
     folder.mkdir(parents=True, exist_ok=True)
     for name in (NAME+'.prefab', 'scene.json'):
         # Git checkouts may use CRLF; keep the frozen JSON bytes and its
-        # recorded digest identical across PCs and Diversion workspaces.
+        # recorded digest identical across PCs and workspaces.
         data = (FIXTURE / name).read_bytes().replace(b'\r\n', b'\n')
         target = folder / name
         if target.exists() and target.read_bytes() != data and not replace:
@@ -189,9 +189,14 @@ def install(project, replace=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--project', type=Path, required=True)
-    parser.add_argument('--generate', action='store_true', help='Regenerate the frozen scene from this project\'s saved VueLiveLink tower')
+    parser.add_argument('--generate', action='store_true',
+                        help='Regenerate the frozen scene from --source-level, a level in --project that instances the tower prefab')
+    parser.add_argument('--source-level', type=Path, help='Level to take the tower instance and its lighting from (with --generate)')
+    parser.add_argument('--engine', type=Path, help='O3DE engine root supplying Assets/Editor/Prefabs/Default_Level.prefab (with --generate)')
     parser.add_argument('--replace', action='store_true')
     args = parser.parse_args()
     if args.generate:
-        generate(args.project.resolve())
+        if not args.source_level or not args.engine:
+            parser.error('--generate needs --source-level and --engine')
+        generate(args.project.resolve(), args.source_level.resolve(), args.engine.resolve())
     install(args.project.resolve(), args.replace)

@@ -1,6 +1,6 @@
 """Read final hit ownership for retained forward draws, without GPU counters.
 
-Run with qrenderdoc --python; TG_SILPOM_FORWARD_CONFIG names a JSON containing
+Run with qrenderdoc --python; SILPOM_FORWARD_CONFIG names a JSON containing
 profile (the retained profile.json), matches (shader-product-matches.json), and
 output. Material offsets below are the captured SM6.2 layout, checked against
 the exported disassembly; this probe intentionally targets that tower capture.
@@ -18,7 +18,7 @@ import traceback
 import renderdoc as rd
 
 
-config = json.loads(Path(os.environ['TG_SILPOM_FORWARD_CONFIG']).read_text(encoding='utf-8-sig'))
+config = json.loads(Path(os.environ['SILPOM_FORWARD_CONFIG']).read_text(encoding='utf-8-sig'))
 output = Path(config['output'])
 output.mkdir(parents=True, exist_ok=True)
 result = {'passed': False, 'scope': 'Retained stable-power draw timings; read-only final hit ownership, no counters'}

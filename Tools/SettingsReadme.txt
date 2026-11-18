@@ -44,7 +44,7 @@ Tests/MeshSettingRulesTests.cpp checks 466944 transitions, dependency closure,
 idempotence, both switching directions, and preservation of valid choices.
 Tests/MeshSettingRulesEditorSmoke.py exercises actual Editor property callbacks,
 repair of existing conflicts and the exported runtime component in Ctrl-G.
-It uses TG_SILPOM_ESTIMATOR_OUTPUT for output and never saves the level.
+It uses SILPOM_ESTIMATOR_OUTPUT for output and never saves the level.
 
 Implementation is Editor-only: Include/SilPOM/MeshSettingRules.h and the
 EditorMeshComponent adapter. No shader, neural weights, decal code or runtime

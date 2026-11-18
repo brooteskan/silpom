@@ -76,10 +76,10 @@ $env:SILPOM_FACE_EXIT = '1'
 # Set to 1 for raw attachments, all-mesh disable, and wider bias comparisons.
 # Leave unset for per-component, shadow-enable and filtering comparisons.
 $env:SILPOM_TERRAIN_STUDY = '1'
-& D:/TG/TGProject/build/windows/bin/profile/Editor.exe --rhi=dx12 `
-  --project-path=D:/TG/TGProject `
-  --regset-file=D:/TG/TGProject/Gems/silpom/Tests/planar_dx12.setreg `
-  --runpython D:/TG/TGProject/Gems/silpom/Tests/terrain_shadow_isolation.py
+& <project>/build/windows/bin/profile/Editor.exe --rhi=dx12 `
+  --project-path=<project> `
+  --regset-file=<gem>/Tests/planar_dx12.setreg `
+  --runpython <gem>/Tests/terrain_shadow_isolation.py
 ```
 
 Let Asset Processor finish compiling `Shaders/Shadow/FullscreenShadow.shader`.
@@ -91,8 +91,8 @@ project and will not replace the pass's shader.
 For a scene-independent regression, run:
 
 ```powershell
-cmake --build D:/TG/TGProject/build/windows --config profile --target TGProject.Tests
-cd D:/TG/TGProject/build/windows/bin/profile
+cmake --build <project>/build/windows --config profile --target TGProject.Tests
+cd <project>/build/windows/bin/profile
 ./AzTestRunner.exe TGProject.Tests.dll AzRunUnitTests --gtest_filter=DirectionalShadowCascadeGpuTests.*
 ```
 

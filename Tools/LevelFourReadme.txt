@@ -8,12 +8,12 @@ are a separate default-off experiment; see LevelFourFiveBReadme.txt.
 
 Use
 ---
-Select the tower in VueLiveLink, open its SilPOM Mesh component, and enable
+Select the tower in the tower benchmark level, open its SilPOM Mesh component, and enable
 "Level 4A wall material (experimental)". It requires "Local shadow method" =
 "Neural only" (enum 3) and the existing supported Level 3 relief depth 0.5.
 The checkbox defaults to off; no saved level or material is changed.
 
-The trained source is Assets/SilPOMLearned/wall.l4mat in the TG project, built
+The trained source is Assets/SilPOMLearned/wall.l4mat in the project (git-ignored and rebuilt in the fixture project), built
 into assets/silpomlearned/wall.silpommaterial by Asset Processor. The trained
 binary belongs to the project's asset repository, not the SilPOM Git repo.
 Missing, stale, malformed or incompatible assets produce an explicit status.
@@ -72,7 +72,7 @@ and the asset builder do not require PyTorch. The candidate used CPU PyTorch
 
   python Tools/material_codec.py <wall-source-folder> <output-folder> --steps 1500 --batch 512
 
-<wall-source-folder> is the TG project's
+<wall-source-folder> is the project's (by default the fixture project's)
 Assets/SilPOMPlanarAB/IrishFieldstoneTowerWelded/wall. Copy the resulting
 wall.l4mat into Assets/SilPOMLearned and run Asset Processor. Large training
 outputs, held-out queries, Python packages and screenshots belong in ignored

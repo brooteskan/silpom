@@ -1,11 +1,21 @@
-"""Import the authored SurfaceTexture stamps into the painter's asset library."""
+"""Import authored SurfaceTexture stamp packages into a project's painter asset library.
+
+python ImportSurfaceDecals.py --source <folder of SurfaceTexture_* packages> --project <O3DE project>
+writes <project>/Assets/Materials/DecalPaint/<name>/. Each package holds
+Textures/SurfaceTexture_BaseColor_RGBA.png, Textures/SurfaceTexture_Normal_DirectX.png
+and Stamp_Preview.png.
+"""
+import argparse
 import json
 from pathlib import Path
 import shutil
 
-project = Path(__file__).resolve().parents[3]
-source = project.parent / "assets-source/Textures/Decals"
-destination = project / "Assets/Materials/DecalPaint"
+cli = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+cli.add_argument("--source", type=Path, required=True)
+cli.add_argument("--project", type=Path, required=True)
+args = cli.parse_args()
+source = args.source.resolve()
+destination = args.project.resolve() / "Assets/Materials/DecalPaint"
 
 for package in sorted(source.glob("SurfaceTexture_*")):
     name = package.name.lower()

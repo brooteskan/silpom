@@ -1,7 +1,7 @@
 """Near-wall moving-light and diffuse-only accessibility experiments.
 
 Captures the approved default before experiments. No source level is saved.
-Run in an isolated Editor with TG_SILPOM_ESTIMATOR_OUTPUT set.
+Run in an isolated Editor with SILPOM_ESTIMATOR_OUTPUT set.
 """
 from pathlib import Path
 helper=Path(__file__).with_name('LightingEstimatorEditorSmoke.py')

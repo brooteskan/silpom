@@ -1,7 +1,7 @@
 """Exact 2x sample comparisons using the timing benchmark's normals-on fixture.
 
 Run in a dedicated Editor --runpython with processed assets and
-TG_SILPOM_RESOLVE_NORMALS_OUTPUT set to a fresh directory. This script never
+SILPOM_RESOLVE_NORMALS_OUTPUT set to a fresh directory. This script never
 collects timestamps. Run test_tower_resolve_regions.py on its output afterward.
 The saved level is unchanged and the temporary normals/AA/view settings are
 restored. The four fixed tower views match TowerResolveRegionsBenchmark.py.
@@ -24,7 +24,7 @@ import azlmbr.silpom as silpom
 
 PROJECT = Path(paths.projectroot)
 LEVEL = PROJECT / 'Levels/SilPOMTowerBenchmark/SilPOMTowerBenchmark.prefab'
-OUTPUT = Path(os.environ['TG_SILPOM_RESOLVE_NORMALS_OUTPUT'])
+OUTPUT = Path(os.environ['SILPOM_RESOLVE_NORMALS_OUTPUT'])
 OUTPUT.mkdir(parents=True, exist_ok=True)
 VIEWS = ('exterior', 'lower-facing', 'lower-glancing', 'upper-glancing')
 SAMPLES = 2

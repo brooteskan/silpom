@@ -11,21 +11,21 @@ Results and screenshots go under ignored user/SilPOMLevelFiveSmoke. The original
 component settings, camera and console variables are restored after comparison.
 #>
 [CmdletBinding()]
-param([string] $OutputPath = '', [switch] $LeaveOpen)
+param([string] $OutputPath = '', [switch] $LeaveOpen, [string] $ProjectPath = '', [string] $EnginePath = '', [string] $BinaryPath = '')
 $ErrorActionPreference = 'Stop'
-$project = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../../..')).Path
-. (Join-Path $project 'scripts/ProjectPaths.ps1')
-$engine = Resolve-TGEnginePath -ProjectPath $project
-$bin = Join-Path $project 'build/windows/bin/profile'
+. (Join-Path $PSScriptRoot 'SilPOMEditorPaths.ps1')
+$project = Resolve-SilPOMProjectPath -ProjectPath $ProjectPath
+$engine = Resolve-SilPOMEnginePath -ProjectPath $project -EnginePath $EnginePath
+$bin = Resolve-SilPOMBinaryPath -ProjectPath $project -BinaryPath $BinaryPath
 $prefix = [IO.Path]::GetFullPath($bin).TrimEnd([char]92, [char]47) + [IO.Path]::DirectorySeparatorChar
 $active = @(Get-CimInstance Win32_Process -Filter "Name = 'Editor.exe' OR Name = 'AssetProcessor.exe' OR Name = 'AssetProcessorBatch.exe'" |
     Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase) })
-if ($active.Count) { throw 'Save and close the TG Editor and Asset Processor before starting this comparison.' }
+if ($active.Count) { throw 'Save and close the Editor and Asset Processor before starting this comparison.' }
 if (-not $OutputPath) { $OutputPath = Join-Path $project ('user/SilPOMLevelFiveSmoke/' + (Get-Date -Format 'yyyyMMdd-HHmmss')) }
 $output = [IO.Path]::GetFullPath($OutputPath)
 New-Item -ItemType Directory -Path $output -Force | Out-Null
-$oldOutput = $env:TG_SILPOM_LEVEL_FIVE_TEST_OUTPUT
-$oldLeaveOpen = $env:TG_SILPOM_LEVEL_FIVE_LEAVE_OPEN
+$oldOutput = $env:SILPOM_LEVEL_FIVE_TEST_OUTPUT
+$oldLeaveOpen = $env:SILPOM_LEVEL_FIVE_LEAVE_OPEN
 $server = $null
 $bundleBackups = @{}
 foreach ($name in @('wall.l4mat','wall-shared.l4shared','wall-appearance.l5app','wall-depth.l5depth')) {
@@ -34,8 +34,8 @@ foreach ($name in @('wall.l4mat','wall-shared.l4shared','wall-appearance.l5app',
     [IO.File]::WriteAllBytes((Join-Path $output $name), $bundleBackups[$path])
 }
 try {
-    $env:TG_SILPOM_LEVEL_FIVE_TEST_OUTPUT = $output
-    $env:TG_SILPOM_LEVEL_FIVE_LEAVE_OPEN = if ($LeaveOpen) { '1' } else { '0' }
+    $env:SILPOM_LEVEL_FIVE_TEST_OUTPUT = $output
+    $env:SILPOM_LEVEL_FIVE_LEAVE_OPEN = if ($LeaveOpen) { '1' } else { '0' }
     $arguments = @("--project-path=$project", "--engine-path=$engine")
     $server = Start-Process -FilePath (Join-Path $bin 'AssetProcessor.exe') -ArgumentList ($arguments + '--start-hidden') -WorkingDirectory $project -WindowStyle Hidden -PassThru
     Start-Sleep -Seconds 5
@@ -86,6 +86,6 @@ try {
             Where-Object { $_.ParentProcessId -eq $server.Id -and $_.ExecutablePath -and $_.ExecutablePath.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase) })
         foreach ($child in $children) { Stop-Process -Id $child.ProcessId -Force -ErrorAction SilentlyContinue }
     }
-    $env:TG_SILPOM_LEVEL_FIVE_TEST_OUTPUT = $oldOutput
-    $env:TG_SILPOM_LEVEL_FIVE_LEAVE_OPEN = $oldLeaveOpen
+    $env:SILPOM_LEVEL_FIVE_TEST_OUTPUT = $oldOutput
+    $env:SILPOM_LEVEL_FIVE_LEAVE_OPEN = $oldLeaveOpen
 }

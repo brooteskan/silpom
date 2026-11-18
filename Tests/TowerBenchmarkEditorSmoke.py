@@ -46,21 +46,20 @@ def capture_route_view(name):
 
 def main():
     global tower,component
-    timing_only=os.environ.get('TG_SILPOM_TOWER_TIMING_ONLY','0')=='1'
-    timing=os.environ.get('TG_SILPOM_MSAA_TIMING','0')=='1'
-    renderdoc_view=os.environ.get('TG_SILPOM_TOWER_RENDERDOC_VIEW','')
-    path_file=os.environ.get('TG_SILPOM_TOWER_CAMERA_PATH','')
+    timing_only=os.environ.get('SILPOM_TOWER_TIMING_ONLY','0')=='1'
+    timing=os.environ.get('SILPOM_MSAA_TIMING','0')=='1'
+    renderdoc_view=os.environ.get('SILPOM_TOWER_RENDERDOC_VIEW','')
+    path_file=os.environ.get('SILPOM_TOWER_CAMERA_PATH','')
     camera_path=json.loads(Path(path_file).read_text()) if path_file else None
     assert not camera_path or (not timing and not renderdoc_view),'Movement validation is separate from timing/replay'
     if camera_path:
         result.update(camera_sequence=camera_path,image_views=[],record_capture_views=[],observed_camera_sequence=[])
     assert not renderdoc_view or not timing,'RenderDoc inspection must be separate from timing'
-    repeats=int(os.environ.get('TG_SILPOM_TOWER_TIMING_REPEATS','3'))
-    assert not timing_only or timing,'Timing-only mode requires TG_SILPOM_MSAA_TIMING=1'
+    repeats=int(os.environ.get('SILPOM_TOWER_TIMING_REPEATS','3'))
+    assert not timing_only or timing,'Timing-only mode requires SILPOM_MSAA_TIMING=1'
     assert not timing or repeats>=3,'Use at least three captures per camera'
     result.update(timing_only=timing_only,timing_repeats=repeats if timing else 0)
     source=LEVEL.read_bytes()
-    original=(PROJECT/'Levels/VueLiveLink/VueLiveLink.prefab').read_bytes()
     fixture=json.loads(LEVEL.with_name('scene.json').read_text())
     assert not renderdoc_view or renderdoc_view in fixture['views'],renderdoc_view
     assert hashlib.sha256(source).hexdigest()==fixture['scene_sha256']
@@ -77,7 +76,7 @@ def main():
     cfg=fixture['tower_configuration']
     state=silpom.SilPomMeshRequestBus(bus.Event,'GetAntiAliasingState',tower)
     result['initial_aa_state']=[int(state.x),int(state.y),int(state.z)]
-    samples=int(os.environ.get('TG_SILPOM_TOWER_SAMPLES',str(int(state.x))))
+    samples=int(os.environ.get('SILPOM_TOWER_SAMPLES',str(int(state.x))))
     assert samples in ((1,2,4) if camera_path else (1,2)),samples
     result['samples']=samples
     result['initial_renderer_cvars']={name:str(general.get_cvar(name)) for name in
@@ -166,9 +165,8 @@ def main():
         renderer_clean()
         result['final_paint_baking_off']=paint_baking_off(tower)
         assert LEVEL.read_bytes()==source
-        assert (PROJECT/'Levels/VueLiveLink/VueLiveLink.prefab').read_bytes()==original
         result.update(passed=True,stage='complete',saved_level_unchanged=True,
-            vue_live_link_unchanged=True,gameplay_visible=False,
+            gameplay_visible=False,
             scene_sha256=hashlib.sha256(source).hexdigest())
         return
     result['stage']='gameplay';flush()
@@ -190,9 +188,8 @@ def main():
     assert 'does not have baked texture assets' not in log
     assert 'Material::InitializeNonSerializedData is not supposed to fail' not in log
     assert LEVEL.read_bytes()==source
-    assert (PROJECT/'Levels/VueLiveLink/VueLiveLink.prefab').read_bytes()==original
     result.update(passed=True,stage='complete',saved_level_unchanged=True,
-        vue_live_link_unchanged=True,gameplay_visible=True,scene_sha256=hashlib.sha256(source).hexdigest())
+        gameplay_visible=True,scene_sha256=hashlib.sha256(source).hexdigest())
 
 
 try:

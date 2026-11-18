@@ -58,5 +58,5 @@ toggles or restart. Restoring the source must restore both. Python finally and
 the external PowerShell runner both restore original source bytes, including
 after a failed check. Active generation IDs now include enabled learned bundles.
 
-The saved VueLiveLink level and default baseline settings are preserved.
+The saved level and default baseline settings are preserved.
 No performance benchmark was run for this revision.

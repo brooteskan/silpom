@@ -1,4 +1,4 @@
-"""Run with qrenderdoc --python and TG_SILPOM_RENDERDOC_CONFIG pointing to JSON.
+"""Run with qrenderdoc --python and SILPOM_RENDERDOC_CONFIG pointing to JSON.
 
 Input keys: capture, capture_metadata, output. Optional repeats (minimum 3),
 shader_export (default true), gpu_device_id (default 0x1638), samples (1 or 2).
@@ -200,7 +200,7 @@ def profile(config):
 
 
 try:
-    configuration = json.loads(Path(os.environ['TG_SILPOM_RENDERDOC_CONFIG']).read_text(encoding='utf-8-sig'))
+    configuration = json.loads(Path(os.environ['SILPOM_RENDERDOC_CONFIG']).read_text(encoding='utf-8-sig'))
     if 'profiles' in configuration:
         completed = []
         for item in configuration['profiles']:
