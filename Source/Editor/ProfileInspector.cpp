@@ -35,6 +35,8 @@
 #include <QPointer>
 #include <QPushButton>
 #include <QSet>
+#include <QSignalBlocker>
+#include <QVector>
 #include <QSpinBox>
 #include <QTimer>
 #include <QTreeWidget>
@@ -51,18 +53,29 @@ constexpr const char* ProfilePaneName = "SilPOM Profiles";
 // Role each shader model was trained for (silpom_profile.py MODELS).
 const char* ModelRole(int model) { return model == 1 || model == 4 ? "Wall" : model == 6 || model == 7 ? "Opening" : "Surface"; }
 const char* RoleName(AZ::u32 role) { return role == 1 ? "Wall" : role == 2 ? "Opening" : "Surface"; }
-QString ModelDescription(int model)
+// Network sets a new profile can carry, and the reference networks
+// (Tools/CompiledNetworks) its weights can start from for each role. The
+// references were trained for parts of the Irish Fieldstone tower; they are
+// starting points until the profile is retrained for its own image.
+enum NetworkSet { SeedOnly = 0, HitOnly = 1, Full = 2 };
+QVector<int> ReferenceModels(int set, const QString& role)
+{
+    if (set == SeedOnly) return role == "Surface" ? QVector<int>{0} : QVector<int>{};
+    if (set == HitOnly) return role == "Wall" ? QVector<int>{1} : role == "Surface" ? QVector<int>{2, 3} : QVector<int>{};
+    return role == "Wall" ? QVector<int>{4} : role == "Surface" ? QVector<int>{5} : QVector<int>{6, 7};
+}
+QString ReferenceDescription(int model)
 {
     switch (model)
     {
-    case 0: return "0 - model 0: seed network + no-march hit (optional seed cache)";
-    case 1: return "1 - welded wall";
-    case 2: return "2 - welded stairs";
-    case 3: return "3 - welded door";
-    case 4: return "4 - open-shaft wall (Level 2, visibility, estimators)";
-    case 5: return "5 - open-shaft stairs (Level 2, visibility)";
-    case 6: return "6 - open-shaft trim (Level 2, visibility)";
-    default: return "7 - open-shaft reveal (Level 2, visibility)";
+    case 0: return "Tower wall atlas at 0.02 m, clamped (shader model 0)";
+    case 1: return "Welded tower wall (shader model 1)";
+    case 2: return "Welded tower stairs (shader model 2)";
+    case 3: return "Welded tower door (shader model 3)";
+    case 4: return "Open-shaft tower wall, with lighting estimators (shader model 4)";
+    case 5: return "Open-shaft tower stairs (shader model 5)";
+    case 6: return "Open-shaft tower door/window trim (shader model 6)";
+    default: return "Open-shaft tower entrance reveal (shader model 7)";
     }
 }
 // Profile values are float32; 7 significant digits print them without double noise.
@@ -147,12 +160,26 @@ public:
         form->addRow("Reference height", m_reference);
         m_address = new QComboBox(this); m_address->addItems({"Repeat", "Clamp"});
         form->addRow("Addressing", m_address);
-        m_model = new QComboBox(this);
-        for (int model = 0; model <= 7; ++model) m_model->addItem(ModelDescription(model), model);
-        m_model->setCurrentIndex(4);
-        form->addRow("Shader model", m_model);
-        m_role = new QLabel(this);
+        m_role = new QComboBox(this);
+        m_role->addItem("Surface", "Surface");
+        m_role->addItem("Wall", "Wall");
+        m_role->addItem("Opening", "Opening");
+        m_role->setItemData(0, "Any relief surface: floors, steps, terrain, panels.", Qt::ToolTipRole);
+        m_role->setItemData(1, "Thick walls: wall hit records and backup shells keep their silhouette from far away.", Qt::ToolTipRole);
+        m_role->setItemData(2, "Door and window trim and reveals: coverage follows the opening's edges.", Qt::ToolTipRole);
+        m_role->setCurrentIndex(1);
         form->addRow("Role", m_role);
+        m_set = new QComboBox(this);
+        m_set->addItem("Model 0: seed and no-march hit networks", int(SeedOnly));
+        m_set->addItem("Hit network", int(HitOnly));
+        m_set->addItem("Hit network, Level 2 and visibility", int(Full));
+        m_set->setItemData(0, "A seed network (or baked seed cache) that predicts the first hit, and a no-march hit network. Tied to one calibration; Surface role only.", Qt::ToolTipRole);
+        m_set->setItemData(1, "Predicts where each ray hits the relief; the shader refines and checks it against the height image.", Qt::ToolTipRole);
+        m_set->setItemData(2, "Adds a second candidate predictor and neural visibility (needed for neural-only shadows).", Qt::ToolTipRole);
+        m_set->setCurrentIndex(2);
+        form->addRow("Networks", m_set);
+        m_start = new QComboBox(this);
+        form->addRow("Starting weights", m_start);
         m_networks = new QLineEdit(this);
         m_networks->setPlaceholderText("Optional: folder of trainer output headers (else the reference networks)");
         form->addRow("Trained networks", browseRow(m_networks, [this]
@@ -188,7 +215,10 @@ public:
         layout->addLayout(form);
         layout->addWidget(m_note);
         layout->addWidget(buttons);
-        connect(m_model, qOverload<int>(&QComboBox::currentIndexChanged), this, [this] { Update(); });
+        connect(m_role, qOverload<int>(&QComboBox::currentIndexChanged), this, [this] { UpdateReferences(); });
+        connect(m_set, qOverload<int>(&QComboBox::currentIndexChanged), this, [this] { UpdateReferences(); });
+        connect(m_start, qOverload<int>(&QComboBox::currentIndexChanged), this, [this] { Update(); });
+        UpdateReferences();
         connect(m_networks, &QLineEdit::textChanged, this, [this] { Update(); });
         Update();
         resize(640, sizeHint().height());
@@ -215,25 +245,44 @@ private:
         }
         Update();
     }
+    // The shader model the role, network set and starting weights select; -1 if none fits.
+    int SelectedModel() const { return m_start->count() ? m_start->currentData().toInt() : -1; }
+    void UpdateReferences()
+    {
+        // Model 0's seed path is a plain surface.
+        if (m_set->currentData().toInt() == SeedOnly && m_role->currentData().toString() != "Surface") m_role->setCurrentIndex(0);
+        const QSignalBlocker blocker(m_start);
+        m_start->clear();
+        for (const int model : ReferenceModels(m_set->currentData().toInt(), m_role->currentData().toString()))
+            m_start->addItem(ReferenceDescription(model), model);
+        Update();
+    }
     void Update()
     {
-        const int model = m_model->currentData().toInt();
-        m_role->setText(ModelRole(model));
+        const int model = SelectedModel();
         const bool image = !m_height->text().isEmpty() && QImageReader(m_height->text()).size().isValid();
         m_width->setEnabled(!image);
         m_pixels->setEnabled(!image);
+        m_start->setEnabled(m_start->count() > 1);
+        if (model < 0)
+        {
+            m_note->setText("No reference networks exist for this role with only a hit network. Choose the full network set, "
+                "or train an opening hit network with SilPOM's trainers.");
+            return;
+        }
         QString note = model == 0
             ? "Model 0 without a height image applies to each binding's own image of this size and calibration."
             : "The profile supplies its height image, displacement, reference and addressing to every profile ID it is assigned to.";
         note += m_networks->text().isEmpty()
-            ? " Its weights are written from the reference networks of this shader model (trained for the Irish Fieldstone tower "
-              "atlases) when the Asset Processor builds it. Retrain with SilPOM's trainers for other images; see Docs/SurfaceProfiles.md."
-            : " Its weights are written from the trained networks folder, falling back to the reference networks.";
+            ? " Its weights start as copies of the reference networks above, which were trained for another image: hits are still "
+              "refined against your height image, but expect more misses and fills until you retrain for it (Docs/SurfaceProfiles.md)."
+            : " Its weights come from the trained networks folder; networks it lacks fall back to the reference above.";
         m_note->setText(note);
     }
     void Create()
     {
-        const int model = m_model->currentData().toInt();
+        const int model = SelectedModel();
+        if (model < 0) return void(QMessageBox::warning(this, windowTitle(), "Choose a role and network set that has starting weights."));
         const QString file = QDir::fromNativeSeparators(m_file->text());
         const QString height = QDir::fromNativeSeparators(m_height->text());
         const QString networks = QDir::fromNativeSeparators(m_networks->text());
@@ -269,8 +318,8 @@ private:
     QLineEdit *m_height = nullptr, *m_networks = nullptr, *m_file = nullptr;
     QSpinBox *m_width = nullptr, *m_pixels = nullptr, *m_profileId = nullptr;
     QDoubleSpinBox *m_scale = nullptr, *m_reference = nullptr;
-    QComboBox *m_address = nullptr, *m_model = nullptr, *m_assign = nullptr;
-    QLabel *m_role = nullptr, *m_note = nullptr;
+    QComboBox *m_address = nullptr, *m_role = nullptr, *m_set = nullptr, *m_start = nullptr, *m_assign = nullptr;
+    QLabel* m_note = nullptr;
 };
 
 class ProfileInspector final : public QWidget, private AzToolsFramework::ToolsApplicationNotificationBus::Handler

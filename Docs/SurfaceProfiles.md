@@ -89,8 +89,14 @@ weights are the `Tools/CompiledNetworks` reference or come from a trained
 networks folder. The component's status line is shown above the list.
 
 **Create profile...** writes a `.silpomprofile` from a height image: size read
-from the image, displacement, reference, addressing and shader model (the role
-follows from the model), and optionally a trained networks folder. It can then
+from the image, displacement, reference, addressing, the surface's role
+(Surface, Wall or Opening), its network set (model 0's seed and no-march hit
+networks; a hit network; or a hit network with Level 2 and visibility) and the
+reference networks its weights start from, and optionally a trained networks
+folder. The shader model follows from those choices. The references were
+trained for parts of the Irish Fieldstone tower, so until the profile is
+retrained for its own image, hits are still refined against that image but
+coverage is worse. No reference exists for an opening with only a hit network. It can then
 assign the profile to a profile ID of the selected mesh, either as this
 entity's *Trained profile override* (an undoable prefab edit, made once the
 Asset Processor has built the profile) or for every use of the surface in its
