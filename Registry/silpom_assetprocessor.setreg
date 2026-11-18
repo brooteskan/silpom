@@ -1,0 +1,14 @@
+{
+    "Amazon": {
+        "AssetProcessor": {
+            "Settings": {
+                // Training output of the SilPOM Profiles pane (Tools/silpom_train.py):
+                // trainer headers, report and preview images next to a profile.
+                // The profile and its weights file are the assets; this folder is not.
+                "Exclude SilPOM training": {
+                    "glob": "*.training/*"
+                }
+            }
+        }
+    }
+}
