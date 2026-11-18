@@ -92,8 +92,9 @@ networks folder. The component's status line is shown above the list.
 
 **Train profile...** trains networks for the selected profile ID from this
 surface's own data: the faces of its `.silpom.json` tagged with that ID, their
-height image and calibration (filled in from the binding, or from the current
-profile when retraining). Choose the role (Surface, Wall or Opening) and the
+height image and calibration. Those default to the mesh's own binding for the
+ID (the prefab, from the Blender export), not to the profile assigned now, and
+can be overridden in the dialog. Choose the role (Surface, Wall or Opening) and the
 networks (a hit network; a hit network with Level 2 and visibility; or model
 0's seed and no-march hit networks), Quick or Full training, the profile file
 (default `profiles/<surface>-<id>.silpomprofile` next to the surface) and where
@@ -103,7 +104,10 @@ surface in its `.silpomprofiles` file (a Blender export of the surface rewrites
 that file from the add-on's assignments), or nowhere. Any role can have any
 network set, model 0 included: its seed and no-march hit networks are trained
 on the profile ID's own faces, and an image without the 6656 x 6144 seed-cache
-format evaluates the seed network per ray. A profile's role and networks are its own:
+format evaluates the seed network per ray. One mesh may mix model 0 profiles
+with trained models 1-7 (each batch runs its own model), and a model 0
+profile installs the DX12 hit passes it needs, as trained profiles do; the
+legacy model 0 seed cache still cannot sit beside trained models. A profile's role and networks are its own:
 the shader model number only selects the network layout (and, for model 0,
 the seed path), and Level 2 and the visibility networks are optional for any
 model.

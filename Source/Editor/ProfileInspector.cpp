@@ -155,9 +155,13 @@ public:
             "at its calibration. Rays are cast at those faces and labelled with SilPOM's exact CPU intersection.")
             .arg(QFileInfo(sidecar).fileName().toHtmlEscaped()).arg(m_id), this);
         about->setWordWrap(true);
-        // The binding's settings, or the current profile's when retraining it.
+        // Height and displacement default to the mesh's own binding for this ID
+        // (the prefab, from the Blender export), never to whatever profile is
+        // assigned now; the current profile only fills in what the binding lacks.
         const bool trained = !profile.isEmpty();
-        QString height = SourceOfProduct(trained && !profile["height"].toString().isEmpty() ? profile["height"].toString() : binding["height"].toString());
+        const bool fromBinding = !binding.isEmpty() && !binding["height"].toString().isEmpty();
+        const QJsonObject calibration = fromBinding || !trained ? binding : profile;
+        QString height = SourceOfProduct(calibration["height"].toString());
         m_height = new QLineEdit(QDir::toNativeSeparators(height), this);
         form->addRow("Height image", browseRow(m_height, [this]
         {
@@ -165,13 +169,13 @@ public:
             if (!file.isEmpty()) m_height->setText(QDir::toNativeSeparators(file));
         }));
         m_scale = new QDoubleSpinBox(this); m_scale->setRange(0.0001, 10); m_scale->setDecimals(4); m_scale->setSingleStep(0.01); m_scale->setSuffix(" m");
-        m_scale->setValue(trained ? profile["scale"].toDouble() : binding["scale"].toDouble(0.1));
+        m_scale->setValue(calibration["scale"].toDouble(0.1));
         form->addRow("Displacement", m_scale);
         m_reference = new QDoubleSpinBox(this); m_reference->setRange(0, 1); m_reference->setDecimals(4); m_reference->setSingleStep(0.05);
-        m_reference->setValue(trained ? profile["reference"].toDouble() : binding["reference"].toDouble(0.05));
+        m_reference->setValue(calibration["reference"].toDouble(0.05));
         form->addRow("Reference height", m_reference);
         m_address = new QComboBox(this); m_address->addItems({"Repeat", "Clamp"});
-        m_address->setCurrentIndex(trained ? profile["addressMode"].toInt() : binding["addressMode"].toInt());
+        m_address->setCurrentIndex(calibration["addressMode"].toInt());
         form->addRow("Addressing", m_address);
         m_role = new QComboBox(this);
         m_role->addItem("Surface", "Surface");

@@ -1701,7 +1701,13 @@ bool MeshController::Prepare()
     const float depthMultiplier = requiresTrainedHits ? c.m_reliefDepthMultiplier : 1.0f;
     if (!std::isfinite(depthMultiplier) || depthMultiplier < 0.0f || depthMultiplier > MeshConfig::MaxReliefDepthMultiplier)
     { m_status = "Relief depth multiplier must be between 0 and 2"; return false; }
-    const bool reuseDepthHits = InstallHitPasses(*scene, requiresTrainedHits);
+    // A model 0 surface profile's seed and no-march hit networks run in the
+    // same hit passes as the trained models, so they install them too rather
+    // than depending on r_silpomReuseDepthHits.
+    const bool usesModelZeroProfiles = c.m_useNeuralSeed && AZStd::any_of(profiles.begin(), profiles.end(),
+        [this](const auto& entry) { return !entry.second.m_useBaseMesh && entry.second.m_neuralModel == 0
+            && m_profileAssets.contains(entry.first); });
+    const bool reuseDepthHits = InstallHitPasses(*scene, requiresTrainedHits || usesModelZeroProfiles);
     const bool neuralVisibilityOnly = c.m_localShadowMethod == LocalShadowMethod::NeuralOnly;
     if((c.m_neuralDirectionalVisibility||c.m_proxyDirectionalResponse)&&!neuralVisibilityOnly)
     {m_status="Learned directional controls require neural-only visibility; they never enable a marcher";return false;}
@@ -1873,8 +1879,10 @@ bool MeshController::Prepare()
                 if (requiresTrainedHits)
                 {
                     const auto trained = m_profileAssets.find(key.second);
-                    if (p.m_neuralModel < 1 || p.m_neuralCache.GetId().IsValid() || trained == m_profileAssets.end())
-                        return fail("Assign each displaced profile a trained surface profile and no model 0 cache");
+                    // Model 0 surface profiles may sit beside trained models
+                    // (seed path per batch); the legacy model 0 cache may not.
+                    if (p.m_neuralCache.GetId().IsValid() || trained == m_profileAssets.end())
+                        return fail("Assign each displaced profile a surface profile (model 0 included) and no model 0 cache");
                     if (desc.m_size.m_width != trained->second->m_width || desc.m_size.m_height != trained->second->m_heightPixels
                         || p.m_tiling != AZ::Vector2(1) || p.m_offset != AZ::Vector2(0))
                         return fail("Trained surface profile does not match its height image, or the profile is tiled/offset");
