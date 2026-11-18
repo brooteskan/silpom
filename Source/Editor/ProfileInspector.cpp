@@ -188,7 +188,7 @@ public:
         m_set->addItem("Model 0: seed and no-march hit networks", "model0");
         m_set->setItemData(0, "Predicts where each ray hits the relief; the shader refines and checks it against the height image.", Qt::ToolTipRole);
         m_set->setItemData(1, "Adds a second candidate predictor and neural visibility (needed for neural-only shadows).", Qt::ToolTipRole);
-        m_set->setItemData(2, "A seed network (and, for a 6656 x 6144 image, a baked seed cache) and a no-march hit network. Surface role only.", Qt::ToolTipRole);
+        m_set->setItemData(2, "A seed network (and, for a 6656 x 6144 image, a baked seed cache) and a no-march hit network, trained on this profile ID's faces.", Qt::ToolTipRole);
         m_set->setCurrentIndex(trained && (AZ::u32(profile["flags"].toInt()) & SurfaceProfileAsset::LevelTwoFlag) ? 1 : 0);
         form->addRow("Networks", m_set);
         m_quality = new QComboBox(this);
@@ -253,12 +253,7 @@ public:
     }
 
 private:
-    bool Available(QString* why = nullptr) const
-    {
-        const QString set = m_set->currentData().toString(), role = m_role->currentData().toString();
-        if (set == "model0" && role != "Surface") { if (why) *why = "Model 0 profiles are plain surfaces; choose the Surface role."; return false; }
-        return true;
-    }
+    bool Available(QString* = nullptr) const { return true; }  // every role has every network set
     void Update()
     {
         QString why;

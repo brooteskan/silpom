@@ -100,8 +100,10 @@ networks (a hit network; a hit network with Level 2 and visibility; or model
 to assign it: this entity's *Trained profile override* (an undoable prefab
 edit, made once the Asset Processor has built the profile), every use of the
 surface in its `.silpomprofiles` file (a Blender export of the surface rewrites
-that file from the add-on's assignments), or nowhere. Any role can have either
-network set; model 0 is a Surface. A profile's role and networks are its own:
+that file from the add-on's assignments), or nowhere. Any role can have any
+network set, model 0 included: its seed and no-march hit networks are trained
+on the profile ID's own faces, and an image without the 6656 x 6144 seed-cache
+format evaluates the seed network per ray. A profile's role and networks are its own:
 the shader model number only selects the network layout (and, for model 0,
 the seed path), and Level 2 and the visibility networks are optional for any
 model.

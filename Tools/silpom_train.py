@@ -46,7 +46,8 @@ import silpom_profile  # noqa: E402
 # only selects the network layout and, for the reference comparison, the
 # reference networks closest to it.
 SLOTS = {("hit", "Wall"): 1, ("hit", "Surface"): 2, ("hit", "Opening"): 3, ("full", "Wall"): 4,
-         ("full", "Surface"): 5, ("full", "Opening"): 6, ("model0", "Surface"): 0}
+         ("full", "Surface"): 5, ("full", "Opening"): 6,
+         ("model0", "Surface"): 0, ("model0", "Wall"): 0, ("model0", "Opening"): 0}
 PRESETS = {"full": dict(rays=230000, held=48000, selection=4000, steps=3300, l2_steps=4500,
                         vis_rays=300000, vis_steps=6500, phys_rays=100000, phys_held=20000),
            "quick": dict(rays=40000, held=8000, selection=2000, steps=1200, l2_steps=1200,
