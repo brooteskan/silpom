@@ -142,10 +142,11 @@ inline bool OverrideModel(float feature[11],uint,float2& logits)
 #define SP_OUT
 #include "../Assets/Shaders/SilPOM/PlanarFace.azsli"
 #include "../Assets/Shaders/SilPOM/MeshFace.azsli"
-// Models 1-7 are supported; model 0 is the separate legacy path.
-inline SilPomHit SilPomTryTowerNeural(const Texture&,SilPomPatch,SilPomMeshFace,SilPomRay,SilPomRay,float2) { return {}; }
+#include "../Assets/Shaders/SilPOM/ProfileNetworks.azsli"
+// Model 0's seed samples textures and is not evaluated here; its hit network is.
+inline SilPomHit SilPomTryTowerNeural(const Texture&,SilPomPatch,SilPomMeshFace,SilPomRay,SilPomRay,float2,SilPomWeights) { return {}; }
 #include "../Assets/Shaders/SilPOM/BlendedFace.azsli"
-// Models 1-7 as they were compiled into the shaders (the CPU reference).
+// Models 0-7 as they were compiled into the shaders (the CPU reference).
 #include "CompiledNetworks/CompiledNetworks.h"
 #undef SP_OUT
 #undef SILPOM_LEVEL2

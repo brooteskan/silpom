@@ -322,64 +322,11 @@ void SilPomFaceBounds(SilPomMeshFace f,float scale,float reference,SP_REF(float3
 }
 
 #if SILPOM_HIT_NEURAL
+#include "ProfileNetworks.azsli"
 #ifndef SILPOM_EVALUATION
 #include "NeuralTower.azsli"
 #endif
 #if SILPOM_NEURAL_NO_MARCH
-// SPDX-License-Identifier: MIT
-// Fitted offline on the 0.02 m tower atlas.
-static const float TowerNoMarchW0[16][11] = {
-    {-1.324580193e+00f, -1.012434244e+00f, -6.900474429e-01f, 2.896316767e+00f, -1.432919782e-02f, 3.722670302e-02f, 1.135296151e-01f, -6.216574088e-02f, -1.599251479e-01f, 4.809038043e-01f, 8.828719854e-01f},
-    {-2.008999735e-01f, -1.940745711e-01f, 1.494989451e-02f, 5.418453217e-01f, 2.934107780e-01f, -3.056264222e-01f, 9.120641649e-02f, 4.218667746e-02f, -2.509070635e-01f, 2.192187607e-01f, 7.509755492e-01f},
-    {-7.495850325e-02f, 4.097440243e-01f, 6.490913630e-01f, 5.335861444e-01f, 2.589601278e-01f, -8.401383460e-02f, 5.740728974e-02f, -5.010202993e-03f, -5.213815346e-02f, 9.185951948e-02f, 9.541804343e-02f},
-    {-8.661671728e-02f, 1.267113239e-01f, 1.244502738e-01f, 5.238856673e-01f, -4.185822308e-01f, 1.657848954e-01f, -7.660616189e-02f, 1.796138883e-01f, 1.367640775e-02f, 1.528929174e-01f, 1.894846112e-01f},
-    {-3.154523969e-01f, 7.747396827e-02f, 7.301829755e-02f, 3.590318561e-01f, 5.614130497e-01f, -3.501542807e-01f, 1.117625907e-01f, -4.971406981e-02f, 9.390096366e-02f, 2.261544466e-01f, 5.089017749e-01f},
-    {1.918949246e+00f, 8.660762310e-01f, 9.884915352e-01f, 1.465692163e+00f, 5.250956398e-03f, 3.534081206e-02f, -3.408195674e-01f, -7.968485355e-02f, -7.427382469e-02f, 1.376492828e-01f, 1.313399434e+00f},
-    {-8.189888597e-01f, -9.944258332e-01f, -1.217126608e+00f, -1.652884722e+00f, -1.190861221e-02f, -7.488215924e-04f, 3.168415651e-02f, 4.009282589e-02f, 1.321285516e-01f, -4.043221474e-01f, 4.289660156e-01f},
-    {-1.009350181e+00f, 5.063902959e-02f, -1.672298759e-01f, 4.740698934e-01f, -3.325127065e-01f, 1.220672280e-01f, 8.742046542e-03f, 3.443710506e-02f, 3.756976500e-02f, 3.201662302e-01f, 4.076411724e-01f},
-    {1.613311768e+00f, -7.729762197e-01f, -1.106649041e+00f, -1.807431698e+00f, 3.213624656e-02f, -3.032856993e-02f, 3.482369184e-01f, -2.458508499e-02f, -4.183418676e-02f, -3.799599111e-01f, -1.412503481e+00f},
-    {8.206936121e-01f, 4.871906936e-01f, 1.068122908e-01f, -2.298913300e-01f, -7.173327804e-01f, -6.453759074e-01f, -8.003990352e-02f, -1.966986433e-02f, 3.790247068e-02f, -2.786189504e-02f, 6.945740581e-01f},
-    {2.310570240e+00f, 1.194802672e-02f, -5.257657766e-01f, -1.937312722e+00f, 2.789807506e-03f, -7.766212802e-03f, 8.252325468e-03f, 2.189683914e-01f, 1.364386082e-01f, -9.652826190e-02f, -4.413588524e+00f},
-    {-2.037325129e-02f, 2.042307109e-01f, 9.379272461e-01f, 2.602224052e-01f, 7.227290869e-01f, -1.282994300e-01f, -5.774628744e-02f, 1.374054551e-01f, -6.108332798e-02f, 5.740680918e-02f, 7.185992599e-01f},
-    {2.536836565e-01f, -4.184751511e-01f, -5.770998597e-01f, -1.590333819e+00f, -1.960052364e-02f, 2.183351433e-03f, -5.236683041e-02f, 1.613871455e-01f, 1.515248269e-01f, -2.619216405e-02f, -3.248362541e+00f},
-    {-2.794093490e-01f, -1.344064027e-01f, 1.742751449e-01f, 3.399726748e-01f, -4.350684583e-01f, 2.067436427e-01f, -1.807816625e-01f, 3.956925496e-02f, 5.805491284e-02f, 2.941693068e-01f, 5.649434924e-01f},
-    {-1.577824950e+00f, -1.062285185e+00f, -5.440146327e-01f, -4.515854418e-01f, 7.164718583e-03f, -3.699983936e-03f, 1.736678332e-01f, 1.713481918e-02f, -4.438125342e-02f, -5.591663718e-01f, 9.771571159e-01f},
-    {8.340495825e-01f, 6.169878244e-01f, 3.311909139e-01f, -7.308819294e-01f, 3.113700636e-02f, 1.032117724e+00f, 5.368896294e-03f, -7.222747803e-02f, -7.691582292e-02f, 2.209092230e-01f, 1.075330019e+00f},
-};
-static const float TowerNoMarchB0[16] = {3.345130682e-01f, 2.330581695e-01f, 6.556897163e-01f, 4.059127271e-01f, 5.296035409e-01f, 7.674182057e-01f, 8.728465438e-01f, 2.789349258e-01f, 3.948007524e-01f, 6.284385920e-01f, 3.321440220e-01f, 1.190732494e-01f, 6.728199720e-01f, 2.689518631e-01f, -1.336514354e-01f, 3.085458875e-01f};
-static const float2 TowerNoMarchW1[16] = {
-    float2(9.409502149e-02f, 1.446479797e+00f),
-    float2(3.632004559e-01f, 2.711250484e-01f),
-    float2(-4.384333789e-01f, 1.309278905e-01f),
-    float2(-2.783657312e-01f, 1.502820551e-01f),
-    float2(-2.268738896e-01f, 4.127763510e-01f),
-    float2(-1.429870576e-01f, -1.174966693e+00f),
-    float2(8.017874360e-01f, -6.583052874e-01f),
-    float2(-2.312958539e-01f, 4.433918595e-01f),
-    float2(-7.919596434e-01f, 8.850218654e-01f),
-    float2(-5.545596406e-02f, 4.290612340e-01f),
-    float2(8.904815316e-01f, 1.023650527e+00f),
-    float2(1.864290833e-01f, 3.398517966e-01f),
-    float2(-1.200470328e+00f, -9.302335382e-01f),
-    float2(2.963843644e-01f, 1.579418331e-01f),
-    float2(-7.105599642e-01f, -6.630238891e-01f),
-    float2(-7.891792059e-02f, 5.089561343e-01f),
-};
-static const float2 TowerNoMarchB1 = float2(1.917806715e-01f, 4.202251509e-02f);
-#include "ProfileNetworks.azsli"
-
-float2 SilPomEvaluateHitModel(float feature[11], const float w0[16][11], const float b0[16], const float2 w1[16], float2 b1)
-{
-    float2 logits=b1;
-    SP_UNROLL for(uint j=0;j<16;++j)
-    {
-        float unit=b0[j];
-        SP_UNROLL for(uint k=0;k<11;++k) unit+=feature[k]*w0[j][k];
-        unit=max(unit,0.0f);
-        logits+=unit*unit*w1[j];
-    }
-    return logits;
-}
 
 // Fixed-feature inference and bounded Newton validation. No heightfield walk.
 SilPomHit SilPomNoMarchCandidate(Texture2D texture, SilPomPatch p, SilPomMeshFace face,
@@ -474,10 +421,8 @@ SilPomHit SilPomPredictTowerHit(Texture2D texture, SilPomPatch p, SilPomMeshFace
     if(!SILPOM_OVERRIDE_MODEL(feature,model,logits))
 #endif
     {
-    // The model is constant for the material batch.
-    // Trained profiles read their own networks; model 0 is compiled in.
-    SP_BRANCH if(model.id!=0u) logits=SilPomHitNetwork(feature,model.weights);
-    else logits=SilPomEvaluateHitModel(feature,TowerNoMarchW0,TowerNoMarchB0,TowerNoMarchW1,TowerNoMarchB1);
+    // Every profile, model 0 included, reads its hit network from its weights.
+    logits=SilPomHitNetwork(feature,model.weights);
     }
     float4 residuals=abs(float4(feature[0],feature[1],feature[2],feature[3]));
     const float nearestResidual=min(min(residuals.x,residuals.y),min(residuals.z,residuals.w));
@@ -545,8 +490,11 @@ SilPomHit SilPomTowerBaseHit(SilPomPatch p, SilPomMeshFace face, SilPomRay ray, 
 #endif
 
 SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilPomRay worldRay,float2 low
+#if SILPOM_HIT_NEURAL
+    ,SilPomTrainedModel model
+#endif
 #if SILPOM_NEURAL_NO_MARCH
-    ,SilPomTrainedModel model,uint validationIterations,uint retryCap,float toleranceMultiplier,uint reliefMode
+    ,uint validationIterations,uint retryCap,float toleranceMultiplier,uint reliefMode
 #endif
 #if SILPOM_HIT_NEURAL_CACHE
     ,SP_TEX neuralCache
@@ -582,7 +530,7 @@ SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilP
     if(model.id==0u)
 #endif
     {
-    SilPomHit neural=SilPomTryTowerNeural(texture,p,f,worldRay,searchRay,low
+    SilPomHit neural=SilPomTryTowerNeural(texture,p,f,worldRay,searchRay,low,model.weights
 #if SILPOM_HIT_NEURAL_CACHE
         ,neuralCache
 #endif

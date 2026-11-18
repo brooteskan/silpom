@@ -29,7 +29,7 @@ so distant proxy comparisons are not a pure visibility-only A/B of identical
 reflectance. Separate reflectance training remains future work.
 
 Full-surface training: Tools/train_directional_estimators.py. Frozen weights:
-Assets/Shaders/SilPOM/DirectionalEstimatorWeights.azsli. Quality/provenance:
+Tools/CompiledNetworks/DirectionalEstimatorWeights.azsli (the wall profile's Estimators). Quality/provenance:
 Tools/DirectionalEstimatorQuality.json. Runtime rejects changed shared feature
 generations; retraining must update weights, contract header and frozen test
 fixtures together. Original learned bundles remain byte-identical.

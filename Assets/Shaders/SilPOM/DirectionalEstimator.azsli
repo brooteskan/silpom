@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 #pragma once
-#include "DirectionalEstimatorWeights.azsli"
+// The estimators are networks of the wall profile, read from its weights
+// buffer (SP_NET_ESTIMATORS in ProfileNetworks.azsli).
+#include "ProfileNetworks.azsli"
 #if SILPOM_ANGULAR_EDGES_ONLY || defined(SILPOM_DIRECTIONAL_STANDALONE)
 #define SP_ANGULAR_EDGES_AVAILABLE 1
-#include "AngularEdgeWeights.azsli"
 #endif
 #if SILPOM_ANGULAR_EDGES_ONLY
 // A separate shader binds only this trained model. Keep its compiler/registry
@@ -16,6 +17,9 @@ static float silpomDirectionalHidden[32];
 static float3 silpomDirectionalAxes[8];
 static float4 silpomDirectionalCosines[8];
 static float silpomAngularInverseWidth[4];
+// The decoded receiver's profile networks; the field head evaluates its
+// outputs per visibility query.
+static SilPomWeights silpomDirectionalWeights;
 static const float3 SilPomDirectionalSamples[32] = {
     float3(1.250000000e-01f,0.000000000e+00f,9.921567416e-01f),
     float3(-1.596450451e-01f,1.462479387e-01f,9.762812095e-01f),
@@ -51,35 +55,35 @@ static const float3 SilPomDirectionalSamples[32] = {
     float3(5.365958083e-01f,-8.345297709e-01f,1.250000000e-01f),
 };
 float SilPomDirectionalLogistic(float z) {return rcp(1.0f+exp(-clamp(z,-32.0f,32.0f)));}
+// The selected estimator's network: W0 32x20, B0 32, W1 outputs x 32, B1.
+uint SilPomDirectionalNetwork()
+{
+    if(o_silpomLightingEstimator==SilPomLightingEstimator::DirectionalField32) return SP_NET_DIRECTIONAL_FIELD;
+    if(o_silpomLightingEstimator==SilPomLightingEstimator::AngularOccluders4) return SP_NET_ANGULAR_OCCLUDERS4;
+#if SP_ANGULAR_EDGES_AVAILABLE
+    if(o_silpomLightingEstimator==SilPomLightingEstimator::AngularEdges4) return SP_NET_ANGULAR_EDGES4;
+#endif
+    return SP_NET_ANGULAR_OCCLUDERS8;
+}
+uint SilPomDirectionalOutputs()
+{
+    if(o_silpomLightingEstimator==SilPomLightingEstimator::DirectionalField32) return 128u;
+    if(o_silpomLightingEstimator==SilPomLightingEstimator::AngularOccluders4) return 28u;
+#if SP_ANGULAR_EDGES_AVAILABLE
+    if(o_silpomLightingEstimator==SilPomLightingEstimator::AngularEdges4) return 32u;
+#endif
+    return 56u;
+}
 uint SilPomDirectionalCapCount()
 {
     return o_silpomLightingEstimator==SilPomLightingEstimator::AngularOccluders8?8u:4u;
 }
 float SilPomDirectionalOutput(uint index)
 {
-    float z=0;
-    if(o_silpomLightingEstimator==SilPomLightingEstimator::DirectionalField32)
-    {
-        z=SilPomDirectionalFieldB1[index];
-        [loop] for(uint j=0;j<32u;++j)z+=silpomDirectionalHidden[j]*SilPomDirectionalFieldW1[index*32u+j];
-    }
-    else if(o_silpomLightingEstimator==SilPomLightingEstimator::AngularOccluders4)
-    {
-        z=SilPomDirectionalCaps4B1[index];
-        [loop] for(uint j=0;j<32u;++j)z+=silpomDirectionalHidden[j]*SilPomDirectionalCaps4W1[index*32u+j];
-    }
-#if SP_ANGULAR_EDGES_AVAILABLE
-    else if(o_silpomLightingEstimator==SilPomLightingEstimator::AngularEdges4)
-    {
-        z=SilPomAngularEdgesB1[index];
-        [loop] for(uint j=0;j<32u;++j)z+=silpomDirectionalHidden[j]*SilPomAngularEdgesW1[index*32u+j];
-    }
-#endif
-    else
-    {
-        z=SilPomDirectionalCaps8B1[index];
-        [loop] for(uint j=0;j<32u;++j)z+=silpomDirectionalHidden[j]*SilPomDirectionalCaps8W1[index*32u+j];
-    }
+    const SilPomWeights w=silpomDirectionalWeights;
+    const uint network=SilPomDirectionalNetwork();
+    float z=SilPomWeight(w,network+672u+SilPomDirectionalOutputs()*32u+index);
+    [loop] for(uint j=0;j<32u;++j)z+=silpomDirectionalHidden[j]*SilPomWeight(w,network+672u+index*32u+j);
     return z;
 }
 float4 SilPomDirectionalSortDescending(float4 c)
@@ -89,21 +93,14 @@ float4 SilPomDirectionalSortDescending(float4 c)
     float left=min(a.x,b.x),right=max(a.y,b.y);
     return float4(high,max(left,right),min(left,right),low);
 }
-void SilPomDecodeDirectionalReceiver(float x[20])
+void SilPomDecodeDirectionalReceiver(float x[20],SilPomWeights w)
 {
+    silpomDirectionalWeights=w;
+    const uint network=SilPomDirectionalNetwork();
     [loop] for(uint j=0;j<32u;++j)
     {
-        float z;
-        if(o_silpomLightingEstimator==SilPomLightingEstimator::DirectionalField32)
-        {z=SilPomDirectionalFieldB0[j];[loop] for(uint k=0;k<20u;++k)z+=x[k]*SilPomDirectionalFieldW0[j*20u+k];}
-        else if(o_silpomLightingEstimator==SilPomLightingEstimator::AngularOccluders4)
-        {z=SilPomDirectionalCaps4B0[j];[loop] for(uint k=0;k<20u;++k)z+=x[k]*SilPomDirectionalCaps4W0[j*20u+k];}
-#if SP_ANGULAR_EDGES_AVAILABLE
-        else if(o_silpomLightingEstimator==SilPomLightingEstimator::AngularEdges4)
-        {z=SilPomAngularEdgesB0[j];[loop] for(uint k=0;k<20u;++k)z+=x[k]*SilPomAngularEdgesW0[j*20u+k];}
-#endif
-        else
-        {z=SilPomDirectionalCaps8B0[j];[loop] for(uint k=0;k<20u;++k)z+=x[k]*SilPomDirectionalCaps8W0[j*20u+k];}
+        float z=SilPomWeight(w,network+640u+j);
+        [loop] for(uint k=0;k<20u;++k)z+=x[k]*SilPomWeight(w,network+j*20u+k);
         silpomDirectionalHidden[j]=max(z,0.0f);
     }
     if(o_silpomLightingEstimator!=SilPomLightingEstimator::DirectionalField32)
@@ -125,7 +122,7 @@ void SilPomDecodeDirectionalReceiver(float x[20])
     }
 }
 #ifndef SILPOM_DIRECTIONAL_STANDALONE
-void SilPomAcquireDirectionalEstimator(float4 derivatives)
+void SilPomAcquireDirectionalEstimator(float4 derivatives,SilPomWeights w)
 {
     float x[20];
     [loop] for(uint i=0;i<8u;++i)x[i]=silpomSharedState[i];
@@ -135,11 +132,13 @@ void SilPomAcquireDirectionalEstimator(float4 derivatives)
     x[8]=log2(u)/16.0f;x[9]=log2(v)/16.0f;x[10]=dot(silpomLitFace.du,silpomLitFace.dv)/(u*v);
     x[11]=dot(D,T);x[12]=dot(D,B);x[13]=dot(D,silpomLitFace.normal);
     x[14]=silpomLitUv.x*2-1;x[15]=silpomLitUv.y*2-1;
-    SilPomMaterialFootprint f=SilPomMaterialFootprintFor(derivatives.xy*float2(6656,6144),derivatives.zw*float2(6656,6144));
+    // The footprint is measured in texels of the image the estimator was trained on.
+    const float2 trainingSize=float2(SilPomWeight(w,SP_NET_ESTIMATORS),SilPomWeight(w,SP_NET_ESTIMATORS+1u));
+    SilPomMaterialFootprint f=SilPomMaterialFootprintFor(derivatives.xy*trainingSize,derivatives.zw*trainingSize);
     x[16]=clamp(log2(max(f.major,1.0f))/13.0f,0.0f,12.0f/13.0f);
     x[17]=clamp(log2(f.minor)/13.0f,0.0f,12.0f/13.0f);
     x[18]=f.axis.x*f.axis.x-f.axis.y*f.axis.y;x[19]=2*f.axis.x*f.axis.y;
-    SilPomDecodeDirectionalReceiver(x);
+    SilPomDecodeDirectionalReceiver(x,w);
 }
 #endif
 float SilPomDirectionalFrameVisibility(float3 L,uint steps,float reach)

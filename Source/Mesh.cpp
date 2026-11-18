@@ -1040,6 +1040,7 @@ void MeshController::Reflect(AZ::ReflectContext* context)
             ->Event("GetProxyFaceOwners",&MeshRequests::GetProxyFaceOwners)
             ->Event("GetAntiAliasingState",&MeshRequests::GetAntiAliasingState)
             ->Event("GetPaintFacesJson",&MeshRequests::GetPaintFacesJson)
+            ->Event("GetProfileReportJson",&MeshRequests::GetProfileReportJson)
             ->Event("GetSurfacePaintStatus",&MeshRequests::GetSurfacePaintStatus)
             ->Event("BeginReceiverUvPaint",&MeshRequests::BeginReceiverUvPaint)
             ->Event("SetReceiverUvPaintMode",&MeshRequests::SetReceiverUvPaintMode)
@@ -1060,6 +1061,97 @@ bool MeshController::IsReady() const
     // for a newly requested configuration which failed validation.
     return m_active && !m_dirty && !m_pending && m_status.starts_with("Ready:")
         &&StrictNeuralPolicy::CanEnable(m_active->published.load(),m_active->strictRequired.load(),m_active->strictCertified.load());
+}
+// {"status", "surface", "profiles": [{"id", "binding": {...} | null, "source":
+// "override" | "surface" | "model 0 default" | "none", "product", "state":
+// "ready" | "loading" | "not processed" | "invalid", "error", "profile": {...}}]}
+AZStd::string MeshController::GetProfileReportJson() const
+{
+    rapidjson::StringBuffer text;
+    rapidjson::Writer<rapidjson::StringBuffer> json(text);
+    const auto string = [&json](const char* key, const AZStd::string& value) { json.Key(key); json.String(value.c_str()); };
+    const auto hint = [](const auto& asset) -> AZStd::string
+    {
+        if (!asset.GetId().IsValid()) return {};
+        AZStd::string path = asset.GetHint();
+        if (path.empty()) AZ::Data::AssetCatalogRequestBus::BroadcastResult(path, &AZ::Data::AssetCatalogRequests::GetAssetPathById, asset.GetId());
+        return path.empty() ? asset.GetId().ToString<AZStd::string>() : path;
+    };
+    const auto& c = m_configuration;
+    json.StartObject();
+    string("status", GetStatus());
+    string("surface", hint(c.m_surface));
+    AZStd::map<AZ::u32, AZStd::string> surfaceProfiles;
+    if (c.m_surface.IsReady())
+        for (const auto& profile : c.m_surface->m_profiles) surfaceProfiles[profile.m_id] = profile.m_profileProduct;
+    AZStd::set<AZ::u32> ids;
+    for (const auto& binding : c.m_profiles) ids.insert(binding.m_id);
+    for (const auto& [id, product] : surfaceProfiles) ids.insert(id);
+    json.Key("profiles");
+    json.StartArray();
+    for (const AZ::u32 id : ids)
+    {
+        json.StartObject();
+        json.Key("id"); json.Uint(id);
+        const MeshProfileBinding* binding = nullptr;
+        for (const auto& candidate : c.m_profiles) if (candidate.m_id == id) binding = &candidate;
+        json.Key("binding");
+        if (!binding) json.Null();
+        else
+        {
+            json.StartObject();
+            json.Key("useBaseMesh"); json.Bool(binding->m_useBaseMesh);
+            json.Key("model"); json.Uint(binding->m_neuralModel);
+            json.Key("scale"); json.Double(binding->m_scale);
+            json.Key("reference"); json.Double(binding->m_reference);
+            json.Key("addressMode"); json.Uint(binding->m_addressMode);
+            string("height", hint(binding->m_height));
+            string("cache", hint(binding->m_neuralCache));
+            string("override", hint(binding->m_profile));
+            json.EndObject();
+        }
+        AZStd::string source = "none", product, state, error;
+        const SurfaceProfileAsset* asset = nullptr;
+        if (binding && binding->m_useBaseMesh) source = "base mesh";
+        else if (const auto loaded = m_profileAssets.find(id); loaded != m_profileAssets.end())
+        {
+            source = binding && binding->m_profile.GetId().IsValid() ? "override" : "surface";
+            product = hint(loaded->second);
+            if (loaded->second.IsReady()) { asset = loaded->second.Get(); state = "ready"; error = asset->Validate(); }
+            else state = loaded->second.IsError() ? "invalid" : "loading";
+        }
+        else if (const auto missing = m_missingProfiles.find(id); missing != m_missingProfiles.end())
+        { source = "surface"; product = missing->second; state = "not processed"; }
+        else if (binding && binding->m_neuralModel == 0 && c.m_useNeuralSeed && m_modelZero.IsReady()
+            && binding->m_addressMode == m_modelZero->m_addressMode && std::abs(binding->m_scale - m_modelZero->m_scale) < 1e-6f
+            && std::abs(binding->m_reference - m_modelZero->m_reference) < 1e-6f)
+        { source = "model 0 default"; product = hint(m_modelZero); asset = m_modelZero.Get(); state = "ready"; }
+        if (!error.empty()) state = "invalid";
+        string("source", source); string("product", product); string("state", state); string("error", error);
+        json.Key("profile");
+        if (!asset) json.Null();
+        else
+        {
+            json.StartObject();
+            json.Key("shaderModel"); json.Uint(asset->m_shaderModel);
+            json.Key("role"); json.Uint(static_cast<AZ::u32>(asset->m_role));
+            json.Key("width"); json.Uint(asset->m_width);
+            json.Key("heightPixels"); json.Uint(asset->m_heightPixels);
+            json.Key("scale"); json.Double(asset->m_scale);
+            json.Key("reference"); json.Double(asset->m_reference);
+            json.Key("addressMode"); json.Uint(asset->m_addressMode);
+            string("height", asset->m_heightProduct);
+            string("cache", asset->m_cacheProduct);
+            string("networks", asset->m_networks);
+            string("generation", asset->m_generation);
+            json.Key("flags"); json.Uint(asset->NetworkFlags());
+            json.EndObject();
+        }
+        json.EndObject();
+    }
+    json.EndArray();
+    json.EndObject();
+    return text.GetString();
 }
 AZStd::string MeshController::GetStatus() const
 {
@@ -1228,24 +1320,46 @@ bool MeshController::ResolveProfileAssets()
             m_profileAssets[profileId] = AZ::Data::AssetManager::Instance().GetAsset<SurfaceProfileAsset>(assetId, AZ::Data::AssetLoadBehavior::NoLoad);
             changed = true;
         }
-    // Height images follow their loaded profiles.
-    AZStd::map<AZ::u32, AZ::Data::AssetId> heights;
+    // Height images and seed caches follow their loaded profiles.
+    AZStd::map<AZ::u32, AZ::Data::AssetId> heights, caches;
+    AZStd::set<AZ::u32> bindingHeights;
+    for (const auto& binding : m_configuration.m_profiles)
+        if (!m_profileAssets.contains(binding.m_id)) bindingHeights.insert(binding.m_id);
     for (const auto& [profileId, profile] : m_profileAssets)
         if (profile.IsReady())
-            heights[profileId] = FindProduct(profile->m_heightProduct, azrtti_typeid<AZ::RPI::StreamingImageAsset>());
-    for (auto it = m_profileHeights.begin(); it != m_profileHeights.end();)
-    {
-        const auto found = heights.find(it->first);
-        if (found == heights.end() || found->second != it->second.GetId()) { it = m_profileHeights.erase(it); changed = true; }
-        else ++it;
-    }
-    for (const auto& [profileId, assetId] : heights)
-        if (!m_profileHeights.contains(profileId))
         {
-            m_profileHeights[profileId] = AZ::Data::Asset<AZ::RPI::StreamingImageAsset>(assetId,
-                azrtti_typeid<AZ::RPI::StreamingImageAsset>());
-            changed = true;
+            if (!profile->m_heightProduct.empty())
+                heights[profileId] = FindProduct(profile->m_heightProduct, azrtti_typeid<AZ::RPI::StreamingImageAsset>());
+            else bindingHeights.insert(profileId);
+            if (!profile->m_cacheProduct.empty())
+                caches[profileId] = FindProduct(profile->m_cacheProduct, azrtti_typeid<AZ::RPI::StreamingImageAsset>());
         }
+    const auto follow = [&changed](auto& images, const AZStd::map<AZ::u32, AZ::Data::AssetId>& wantedImages)
+    {
+        for (auto it = images.begin(); it != images.end();)
+        {
+            const auto found = wantedImages.find(it->first);
+            if (found == wantedImages.end() || found->second != it->second.GetId()) { it = images.erase(it); changed = true; }
+            else ++it;
+        }
+        for (const auto& [profileId, assetId] : wantedImages)
+            if (!images.contains(profileId))
+            {
+                images[profileId] = AZ::Data::Asset<AZ::RPI::StreamingImageAsset>(assetId, azrtti_typeid<AZ::RPI::StreamingImageAsset>());
+                changed = true;
+            }
+    };
+    follow(m_profileHeights, heights);
+    follow(m_profileCaches, caches);
+    if (bindingHeights != m_bindingHeights) { m_bindingHeights = AZStd::move(bindingHeights); changed = true; }
+    const auto modelZero = m_configuration.m_useNeuralSeed
+        ? FindProduct("silpom/profiles/modelzero.silpomprofileasset", azrtti_typeid<SurfaceProfileAsset>()) : AZ::Data::AssetId();
+    if (modelZero != m_modelZero.GetId())
+    {
+        m_modelZero = modelZero.IsValid() ? AZ::Data::AssetManager::Instance().GetAsset<SurfaceProfileAsset>(
+            modelZero, AZ::Data::AssetLoadBehavior::NoLoad) : AZ::Data::Asset<SurfaceProfileAsset>();
+        changed = true;
+    }
     m_resolvedTrained = !m_profileAssets.empty() || !m_missingProfiles.empty();
     return changed;
 }
@@ -1280,11 +1394,13 @@ void MeshController::ConnectAssets()
     {
         if (profile.m_useBaseMesh) continue;
         // A trained profile's own height image replaces the binding's.
-        if (!m_profileAssets.contains(profile.m_id)) queue(profile.m_height);
+        if (m_bindingHeights.contains(profile.m_id)) queue(profile.m_height);
         queue(profile.m_neuralCache);
     }
     for (auto& [id, profile] : m_profileAssets) queue(profile);
     for (auto& [id, height] : m_profileHeights) queue(height);
+    for (auto& [id, cache] : m_profileCaches) queue(cache);
+    queue(m_modelZero);
 }
 void BeginAntiAliasingHandoff()
 {
@@ -1397,6 +1513,8 @@ void MeshController::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
     if (asset.GetId() == m_configuration.m_surface.GetId()) { m_configuration.m_surface = asset; m_profilesStale = true; }
     for (auto& [id, profile] : m_profileAssets) if (asset.GetId() == profile.GetId()) { profile = asset; m_profilesStale = true; }
     for (auto& [id, height] : m_profileHeights) if (asset.GetId() == height.GetId()) height = asset;
+    for (auto& [id, cache] : m_profileCaches) if (asset.GetId() == cache.GetId()) cache = asset;
+    if (asset.GetId() == m_modelZero.GetId()) m_modelZero = asset;
     if (asset.GetId() == m_template.GetId()) m_template = asset;
     if (asset.GetId() == m_learnedMaterial.GetId()) m_learnedMaterial = asset;
     if (asset.GetId() == m_appearance.GetId()) m_appearance = asset;
@@ -1507,10 +1625,21 @@ bool MeshController::Prepare()
             const auto& profile = *trained->second;
             if (const auto invalid = profile.Validate(); !invalid.empty())
             { m_status = AZStd::string::format("Profile %u: invalid surface profile (%s)", p.m_id, invalid.c_str()); return false; }
-            const auto height = m_profileHeights.find(p.m_id);
-            if (height == m_profileHeights.end() || !height->second.GetId().IsValid())
-            { m_status = AZStd::string::format("Profile %u: height image %s is not processed", p.m_id, profile.m_heightProduct.c_str()); return false; }
-            p.m_height = height->second;
+            // A model 0 profile without a height image applies to the binding's.
+            if (!profile.m_heightProduct.empty())
+            {
+                const auto height = m_profileHeights.find(p.m_id);
+                if (height == m_profileHeights.end() || !height->second.GetId().IsValid())
+                { m_status = AZStd::string::format("Profile %u: height image %s is not processed", p.m_id, profile.m_heightProduct.c_str()); return false; }
+                p.m_height = height->second;
+            }
+            if (!profile.m_cacheProduct.empty())
+            {
+                const auto cache = m_profileCaches.find(p.m_id);
+                if (cache == m_profileCaches.end() || !cache->second.GetId().IsValid())
+                { m_status = AZStd::string::format("Profile %u: seed cache %s is not processed", p.m_id, profile.m_cacheProduct.c_str()); return false; }
+                p.m_neuralCache = cache->second;
+            }
             p.m_scale = profile.m_scale; p.m_reference = profile.m_reference;
             p.m_addressMode = profile.m_addressMode; p.m_neuralModel = profile.m_shaderModel;
         }
@@ -1553,8 +1682,11 @@ bool MeshController::Prepare()
     if (!scene) { m_status = "Waiting for render scene"; return true; }
     m_processor = scene->GetFeatureProcessor<AZ::Render::MeshFeatureProcessorInterface>();
     if (!m_processor) { m_status = "Waiting for MeshFeatureProcessor"; return true; }
+    // Profiles resolved to a trained model 1-7 (model 0 profiles are the seed path).
     const bool requiresTrainedHits = AZStd::any_of(profiles.begin(), profiles.end(),
-        [](const auto& entry) { return entry.second.IsTrained(); });
+        [](const auto& entry) { return !entry.second.m_useBaseMesh && entry.second.m_neuralModel != 0; });
+    if (c.m_useNeuralSeed && m_modelZero.GetId().IsValid() && !m_modelZero.IsReady())
+    { m_status = "Loading model 0 networks"; return true; }
     // SilPOM::SurfaceRole of a profile ID; untrained profiles are plain surfaces.
     const auto ProfileRole = [this](AZ::u32 id)
     {
@@ -1727,6 +1859,9 @@ bool MeshController::Prepare()
                     // The trained profile supplied p.m_height, so it is the training image.
                     if (!m_profileAssets.contains(key.second))
                         return fail("Neural-only visibility requires a trained surface profile for this profile ID");
+                    // Estimators are networks of the profile; only profiles trained with one can select it.
+                    if (profileEstimator>=2u && !m_profileAssets.find(key.second)->second->HasEstimator(profileEstimator-2u))
+                        return fail("The surface profile has no trained network for the selected directional/angular estimator");
                 }
                 if (requiresTrainedHits)
                 {
@@ -1936,20 +2071,29 @@ bool MeshController::Prepare()
                         candidate->heights.push_back(third);
                     }
                 }
-                const bool legacyNeural = reuseDepthHits && c.m_useNeuralSeed && p.m_addressMode == 1
-                    && std::abs(p.m_scale - .02f) < 1e-6f && std::abs(p.m_reference - .05f) < 1e-6f;
-                const bool neuralSeed = requiresTrainedHits || legacyNeural;
+                // Model 0's networks: its profile's, or the gem's default for a
+                // binding with model 0's calibration and no profile.
+                const auto profileAsset = m_profileAssets.find(key.second);
+                const SurfaceProfileAsset* modelZero = nullptr;
+                if (reuseDepthHits && c.m_useNeuralSeed && p.m_neuralModel == 0)
+                {
+                    if (profileAsset != m_profileAssets.end()) modelZero = profileAsset->second.Get();
+                    else if (m_modelZero.IsReady() && p.m_addressMode == m_modelZero->m_addressMode
+                        && std::abs(p.m_scale - m_modelZero->m_scale) < 1e-6f && std::abs(p.m_reference - m_modelZero->m_reference) < 1e-6f)
+                        modelZero = m_modelZero.Get();
+                }
+                const bool neuralSeed = requiresTrainedHits || modelZero;
                 Image neuralCache;
-                if (legacyNeural && p.m_neuralCache.GetId().IsValid())
+                if (modelZero && p.m_neuralCache.GetId().IsValid())
                 {
                     const auto& cacheDesc = p.m_neuralCache->GetImageDescriptor();
-                    if (cacheDesc.m_size.m_width != 3072 || cacheDesc.m_size.m_height != 1536
+                    if (!modelZero->HasCacheLayout() || cacheDesc.m_size.m_width != 3072 || cacheDesc.m_size.m_height != 1536
                         || cacheDesc.m_size.m_depth != 1 || cacheDesc.m_arraySize != 1 || cacheDesc.m_mipLevels != 1
                         || cacheDesc.m_format != AZ::RHI::Format::R16G16B16A16_FLOAT
-                        || desc.m_size.m_width != 6656 || desc.m_size.m_height != 6144
+                        || desc.m_size.m_width != modelZero->m_width || desc.m_size.m_height != modelZero->m_heightPixels
                         || p.m_tiling != AZ::Vector2(1) || p.m_offset != AZ::Vector2(0))
                     {
-                        return fail("Tower neural cache requires its authored height atlas and a 3072 x 1536 single-mip RGBA16F cache");
+                        return fail("Model 0 seed cache requires a 3072 x 1536 single-mip RGBA16F cache, its profile's cache layout and a height image of the profile's size");
                     }
                     neuralCache = AZ::RPI::StreamingImage::FindOrCreate(p.m_neuralCache);
                     if (!neuralCache) return fail("Cannot create neural hit cache image");
@@ -2003,10 +2147,13 @@ bool MeshController::Prepare()
                     && Set(material,"surface.reliefShadowSteps",c.m_reliefShadowSteps)
                     && Set(material,"mesh.paintReceiver",candidate->paintReceiver);
                 if(!valid) return fail("Planar face material contract mismatch");
-                // A trained profile's networks: one weights buffer per batch.
-                if(const auto trained=m_profileAssets.find(key.second); trained!=m_profileAssets.end() && p.m_neuralModel!=0)
+                // The profile's networks (model 0 included): one weights buffer per batch.
+                const SurfaceProfileAsset* networkProfile=p.m_neuralModel!=0 && profileAsset!=m_profileAssets.end()
+                    ?profileAsset->second.Get():modelZero;
+                if(neuralSeed && !networkProfile) return fail("Neural seeding has no surface profile networks for this profile ID");
+                if(neuralSeed)
                 {
-                    const auto& profile=*trained->second;
+                    const auto& profile=*networkProfile;
                     const auto networks=profile.PackNetworks();
                     auto weights=AZ::RPI::Buffer::FindOrCreate(Buffer(networks.data(),networks.size(),4,true));
                     if(!weights) return fail("Cannot allocate trained profile networks");

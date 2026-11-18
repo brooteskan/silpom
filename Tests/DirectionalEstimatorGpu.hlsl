@@ -6,6 +6,9 @@ static const uint CurrentRouting=0,PhysicalRayNeural=1,DirectionalField32=2,Angu
 static uint o_silpomLightingEstimator;
 struct Face {float3 du,dv,normal;};
 static Face silpomLitFace;
+// The estimator networks, packed as in the wall profile's weights buffer.
+ByteAddressBuffer estimatorWeights : register(t1);
+#define SILPOM_WEIGHT_BUFFER(index) estimatorWeights
 #include "../Assets/Shaders/SilPOM/DirectionalEstimator.azsli"
 struct Query {float x[20];float3 light;float reach;float steps;float mode;};
 StructuredBuffer<Query> requests : register(t0);
@@ -26,7 +29,11 @@ void Main(uint3 tid:SV_DispatchThreadID)
             silpomAngularInverseWidth[k]=rcp(q.x[16u+k]);
         }
     }
-    else SilPomDecodeDirectionalReceiver(q.x);
+    else
+    {
+        SilPomWeights weights;weights.buffer=0;
+        SilPomDecodeDirectionalReceiver(q.x,weights);
+    }
     if(q.steps==-2)
     {
         // Compare the cache with the original general-query loop on the same

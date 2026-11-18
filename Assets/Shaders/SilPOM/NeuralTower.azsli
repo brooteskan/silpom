@@ -1,21 +1,19 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+// Model 0: a seed network, or a seed cache with its tile -> expert map, read
+// from the profile's weights buffer (SP_NET_SEED, SP_NET_CACHE_LAYOUT).
 #if SILPOM_HIT_NEURAL_CACHE
-#include "NeuralTowerCacheLayout.azsli"
-
-bool SilPomReadTowerNeuralCache(Texture2D cache, float2 entry, float2 delta, out float prediction)
+bool SilPomReadTowerNeuralCache(Texture2D cache, SilPomWeights w, float2 entry, float2 delta, out float prediction)
 {
     prediction=0;
     const float2 tile=floor(entry/512.0f);
-    if(any(tile<0) || any(tile>=float2(13,12)) || any(abs(delta)>18.0f)) return false;
+    if(any(tile<0) || any(tile>=SilPomCacheTiles(w)) || any(abs(delta)>18.0f)) return false;
 
     const float2 local=entry-tile*512.0f;
     const float2 exit=local-delta;
     // Angular neighbors and spatial filtering must stay on this authored tile.
     if(any(min(local,exit)<12.0f) || any(max(local,exit)>500.0f)) return false;
-    const uint2 tileIndex=uint2(tile);
-    const uint2 row=TowerNeuralTileRows[tileIndex.y];
-    const uint expert=((tileIndex.x<10 ? row.x : row.y) >> (3*(tileIndex.x%10))) & 7u;
+    const uint expert=SilPomCacheExpert(w,uint2(tile));
 
     const float2 angle=(delta+18.0f)/6.0f;
     const uint2 cell=min(uint2(angle),uint2(5,5));
@@ -27,12 +25,10 @@ bool SilPomReadTowerNeuralCache(Texture2D cache, float2 entry, float2 delta, out
     prediction=lerp(lerp(seeds.x,seeds.y,blend.x),lerp(seeds.z,seeds.w,blend.x),blend.y);
     return true;
 }
-#else
-#include "NeuralTowerWeights.azsli"
 #endif
 
 SilPomHit SilPomTryTowerNeural(Texture2D texture, SilPomPatch p, SilPomMeshFace face,
-    SilPomRay ray, SilPomRay search, float2 low
+    SilPomRay ray, SilPomRay search, float2 low, SilPomWeights w
 #if SILPOM_HIT_NEURAL_CACHE
     ,Texture2D cache
 #endif
@@ -55,7 +51,7 @@ SilPomHit SilPomTryTowerNeural(Texture2D texture, SilPomPatch p, SilPomMeshFace 
     const float top=(p.scale*(1.0f-p.reference)-seed.origin.z)/seed.direction.z;
     const float2 entry=((seed.origin.xy+seed.direction.xy*top-low)*tiling+offset)*size;
     const float2 delta=seed.direction.xy*(p.scale/seed.direction.z)*tiling*size;
-    if(!SilPomReadTowerNeuralCache(cache,entry,delta,prediction)) return hit;
+    if(!SilPomReadTowerNeuralCache(cache,w,entry,delta,prediction)) return hit;
 #else
     const float2 inset=.5f/size;
     const float2 slopes=clamp(seed.direction.xy*(p.scale/(16*seed.direction.z))*tiling*size,-2.0f,2.0f);
@@ -67,13 +63,7 @@ SilPomHit SilPomTryTowerNeural(Texture2D texture, SilPomPatch p, SilPomMeshFace 
         const float2 uv=(seed.origin.xy+seed.direction.xy*t-low)*tiling+offset;
         heights[i]=texture.SampleLevel(GetMaterialTextureSampler(),clamp(uv,inset,1-inset),0).r;
     }
-    const float4 features=2*heights-1;
-    prediction=(heights.y+heights.z)*.5f+TowerNeuralOutputBias;
-    [unroll] for(uint i=0;i<8;++i)
-    {
-        const float unit=dot(features,TowerNeuralHeightWeights[i])+dot(slopes,TowerNeuralSlopeWeights[i])+TowerNeuralBias[i];
-        prediction+=max(unit,0.0f)*TowerNeuralOutput[i];
-    }
+    prediction=SilPomSeedNetwork(2*heights-1,slopes,(heights.y+heights.z)*.5f,w);
 #endif
     const float predictedT=(p.scale*(saturate(prediction)-p.reference)-seed.origin.z)/seed.direction.z;
     if(predictedT<search.tMin || predictedT>search.tMax) return hit;

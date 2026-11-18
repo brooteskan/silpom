@@ -1,0 +1,10 @@
+{
+  "Version": 1,
+  "Width": 6656,
+  "HeightPixels": 6144,
+  "Scale": 0.02,
+  "Reference": 0.05,
+  "AddressMode": 1,
+  "Role": "Surface",
+  "ShaderModel": 0
+}

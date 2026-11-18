@@ -11,24 +11,47 @@ static const uint SP_NET_LEVEL_TWO=226u;           // 24x19, 24, 24x5, 5
 static const uint SP_NET_VISIBILITY=831u;          // 12x10, 12, 12, 1
 static const uint SP_NET_PHYSICAL_VISIBILITY=976u; // 12x10, 12, 12, 1
 static const uint SP_NET_PHYSICAL_THRESHOLD=1121u;
-static const uint SP_NET_FLOATS=1122u;
+// Model 0: seed network (8x4 height and 8x2 slope weights, 8 biases, 8
+// outputs, output bias), then the seed cache layout as uint bits: tiles x and
+// y, and per tile row two words of 3-bit expert indices (10 tiles each).
+static const uint SP_NET_SEED=1122u;
+static const uint SP_NET_CACHE_LAYOUT=1187u;
+static const uint SP_NET_FLOATS=1213u;
+// Lighting estimators (wall comparisons), present only in buffers that have
+// them: the training image size (2 floats), then each network W0 32x20, B0 32,
+// W1 outputs x 32, B1 (outputs 128, 28, 56, 32).
+static const uint SP_NET_ESTIMATORS=1213u;
+static const uint SP_NET_DIRECTIONAL_FIELD=1215u;
+static const uint SP_NET_ANGULAR_OCCLUDERS4=6111u;
+static const uint SP_NET_ANGULAR_OCCLUDERS8=7707u;
+static const uint SP_NET_ANGULAR_EDGES4=10227u;
+static const uint SP_NET_ESTIMATOR_FLOATS=11955u;
 // Networks present beyond the hit model.
 static const uint SP_PROFILE_LEVEL_TWO=1u;
 static const uint SP_PROFILE_VISIBILITY=2u;
+static const uint SP_PROFILE_SEED=4u;
+static const uint SP_PROFILE_CACHE_LAYOUT=8u;
+// Estimator flags: SP_PROFILE_DIRECTIONAL_FIELD << (SilPomLightingEstimator - 2).
+static const uint SP_PROFILE_DIRECTIONAL_FIELD=16u;
+static const uint SP_PROFILE_ANGULAR_OCCLUDERS4=32u;
+static const uint SP_PROFILE_ANGULAR_OCCLUDERS8=64u;
+static const uint SP_PROFILE_ANGULAR_EDGES4=128u;
 
 #ifdef SILPOM_CPU
 struct SilPomWeights { const float* data; };
 float SilPomWeight(SilPomWeights w,uint i) { return w.data[i]; }
+uint SilPomWeightBits(SilPomWeights w,uint i) { uint bits; std::memcpy(&bits,w.data+i,4); return bits; }
 #else
 #ifndef SILPOM_WEIGHT_BUFFER
 #define SILPOM_WEIGHT_BUFFER(index) Bindless::GetByteAddressBuffer(index)
 #endif
 struct SilPomWeights { uint buffer; };
-float SilPomWeight(SilPomWeights w,uint i) { return asfloat(SILPOM_WEIGHT_BUFFER(w.buffer).Load(i*4u)); }
+uint SilPomWeightBits(SilPomWeights w,uint i) { return SILPOM_WEIGHT_BUFFER(w.buffer).Load(i*4u); }
+float SilPomWeight(SilPomWeights w,uint i) { return asfloat(SilPomWeightBits(w,i)); }
 #endif
 
-// id: 0 selects the compiled-in model 0 seed; nonzero is a trained profile
-// whose networks are in weights. role and flags come from the profile asset.
+// id: the profile's shader model; 0 is the model 0 seed path. role, flags
+// and the networks in weights come from the profile asset.
 struct SilPomTrainedModel
 {
     uint id;
@@ -75,3 +98,31 @@ float SilPomVisibilityLogit(float feature[10],SilPomWeights w,uint base)
     }
     return value;
 }
+#ifndef SILPOM_CPU
+// GPU only: the model 0 seed samples textures.
+// Model 0's seed: a residual on base from 4 height probes (features, -1..1)
+// and 2 clamped slopes.
+float SilPomSeedNetwork(float4 features,float2 slopes,float base,SilPomWeights w)
+{
+    float prediction=base+SilPomWeight(w,SP_NET_SEED+64u);
+    [unroll] for(uint i=0;i<8;++i)
+    {
+        const float4 heightWeights=float4(SilPomWeight(w,SP_NET_SEED+i*4u),SilPomWeight(w,SP_NET_SEED+i*4u+1u),
+            SilPomWeight(w,SP_NET_SEED+i*4u+2u),SilPomWeight(w,SP_NET_SEED+i*4u+3u));
+        const float2 slopeWeights=float2(SilPomWeight(w,SP_NET_SEED+32u+i*2u),SilPomWeight(w,SP_NET_SEED+33u+i*2u));
+        const float unit=dot(features,heightWeights)+dot(slopes,slopeWeights)+SilPomWeight(w,SP_NET_SEED+48u+i);
+        prediction+=max(unit,0.0f)*SilPomWeight(w,SP_NET_SEED+56u+i);
+    }
+    return prediction;
+}
+// Seed cache grid (tiles of 512 texels) and a tile's expert.
+float2 SilPomCacheTiles(SilPomWeights w)
+{
+    return float2(SilPomWeightBits(w,SP_NET_CACHE_LAYOUT),SilPomWeightBits(w,SP_NET_CACHE_LAYOUT+1u));
+}
+uint SilPomCacheExpert(SilPomWeights w,uint2 tile)
+{
+    const uint word=SilPomWeightBits(w,SP_NET_CACHE_LAYOUT+2u+tile.y*2u+(tile.x<10u?0u:1u));
+    return (word>>(3u*(tile.x%10u)))&7u;
+}
+#endif

@@ -3,10 +3,13 @@
 // CPU reference: the networks that were compiled into the shaders before they
 // became surface profile data, packed in the profile weights layout
 // (ProfileNetworks.azsli). Include inside the CPU shader namespace, after
-// ProfileNetworks.azsli. Shader model ids 1-7; roles and flags as the tower
-// profiles declare them.
+// ProfileNetworks.azsli. Shader model ids 0-7; roles and flags as the tower
+// profiles declare them. Model 0 is the seed network, its cache layout and the
+// no-march hit network.
 #include <array>
 #include <cstring>
+#include "TowerNoMarchWeights.azsli"
+#include "NeuralTowerWeights.azsli"
 #include "NeuralWeldedTowerWeights.azsli"
 #include "NeuralOpenShaftTowerWeights.azsli"
 #include "NeuralTowerLevelTwoWeights.azsli"
@@ -16,6 +19,8 @@
 
 namespace CompiledNetworks
 {
+struct uint2 { uint x, y; constexpr uint2(uint a, uint b) : x(a), y(b) {} };
+#include "NeuralTowerCacheLayout.azsli"
 using Packed = std::array<float, SP_NET_FLOATS>;
 template<class T> inline void Put(Packed& out, uint offset, const T& array) { std::memcpy(out.data() + offset, &array, sizeof(array)); }
 #define SILPOM_PACK_HIT(out, p) Put(out, 0, p##W0); Put(out, 176, p##B0); Put(out, 192, p##W1); Put(out, 224, p##B1)
@@ -33,6 +38,19 @@ inline const Packed& Weights(uint id)
     {
         static_assert(sizeof(float2) == 8, "float2 must be two packed floats");
         std::array<Packed, 8> t{};
+        SILPOM_PACK_HIT(t[0], TowerNoMarch);
+        for (uint i = 0; i < 8; ++i)
+        {
+            const auto& h = TowerNeuralHeightWeights[i];
+            t[0][SP_NET_SEED + i * 4] = h.x; t[0][SP_NET_SEED + i * 4 + 1] = h.y;
+            t[0][SP_NET_SEED + i * 4 + 2] = h.z; t[0][SP_NET_SEED + i * 4 + 3] = h.w;
+            t[0][SP_NET_SEED + 32 + i * 2] = TowerNeuralSlopeWeights[i].x;
+            t[0][SP_NET_SEED + 33 + i * 2] = TowerNeuralSlopeWeights[i].y;
+        }
+        Put(t[0], SP_NET_SEED + 48, TowerNeuralBias); Put(t[0], SP_NET_SEED + 56, TowerNeuralOutput);
+        t[0][SP_NET_SEED + 64] = TowerNeuralOutputBias;
+        const uint tiles[2] = {13, 12};
+        Put(t[0], SP_NET_CACHE_LAYOUT, tiles); Put(t[0], SP_NET_CACHE_LAYOUT + 2, TowerNeuralTileRows);
         SILPOM_PACK_HIT(t[1], WeldedWall); SILPOM_PACK_HIT(t[2], WeldedStairs); SILPOM_PACK_HIT(t[3], WeldedDoor);
         SILPOM_PACK_HIT(t[4], OpenShaftWall); SILPOM_PACK_OPEN(t[4], Wall);
         SILPOM_PACK_HIT(t[5], OpenShaftStairs); SILPOM_PACK_OPEN(t[5], Stairs);
@@ -46,13 +64,14 @@ inline const Packed& Weights(uint id)
 #undef SILPOM_PACK_HIT
 } // namespace CompiledNetworks
 
-// The compiled network set of shader model id (1-7) as a trained model.
+// The compiled network set of shader model id (0-7) as a trained model.
 inline SilPomTrainedModel SilPomCompiledModel(uint id)
 {
     SilPomTrainedModel model{};
     model.id = id;
     model.role = (id == 1u || id == 4u) ? SP_ROLE_WALL : (id == 6u || id == 7u) ? SP_ROLE_OPENING : SP_ROLE_SURFACE;
-    model.flags = (id >= 4u && id <= 7u) ? (SP_PROFILE_LEVEL_TWO | SP_PROFILE_VISIBILITY) : 0u;
+    model.flags = (id >= 4u && id <= 7u) ? (SP_PROFILE_LEVEL_TWO | SP_PROFILE_VISIBILITY)
+        : id == 0u ? (SP_PROFILE_SEED | SP_PROFILE_CACHE_LAYOUT) : 0u;
     model.weights.data = CompiledNetworks::Weights(id).data();
     return model;
 }

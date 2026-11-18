@@ -6,13 +6,17 @@ import hashlib,json,re,subprocess,sys,tempfile
 from pathlib import Path
 import numpy as np
 ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT/'Tools'))
+import silpom_profile as sp
 KINDS={2:'Field',3:'Caps4',4:'Caps8',5:'AngularEdges'}
+# The frozen heads, formerly compiled into the shaders; profiles carry them now.
+NETWORKS=ROOT/'Tools/CompiledNetworks'
 
 def read_weights():
-    text=(ROOT/'Assets/Shaders/SilPOM/DirectionalEstimatorWeights.azsli').read_text()
+    text=(NETWORKS/'DirectionalEstimatorWeights.azsli').read_text()
     weights={}
     for mode,name in KINDS.items():
-        source=(ROOT/'Assets/Shaders/SilPOM/AngularEdgeWeights.azsli').read_text() if mode==5 else text
+        source=(NETWORKS/'AngularEdgeWeights.azsli').read_text() if mode==5 else text
         prefix='SilPomAngularEdges' if mode==5 else 'SilPomDirectional'+name
         result=[]
         for suffix,shape in (('W0',(32,20)),('B0',(32,)),('W1',(-1,32)),('B1',(-1,))):
@@ -79,11 +83,17 @@ def main():
         assert abs((outer-inner)/(2*sigma*np.log(9))-1)<.01,'Angular edge width depends on cap radius'
     fixture=json.loads((ROOT/'Tests/Reference/DirectionalEstimator.json').read_text())
     angular=json.loads((ROOT/'Tests/Reference/AngularEdges.json').read_text())
-    assert text_sha256(ROOT/'Assets/Shaders/SilPOM/AngularEdgeWeights.azsli')==angular['weights_sha256']
+    assert text_sha256(NETWORKS/'AngularEdgeWeights.azsli')==angular['weights_sha256']
     np.testing.assert_array_equal(fixture['x'],angular['x'])
     fixture['expected']['5']=angular['expected']
-    assert text_sha256(ROOT/'Assets/Shaders/SilPOM/DirectionalEstimatorWeights.azsli')==fixture['weights_sha256'],'Frozen neural weights changed'
-    weights=read_weights();x=np.asarray(fixture['x'],np.float32);light=np.asarray(fixture['light'],np.float32)
+    assert text_sha256(NETWORKS/'DirectionalEstimatorWeights.azsli')==fixture['weights_sha256'],'Frozen neural weights changed'
+    weights=read_weights()
+    # The wall profile's estimators, as silpom_profile.py writes them, are the frozen heads.
+    profile=sp.compiled_estimators()
+    for mode,name in sp.ESTIMATOR_NAMES.items():
+        for (key,_),array in zip(sp.ESTIMATOR_ARRAYS,weights[mode]):
+            np.testing.assert_array_equal(np.asarray(profile[name][key],np.float32),array.ravel())
+    x=np.asarray(fixture['x'],np.float32);light=np.asarray(fixture['light'],np.float32)
     reach=np.asarray(fixture['reach'],np.float32)
     for mode in KINDS:
         pred=predict(x,light,reach,mode,weights)
@@ -133,9 +143,11 @@ def main():
                         xx=np.r_[axes.ravel(),thresholds,np.full(4,sigma)].astype(np.float32)
                         queries.append(np.r_[xx,light,0,16,-5].astype(np.float32)[None])
                         expected.append(np.array([1/(1+np.exp((np.cos(theta)-np.cos(alpha))/np.sin(alpha)/sigma))],np.float32))
-            folder=Path(folder);q=folder/'requests.f32';e=folder/'expected.f32'
+            folder=Path(folder);q=folder/'requests.f32';e=folder/'expected.f32';w=folder/'weights.f32'
             np.concatenate(queries).tofile(q);np.concatenate(expected).tofile(e)
+            # The shader reads the heads from a profile weights buffer.
+            np.asarray(sp.pack_estimators(profile,6656,6144),np.float32).tofile(w)
             for sm in ('6_2','6_7'):
-                subprocess.run([str(binary/'Release/silpom_directional_estimator_gpu_tests.exe'),str(binary/('directional-estimator-'+sm+'.dxil')),str(q),str(e)],check=True)
+                subprocess.run([str(binary/'Release/silpom_directional_estimator_gpu_tests.exe'),str(binary/('directional-estimator-'+sm+'.dxil')),str(q),str(e),str(w)],check=True)
 
 if __name__=='__main__':main()

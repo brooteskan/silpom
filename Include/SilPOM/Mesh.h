@@ -6,6 +6,7 @@
 #include <SilPOM/SurfacePaint.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/std/containers/map.h>
+#include <AzCore/std/containers/set.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Math/Vector4.h>
 #include <AzFramework/Components/ComponentAdapter.h>
@@ -129,6 +130,9 @@ public:
     virtual AZ::Vector3 GetProxyLodState() const = 0; // far faces, candidate faces, largest selected pixel bound
     virtual AZStd::vector<AZ::u32> GetProxyFaceOwners() const = 0;
     virtual AZStd::string GetPaintFacesJson() const=0;
+    // Each profile ID with its binding and the surface profile it resolved to
+    // (see MeshController::GetProfileReportJson); for the Profile Inspector.
+    virtual AZStd::string GetProfileReportJson() const=0;
     virtual bool ResolvePaintSurface(const PaintSurfacePoint&,PaintSurfaceSample&) const=0;
     virtual AZ::u64 GetPaintSurfaceRevision() const=0;
     virtual bool SweepCameraSphere(const AZ::Vector3& start,const AZ::Vector3& end,float radius,float& fraction,AZ::Vector3& normal) const=0;
@@ -173,6 +177,7 @@ public:
     AZStd::vector<AZ::u32> GetProxyFaceOwners() const override;
     AZ::Vector3 GetAntiAliasingState() const override;
     AZStd::string GetPaintFacesJson() const override;
+    AZStd::string GetProfileReportJson() const override;
     bool ResolvePaintSurface(const PaintSurfacePoint&,PaintSurfaceSample&) const override;
     AZ::u64 GetPaintSurfaceRevision() const override;
     bool SweepCameraSphere(const AZ::Vector3& start,const AZ::Vector3& end,float radius,float& fraction,AZ::Vector3& normal) const override;
@@ -221,7 +226,13 @@ private:
     AZ::Data::Asset<LearnedMaterialAsset> m_appearance{AZ::Data::AssetLoadBehavior::NoLoad};
     AZStd::map<AZ::u32, AZ::Data::Asset<SurfaceProfileAsset>> m_profileAssets;
     AZStd::map<AZ::u32, AZStd::string> m_missingProfiles; // ID -> product path not in the catalog
-    AZStd::map<AZ::u32, AZ::Data::Asset<AZ::RPI::StreamingImageAsset>> m_profileHeights;
+    AZStd::map<AZ::u32, AZ::Data::Asset<AZ::RPI::StreamingImageAsset>> m_profileHeights, m_profileCaches;
+    // Profile IDs whose binding supplies the height image (no profile, or a
+    // model 0 profile without one).
+    AZStd::set<AZ::u32> m_bindingHeights;
+    // The gem's model 0 networks, for bindings with model 0's calibration and
+    // no profile (Assets/SilPOM/Profiles/ModelZero.silpomprofile).
+    AZ::Data::Asset<SurfaceProfileAsset> m_modelZero{AZ::Data::AssetLoadBehavior::NoLoad};
     bool m_profilesStale = false;
     bool m_resolvedTrained = false;
     AZStd::unique_ptr<Generation> m_active, m_pending;

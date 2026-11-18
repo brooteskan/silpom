@@ -33,8 +33,8 @@ static uint silpomPaintReceiverFace=0,silpomPaintReceiverOwner=0;
 #endif
 #include "../../../Shaders/SilPOM/BlendedFace.azsli"
 #include "../../../Shaders/SilPOM/ProfileNetworks.azsli"
-// The batch's trained profile: model 0 when untrained, else the networks in
-// its weights buffer, with the role and network flags of its profile asset.
+// The batch's surface profile: its shader model, role and network flags, and
+// its networks in the weights buffer (model 0 included).
 SilPomTrainedModel SilPomMaterialModel(MaterialParameters params)
 {
     SilPomTrainedModel model;
@@ -346,8 +346,11 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     }
 #endif
     SilPomHit hit=SilPomIntersectFace(GetMaterialTexture(params.m_silpomHeightMap),p,f,ray,low
+#if SILPOM_HIT_NEURAL
+        ,SilPomMaterialModel(params)
+#endif
 #if SILPOM_NEURAL_NO_MARCH
-        ,SilPomMaterialModel(params),validationIterations,validationRetryCap,validationTolerance,params.m_silpomReliefMode
+        ,validationIterations,validationRetryCap,validationTolerance,params.m_silpomReliefMode
 #endif
 #if SILPOM_HIT_NEURAL_CACHE
         ,GetMaterialTexture(params.m_silpomNeuralCache)
@@ -527,7 +530,7 @@ Surface SilPomEvaluateSurfaceCore(VsOutput IN,VsSystemValues SV,PixelGeometryDat
         if(o_silpomLightingEstimator!=SilPomLightingEstimator::CurrentRouting && o_silpomLightingEstimator!=SilPomLightingEstimator::PhysicalRayNeural)
         {
             float comparisonMaterial[6];SilPomAcquireComparisonMaterial(geo.uvs[0],params,materialDerivatives,comparisonMaterial);
-            SilPomAcquireDirectionalEstimator(materialDerivatives);
+            SilPomAcquireDirectionalEstimator(materialDerivatives,SilPomMaterialModel(params).weights);
         }
 #endif
 #if SILPOM_SHARED_VISIBILITY && SILPOM_DIRECTIONAL_COMPARISON
@@ -545,7 +548,7 @@ Surface SilPomEvaluateSurfaceCore(VsOutput IN,VsSystemValues SV,PixelGeometryDat
     Surface surface=SilPomEvaluateLearnedSurface(IN,SV,geo,params,materialDerivatives);
 #if SILPOM_SHARED_VISIBILITY && SILPOM_DIRECTIONAL_COMPARISON
     if(o_silpomLightingEstimator!=SilPomLightingEstimator::CurrentRouting && o_silpomLightingEstimator!=SilPomLightingEstimator::PhysicalRayNeural)
-        SilPomAcquireDirectionalEstimator(materialDerivatives);
+        SilPomAcquireDirectionalEstimator(materialDerivatives,SilPomMaterialModel(params).weights);
 #if SILPOM_DIFFUSE_ACCESSIBILITY
     surface.diffuseAmbientOcclusion*=SilPomDirectionalAmbientAccessibility();
 #endif

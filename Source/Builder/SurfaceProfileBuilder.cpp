@@ -24,7 +24,8 @@ constexpr const char* JobKey = "SilPOM surface profile";
 
 struct ProfileSource
 {
-    AZStd::string height, weights;  // absolute, normalized
+    AZStd::string height, weights, cache;  // absolute, normalized; height (model 0) and cache optional
+    AZStd::string networks;                // the profile's "Networks" entry, as written
     AZ::u32 width = 0, heightPixels = 0, addressMode = 0, shaderModel = 0;
     float scale = 0, reference = 0;
     SurfaceRole role = SurfaceRole::Surface;
@@ -47,20 +48,32 @@ bool ReadProfile(const AZStd::string& path, ProfileSource& out, AZStd::string& e
     const auto* role = member("Role");
     const auto* model = member("ShaderModel");
     const auto* weights = member("Weights");
-    if (!version || !version->IsUint() || version->GetUint() != ProfileVersion || !height || !height->IsString()
+    const auto* cache = member("Cache");
+    const auto* networks = member("Networks");
+    if (networks && !networks->IsString()) { error = "Networks must be a folder path"; return false; }
+    if (networks) out.networks = networks->GetString();
+    // Model 0 profiles may omit Height: they then apply to each binding's own
+    // height image of their size. Cache names model 0's seed cache image.
+    const bool modelZero = model && model->IsUint() && model->GetUint() == 0;
+    if (!version || !version->IsUint() || version->GetUint() != ProfileVersion || (height ? !height->IsString() : !modelZero)
         || !width || !width->IsUint() || !pixels || !pixels->IsUint() || !scale || !scale->IsNumber()
         || !reference || !reference->IsNumber() || !address || !address->IsUint() || !role || !role->IsString()
-        || !model || !model->IsUint() || (weights && !weights->IsString()))
-    { error = "needs Version 1, Height, Width, HeightPixels, Scale, Reference, AddressMode, Role, ShaderModel"; return false; }
+        || !model || !model->IsUint() || (weights && !weights->IsString()) || (cache && (!cache->IsString() || !modelZero)))
+    {
+        error = "needs Version 1, Height (optional for ShaderModel 0), Width, HeightPixels, Scale, Reference, "
+                "AddressMode, Role, ShaderModel; only model 0 has a Cache";
+        return false;
+    }
     const AZStd::string roleName = role->GetString();
     if (roleName == "Wall") out.role = SurfaceRole::Wall;
     else if (roleName == "Opening") out.role = SurfaceRole::Opening;
     else if (roleName == "Surface") out.role = SurfaceRole::Surface;
     else { error = "Role must be Surface, Wall or Opening"; return false; }
     const AZ::IO::Path folder(AZ::IO::Path(path).ParentPath());
-    if (AZ::IO::Path(height->GetString()).IsAbsolute() || (weights && AZ::IO::Path(weights->GetString()).IsAbsolute()))
-    { error = "paths must be relative to the profile"; return false; }
-    out.height = (folder / height->GetString()).LexicallyNormal().String();
+    for (const auto* relative : {height, weights, cache})
+        if (relative && AZ::IO::Path(relative->GetString()).IsAbsolute()) { error = "paths must be relative to the profile"; return false; }
+    if (height) out.height = (folder / height->GetString()).LexicallyNormal().String();
+    if (cache) out.cache = (folder / cache->GetString()).LexicallyNormal().String();
     AZStd::string weightsName;
     if (weights) weightsName = weights->GetString();
     else
@@ -99,6 +112,27 @@ bool ReadSection(const rapidjson::Value& root, const char* name, const AZStd::ve
     return true;
 }
 
+// Optional lighting estimator heads (wall comparisons).
+bool ReadEstimators(const rapidjson::Value& root, SurfaceProfileAsset& asset, AZStd::string& error)
+{
+    const auto estimators = root.FindMember("Estimators");
+    if (estimators == root.MemberEnd()) return true;
+    if (!estimators->value.IsObject()) { error = "Estimators must be an object"; return false; }
+    for (const auto& head : estimators->value.GetObject())
+    {
+        size_t index = SurfaceProfileAsset::EstimatorCount;
+        for (size_t i = 0; i < SurfaceProfileAsset::EstimatorCount; ++i)
+            if (AZStd::string_view(head.name.GetString()) == SurfaceProfileAsset::EstimatorName(i)) index = i;
+        if (index == SurfaceProfileAsset::EstimatorCount)
+        { error = AZStd::string::format("unknown estimator %s", head.name.GetString()); return false; }
+        const size_t outputs = SurfaceProfileAsset::EstimatorOutputs(index);
+        if (!ReadSection(estimators->value, head.name.GetString(), {{"W0", 32 * 20}, {"B0", 32}, {"W1", outputs * 32}, {"B1", outputs}},
+            asset.Estimator(index), error))
+        { error = "Estimators." + error; return false; }
+    }
+    return true;
+}
+
 bool ReadWeights(const AZStd::string& path, SurfaceProfileAsset& asset, AZStd::string& error)
 {
     auto document = AZ::JsonSerializationUtils::ReadJsonFile(path);
@@ -113,6 +147,32 @@ bool ReadWeights(const AZStd::string& path, SurfaceProfileAsset& asset, AZStd::s
     { error = "weights were made for a different ShaderModel"; return false; }
     if (!ReadSection(root, "HitModel", {{"W0", 16 * 11}, {"B0", 16}, {"W1", 16 * 2}, {"B1", 2}}, asset.m_hitModel, error))
         return false;
+    if (!ReadEstimators(root, asset, error)) return false;
+    if (asset.m_shaderModel == 0)
+    {
+        if (!ReadSection(root, "Seed", {{"HeightWeights", 8 * 4}, {"SlopeWeights", 8 * 2}, {"Bias", 8}, {"Output", 8},
+            {"OutputBias", 1}}, asset.m_seed, error))
+            return false;
+        const auto layout = root.FindMember("CacheLayout");
+        if (layout == root.MemberEnd()) return true;
+        const auto& value = layout->value;
+        const auto tiles = value.IsObject() ? value.FindMember("Tiles") : value.MemberEnd();
+        const auto rows = value.IsObject() ? value.FindMember("Rows") : value.MemberEnd();
+        if (!value.IsObject() || tiles == value.MemberEnd() || rows == value.MemberEnd()
+            || !tiles->value.IsArray() || tiles->value.Size() != 2 || !tiles->value[0].IsUint() || !tiles->value[1].IsUint()
+            || !rows->value.IsArray() || tiles->value[1].GetUint() > SurfaceProfileAsset::MaxCacheRows
+            || rows->value.Size() != tiles->value[1].GetUint() * 2)
+        { error = "CacheLayout needs Tiles [x, y] and Rows: two words per tile row"; return false; }
+        asset.m_cacheLayout.assign(SurfaceProfileAsset::CacheLayoutWords, 0u);
+        asset.m_cacheLayout[0] = tiles->value[0].GetUint();
+        asset.m_cacheLayout[1] = tiles->value[1].GetUint();
+        for (rapidjson::SizeType i = 0; i < rows->value.Size(); ++i)
+        {
+            if (!rows->value[i].IsUint()) { error = "CacheLayout.Rows must be unsigned words"; return false; }
+            asset.m_cacheLayout[2 + i] = rows->value[i].GetUint();
+        }
+        return true;
+    }
     if (asset.m_shaderModel < 4) return true;
     const auto threshold = root.FindMember("PhysicalVisibilityThreshold");
     if (threshold == root.MemberEnd() || !threshold->value.IsNumber()) { error = "missing PhysicalVisibilityThreshold"; return false; }
@@ -177,8 +237,8 @@ void SurfaceProfileBuilder::Activate()
 {
     AssetBuilderSDK::AssetBuilderDesc desc;
     desc.m_name = JobKey;
-    desc.m_version = 2;
-    desc.m_analysisFingerprint = "profile-v2";
+    desc.m_version = 5;
+    desc.m_analysisFingerprint = "profile-v5";
     desc.m_busId = azrtti_typeid<SurfaceProfileBuilder>();
     desc.m_patterns.emplace_back("*.silpomprofile", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
     desc.m_createJobFunction = AZStd::bind(&SurfaceProfileBuilder::CreateJobs, this, AZStd::placeholders::_1, AZStd::placeholders::_2);
@@ -200,9 +260,9 @@ void SurfaceProfileBuilder::CreateJobs(const AssetBuilderSDK::CreateJobsRequest&
         response.m_result = AssetBuilderSDK::CreateJobsResultCode::Failed;
         return;
     }
-    // Rebuild when the weights (re)appear or the training height image changes.
-    response.m_sourceFileDependencyList.emplace_back(source.weights, AZ::Uuid::CreateNull());
-    response.m_sourceFileDependencyList.emplace_back(source.height, AZ::Uuid::CreateNull());
+    // Rebuild when the weights (re)appear or the training images change.
+    for (const auto* file : {&source.weights, &source.height, &source.cache})
+        if (!file->empty()) response.m_sourceFileDependencyList.emplace_back(*file, AZ::Uuid::CreateNull());
     for (const auto& platform : request.m_enabledPlatforms)
     {
         AssetBuilderSDK::JobDescriptor job;
@@ -227,9 +287,10 @@ void SurfaceProfileBuilder::ProcessJob(const AssetBuilderSDK::ProcessJobRequest&
         if (!RunProfileTool(request.m_fullPath, error)) return fail(error);
         if (!AZ::IO::SystemFile::Exists(source.weights.c_str())) return fail("the profile tool did not write " + source.weights);
     }
-    if (!AZ::IO::SystemFile::Exists(source.height.c_str())) return fail("height image not found: " + source.height);
+    if (!source.height.empty() && !AZ::IO::SystemFile::Exists(source.height.c_str())) return fail("height image not found: " + source.height);
+    if (!source.cache.empty() && !AZ::IO::SystemFile::Exists(source.cache.c_str())) return fail("seed cache not found: " + source.cache);
     AZ::u32 width = 0, height = 0;
-    if (PngSize(source.height, width, height) && (width != source.width || height != source.heightPixels))
+    if (!source.height.empty() && PngSize(source.height, width, height) && (width != source.width || height != source.heightPixels))
         return fail(AZStd::string::format("height image is %u x %u, the profile was trained on %u x %u",
             width, height, source.width, source.heightPixels));
 
@@ -237,11 +298,19 @@ void SurfaceProfileBuilder::ProcessJob(const AssetBuilderSDK::ProcessJobRequest&
     asset.m_width = source.width; asset.m_heightPixels = source.heightPixels;
     asset.m_scale = source.scale; asset.m_reference = source.reference;
     asset.m_addressMode = source.addressMode; asset.m_role = source.role; asset.m_shaderModel = source.shaderModel;
-    // Product path of the image: its path below the scan folder, lower case.
-    AZ::IO::Path relative = AZ::IO::Path(source.height).LexicallyRelative(AZ::IO::Path(request.m_watchFolder).LexicallyNormal());
-    if (relative.empty() || relative.Native().starts_with("..")) return fail("height image must be in the same scan folder as the profile");
-    asset.m_heightProduct = relative.AsPosix() + ".streamingimage";
-    AZStd::to_lower(asset.m_heightProduct.begin(), asset.m_heightProduct.end());
+    asset.m_networks = source.networks;
+    // Product path of an image: its path below the scan folder, lower case.
+    const auto imageProduct = [&](const AZStd::string& image, AZStd::string& out)
+    {
+        if (image.empty()) return true;
+        AZ::IO::Path relative = AZ::IO::Path(image).LexicallyRelative(AZ::IO::Path(request.m_watchFolder).LexicallyNormal());
+        if (relative.empty() || relative.Native().starts_with("..")) return false;
+        out = relative.AsPosix() + ".streamingimage";
+        AZStd::to_lower(out.begin(), out.end());
+        return true;
+    };
+    if (!imageProduct(source.height, asset.m_heightProduct) || !imageProduct(source.cache, asset.m_cacheProduct))
+        return fail("images must be in the same scan folder as the profile");
     if (!ReadWeights(source.weights, asset, error)) return fail(source.weights + ": " + error);
     if (const auto invalid = asset.Validate(); !invalid.empty()) return fail(invalid);
 
