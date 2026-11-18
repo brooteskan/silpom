@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+// Mirrors SilPOM::ReliefMode (Include/SilPOM/ReliefMode.h). Traverse marches
+// the heightfield within maxCells; every other mode is a no-march route.
+static const uint SP_RELIEF_TRAVERSE=0u;
+static const uint SP_RELIEF_NO_MARCH=1u;
+static const uint SP_RELIEF_RECTANGLE_CONTROL=2u;
+static const uint SP_RELIEF_UNFILLED_CONTROL=3u;
+static const uint SP_RELIEF_LOD_2PX=4u;
+static const uint SP_RELIEF_LOD_4PX=5u;
+static const uint SP_RELIEF_LOD_8PX=6u;
+static const uint SP_RELIEF_LOD_SHELL=7u;
+static const uint SP_RELIEF_LOD_4PX_RESOLVE=8u;
+bool SilPomReliefUsesLod(uint mode)
+{
+    return mode>=SP_RELIEF_LOD_2PX && mode<=SP_RELIEF_LOD_4PX_RESOLVE;
+}
+bool SilPomReliefUsesSmoothLod(uint mode)
+{
+    return mode==SP_RELIEF_LOD_4PX || mode==SP_RELIEF_LOD_4PX_RESOLVE;
+}
+bool SilPomReliefNoMarch(uint mode)
+{
+    return mode>=SP_RELIEF_NO_MARCH && mode<=SP_RELIEF_LOD_4PX_RESOLVE;
+}
+bool SilPomReliefFillEnabled(uint mode)
+{
+    return mode==SP_RELIEF_NO_MARCH || SilPomReliefUsesLod(mode);
+}
+// Screen-space relief budget, in pixels, of the near/shell LOD transition.
+// The shell-only mode has no near range; callers return depth 0 before this.
+float SilPomReliefLodPixels(uint mode)
+{
+    return mode==SP_RELIEF_LOD_2PX ? 2.0f : (mode==SP_RELIEF_LOD_8PX ? 8.0f : 4.0f);
+}

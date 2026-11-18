@@ -31,7 +31,7 @@ namespace SilPOM
     {
         AZ::Data::Instance<AZ::RPI::Buffer> faces, coefficients, proxySelection;
         AZ::u32 meshBufferIndex = 0, proxyBufferIndex = 0, faceCount = 0;
-        AZ::u32 maxCells = 0, neuralModel = 0;
+        AZ::u32 reliefMode = 0, neuralModel = 0; // SilPOM::ReliefMode
         float scale = 0, reference = 0, reliefLodPixelBudget = 0, maxReliefDistance = 0;
         bool proxyLodEnabled = false;
     };

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <SilPOM/MeshSurfaceAsset.h>
+#include <SilPOM/ReliefMode.h>
 #include <SilPOM/ReceiverUvPaint.h>
 #include <SilPOM/SurfacePaint.h>
 #include <AzCore/Component/TickBus.h>
@@ -29,6 +30,7 @@ enum class LightingEstimator : AZ::u32 { CurrentRouting=0, PhysicalRayNeural=1, 
 AZ_TYPE_INFO_SPECIALIZE(LightingEstimator, "{4BDDBA90-2C99-4DD0-99A2-40F22F5D8B82}");
 // Default is passive: existing levels retain their approved renderer settings.
 enum class AntiAliasing : AZ::u32 { CurrentDefault=0, SMAA=1, TAA=2, MSAA4=3, MSAA2=4 };
+AZ_TYPE_INFO_SPECIALIZE(ReliefMode, "{66E8AC0A-9D8F-4938-B279-8C3DD0CD6F8A}");
 AZ_TYPE_INFO_SPECIALIZE(AntiAliasing, "{46E20631-E4B5-416E-9A1D-66C7CCCD0218}");
 struct MeshMaterialBinding
 {
@@ -62,11 +64,14 @@ public:
     static constexpr size_t MaxAdditionalSpiralWindows = 8;
     bool UsesTrainedProfiles() const;
     AZ::Crc32 GetReliefDepthVisibility() const;
+    // Moves a legacy mode sentinel out of Maximum cells. Returns true if changed.
+    bool UpgradeLegacyReliefMode();
     AZ::Data::Asset<MeshSurfaceAsset> m_surface{AZ::Data::AssetLoadBehavior::NoLoad};
     AZStd::vector<MeshMaterialBinding> m_materials;
     AZStd::vector<MeshProfileBinding> m_profiles;
     float m_reliefDepthMultiplier = 1.0f;
-    AZ::u32 m_maxCells = 4096;
+    ReliefMode m_reliefMode = ReliefMode::Traverse;
+    AZ::u32 m_maxCells = 4096; // traversal budget only
     AZ::u32 m_reliefShadowSteps = 16;
     AZ::u32 m_validationIterations = 6;
     AZ::u32 m_validationRetryCap = 4;

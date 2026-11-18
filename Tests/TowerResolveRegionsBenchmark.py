@@ -228,7 +228,7 @@ def main():
     ready([2, 0, 0])
     cfg = dict(fixture['tower_configuration'])
     cfg['UseHeightDerivedNormals'] = True
-    assert cfg['MaxCells'] == 65525
+    assert cfg['MaxCells'] == 65525 or cfg.get('ReliefMode') == 8
     result['effective_tower_configuration_sha256'] = hashlib.sha256(json.dumps(cfg, sort_keys=True).encode()).hexdigest()
     expected = {'Lighting estimator': 5, 'Height-derived normals (off = cheaper)': True,
                 'Level 2 predictor (experimental)': cfg['UseLevelTwoPredictor'],

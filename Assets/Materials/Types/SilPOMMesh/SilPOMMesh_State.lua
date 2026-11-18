@@ -2,7 +2,7 @@
 function GetMaterialPropertyDependencies()
     return {"surface.scale", "surface.useHierarchy", "surface.useNeuralSeed", "surface.useNeuralCache",
         "surface.levelTwoPredictor", "surface.validationGather",
-        "surface.neuralModel", "surface.maxCells", "mesh.hitFaceBase", "surface.localShadowMethod", "surface.learnedMaterial", "surface.proxyLodEnabled", "surface.sharedVisibility", "surface.proxyDepthEnabled", "surface.lightingEstimator", "surface.diffuseAccessibility"}
+        "surface.neuralModel", "surface.reliefMode", "mesh.hitFaceBase", "surface.localShadowMethod", "surface.learnedMaterial", "surface.proxyLodEnabled", "surface.sharedVisibility", "surface.proxyDepthEnabled", "surface.lightingEstimator", "surface.diffuseAccessibility"}
 end
 
 function Process(context)
@@ -28,8 +28,9 @@ function Process(context)
         context:GetMaterialPropertyValue_bool("surface.useNeuralSeed"))
     context:SetInternalMaterialPropertyValue_bool("silpomUseNeuralCache",
         context:GetMaterialPropertyValue_bool("surface.useNeuralCache"))
-    local mode = context:GetMaterialPropertyValue_uint("surface.maxCells")
+    -- SilPOM::ReliefMode values 4-8 are the LOD modes (2/4/8 px, shell, 4 px + resolve).
+    local mode = context:GetMaterialPropertyValue_uint("surface.reliefMode")
     local hasLodEstimator = context:GetMaterialPropertyValue_bool("surface.useNeuralCache")
         or context:GetMaterialPropertyValue_uint("surface.neuralModel") ~= 0
-    context:SetInternalMaterialPropertyValue_bool("silpomTowerLod", hasLodEstimator and mode >= 65525 and mode <= 65529)
+    context:SetInternalMaterialPropertyValue_bool("silpomReliefLod", hasLodEstimator and mode >= 4 and mode <= 8)
 end

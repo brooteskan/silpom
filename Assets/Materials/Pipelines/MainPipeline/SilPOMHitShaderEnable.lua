@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: MIT
 function GetMaterialPropertyDependencies()
     return {"silpomReuseDepthHit", "silpomUseDepthHeightBounds", "silpomUseNeuralSeed", "silpomUseNeuralCache", "silpomStaticWallHit",
-        "silpomTowerLod", "isTransparent", "isTintedTransparent", "silpomNeuralVisibilityOnly", "silpomLearnedMaterial", "silpomProxyLod", "silpomSharedVisibility", "silpomProxyDepth", "silpomLightingComparison", "silpomDiffuseAccessibility", "silpomAngularEdges"}
+        "silpomReliefLod", "isTransparent", "isTintedTransparent", "silpomNeuralVisibilityOnly", "silpomLearnedMaterial", "silpomProxyLod", "silpomSharedVisibility", "silpomProxyDepth", "silpomLightingComparison", "silpomDiffuseAccessibility", "silpomAngularEdges"}
 end
 
 function Process(context)
@@ -15,7 +15,7 @@ function Process(context)
     local useBounds = context:GetMaterialPropertyValue_bool("silpomUseDepthHeightBounds")
     local useNeural = context:GetMaterialPropertyValue_bool("silpomUseNeuralSeed")
     local useCache = context:GetMaterialPropertyValue_bool("silpomUseNeuralCache")
-    local useLod = useNeural and context:GetMaterialPropertyValue_bool("silpomTowerLod")
+    local useLod = useNeural and context:GetMaterialPropertyValue_bool("silpomReliefLod")
     context:GetShaderByTag("silpom_hit_depth"):SetEnabled(useHit and not useBounds and not useNeural)
     context:GetShaderByTag("silpom_hit_depth_bounds"):SetEnabled(useHit and useBounds and not useNeural)
     context:GetShaderByTag("silpom_hit_depth_neural"):SetEnabled(useHit and useNeural and not useCache and not useLod)

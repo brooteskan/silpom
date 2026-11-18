@@ -134,7 +134,7 @@ def main():
     result['controls'] = {'lighting_estimator': 'AngularEdges4', 'height_derived_normals': True,
                           'face_cache': True, 'resolve_regions': True, 'resolve_multi_rect': True}
     result['tower_status'] = str(silpom.SilPomMeshRequestBus(bus.Event, 'GetStatus', tower))
-    assert fixture['tower_configuration']['MaxCells'] == 65525, 'Requires tower full-screen resolve mode'
+    assert fixture['tower_configuration']['MaxCells'] == 65525 or fixture['tower_configuration'].get('ReliefMode') == 8, 'Requires tower full-screen resolve mode'
     assert str(general.get_cvar('r_silpomResolveRegions')).lower() in ('true', 'false', '0', '1', '0.0', '1.0')
     command('r_silpomMsaaInspect', 1)
     command('r_silpomMsaaRawCoverage', 1)

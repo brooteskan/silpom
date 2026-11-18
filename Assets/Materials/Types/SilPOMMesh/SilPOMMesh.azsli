@@ -44,6 +44,7 @@ static uint silpomPaintReceiverFace=0,silpomPaintReceiverOwner=0;
 // HLSL static variables are private to a shader invocation, not shared storage.
 static SilPomMeshFace silpomLitFace;
 static SilPomPatch silpomLitPatch;
+static uint silpomLitReliefMode;
 static float2 silpomLitUv;
 static float3x3 silpomLitRotation;
 static float3 silpomLitOriginWS;
@@ -93,17 +94,16 @@ SilPomGradientContext SilPomHitGradient(SilPomHit hit,SilPomMeshFace f,SilPomPat
         ViewSrg::m_viewProjectionMatrix,PassSrg::m_silpomViewport.zw,coarseSpan,representation);
 }
 #endif
-#if SILPOM_TOWER_LOD_NEAR || SILPOM_TOWER_LOD_SHELL
-float SilPomTowerLodDepth(MaterialParameters params)
+#if SILPOM_RELIEF_LOD_NEAR || SILPOM_RELIEF_LOD_SHELL
+float SilPomReliefLodDepth(MaterialParameters params)
 {
     if(params.m_silpomProxyLodEnabled)return 1e20f;
-    if(params.m_silpomMaxCells==SP_TOWER_LOD_SHELL) return 0;
-    const uint mode=SilPomTowerUsesSmoothLod(params.m_silpomMaxCells)?SP_TOWER_LOD_4PX:params.m_silpomMaxCells;
-    const float budget=2.0f*float(1u<<(SP_TOWER_LOD_2PX-mode));
+    if(params.m_silpomReliefMode==SP_RELIEF_LOD_SHELL) return 0;
+    const float budget=SilPomReliefLodPixels(params.m_silpomReliefMode);
     return SilPomQualityLodDepth(params.m_silpomScale,params.m_silpomReference,
         ViewSrg::m_projectionMatrix[1][1],budget,params.m_silpomReliefLodPixelBudget,params.m_silpomMaxReliefDistance);
 }
-float SilPomTowerLodOverlap(MaterialParameters params)
+float SilPomReliefLodOverlap(MaterialParameters params)
 {
     return SilPomQualityLodOverlap(params.m_silpomScale,params.m_silpomMaxReliefDistance);
 }
@@ -133,7 +133,7 @@ SilPomImplicitProfile SilPomImplicitMaterialProfile(const MaterialParameters par
     SilPomImplicitProfile profile;
     profile.scale=params.m_silpomScale;profile.reference=params.m_silpomReference;
     profile.pixelBudget=params.m_silpomReliefLodPixelBudget;profile.maxDistance=params.m_silpomMaxReliefDistance;
-    profile.maxCells=params.m_silpomMaxCells;profile.neuralModel=params.m_silpomNeuralModel;
+    profile.reliefMode=params.m_silpomReliefMode;profile.neuralModel=params.m_silpomNeuralModel;
     profile.proxyLodEnabled=params.m_silpomProxyLodEnabled;
     return profile;
 }
@@ -148,11 +148,11 @@ VsOutput SilPomImplicitVertex(uint faceIndex,float2 quadCorner,SilPomImplicitCov
     output.tangent=float4(1,0,0,1);output.color0=1;
     return output;
 }
-#if SILPOM_HIT_DEPTH && SILPOM_TOWER_LOD_NEAR
+#if SILPOM_HIT_DEPTH && SILPOM_RELIEF_LOD_NEAR
 bool SilPomTryCachedImplicitVertex(VsInput IN,const MaterialParameters params,out VsOutput output,out float depth)
 {
     output=(VsOutput)0;depth=0;
-    if(params.m_silpomMaxCells!=SP_TOWER_LOD_4PX_RESOLVE)return false;
+    if(params.m_silpomReliefMode!=SP_RELIEF_LOD_4PX_RESOLVE)return false;
     const uint faceIndex=(uint)round(IN.position.z);
     SilPomImplicitCoverage coverage;
     if(!SilPomReadImplicitFaceCache(params.m_meshBufferIndex,params.m_silpomHitFaceBase,faceIndex,coverage))return false;
@@ -169,7 +169,7 @@ VsOutput EvaluateVertexGeometry(VsInput IN, VsSystemValues SV, const MaterialPar
 #endif
     output.faceIndex=(uint)round(IN.position.z);
 #if SILPOM_HIT_FORWARD
-    if(params.m_silpomMaxCells==SP_TOWER_LOD_4PX_RESOLVE)
+    if(params.m_silpomReliefMode==SP_RELIEF_LOD_4PX_RESOLVE)
     {
         // Reuse the first proxy quad's indices for one full-screen triangle
         // per material batch. The hit buffer supplies the actual face.
@@ -187,7 +187,7 @@ VsOutput EvaluateVertexGeometry(VsInput IN, VsSystemValues SV, const MaterialPar
         ,params.m_silpomFaceCoefficientBuffer
 #endif
     );
-#if SILPOM_TOWER_LOD_NEAR
+#if SILPOM_RELIEF_LOD_NEAR
     if(SilPomProxySelected(params,output.faceIndex)){output.position=float4(2,2,0,1);return output;}
 #endif
     float4x4 model=GetObjectToWorldMatrix(SV),vp=GetViewProjectionMatrix(SV);
@@ -201,7 +201,7 @@ VsOutput EvaluateVertexGeometry(VsInput IN, VsSystemValues SV, const MaterialPar
     return output;
 #else
     const SilPomImplicitProfile profile=SilPomImplicitMaterialProfile(params);
-#if SILPOM_TOWER_LOD_NEAR
+#if SILPOM_RELIEF_LOD_NEAR
     const bool nearPolicy=true;
 #else
     const bool nearPolicy=false;
@@ -231,7 +231,7 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
 #if SILPOM_HIT_FORWARD
     uint4 record=PassSrg::m_silpomHitBuffer.Load(int2(IN.position.xy),silpomHitSampleIndex);
     const uint localFace=(record.w>>2)-params.m_silpomHitFaceBase;
-    if(params.m_silpomMaxCells==SP_TOWER_LOD_4PX_RESOLVE)
+    if(params.m_silpomReliefMode==SP_RELIEF_LOD_4PX_RESOLVE)
     {
         uint bytes;
         Bindless::GetByteAddressBuffer(params.m_meshBufferIndex).GetDimensions(bytes);
@@ -242,7 +242,7 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
 #elif !SILPOM_NEURAL_NO_MARCH
     // If hit reuse is unavailable, the tower preview must never take the
     // generic heightfield traversal path.
-    if(SilPomTowerNoMarch(params.m_silpomMaxCells)) discard;
+    if(SilPomReliefNoMarch(params.m_silpomReliefMode)) discard;
 #endif
     SilPomMeshFace f=SilPomLoadFace(params.m_meshBufferIndex,IN.faceIndex
 #if SILPOM_FACE_COEFFICIENT_CACHE
@@ -313,10 +313,10 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     SilPomRay ray;
     ray.origin=origin;ray.direction=direction;
     ray.tMin=0; ray.tMax=abs(farH.w)>1e-8?length(farH.xyz/farH.w-originWS):1e7;
-#if SILPOM_TOWER_LOD_NEAR
+#if SILPOM_RELIEF_LOD_NEAR
     const float viewRate=dot(ViewSrg::m_viewProjectionMatrix[3].xyz,directionWS);
-    const float cutoff=SilPomTowerLodDepth(params);
-    const float overlap=SilPomTowerLodOverlap(params);
+    const float cutoff=SilPomReliefLodDepth(params);
+    const float overlap=SilPomReliefLodOverlap(params);
     const float nearViewDepth=rcp(nearH.w);
     const float farDistance=ray.tMax;
     if(viewRate>1e-6f)
@@ -337,7 +337,7 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
 #endif
     SilPomHit hit=SilPomIntersectFace(GetMaterialTexture(params.m_silpomHeightMap),p,f,ray,low
 #if SILPOM_NEURAL_NO_MARCH
-        ,params.m_silpomNeuralModel,validationIterations,validationRetryCap,validationTolerance
+        ,params.m_silpomNeuralModel,validationIterations,validationRetryCap,validationTolerance,params.m_silpomReliefMode
 #endif
 #if SILPOM_HIT_NEURAL_CACHE
         ,GetMaterialTexture(params.m_silpomNeuralCache)
@@ -352,8 +352,8 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     float3 gradientPositionWS=mul(model,float4(origin+direction*hit.t,1)).xyz;
     SilPomGradientContext hitGradient=SilPomHitGradient(hit,f,p,params.m_silpomHeightMap,low,coarseSpan,model,gradientPositionWS);
 #endif
-#if SILPOM_TOWER_LOD_NEAR
-    if(SilPomTowerUsesSmoothLod(params.m_silpomMaxCells) && hit.status==SP_HIT && viewRate>1e-6f)
+#if SILPOM_RELIEF_LOD_NEAR
+    if(SilPomReliefUsesSmoothLod(params.m_silpomReliefMode) && hit.status==SP_HIT && viewRate>1e-6f)
     {
         // Complete the morph where the rasterized shell first covers this ray.
         // The base hit's view depth keeps the fade aligned with the shell cut.
@@ -447,7 +447,7 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     const float reliefFacing=dot(normal,direction);
     bool frontFace=reliefFacing<0;
 #if SILPOM_HIT_FORWARD
-    if(SilPomTowerNoMarch(p.maxCells))
+    if(SilPomReliefNoMarch(params.m_silpomReliefMode))
     {
         // Let the authored face determine sidedness. A steep height gradient
         // can turn away from the view and otherwise flip the lighting normal.
@@ -463,7 +463,7 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     geo.isFrontFace=frontFace; geo.isDisplacementClipped=failed;
     float2 uv=float2((tiledUv.x-params.m_silpomOffsetU)/params.m_silpomTileU,(tiledUv.y-params.m_silpomOffsetV)/params.m_silpomTileV);
 #if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
-    silpomLitFace=f; silpomLitPatch=p; silpomLitUv=uv;
+    silpomLitFace=f; silpomLitPatch=p; silpomLitReliefMode=params.m_silpomReliefMode; silpomLitUv=uv;
     silpomLitRotation=(float3x3)model;
     silpomLitOriginWS=mul(model,float4(f.origin,1)).xyz;
     silpomLitValid=!failed;silpomPaintReceiverFace=params.m_silpomHitFaceBase+IN.faceIndex;
@@ -588,7 +588,7 @@ PixelGeometryData SilPomVirtualGeometry(PixelGeometryData center,float2 uvOffset
     const float4 midH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(IN.ndc,.5f,1));
     const float3 toward=normalize(midH.xyz/midH.w-nearH.xyz/nearH.w);
     const float3 direction=mul(transpose(silpomLitRotation),toward);
-    if(SilPomTowerNoMarch(silpomLitPatch.maxCells))
+    if(SilPomReliefNoMarch(silpomLitReliefMode))
     {
         const float faceFacing=dot(silpomLitFace.normal,direction);
         const float facing=dot(normal,direction)*(center.isFrontFace?-1.0f:1.0f);

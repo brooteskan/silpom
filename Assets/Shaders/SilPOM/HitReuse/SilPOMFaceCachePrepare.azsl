@@ -11,7 +11,7 @@ ShaderResourceGroup PassSrg : SRG_PerPass
     RWByteAddressBuffer m_faceCoefficients;
     RWByteAddressBuffer m_faceCacheOutput;
     uint m_faceCount,m_cacheOffset,m_ownerBase,m_meshBufferIndex;
-    uint m_neuralModel,m_maxCells,m_proxyBufferIndex,m_proxyLodEnabled;
+    uint m_neuralModel,m_reliefMode,m_proxyBufferIndex,m_proxyLodEnabled;
     float m_scale,m_reference,m_reliefLodPixelBudget,m_maxReliefDistance;
     float4x4 m_objectToWorld;
 }
@@ -51,12 +51,12 @@ void MainCS(uint3 dispatchThreadId:SV_DispatchThreadID)
         PassSrg::m_faceCoefficients.Store4(coefficientOffset+32u,coefficients.metadata);
     }
     SilPomImplicitCoverage coverage=(SilPomImplicitCoverage)0;
-    if(PassSrg::m_maxCells==65525u)
+    if(PassSrg::m_reliefMode==SP_RELIEF_LOD_4PX_RESOLVE)
     {
         SilPomImplicitProfile profile;
         profile.scale=PassSrg::m_scale;profile.reference=PassSrg::m_reference;
         profile.pixelBudget=PassSrg::m_reliefLodPixelBudget;profile.maxDistance=PassSrg::m_maxReliefDistance;
-        profile.maxCells=PassSrg::m_maxCells;profile.neuralModel=PassSrg::m_neuralModel;
+        profile.reliefMode=PassSrg::m_reliefMode;profile.neuralModel=PassSrg::m_neuralModel;
         profile.proxyLodEnabled=PassSrg::m_proxyLodEnabled!=0u;
         bool proxySelected=false;
         if(profile.proxyLodEnabled)

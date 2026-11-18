@@ -51,7 +51,7 @@ BakeOutput MainPS(VSOutput input)
     PixelGeometryData geo=(PixelGeometryData)0;geo.positionWS=mul(PassSrg::m_receiverModel,float4(local,1)).xyz;
     geo.vertexNormal=normalize(mul((float3x3)PassSrg::m_receiverModel,normal));geo.isFrontFace=true;
     for(uint i=0;i<UvSetCount;++i){geo.uvs[i]=uv;geo.tangents[i]=normalize(mul((float3x3)PassSrg::m_receiverModel,tangent));geo.bitangents[i]=handedness*normalize(cross(geo.vertexNormal,geo.tangents[i]));}
-    silpomLitFace=f;silpomLitPatch=p;silpomLitUv=uv;silpomLitRotation=(float3x3)PassSrg::m_receiverModel;
+    silpomLitFace=f;silpomLitPatch=p;silpomLitReliefMode=params.m_silpomReliefMode;silpomLitUv=uv;silpomLitRotation=(float3x3)PassSrg::m_receiverModel;
     silpomLitOriginWS=mul(PassSrg::m_receiverModel,float4(f.origin,1)).xyz;silpomLitValid=true;
     silpomPaintReceiverFace=params.m_silpomHitFaceBase+face;silpomPaintHeightTexture=params.m_silpomHeightMap;
     // This pass has one authored chart, rather than visibility winners. Its

@@ -26,6 +26,7 @@ struct TestCase
     SilPomMeshFace face;
     float4x4 model,vp;
     SilPomImplicitProfile profile;
+    SilPomLegacyImplicitProfile legacyProfile;
     float projectionY;
     bool selected;
 };
@@ -52,8 +53,12 @@ TestCase LoadCase(uint index)
     const float4 extra=asfloat(Cases.Load4(offset+304u));
     input.profile.scale=profile.x;input.profile.reference=profile.y;
     input.profile.pixelBudget=profile.z;input.profile.maxDistance=profile.w;
-    input.profile.maxCells=policy.x;input.profile.neuralModel=policy.y;
+    input.profile.reliefMode=asuint(extra.y);input.profile.neuralModel=policy.y;
     input.profile.proxyLodEnabled=policy.z!=0u;
+    input.legacyProfile.scale=profile.x;input.legacyProfile.reference=profile.y;
+    input.legacyProfile.pixelBudget=profile.z;input.legacyProfile.maxDistance=profile.w;
+    input.legacyProfile.maxCells=policy.x;input.legacyProfile.neuralModel=policy.y;
+    input.legacyProfile.proxyLodEnabled=policy.z!=0u;
     input.selected=policy.w!=0u;input.projectionY=extra.x;
     return input;
 }
@@ -87,7 +92,7 @@ void CompareCS(uint3 id:SV_DispatchThreadID)
     uint4 old0=0,old1=0;uint differing=0,oldStatus=0;
     [unroll] for(uint i=0;i<4;++i)
     {
-        const SilPomImplicitCoverage legacy=SilPomLegacyImplicitCoverage(input.face,input.profile,input.model,input.vp,
+        const SilPomImplicitCoverage legacy=SilPomLegacyImplicitCoverage(input.face,input.legacyProfile,input.model,input.vp,
             input.projectionY,input.selected,corners[i]);
         const uint2 bits=asuint(legacy.ndc[0]);oldStatus=legacy.status;
         const SilPomImplicitCoverage fallback=SilPomBuildImplicitCoverage(input.face,input.profile,input.model,input.vp,
@@ -98,7 +103,7 @@ void CompareCS(uint3 id:SV_DispatchThreadID)
         if(any(bits!=cached)||legacy.status!=cachedDepth.y
             ||any(bits!=asuint(fallback.ndc[0]))||legacy.status!=fallback.status)++differing;
     }
-    const uint oldDepth=asuint(SilPomLegacyNearestDepth(input.face,input.profile,input.model,input.vp));
+    const uint oldDepth=asuint(SilPomLegacyNearestDepth(input.face,input.legacyProfile,input.model,input.vp));
     uint lookupErrors=0;
     SilPomImplicitCoverage readValue;
     const bool available=SilPomReadImplicitFaceCache(54321u,12345u,id.x,readValue);

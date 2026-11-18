@@ -353,7 +353,7 @@ def main():
     source = LEVEL.read_bytes()
     fixture = json.loads(LEVEL.with_name('scene.json').read_text())
     configuration = fixture['tower_configuration']
-    assert configuration['MaxCells'] == 65525, 'Requires tower full-screen resolve mode'
+    assert configuration['MaxCells'] == 65525 or configuration.get('ReliefMode') == 8, 'Requires tower full-screen resolve mode'
     result['level_sha256'] = hashlib.sha256(source).hexdigest()
     result['scene_sha256'] = result['level_sha256']
     assert result['scene_sha256'] == fixture['scene_sha256']

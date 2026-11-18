@@ -23,7 +23,7 @@ int main()
         Check(Trace(inverse,2,2,0,0,1,1,0,0,.4,-1,1,1,true,cells)==0,
             "Reference must support equivalent signed displacement");
         Texture image{32,16,std::vector<float>(512,.5f)};
-        SilPomPatch p{1,1,.2f,.5f,1,1,0,0,32,16,0,SP_TOWER_NO_MARCH};
+        SilPomPatch p{1,1,.2f,.5f,1,1,0,0,32,16,0,65536u};
         SilPomMeshFace f{};f.du={1,0,0};f.dv={0,1,0};f.normal=f.d0=f.d1=f.d2={0,0,1};
         f.uv1={1,0};f.uv2={0,1};
         auto evaluate=[&](float2 uv,float3 light,uint steps,bool neural)

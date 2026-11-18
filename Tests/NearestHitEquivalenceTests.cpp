@@ -33,7 +33,7 @@ int main()
             const uint width=widths[query%4],height=heights[(query/4)%3];
             Texture texture{width,height,std::vector<float>(width*height)};
             for(auto& value:texture.pixels) value=unit(rng);
-            SilPomPatch p{1,1,.2f,.5f,1,1,0,0,width,height,(query/12)%2,SP_TOWER_NO_MARCH};
+            SilPomPatch p{1,1,.2f,.5f,1,1,0,0,width,height,(query/12)%2,65536u};
             p.tileU=(query%2?1.0f:-1.0f)*(.5f+unit(rng));p.tileV=.5f+unit(rng);
             p.offsetU=signedUnit(rng)*2;p.offsetV=signedUnit(rng)*2;
             SilPomMeshFace face;

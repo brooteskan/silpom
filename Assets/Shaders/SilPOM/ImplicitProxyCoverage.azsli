@@ -3,6 +3,7 @@
 #include "MeshFace.azsli"
 #include "Quality.azsli"
 #include "FrustumDepthBound.azsli"
+#include "ReliefMode.azsli"
 
 // These helpers describe only the implicit NDC proxy. Authored shell/proxy
 // vertices retain their original clip W, UV and sample-depth interpolation.
@@ -15,7 +16,7 @@ static const uint SP_FACE_COEFFICIENT_BYTES=48u;
 struct SilPomImplicitProfile
 {
     float scale,reference,pixelBudget,maxDistance;
-    uint maxCells,neuralModel;
+    uint reliefMode,neuralModel;
     bool proxyLodEnabled;
 };
 struct SilPomImplicitCoverage
@@ -29,14 +30,9 @@ struct SilPomImplicitCoverage
 float SilPomImplicitLodDepth(SilPomImplicitProfile profile,float projectionY)
 {
     if(profile.proxyLodEnabled)return 1e20f;
-    if(profile.maxCells==65526u)return 0;
-    const uint mode=profile.maxCells==65528u||profile.maxCells==65525u?65528u:profile.maxCells;
-    const float budget=2.0f*float(1u<<(65529u-mode));
+    if(profile.reliefMode==SP_RELIEF_LOD_SHELL)return 0;
+    const float budget=SilPomReliefLodPixels(profile.reliefMode);
     return SilPomQualityLodDepth(profile.scale,profile.reference,projectionY,budget,profile.pixelBudget,profile.maxDistance);
-}
-bool SilPomImplicitNoMarch(uint mode)
-{
-    return mode==65534u||mode==65531u||mode==65530u||(mode>=65525u&&mode<=65529u);
 }
 struct SilPomImplicitTriangle
 {
@@ -175,7 +171,7 @@ SilPomImplicitCoverage SilPomBuildImplicitCoverage(SilPomMeshFace f,SilPomImplic
         // Coverage deliberately retains the two-stage projection expression.
         corners[i]=mul(vp,mul(model,float4(p,1)));
     }
-    const bool tightWall=nearPolicy&&(profile.neuralModel==1u||profile.neuralModel==4u)&&profile.maxCells==65525u;
+    const bool tightWall=nearPolicy&&(profile.neuralModel==1u||profile.neuralModel==4u)&&profile.reliefMode==SP_RELIEF_LOD_4PX_RESOLVE;
     SilPomImplicitWallBounds wallBounds=(SilPomImplicitWallBounds)0;
     if(tightWall)
     {
@@ -231,8 +227,8 @@ SilPomImplicitCoverage SilPomBuildImplicitCoverage(SilPomMeshFace f,SilPomImplic
     const float2 extent=max(high-low,0.0f);
     float proxyArea=extent.x*extent.y;
     SilPomImplicitTriangle triangleShape;
-    const bool useTriangle=trianglePolicy&&!clipped&&SilPomImplicitNoMarch(profile.maxCells)
-        &&profile.maxCells!=65531u&&SilPomImplicitTriangleShape(corners,proxyArea,triangleShape);
+    const bool useTriangle=trianglePolicy&&!clipped&&SilPomReliefNoMarch(profile.reliefMode)
+        &&profile.reliefMode!=SP_RELIEF_RECTANGLE_CONTROL&&SilPomImplicitTriangleShape(corners,proxyArea,triangleShape);
     SilPomImplicitWallShape wall=(SilPomImplicitWallShape)0;
     if(tightWall&&proxyArea>0)wall=SilPomImplicitChooseWall(wallBounds,proxyArea);
     const float2 quadCorners[4]={float2(-1,-1),float2(1,-1),float2(-1,1),float2(1,1)};

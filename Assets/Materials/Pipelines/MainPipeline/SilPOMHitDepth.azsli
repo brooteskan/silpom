@@ -54,7 +54,7 @@ struct PsOutput
     float4 m_depthGradients : SV_Target2;
 };
 
-#if SILPOM_TOWER_LOD_SHELL
+#if SILPOM_RELIEF_LOD_SHELL
 struct SilPomShellVertex
 {
     float4 position : SV_Position;
@@ -82,13 +82,13 @@ SilPomShellVertex VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
     const uint model=params.m_silpomNeuralModel;
     const bool isOpeningSurface=model==6u || model==7u;
     if((!SilPomIsTowerWallModel(model) && !isOpeningSurface)
-        || params.m_silpomMaxCells!=SP_TOWER_LOD_4PX_RESOLVE)
+        || params.m_silpomReliefMode!=SP_RELIEF_LOD_4PX_RESOLVE)
         return output;
 #endif
     const SilPomMeshFace face=SilPomLoadFace(params.m_meshBufferIndex,uint(round(IN.position.z)),params.m_silpomFaceCoefficientBuffer);
     const float4x4 localToWorld=GetObjectToWorldMatrix(sv);
     const float4x4 localToClip=mul(GetViewProjectionMatrix(sv),localToWorld);
-    const float cutoff=SilPomTowerLodDepth(params);
+    const float cutoff=SilPomReliefLodDepth(params);
 #if SILPOM_WALL_BACKUP_SHELL
     const float3 toCamera=ViewSrg::m_worldPosition.xyz-mul(localToWorld,float4(face.origin,1)).xyz;
     if(dot(mul((float3x3)localToWorld,face.normal),toCamera)<=0.0f)
@@ -100,7 +100,7 @@ SilPomShellVertex VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
         params.m_silpomScale*(1.0f-params.m_silpomReference)));
     const float3 directions[3]={face.d0,face.d1,face.d2};
 #else
-    const float limit=cutoff>0 ? cutoff-SilPomTowerLodOverlap(params) : -1e20f;
+    const float limit=cutoff>0 ? cutoff-SilPomReliefLodOverlap(params) : -1e20f;
 #endif
     const float2 uv[3]={face.uv0,face.uv1,face.uv2};
     float4 corners[3];
@@ -241,7 +241,7 @@ VsOutput VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
     const MaterialParameters params = GetMaterialParameters();
 #endif
     VsOutput OUT;
-#if SILPOM_TOWER_LOD_NEAR
+#if SILPOM_RELIEF_LOD_NEAR
     float cachedDepth;
     if(SilPomTryCachedImplicitVertex(IN,params,OUT,cachedDepth))
     {

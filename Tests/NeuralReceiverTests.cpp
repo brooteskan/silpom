@@ -32,7 +32,7 @@ SilPomMeshFace Face()
 }
 SilPomPatch Patch()
 {
-    return {1,1,.2f,.5f,1,1,0,0,32,16,0,SP_TOWER_NO_MARCH};
+    return {1,1,.2f,.5f,1,1,0,0,32,16,0,65536u};
 }
 void EarlyExits()
 {

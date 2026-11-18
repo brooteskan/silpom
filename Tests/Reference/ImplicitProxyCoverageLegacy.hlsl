@@ -10,7 +10,13 @@ static const uint SP_TOWER_LOD_4PX_RESOLVE=65525u;
 static const uint SP_TOWER_RECTANGLE_CONTROL=65531u;
 bool SilPomTowerNoMarch(uint mode){return mode==65534u||mode==65531u||mode==65530u||(mode>=65525u&&mode<=65529u);}
 bool SilPomIsTowerWallModel(uint model){return model==1u||model==4u;}
-float SilPomLegacyLodDepth(SilPomImplicitProfile profile,float projectionY)
+struct SilPomLegacyImplicitProfile
+{
+    float scale,reference,pixelBudget,maxDistance;
+    uint maxCells,neuralModel;
+    bool proxyLodEnabled;
+};
+float SilPomLegacyLodDepth(SilPomLegacyImplicitProfile profile,float projectionY)
 {
     if(profile.proxyLodEnabled)return 1e20f;
     if(profile.maxCells==65526u)return 0;
@@ -135,7 +141,7 @@ float2 SilPomChooseWallProxy(SilPomWallProxyBounds bounds, float2 corner, float 
     return ndc;
 }
 #endif
-SilPomImplicitCoverage SilPomLegacyImplicitCoverage(SilPomMeshFace f,SilPomImplicitProfile profile,
+SilPomImplicitCoverage SilPomLegacyImplicitCoverage(SilPomMeshFace f,SilPomLegacyImplicitProfile profile,
     float4x4 model,float4x4 vp,float projectionY,bool proxySelected,float2 quadCorner)
 {
     SilPomImplicitCoverage result=(SilPomImplicitCoverage)0;result.status=SP_IMPLICIT_CACHE_EMPTY;
@@ -274,7 +280,7 @@ void SilPomLegacyFaceBounds(SilPomMeshFace f,float scale,float reference,out flo
         boundsLow=min(boundsLow,cornerPosition);boundsHigh=max(boundsHigh,cornerPosition);
     }
 }
-float SilPomLegacyNearestDepth(SilPomMeshFace face,SilPomImplicitProfile profile,float4x4 model,float4x4 vp)
+float SilPomLegacyNearestDepth(SilPomMeshFace face,SilPomLegacyImplicitProfile profile,float4x4 model,float4x4 vp)
 {
     float3 low, high;
     SilPomLegacyFaceBounds(face, profile.scale, profile.reference, low, high);

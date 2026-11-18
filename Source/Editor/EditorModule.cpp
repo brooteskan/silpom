@@ -110,12 +110,23 @@ public:
                     ->Attribute(AZ::Edit::Attributes::Max,MeshConfig::MaxReliefDepthMultiplier)
                     ->Attribute(AZ::Edit::Attributes::Step,0.01f)
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_profiles,"Displacement profiles","Profile IDs come from Blender face tags")
-                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_maxCells,"Maximum cells","Planar traversal budget per ray; exhaustion is magenta")
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox,&MeshConfig::m_reliefMode,"Relief mode",
+                        "How relief hits are found. Traverse marches the heightfield within Maximum cells; the others are no-march routes. Trained profiles require LOD 4 px + resolve.")
+                    ->EnumAttribute(ReliefMode::Traverse,"Traverse (march within Maximum cells)")
+                    ->EnumAttribute(ReliefMode::NoMarch,"No march, grazing fill")
+                    ->EnumAttribute(ReliefMode::RectangleControl,"No march, rectangle coverage (control)")
+                    ->EnumAttribute(ReliefMode::UnfilledControl,"No march, no fill (control)")
+                    ->EnumAttribute(ReliefMode::Lod2px,"LOD 2 px")
+                    ->EnumAttribute(ReliefMode::Lod4px,"LOD 4 px, smooth")
+                    ->EnumAttribute(ReliefMode::Lod8px,"LOD 8 px")
+                    ->EnumAttribute(ReliefMode::LodShell,"LOD shell only")
+                    ->EnumAttribute(ReliefMode::Lod4pxResolve,"LOD 4 px + winning-hit resolve")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_maxCells,"Maximum cells","Planar traversal budget per ray (1-65536); exhaustion is magenta")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useDepthHeightBounds,"Depth height bounds",
-                        "Experimental block skipping with depth-hit reuse. Selecting bounds disables the legacy neural depth seed. Unavailable on trained profiles, which require neural depth. Requires supported heights and at least 4096 cells.")
+                        "Experimental block skipping with depth-hit reuse. Selecting bounds disables the model 0 neural depth seed. Unavailable on trained profiles, which require neural depth. Requires supported heights and at least 4096 cells.")
                     ->Attribute(AZ::Edit::Attributes::ReadOnly,&MeshConfig::UsesTrainedProfiles)
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useNeuralSeed,"Neural depth seed",
-                        "Selecting neural depth disables height bounds. Required and read-only on trained profiles. The legacy seed supports clamped profiles at 0.02 m and reference 0.05.")
+                        "Selecting neural depth disables height bounds. Required and read-only on trained profiles. Model 0 (cached seed) supports clamped profiles at 0.02 m and reference 0.05.")
                     ->Attribute(AZ::Edit::Attributes::ReadOnly,&MeshConfig::UsesTrainedProfiles)
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useLevelTwoPredictor,"Level 2 predictor (experimental)","Eight height probes and two learned candidate seeds for the open-shaft profiles. More GPU work is possible. The nearer validated hit wins; the second seed uses one retry. Off preserves the Level 1 baseline.")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshConfig::m_useLevelFourWallMaterial,"Level 4A wall material (experimental)","Decode supported wall color, detail normal and roughness. Enabling selects neural-only visibility and disables 4B, 5A/5B and lighting comparisons. Performance is unmeasured.")
@@ -214,7 +225,7 @@ public:
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_offset,"UV offset","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_addressMode,"Address mode","0 repeat; 1 clamp")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_neuralModel,"Neural model",
-                        "0 legacy or disabled. 1–3 welded tower. 4–7 open-shaft walls, stairs, trim and reveal.");
+                        "0 model 0 (cached seed) or disabled. 1–3 welded tower. 4–7 open-shaft walls, stairs, trim and reveal.");
             }
         }
     }

@@ -16,36 +16,12 @@
 // not traversal-budget exhaustion and must not be published as diagnostic
 // geometry at the bounding-box entry point.
 static const uint SP_REFINE_REJECTED=4;
-// The preview uses the second learned candidate with either coverage proxy.
-static const uint SP_TOWER_NO_MARCH=65534u;
-static const uint SP_TOWER_RECTANGLE_CONTROL=65531u;
-static const uint SP_TOWER_UNFILLED_CONTROL=65530u;
-static const uint SP_TOWER_LOD_2PX=65529u;
-static const uint SP_TOWER_LOD_4PX=65528u;
-static const uint SP_TOWER_LOD_8PX=65527u;
-static const uint SP_TOWER_LOD_SHELL=65526u;
-static const uint SP_TOWER_LOD_4PX_RESOLVE=65525u;
+// No-march relief modes use the learned candidate with either coverage proxy.
+#include "ReliefMode.azsli"
 static const float SP_TOWER_MAX_FILL_INCIDENCE=.20f;
 bool SilPomIsTowerWallModel(uint model)
 {
     return model==1u || model==4u;
-}
-bool SilPomTowerUsesLod(uint mode)
-{
-    return mode>=SP_TOWER_LOD_4PX_RESOLVE && mode<=SP_TOWER_LOD_2PX;
-}
-bool SilPomTowerUsesSmoothLod(uint mode)
-{
-    return mode==SP_TOWER_LOD_4PX || mode==SP_TOWER_LOD_4PX_RESOLVE;
-}
-bool SilPomTowerNoMarch(uint mode)
-{
-    return mode==SP_TOWER_NO_MARCH || mode==SP_TOWER_RECTANGLE_CONTROL ||
-        mode==SP_TOWER_UNFILLED_CONTROL || SilPomTowerUsesLod(mode);
-}
-bool SilPomTowerFillEnabled(uint mode)
-{
-    return mode==SP_TOWER_NO_MARCH || SilPomTowerUsesLod(mode);
 }
 float SilPomUvArea(SilPomMeshFace f)
 {
@@ -464,7 +440,8 @@ bool SilPomPreparePrediction(SilPomPatch p,SilPomMeshFace face,SilPomRay worldRa
 }
 
 SilPomHit SilPomPredictTowerHit(Texture2D texture, SilPomPatch p, SilPomMeshFace face,
-    SilPomRay worldRay, SilPomRay search, float2 low, uint model,uint validationIterations,uint retryCap,float toleranceMultiplier)
+    SilPomRay worldRay, SilPomRay search, float2 low, uint model,uint validationIterations,uint retryCap,float toleranceMultiplier,
+    uint reliefMode)
 {
     SilPomHit miss=SP_ZERO(SilPomHit);
     SilPomRay projected;
@@ -518,11 +495,11 @@ SilPomHit SilPomPredictTowerHit(Texture2D texture, SilPomPatch p, SilPomMeshFace
     const float insideFace=max(max(feature[6],feature[7]),max(feature[8],feature[9]));
     // A small residual and an interior descriptor sample justify trying the
     // local solver even if the network is slightly below its usual cutoff.
-    const bool recoverMiss=SilPomTowerFillEnabled(p.maxCells) && insideFace>=0.0f && nearestResidual<.12f;
+    const bool recoverMiss=SilPomReliefFillEnabled(reliefMode) && insideFace>=0.0f && nearestResidual<.12f;
     if(logits.y<(recoverMiss?-3.5f:-2.944439f)) { SILPOM_DIAGNOSTIC(8,0); return miss; }
     const float fraction=rcp(1.0f+exp(-clamp(logits.x,-20.0f,20.0f)));
     SilPomHit hit=SilPomNoMarchCandidate(texture,p,face,worldRay,projected,low,search.tMin+fraction*span,validationIterations,toleranceMultiplier);
-    if(hit.status==SP_HIT || !SilPomTowerNoMarch(p.maxCells)) return hit;
+    if(hit.status==SP_HIT || !SilPomReliefNoMarch(reliefMode)) return hit;
 
     // Retry independent descriptor seeds in residual order. An unsuccessful
     // solve does not advance the ray or supply the start of the next solve.
@@ -580,7 +557,7 @@ SilPomHit SilPomTowerBaseHit(SilPomPatch p, SilPomMeshFace face, SilPomRay ray, 
 
 SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilPomRay worldRay,float2 low
 #if SILPOM_NEURAL_NO_MARCH
-    ,uint model,uint validationIterations,uint retryCap,float toleranceMultiplier
+    ,uint model,uint validationIterations,uint retryCap,float toleranceMultiplier,uint reliefMode
 #endif
 #if SILPOM_HIT_NEURAL_CACHE
     ,SP_TEX neuralCache
@@ -627,12 +604,12 @@ SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilP
     SilPomHit predicted;
 #ifdef SILPOM_LEVEL2
     SP_BRANCH if(SILPOM_LEVEL2 && model>=4u && model<=7u)
-        predicted=SilPomPredictTowerHit2(texture,p,f,worldRay,searchRay,low,model,validationIterations,retryCap,toleranceMultiplier);
+        predicted=SilPomPredictTowerHit2(texture,p,f,worldRay,searchRay,low,model,validationIterations,retryCap,toleranceMultiplier,reliefMode);
     else
 #endif
-        predicted=SilPomPredictTowerHit(texture,p,f,worldRay,searchRay,low,model,validationIterations,retryCap,toleranceMultiplier);
+        predicted=SilPomPredictTowerHit(texture,p,f,worldRay,searchRay,low,model,validationIterations,retryCap,toleranceMultiplier,reliefMode);
     predicted=SilPomRecoverNearestHit(texture,p,f,worldRay,searchRay,low,predicted,model);
-    if(predicted.status==SP_HIT || !SilPomTowerFillEnabled(p.maxCells)) return predicted;
+    if(predicted.status==SP_HIT || !SilPomReliefFillEnabled(reliefMode)) return predicted;
     SILPOM_DIAGNOSTIC(10,0);
     SilPomHit fill=SilPomTowerBaseHit(p,f,worldRay,low);
     SILPOM_DIAGNOSTIC(11,fill.status);

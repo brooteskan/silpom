@@ -111,7 +111,7 @@
       {"name":"silpomLearnedMaterial","type":"Bool","defaultValue":false},
             {"name":"silpomNeuralVisibilityOnly","type":"Bool","defaultValue":false},
             {
-        "name": "silpomTowerLod",
+        "name": "silpomReliefLod",
         "type": "Bool",
         "defaultValue": false
       },

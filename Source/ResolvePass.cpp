@@ -3,6 +3,7 @@
 #include "RepairPass.h"
 #include <SilPOM/ResolveRegion.h>
 #include <SilPOM/ResolveRegions.h>
+#include <SilPOM/ReliefMode.h>
 
 #include <Atom/RHI/Buffer.h>
 #include <Atom/RHI/DevicePipelineState.h>
@@ -532,7 +533,7 @@ namespace SilPOM
                     Selection selected;
                     if (!FindBatch(properties.m_item, m_pipeline->GetScene(), selected)) continue;
                     const auto& inputs = selected.faceCacheInputs;
-                    if (!inputs.faces || !inputs.coefficients || inputs.maxCells != 65525u || !inputs.faceCount
+                    if (!inputs.faces || !inputs.coefficients || inputs.reliefMode != static_cast<AZ::u32>(ReliefMode::Lod4pxResolve) || !inputs.faceCount
                         || inputs.faceCount != selected.ownerCount || inputs.faces->GetBufferSize() < AZ::u64(inputs.faceCount) * 144u
                         || inputs.coefficients->GetBufferSize() < AZ::u64(inputs.faceCount) * FaceCoefficientBytes
                         || (inputs.proxyLodEnabled && !inputs.proxySelection)) continue;
@@ -566,7 +567,7 @@ namespace SilPOM
                     const auto mix = [&](AZ::u64 value)
                     { frame->inputIdentity ^= value + 0x9e3779b97f4a7c15ull + (frame->inputIdentity << 6) + (frame->inputIdentity >> 2); };
                     mix(selected.generation); mix(selected.ownerBase);
-                    mix(inputs.meshBufferIndex); mix(inputs.proxyBufferIndex); mix(inputs.maxCells); mix(inputs.neuralModel);
+                    mix(inputs.meshBufferIndex); mix(inputs.proxyBufferIndex); mix(inputs.reliefMode); mix(inputs.neuralModel);
                     mix(inputs.faceCount); mix(AZ::u64(inputs.proxyLodEnabled));
                     for (float value : {inputs.scale, inputs.reference, inputs.reliefLodPixelBudget, inputs.maxReliefDistance})
                     { AZ::u32 bits; std::memcpy(&bits, &value, sizeof(bits)); mix(bits); }
@@ -655,7 +656,7 @@ namespace SilPOM
                         || !set("m_faceCount", inputs.faceCount) || !set("m_cacheOffset", dispatch.cacheOffsetBytes)
                         || !setOptionalIdentity("m_ownerBase", selected.ownerBase)
                         || !setOptionalIdentity("m_meshBufferIndex", inputs.meshBufferIndex)
-                        || !set("m_neuralModel", inputs.neuralModel) || !set("m_maxCells", inputs.maxCells)
+                        || !set("m_neuralModel", inputs.neuralModel) || !set("m_reliefMode", inputs.reliefMode)
                         || !set("m_proxyBufferIndex", inputs.proxyBufferIndex) || !set("m_proxyLodEnabled", AZ::u32(inputs.proxyLodEnabled))
                         || !set("m_scale", inputs.scale) || !set("m_reference", inputs.reference)
                         || !set("m_reliefLodPixelBudget", inputs.reliefLodPixelBudget) || !set("m_maxReliefDistance", inputs.maxReliefDistance)

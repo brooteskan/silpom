@@ -124,7 +124,7 @@ int main(int argc,char** argv)
             D3D12_SHADER_RESOURCE_VIEW_DESC srv{};srv.Format=td.Format;srv.ViewDimension=D3D12_SRV_DIMENSION_TEXTURE2D;
             srv.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;srv.Texture2D.MipLevels=1;
             device->CreateShaderResourceView(image.Get(),&srv,heap->GetCPUDescriptorHandleForHeapStart());
-            SilPomPatch patch{1,1,.2f,.5f,1,1,0,0,32,16,clamp,SP_TOWER_NO_MARCH};
+            SilPomPatch patch{1,1,.2f,.5f,1,1,0,0,32,16,clamp,65536u};
             ID3D12DescriptorHeap* heaps[]={heap.Get()};list->SetDescriptorHeaps(1,heaps);list->SetComputeRootSignature(root.Get());
             list->SetComputeRootDescriptorTable(0,heap->GetGPUDescriptorHandleForHeapStart());
             list->SetComputeRootShaderResourceView(1,inputs->GetGPUVirtualAddress());

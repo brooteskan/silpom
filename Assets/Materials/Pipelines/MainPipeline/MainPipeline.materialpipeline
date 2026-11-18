@@ -289,7 +289,7 @@
                 "defaultValue": false
             },
             {
-                "name": "silpomTowerLod",
+                "name": "silpomReliefLod",
                 "type": "Bool",
                 "defaultValue": false
             },

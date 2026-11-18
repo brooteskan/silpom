@@ -42,7 +42,8 @@ static std::vector<Input> MakeCases()
         const float projection[16]={.7330642343f,0,0,0,0,1.3032252789f,0,0,0,0,.000195350658f,.200039073825f,0,0,-1,0};
         memcpy(v.data()+52,projection,sizeof(projection));
         v[68]=.01f+positive(random)*.2f;v[69]=(unit(random)+1)*.5f;v[70]=(i%3)?4.f:1.f;v[71]=(i%5)?0.f:15.f;
-        UInt(input,72,65525);UInt(input,73,(i%3)?4:6);UInt(input,74,i%7==0?1u:0u);UInt(input,75,i%21==0?1u:0u);
+        UInt(input,72,65525);UInt(input,77,8); // legacy sentinel, ReliefMode::Lod4pxResolve
+        UInt(input,73,(i%3)?4:6);UInt(input,74,i%7==0?1u:0u);UInt(input,75,i%21==0?1u:0u);
         v[76]=projection[5];
         if(i<16)
         {

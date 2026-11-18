@@ -1014,7 +1014,7 @@ void MeshConfig::Reflect(AZ::ReflectContext* context)
         sc->Enum<AntiAliasing>()->Value("CurrentDefault",AntiAliasing::CurrentDefault)
             ->Value("SMAA",AntiAliasing::SMAA)->Value("TAA",AntiAliasing::TAA)
             ->Value("MSAA2",AntiAliasing::MSAA2)->Value("MSAA4",AntiAliasing::MSAA4);
-        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(22)->Field("Surface", &MeshConfig::m_surface)
+        sc->Class<MeshConfig, AZ::ComponentConfig>()->Version(23)->Field("Surface", &MeshConfig::m_surface)
             ->Field("AntiAliasing", &MeshConfig::m_antiAliasing)
             ->Field("LightingEstimator", &MeshConfig::m_lightingEstimator)
             ->Field("DiffuseAccessibility", &MeshConfig::m_diffuseAccessibility)
@@ -1042,6 +1042,7 @@ void MeshConfig::Reflect(AZ::ReflectContext* context)
             ->Field("LocalShadowMethod", &MeshConfig::m_localShadowMethod)
             ->Field("NeuralShadowConfidence", &MeshConfig::m_neuralShadowConfidence)
             ->Field("UseHeightDerivedNormals", &MeshConfig::m_useHeightDerivedNormals)
+            ->Field("ReliefMode", &MeshConfig::m_reliefMode)
             ->Field("MaxCells", &MeshConfig::m_maxCells)->Field("ReliefShadowSteps", &MeshConfig::m_reliefShadowSteps)
             ->Field("NeuralDirectionalVisibility", &MeshConfig::m_neuralDirectionalVisibility)
             ->Field("ProxyDirectionalResponse", &MeshConfig::m_proxyDirectionalResponse)
@@ -1058,6 +1059,10 @@ void MeshConfig::Reflect(AZ::ReflectContext* context)
 bool MeshConfig::UsesTrainedProfiles() const
 {
     return AZStd::any_of(m_profiles.begin(), m_profiles.end(), [](const auto& profile) { return profile.IsTrained(); });
+}
+bool MeshConfig::UpgradeLegacyReliefMode()
+{
+    return ReliefModes::UpgradeLegacy(m_maxCells, m_reliefMode);
 }
 AZ::Crc32 MeshConfig::GetReliefDepthVisibility() const
 {
@@ -1301,6 +1306,8 @@ void StopRenderingSettings() { RenderingTicker().BusDisconnect(); }
 void MeshController::Activate(AZ::EntityId entity)
 {
     m_entity = entity; m_dirty = true;
+    // Prefabs load through JSON, so serializer version converters do not run.
+    m_configuration.UpgradeLegacyReliefMode();
     UpdateSceneSubscription();
     m_paintSurfaceRevision=++ReceiverSurfaceRevision;
     // Migrate an old component selection once; renderer controls own all later
@@ -1337,7 +1344,7 @@ void MeshController::Deactivate()
 }
 void MeshController::SetConfiguration(const MeshConfig& config)
 {
-    m_configuration = config; m_dirty = true;
+    m_configuration = config; m_configuration.UpgradeLegacyReliefMode(); m_dirty = true;
     // Strictness takes effect before loading or validation can fail. Retention
     // of an old generation is conditional on its actual shader capabilities.
     EnforceStrictGenerationPolicy();
@@ -1497,8 +1504,9 @@ bool MeshController::Prepare()
         || (c.m_validationDistanceEnd > 0.0f && c.m_validationDistanceEnd <= c.m_validationDistanceStart))
     { m_status = "Invalid quality settings: LOD 0-64, nonnegative distances, fade end above start, iterations 1-16, retries 0-4, tolerance 0.01-100, shadows 0-64"; return false; }
     const float scale = m_world.GetUniformScale();
-    if (!std::isfinite(scale) || scale <= 0 || c.m_maxCells < 1 || c.m_maxCells > 65536 || c.m_reliefShadowSteps > 64)
-    { m_status = "Invalid positive uniform scale, cell budget or relief shadow steps (0-64)"; return false; }
+    if (!std::isfinite(scale) || scale <= 0 || c.m_maxCells < 1 || c.m_maxCells > 65536 || c.m_reliefShadowSteps > 64
+        || !ReliefModes::IsValid(c.m_reliefMode))
+    { m_status = "Invalid positive uniform scale, relief mode, cell budget or relief shadow steps (0-64)"; return false; }
     auto* scene = AZ::RPI::Scene::GetSceneForEntityId(m_entity);
     if (!scene) { m_status = "Waiting for render scene"; return true; }
     m_processor = scene->GetFeatureProcessor<AZ::Render::MeshFeatureProcessorInterface>();
@@ -1516,9 +1524,9 @@ bool MeshController::Prepare()
     if (neuralVisibilityOnly && ((c.m_spiralLightShadowSteps>0 && c.m_spiralLightShadowSteps<5)
         || (c.m_reliefShadowSteps>0 && c.m_reliefShadowSteps<5)))
     { m_status="Neural-only visibility requires shadow schedules of 0 (off) or 5-64; it never switches to marching";return false; }
-    if (requiresTrainedHits && (!reuseDepthHits || !c.m_useNeuralSeed || c.m_maxCells != 65525 || c.m_reliefShadowSteps != 0))
+    if (requiresTrainedHits && (!reuseDepthHits || !c.m_useNeuralSeed || c.m_reliefMode != ReliefMode::Lod4pxResolve || c.m_reliefShadowSteps != 0))
     {
-        m_status = "Trained profiles require DX12 winning-hit resolve (Maximum cells 65525) and legacy relief steps 0; use the learned directional controls";
+        m_status = "Trained profiles require DX12 winning-hit resolve (Relief mode: LOD 4 px + resolve) and relief shadow steps 0; use the learned directional controls";
         return true;
     }
     if (AZ::Render::r_meshInstancingEnabled)
@@ -1678,7 +1686,7 @@ bool MeshController::Prepare()
                 {
                     TrainedModelEntry model;
                     if (p.m_neuralModel < 1 || p.m_neuralCache.GetId().IsValid())
-                        return fail("Assign each displaced profile its matching trained model and no legacy cache");
+                        return fail("Assign each displaced profile its matching trained model and no model 0 cache");
                     if (!FindTrainedModel(p.m_neuralModel, model))
                         return fail(AZStd::string::format("Trained model %u is not registered for this project (%s/%u)",
                             p.m_neuralModel, TrainedModelsRegistryRoot, p.m_neuralModel));
@@ -1774,11 +1782,11 @@ bool MeshController::Prepare()
                     faceCacheInputs.meshBufferIndex=bindless.begin()->second;
                     faceCacheInputs.faceCount=aznumeric_cast<AZ::u32>(faces.size());
                     faceCacheInputs.scale=reliefScale;faceCacheInputs.reference=p.m_reference;
-                    faceCacheInputs.maxCells=c.m_maxCells;faceCacheInputs.neuralModel=p.m_neuralModel;
+                    faceCacheInputs.reliefMode=static_cast<AZ::u32>(c.m_reliefMode);faceCacheInputs.neuralModel=p.m_neuralModel;
                     faceCacheInputs.reliefLodPixelBudget=c.m_reliefLodPixelBudget;
                     faceCacheInputs.maxReliefDistance=c.m_maxReliefDistance;
                 }
-                if(reuseDepthHits && c.m_maxCells==65525u)
+                if(reuseDepthHits && c.m_reliefMode==ReliefMode::Lod4pxResolve)
                 {
                     auto coefficients=FaceCoefficientBuffer(faces.size());
                     if(coefficients)
@@ -1920,7 +1928,8 @@ bool MeshController::Prepare()
                     && Set(material,"surface.reference",p.m_reference) && Set(material,"surface.tileU",p.m_tiling.GetX())
                     && Set(material,"surface.tileV",p.m_tiling.GetY()) && Set(material,"surface.offsetU",p.m_offset.GetX())
                     && Set(material,"surface.offsetV",p.m_offset.GetY()) && Set(material,"surface.addressMode",p.m_addressMode)
-                    && Set(material,"surface.maxCells",c.m_maxCells) && Set(material,"surface.useHierarchy",bool(minMax))
+                    && Set(material,"surface.maxCells",c.m_maxCells)
+                    && Set(material,"surface.reliefMode",static_cast<AZ::u32>(c.m_reliefMode)) && Set(material,"surface.useHierarchy",bool(minMax))
                     && Set(material,"surface.useNeuralSeed",neuralSeed)
                     && Set(material,"surface.neuralModel",p.m_neuralModel)
                     && Set(material,"surface.validationIterations",c.m_validationIterations)
@@ -2009,7 +2018,7 @@ bool MeshController::Prepare()
             candidate->resolveBatches.push_back(resolveOwnerBase
                 ? CreateResolveBatch(scene, candidate->paintReceiver, resolveOwnerBase,
                     aznumeric_cast<AZ::u32>(faces.size()), resolveBounds, rigid, AZStd::move(resolveClusters),
-                    faceCacheInputs.neuralModel, c.m_maxCells == 65525u)
+                    faceCacheInputs.neuralModel, c.m_reliefMode == ReliefMode::Lod4pxResolve)
                 : ResolveBatchPtr{});
             if(faceCacheInputs.faces)
             {

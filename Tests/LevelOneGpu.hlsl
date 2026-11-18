@@ -52,7 +52,7 @@ void Main(uint3 id : SV_DispatchThreadID)
     SilPomHit hit;
     if(recoveryFixture!=0u)
         hit=SilPomRecoverNearestHit(heightImage,patch,face,rays[id.x],rays[id.x],float2(0,0),(SilPomHit)0,model);
-    else hit=SilPomIntersectFace(heightImage,patch,face,rays[id.x],float2(0,0),model,iterations,1,5);
+    else hit=SilPomIntersectFace(heightImage,patch,face,rays[id.x],float2(0,0),model,iterations,1,5,SP_RELIEF_NO_MARCH);
     Result result;
     result.hit=float4(float(hit.status),hit.t,hit.faceUv);
     [unroll] for(uint j=0;j<16;++j) result.counts[j]=counters[j];
