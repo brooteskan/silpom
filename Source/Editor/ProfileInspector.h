@@ -24,6 +24,6 @@ private:
 // The surface asset of an entity's SilPOM Mesh, if it has one.
 bool GetMeshSurface(AZ::EntityId entity, AZ::Data::AssetId& surface);
 // Sets the binding's "Trained profile override" for a profile ID (adding the
-// binding if needed), as one undoable edit.
+// binding if needed), as one undoable edit. An invalid profile clears it.
 bool AssignProfileOverride(AZ::EntityId entity, AZ::u32 profileId, const AZ::Data::AssetId& profile, AZStd::string& error);
 } // namespace SilPOM

@@ -85,11 +85,20 @@ public:
     void Deactivate() override { AZ::TickBus::Handler::BusDisconnect();BaseClass::Deactivate(); }
     AZStd::string Status() const { return m_controller.GetStatus(); }
     AZ::Data::AssetId Surface() const { return m_controller.GetConfiguration().m_surface.GetId(); }
-    void SetProfileOverride(AZ::u32 profileId, const AZ::Data::AssetId& profile)
+    // An invalid asset ID clears the override.
+    bool SetProfileOverride(AZ::u32 profileId, const AZ::Data::AssetId& profile)
     {
         auto config = m_controller.GetConfiguration();
         auto binding = AZStd::find_if(config.m_profiles.begin(), config.m_profiles.end(),
             [profileId](const MeshProfileBinding& b) { return b.m_id == profileId; });
+        if (!profile.IsValid())
+        {
+            if (binding == config.m_profiles.end() || !binding->m_profile.GetId().IsValid()) return false;
+            binding->m_profile = AZ::Data::Asset<SurfaceProfileAsset>(AZ::Data::AssetLoadBehavior::NoLoad);
+            m_controller.SetConfiguration(config);
+            SetDirty();
+            return true;
+        }
         if (binding == config.m_profiles.end())
         {
             config.m_profiles.emplace_back();
@@ -101,6 +110,7 @@ public:
         binding->m_profile.SetAutoLoadBehavior(AZ::Data::AssetLoadBehavior::NoLoad);
         m_controller.SetConfiguration(config);
         SetDirty();
+        return true;
     }
     static void Reflect(AZ::ReflectContext* context)
     {
@@ -368,9 +378,9 @@ bool AssignProfileOverride(AZ::EntityId entity, AZ::u32 profileId, const AZ::Dat
     auto* mesh = FindEditorMesh(entity);
     if (!mesh) { error = "The entity has no SilPOM Mesh component"; return false; }
     if (profileId == 0) { error = "Profile IDs start at 1"; return false; }
-    AzToolsFramework::ScopedUndoBatch undo("Assign SilPOM surface profile");
+    AzToolsFramework::ScopedUndoBatch undo(profile.IsValid() ? "Assign SilPOM surface profile" : "Clear SilPOM profile override");
     AzToolsFramework::ScopedUndoBatch::MarkEntityDirty(entity);
-    mesh->SetProfileOverride(profileId, profile);
+    if (!mesh->SetProfileOverride(profileId, profile)) { error = "This profile ID has no override"; return false; }
     AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(&AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay,
         AzToolsFramework::Refresh_EntireTree);
     return true;

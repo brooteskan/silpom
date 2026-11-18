@@ -133,4 +133,12 @@ faces' UV layout, where the training rays hit it, the spread of view
 directions, and where held-out hits are seeded well or badly by the trained
 network and by the reference network of the same role, with a summary.
 
+**Assign profile...** uses an existing profile for the selected ID: it lists
+the `.silpomprofile` files next to the surface (role, networks, whether the
+weights were trained for this surface or are the reference networks, and when)
+and can browse for others, then applies the choice as this entity's override
+or for every use of the surface. **Clear override** removes this entity's
+override, so the ID uses the surface's profile again. Both are undoable prefab
+edits.
+
 `silpom_train.py` can also be run directly; see its `--help`.

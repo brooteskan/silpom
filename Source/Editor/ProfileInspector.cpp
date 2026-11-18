@@ -25,7 +25,9 @@
 #include <QDesktopServices>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QDateTime>
 #include <QDir>
+#include <QDirIterator>
 #include <QDoubleSpinBox>
 #include <QFile>
 #include <QFileDialog>
@@ -400,6 +402,99 @@ private:
     QString m_folder;
 };
 
+// Picks an existing .silpomprofile for one profile ID: those near the surface,
+// or any other file, applied as an override or for every use of the surface.
+class AssignProfileDialog final : public QDialog
+{
+public:
+    AssignProfileDialog(QWidget* parent, const QJsonObject& entry, const QString& sidecar) : QDialog(parent)
+    {
+        m_id = AZ::u32(entry["id"].toInt());
+        setWindowTitle(QString("Assign a SilPOM profile to profile %1").arg(m_id));
+        m_current = QDir::cleanPath(SourceOfProduct(entry["product"].toString()));
+        auto* about = new QLabel(QString("Profiles found next to <b>%1</b>. The selected one replaces what profile %2 uses now.")
+            .arg(QFileInfo(sidecar).fileName().toHtmlEscaped()).arg(m_id), this);
+        about->setWordWrap(true);
+        m_list = new QTreeWidget(this);
+        m_list->setHeaderLabels({"Profile", "Role", "Networks", "Weights", "Modified"});
+        m_list->setRootIsDecorated(false);
+        m_list->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+        QDirIterator files(QFileInfo(sidecar).absolutePath(), {"*.silpomprofile"}, QDir::Files, QDirIterator::Subdirectories);
+        while (files.hasNext())
+        {
+            const QString file = files.next();
+            if (!file.contains(".training/")) Add(file);
+        }
+        auto* browse = new QPushButton("Other profile...", this);
+        connect(browse, &QPushButton::clicked, this, [this, sidecar]
+        {
+            const auto file = QFileDialog::getOpenFileName(this, "SilPOM profile", QFileInfo(sidecar).absolutePath(),
+                "SilPOM surface profiles (*.silpomprofile)");
+            if (!file.isEmpty()) m_list->setCurrentItem(Add(file));
+        });
+        m_assign = new QComboBox(this);
+        m_assign->addItem("This entity (Trained profile override)");
+        m_assign->addItem("The surface, for every use (.silpomprofiles)");
+        auto* target = new QFormLayout;
+        target->addRow("Assign to", m_assign);
+        auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+        m_ok = buttons->button(QDialogButtonBox::Ok);
+        m_ok->setText("Assign");
+        connect(buttons, &QDialogButtonBox::accepted, this, [this]
+        {
+            if (Assignment() == 1 && QMessageBox::question(this, windowTitle(),
+                    "Assigning to the surface changes this profile ID for every prefab that uses the surface. Continue?") != QMessageBox::Yes)
+                return;
+            accept();
+        });
+        connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
+        connect(m_list, &QTreeWidget::currentItemChanged, this, [this] { m_ok->setEnabled(!Profile().isEmpty()); });
+        connect(m_list, &QTreeWidget::itemDoubleClicked, this, [buttons] { emit buttons->accepted(); });
+        auto* layout = new QVBoxLayout(this);
+        layout->addWidget(about);
+        layout->addWidget(m_list, 1);
+        layout->addWidget(browse, 0, Qt::AlignLeft);
+        layout->addLayout(target);
+        layout->addWidget(buttons);
+        m_ok->setEnabled(false);
+        resize(820, 420);
+    }
+    AZ::u32 ProfileId() const { return m_id; }
+    QString Profile() const { return m_list->currentItem() ? m_list->currentItem()->data(0, Qt::UserRole).toString() : QString(); }
+    int Assignment() const { return m_assign->currentIndex(); }  // 0 override, 1 surface
+
+private:
+    QTreeWidgetItem* Add(const QString& path)
+    {
+        const QString file = QDir::cleanPath(path);
+        for (int i = 0; i < m_list->topLevelItemCount(); ++i)
+            if (m_list->topLevelItem(i)->data(0, Qt::UserRole).toString() == file) return m_list->topLevelItem(i);
+        QFile in(file);
+        const QJsonObject profile = in.open(QIODevice::ReadOnly) ? QJsonDocument::fromJson(in.readAll()).object() : QJsonObject();
+        const QFileInfo info(file);
+        const QString weightsName = profile["Weights"].toString().isEmpty()
+            ? info.fileName().left(info.fileName().size() - int(strlen(".silpomprofile"))) + ".silpomweights.json" : profile["Weights"].toString();
+        const QFileInfo weightsFile(info.dir().filePath(weightsName));
+        QFile weightsIn(weightsFile.filePath());
+        const QJsonObject weights = weightsIn.open(QIODevice::ReadOnly) ? QJsonDocument::fromJson(weightsIn.readAll()).object() : QJsonObject();
+        const QString networks = weights.contains("Seed") ? "model 0 (seed, no-march hit)"
+            : weights.contains("LevelTwo") ? "hit, Level 2, visibility" : weights.isEmpty() ? "(weights not written yet)" : "hit";
+        const QString origin = profile.contains("Networks") ? "trained for this surface" : "reference networks";
+        auto* item = new QTreeWidgetItem(m_list, {info.fileName() + (file == m_current ? "  (current)" : QString()),
+            profile["Role"].toString(), networks, origin,
+            (weightsFile.exists() ? weightsFile : info).lastModified().toString("yyyy-MM-dd HH:mm")});
+        item->setData(0, Qt::UserRole, file);
+        item->setToolTip(0, QDir::toNativeSeparators(file));
+        return item;
+    }
+
+    AZ::u32 m_id = 0;
+    QString m_current;
+    QTreeWidget* m_list = nullptr;
+    QComboBox* m_assign = nullptr;
+    QPushButton* m_ok = nullptr;
+};
+
 class ProfileInspector final : public QWidget, private AzToolsFramework::ToolsApplicationNotificationBus::Handler
 {
 public:
@@ -423,6 +518,12 @@ public:
         m_open = new QPushButton("Open profile file", this);
         m_reveal = new QPushButton("Show in folder", this);
         buttons->addWidget(m_trainButton);
+        m_assignButton = new QPushButton("Assign profile...", this);
+        m_assignButton->setToolTip("Use an existing trained profile for the selected profile ID.");
+        m_clearButton = new QPushButton("Clear override", this);
+        m_clearButton->setToolTip("Remove this entity's Trained profile override; the ID goes back to the surface's profile.");
+        buttons->addWidget(m_assignButton);
+        buttons->addWidget(m_clearButton);
         buttons->addWidget(m_open);
         buttons->addWidget(m_reveal);
         buttons->addStretch();
@@ -453,6 +554,8 @@ public:
         split->setStretchFactor(1, 2);
         layout->addWidget(split, 1);
         connect(m_trainButton, &QPushButton::clicked, this, [this] { TrainProfile(); });
+        connect(m_assignButton, &QPushButton::clicked, this, [this] { AssignProfile(); });
+        connect(m_clearButton, &QPushButton::clicked, this, [this] { ClearOverride(); });
         connect(m_cancel, &QPushButton::clicked, this, [this] { if (m_job) m_job->kill(); });
         connect(m_open, &QPushButton::clicked, this, [this] { if (const auto f = SelectedFile(); !f.isEmpty()) QDesktopServices::openUrl(QUrl::fromLocalFile(f)); });
         connect(m_reveal, &QPushButton::clicked, this, [this]
@@ -486,8 +589,11 @@ private:
         const QString file = SelectedFile();
         m_open->setEnabled(!file.isEmpty());
         m_reveal->setEnabled(!file.isEmpty());
-        m_trainButton->setEnabled(m_mesh.IsValid() && !m_job && SelectedEntry().contains("id")
-            && SelectedEntry()["source"].toString() != "base mesh");
+        const QJsonObject entry = SelectedEntry();
+        const bool editable = m_mesh.IsValid() && !m_job && entry.contains("id") && entry["source"].toString() != "base mesh";
+        m_trainButton->setEnabled(editable);
+        m_assignButton->setEnabled(editable);
+        m_clearButton->setEnabled(m_mesh.IsValid() && !m_job && !entry["binding"].toObject()["override"].toString().isEmpty());
         // What the selected profile was trained on, if SilPOM's trainer made it.
         if (!m_job) m_view->Show(file.endsWith(".silpomprofile") ? TrainingView::FolderOfProfile(file) : QString());
     }
@@ -603,6 +709,35 @@ private:
             for (QTreeWidgetItemIterator it(m_tree); *it; ++it)
                 if (((*it)->parent() ? (*it)->parent()->text(0) + "/" : QString()) + (*it)->text(0) == current) m_tree->setCurrentItem(*it);
         UpdateButtons();
+    }
+    QString SurfaceSidecar() const
+    {
+        AZ::Data::AssetId surface;
+        const QString sidecar = GetMeshSurface(m_mesh, surface) ? SourceOfAsset(surface) : QString();
+        return sidecar.endsWith(".silpom.json") ? sidecar : QString();
+    }
+    void AssignProfile()
+    {
+        const QString sidecar = SurfaceSidecar();
+        if (sidecar.isEmpty()) { m_progress->setText("The surface's .silpom.json source was not found."); return; }
+        auto* dialog = new AssignProfileDialog(this, SelectedEntry(), sidecar);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->setWindowModality(Qt::WindowModal);
+        const AZ::EntityId mesh = m_mesh;
+        connect(dialog, &QDialog::accepted, this, [this, dialog, mesh]
+        {
+            if (dialog->Assignment() == 1) AssignToSurface(dialog->Profile(), dialog->ProfileId());
+            else WaitAndOverride(dialog->Profile(), mesh, dialog->ProfileId(), 0);
+        });
+        dialog->open();
+    }
+    void ClearOverride()
+    {
+        const AZ::u32 id = SelectedProfileId();
+        AZStd::string error;
+        if (AssignProfileOverride(m_mesh, id, AZ::Data::AssetId(), error))
+            m_progress->setText(QString("Cleared the override of profile %1; it uses the surface's profile again.").arg(id));
+        else m_progress->setText("Could not clear the override: " + QString::fromUtf8(error.c_str()));
     }
     void TrainProfile()
     {
@@ -756,6 +891,7 @@ private:
     QLabel *m_entity = nullptr, *m_status = nullptr, *m_progress = nullptr;
     QTreeWidget* m_tree = nullptr;
     QPushButton *m_open = nullptr, *m_reveal = nullptr, *m_trainButton = nullptr, *m_cancel = nullptr;
+    QPushButton *m_assignButton = nullptr, *m_clearButton = nullptr;
     QProgressBar* m_bar = nullptr;
     TrainingView* m_view = nullptr;
     QProcess* m_job = nullptr;
