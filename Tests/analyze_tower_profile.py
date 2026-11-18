@@ -13,7 +13,9 @@ VIEWS = ('exterior', 'lower-facing', 'lower-glancing', 'upper-glancing')
 def analyze(folder):
     status = json.loads((folder / 'results.json').read_text())
     assert status['passed'] and status['restored'] and status['timing_only']
-    assert status['saved_level_unchanged'] and status['vue_live_link_unchanged']
+    # The smoke stopped checking (and writing) the Vue Live Link scene; older
+    # results that still carry the field must have it unchanged.
+    assert status['saved_level_unchanged'] and status.get('vue_live_link_unchanged', True)
     assert status['controls'].get('Height-derived normals (off = cheaper)') is True,'Height-derived normals must remain enabled'
     samples=int(status.get('samples',1))
     assert samples in (1,2)
