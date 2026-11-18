@@ -2,6 +2,8 @@
 #include "Module.h"
 #include "PlanarBenchmark.h"
 #include "DecalPainter.h"
+#include "ProfileInspector.h"
+#include <SilPOM/SurfaceProfileAsset.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzFramework/Spawnable/RootSpawnableInterface.h>
@@ -82,6 +84,24 @@ public:
     }
     void Deactivate() override { AZ::TickBus::Handler::BusDisconnect();BaseClass::Deactivate(); }
     AZStd::string Status() const { return m_controller.GetStatus(); }
+    AZ::Data::AssetId Surface() const { return m_controller.GetConfiguration().m_surface.GetId(); }
+    void SetProfileOverride(AZ::u32 profileId, const AZ::Data::AssetId& profile)
+    {
+        auto config = m_controller.GetConfiguration();
+        auto binding = AZStd::find_if(config.m_profiles.begin(), config.m_profiles.end(),
+            [profileId](const MeshProfileBinding& b) { return b.m_id == profileId; });
+        if (binding == config.m_profiles.end())
+        {
+            config.m_profiles.emplace_back();
+            binding = config.m_profiles.end() - 1;
+            binding->m_id = profileId;
+        }
+        binding->m_useBaseMesh = false;
+        binding->m_profile = AZ::Data::Asset<SurfaceProfileAsset>(profile, azrtti_typeid<SurfaceProfileAsset>());
+        binding->m_profile.SetAutoLoadBehavior(AZ::Data::AssetLoadBehavior::NoLoad);
+        m_controller.SetConfiguration(config);
+        SetDirty();
+    }
     static void Reflect(AZ::ReflectContext* context)
     {
         BaseClass::Reflect(context);
@@ -218,7 +238,7 @@ public:
                         "Shade these faces using the authored material on the original mesh, including StandardPBR parallax.")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_height,"Height image","Normalized linear single-mip scalar image")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_neuralCache,"Neural hit cache",
-                        "Optional baked Irish Fieldstone tower predictions for this height atlas")
+                        "Optional model 0 seed cache baked for this height atlas by Tools/train_model_zero.py. A model 0 profile's Cache replaces it.")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_scale,"Displacement (world metres)",
                         "Independent of entity scale. For a trained profile, adjust the relief depth multiplier instead.")
                     ->Attribute(AZ::Edit::Attributes::ReadOnly,&MeshProfileBinding::IsTrained)
@@ -307,6 +327,7 @@ public:
         m_descriptors.push_back(EditorMeshComponent::CreateDescriptor());
         m_descriptors.push_back(CreateEditorPaintDescriptor());
         m_descriptors.push_back(DecalPainterSystem::CreateDescriptor());
+        m_descriptors.push_back(ProfileInspectorSystem::CreateDescriptor());
     }
     ~EditorModule() override
     {
@@ -322,7 +343,37 @@ public:
     void OnStopPlayInEditor() override { EndAntiAliasingHandoff(); }
     bool m_startingAaHandoff=false;
     AZ::ComponentTypeList GetRequiredSystemComponents() const override
-    {return {azrtti_typeid<PlanarBenchmark>(),azrtti_typeid<MeshAssetSystem>(),azrtti_typeid<DecalPainterSystem>()};}
+    {return {azrtti_typeid<PlanarBenchmark>(),azrtti_typeid<MeshAssetSystem>(),azrtti_typeid<DecalPainterSystem>(),
+        azrtti_typeid<ProfileInspectorSystem>()};}
 };
+
+namespace
+{
+EditorMeshComponent* FindEditorMesh(AZ::EntityId id)
+{
+    AZ::Entity* entity = nullptr;
+    AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, id);
+    return entity ? entity->FindComponent<EditorMeshComponent>() : nullptr;
+}
+} // namespace
+bool GetMeshSurface(AZ::EntityId entity, AZ::Data::AssetId& surface)
+{
+    const auto* mesh = FindEditorMesh(entity);
+    if (!mesh) return false;
+    surface = mesh->Surface();
+    return surface.IsValid();
+}
+bool AssignProfileOverride(AZ::EntityId entity, AZ::u32 profileId, const AZ::Data::AssetId& profile, AZStd::string& error)
+{
+    auto* mesh = FindEditorMesh(entity);
+    if (!mesh) { error = "The entity has no SilPOM Mesh component"; return false; }
+    if (profileId == 0) { error = "Profile IDs start at 1"; return false; }
+    AzToolsFramework::ScopedUndoBatch undo("Assign SilPOM surface profile");
+    AzToolsFramework::ScopedUndoBatch::MarkEntityDirty(entity);
+    mesh->SetProfileOverride(profileId, profile);
+    AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(&AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay,
+        AzToolsFramework::Refresh_EntireTree);
+    return true;
+}
 }
 AZ_DECLARE_MODULE_CLASS(Gem_SilPOM_Editor,SilPOM::EditorModule)
