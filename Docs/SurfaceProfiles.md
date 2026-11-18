@@ -116,12 +116,19 @@ them. Labels and fitting run on the CPU.
 The hit network is trained in rounds (3 for Full, 2 for Quick): after each
 round the CPU solver runs on the training rays with that round's network, and
 the rays it misses, fills or gets wrong count three times as much in the next
-round. Checkpoints are selected, and results measured, with the solver budget
-the mesh renders with (its validation iterations, retry cap and tolerance
-multiplier). On the tower's trim at its budget, three rounds took a minute and
-beat the reference network trained for that atlas: 46.9% of held-out hits
-seeded within 1 mm (reference 43.0%), 2160 of 27138 hits left to the solver to
-miss (reference 2254). It writes, next to the profile,
+round. Misses it sent to the solver anyway gain weight in proportion to the
+iterations they wasted. Checkpoints are selected, and results measured, with
+the solver budget the mesh renders with (its validation iterations, retry cap
+and tolerance multiplier). A checkpoint's score is its failures (missed,
+filled, false and wrong-depth hits) plus its solver iterations divided by
+`--iterations-per-failure`, by default one ray's whole budget (iterations x
+(retries + 1)). Without that price, rounds bought coverage with work: on the
+tower's trim at budget (4,2,5), the earlier accuracy-only selection left 94
+fewer of 27138 held-out hits uncovered than the reference network for 9.2%
+more solver iterations. With it, the trim's selection costs 1.1% more
+iterations than the reference, with 73 fewer failures (2259 uncovered, 1092
+fills, 14 false and 1327 wrong-depth hits; reference 2254, 1133, 9, 1369) and
+45.6% of held-out hits seeded within 1 mm (reference 43.0%). It writes, next to the profile,
 `<name>.training/` (the manifest, `networks/*.azsli`, `report.json` and
 images) and then the profile, whose `Networks` names that folder, and its
 weights. Networks the folder lacks are not taken from the tower references:

@@ -237,7 +237,7 @@ def surface_profile(args, work, teacher):
 
 
 def train_hit(args, preset, profile, dll, slot, networks, report):
-    from level_one import Evaluator, outcomes, checkpoint_rank
+    from level_one import Evaluator, outcomes, QUALITY_KEYS
     from train_welded_tower import fit, score, shader_weights
     name = silpom_profile.MODELS[slot][1]
     evaluator = Evaluator(args.tools)
@@ -250,15 +250,28 @@ def train_hit(args, preset, profile, dll, slot, networks, report):
     # mesh renders with (validation iterations, retries, tolerance multiplier).
     budget = args.budget
     steps, rounds = preset["steps"], args.rounds
+    # Solver work is priced against quality: one failure (a missed, filled,
+    # false or wrong-depth hit) is worth `per_failure` solver iterations. The
+    # default is one ray's whole budget, so a checkpoint may spend up to a
+    # full worst-case ray of extra work to avoid one failure, and no more.
+    full_ray = budget[0] * (budget[1] + 1)
+    per_failure = args.iterations_per_failure or full_ray
+
+    def rank(summary):
+        failures = sum(summary[key] for key in QUALITY_KEYS)
+        return (failures + summary["total_iterations"] / per_failure, failures, summary["total_iterations"])
+
     # Each round refits with extra weight on the training rays the previous
-    # round's network left to the solver to miss, fill or get wrong.
+    # round's network left to the solver to miss, fill or get wrong, and on
+    # misses it sent to the solver anyway (work that found nothing).
     sampling = np.ones(len(train[0]))
     candidates, history = [], []
     for round_index in range(rounds):
         def checkpoint(step, weights):
             hits, stats = evaluator.evaluate(profile, selection_details, slot, budget, weights)
             summary = outcomes(selection, selection_details, hits, stats)
-            candidates.append((checkpoint_rank(summary), round_index, step, [w.copy() for w in weights], summary))
+            summary["cost_score"] = rank(summary)[0]
+            candidates.append((rank(summary), round_index, step, [w.copy() for w in weights], summary))
             done = (round_index + step / steps) / rounds
             progress(15 + 30 * done, f"Hit network round {round_index + 1}/{rounds}, step {step}: "
                      f"{summary['uncovered_teacher_hits']} of {summary['teacher_hits']} selection hits uncovered")
@@ -271,15 +284,18 @@ def train_hit(args, preset, profile, dll, slot, networks, report):
             refined = stats[:, 2:4].sum(axis=1) > 0
             depth_bad = np.abs(hits[:, 1] - train_details["teacher"][:, 1]) > .00025
             hard = (((hits[:, 0] != 1) & teacher_hit) | (stats[:, 7] > 0) | (refined & (~teacher_hit | depth_bad)))
-            sampling = sampling + 2.0 * hard
-            history.append({"round": round_index + 1, "selection": best[4], "hard_training_rays": int(hard.sum())})
+            wasted = ~teacher_hit & (stats[:, 1] > 0) & (hits[:, 0] != 1)
+            sampling = sampling + 2.0 * hard + 2.0 * wasted * np.minimum(stats[:, 0] / full_ray, 1.0)
+            history.append({"round": round_index + 1, "selection": best[4], "hard_training_rays": int(hard.sum()),
+                            "wasted_training_rays": int(wasted.sum())})
         else:
             history.append({"round": round_index + 1, "selection": best[4]})
-    rank, chosen_round, step, weights, _ = min(candidates, key=lambda c: c[0])
+    _, chosen_round, step, weights, _ = min(candidates, key=lambda c: c[0])
     hits, stats = evaluator.evaluate(profile, test_details, slot, budget, weights)
     reference_hits, reference_stats = evaluator.evaluate(profile, test_details, slot, budget)
     report["solver_budget"] = list(budget)
-    report["hit_network"] = {"selected_round": chosen_round + 1, "selected_step": step, "rounds": history,
+    report["hit_network"] = {"selected_round": chosen_round + 1, "selected_step": step,
+                             "iterations_per_failure": per_failure, "rounds": history,
                              "held_out": score(test, weights),
                              "solver_held_out": outcomes(test, test_details, hits, stats)}
     report["hit_network"]["within_1mm"] = write_errors(args.work / "visuals", "errors.png", profile, profile.height,
@@ -400,6 +416,9 @@ def main():
                      "validation iterations, retry cap, tolerance multiplier")
     cli.add_argument("--rounds", type=int, help="Training rounds, each reweighting the solver's failures "
                      "(default 3, Quick 2)")
+    cli.add_argument("--iterations-per-failure", type=float,
+                     help="Solver iterations one avoided failure is worth when choosing a checkpoint "
+                     "(default: one ray's full budget, iterations x (retries + 1))")
     args = cli.parse_args()
     iterations, retries, tolerance = args.budget.split(",")
     args.budget = (int(iterations), int(retries), float(tolerance))
