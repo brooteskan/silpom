@@ -2,6 +2,9 @@
 from pathlib import Path
 helper = Path(__file__).with_name('LightingEstimatorEditorSmoke.py')
 exec(compile(helper.read_text().split('def main():')[0], str(helper), 'exec'))
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import silpom_editor_paths as silpom_paths
 import azlmbr.components as components
 import azlmbr.math as azmath
 from PySide6 import QtCore
@@ -47,14 +50,14 @@ def main():
     general.idle_enable(True)
     for command in ('ed_keepEditorActive 1', 'ed_backgroundUpdatePeriod -1', 'r_displayInfo 0'):
         general.run_console(command)
-    shader_source = PROJECT/'Gems/silpom/Assets/Shaders/SilPOM/HitReuse/SilPOMClassifyWallHoles.azsl'
+    shader_source = silpom_paths.GEM/'Assets/Shaders/SilPOM/HitReuse/SilPOMClassifyWallHoles.azsl'
     shader_product = PROJECT/'Cache/pc/shaders/silpom/hitreuse/silpomclassifywallholes_dx12_0.azshadervariant'
     result['stage'] = 'waiting for wall-recovery shader'; flush()
     deadline = time.monotonic()+180
     while not shader_product.exists() or shader_product.stat().st_mtime < shader_source.stat().st_mtime:
         assert time.monotonic() < deadline, 'Wall-recovery shader did not rebuild'
         general.idle_wait_frames(1)
-    backup_source = PROJECT/'Gems/silpom/Assets/Materials/Pipelines/MainPipeline/SilPOMHitDepth.azsli'
+    backup_source = silpom_paths.GEM/'Assets/Materials/Pipelines/MainPipeline/SilPOMHitDepth.azsli'
     backup_products = [PROJECT/('Cache/pc/materials/types/silpommesh/silpommesh_mainpipeline_silpomhitdepthwallbackup'+suffix+'_dx12_0.azshadervariant')
         for suffix in ('', '-nomsaa')]
     result['stage'] = 'waiting for exact-depth backup shader'; flush()

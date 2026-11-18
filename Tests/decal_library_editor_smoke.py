@@ -2,6 +2,9 @@
 import json
 from pathlib import Path
 import traceback
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import silpom_editor_paths as silpom_paths
 import azlmbr.bus as bus
 import azlmbr.legacy.general as general
 import azlmbr.paths as paths
@@ -48,7 +51,7 @@ def check():
 
 save()
 general.idle_enable(True)
-assert general.open_level(str(Path(paths.projectroot) / "Levels/VueLiveLink/VueLiveLink.prefab"))
+assert general.open_level(str(silpom_paths.LEVEL))
 general.idle_wait_frames(60)
 canvas = silpom.DecalPainterBus(bus.Broadcast, "CreatePaintEntity")
 QtCore.QTimer.singleShot(2000, check)

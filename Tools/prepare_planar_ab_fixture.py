@@ -1,7 +1,17 @@
-"""Generate matched planar A/B materials; leaves original TG assets untouched."""
+"""Generate matched planar A/B materials; leaves the source assets untouched.
+
+python prepare_planar_ab_fixture.py --project <O3DE project>
+    --reference-material <material with vertexDisplacement.* properties>
+    --reference-type <material type for the displaced reference, project-relative or @gemroot:...@>
+
+The reference material's height and textures are compared against SilPOM quads.
+SilPOM ships no vertex-displacement material type, so the host project supplies
+both the reference material and its type. Output goes to <project>/Assets/SilPOMPlanarAB.
+"""
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import struct
@@ -139,9 +149,8 @@ def write_bounds_atlas(source, target):
             "levels": len(levels), "bytes": len(pixels)}
 
 
-def prepare(project):
-    source = project / "Assets/Materials/StoneWall"
-    reference_source = source / "M_StoneWall_Trim_Displacement.material"
+def prepare(project, reference_source, reference_type):
+    source = reference_source.parent
     reference = json.loads(reference_source.read_text(encoding="utf-8"))["propertyValues"]
     target = project / "Assets/SilPOMPlanarAB"
     target.mkdir(parents=True, exist_ok=True)
@@ -172,7 +181,7 @@ def prepare(project):
               if not key.startswith(("vertexDisplacement.", "parallax."))}
     for key in ("baseColor.textureMap", "normal.textureMap", "occlusion.diffuseTextureMap"):
         if key in common:
-            common[key] = "../Materials/StoneWall/" + common[key]
+            common[key] = Path(os.path.relpath(source / common[key], target)).as_posix()
     common.update({"general.doubleSided": True, "parallax.useTexture": False, "parallax.pdo": False})
     scale = reference.get("vertexDisplacement.scale", .1)
     midpoint = reference.get("vertexDisplacement.midpoint", .5)
@@ -185,7 +194,7 @@ def prepare(project):
              {**quad, "surface.reuseTexels": False, "surface.useHierarchy": False})
     material("QuadOptimized.material", "@gemroot:SilPOM@/Assets/Materials/Types/SilPOM/SilPOM.materialtype",
              {**quad, "surface.reuseTexels": True, "surface.useHierarchy": True})
-    material("Reference.material", "../Materials/Types/DisplacementPBR/DisplacementPBR.materialtype",
+    material("Reference.material", reference_type,
              {**common, "general.castShadows": False, "vertexDisplacement.textureMap": "height.png",
               "vertexDisplacement.textureMapUv": "Unwrapped", "vertexDisplacement.useTexture": True,
               "vertexDisplacement.scale": scale, "vertexDisplacement.midpoint": midpoint,
@@ -195,7 +204,7 @@ def prepare(project):
         "height_size": [width, height_pixels], "height_sha256": hashlib.sha256(copied.read_bytes()).hexdigest(),
         "height_encoding": "linear single-mip R32_FLOAT; bilinear texel centers; repeat",
         "uv": {"tile": [1, 1], "offset": [0, 0], "rotation": 0}, "max_cells": 4096,
-        "reference_source": str(reference_source), "reference_source_sha256": hashlib.sha256(reference_source.read_bytes()).hexdigest(),
+        "reference_source": Path(os.path.relpath(reference_source, project)).as_posix(), "reference_type": reference_type, "reference_source_sha256": hashlib.sha256(reference_source.read_bytes()).hexdigest(),
         "reference_material": "assets/silpomplanarab/reference.azmaterial",
         "quad_material": "assets/silpomplanarab/quadoptimized.azmaterial",
         "quad_baseline_material": "assets/silpomplanarab/quadbaseline.azmaterial",
@@ -218,4 +227,7 @@ def prepare(project):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project", type=Path, required=True)
-    prepare(parser.parse_args().project.resolve())
+    parser.add_argument("--reference-material", type=Path, required=True)
+    parser.add_argument("--reference-type", required=True)
+    args = parser.parse_args()
+    prepare(args.project.resolve(), args.reference_material.resolve(), args.reference_type)

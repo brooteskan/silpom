@@ -1,7 +1,7 @@
-"""Consolidated color/normal bake benchmark; isolated Editor, never saves VueLiveLink.
+"""Consolidated color/normal bake benchmark; isolated Editor, never saves the level.
 
-TG_SILPOM_ESTIMATOR_OUTPUT: fresh evidence directory.
-TG_PAINT_BAKE_MODES: original (pre-change binary), or 0,1,1,0 (ABBA).
+SILPOM_ESTIMATOR_OUTPUT: fresh evidence directory.
+SILPOM_PAINT_BAKE_MODES: original (pre-change binary), or 0,1,1,0 (ABBA).
 Uses saved paint and a deterministic, spatially interleaved shared-material fixture.
 GPU timestamps exclude captures/rebuilds; screenshots and raw diffuse validate
 compositing separately. Run with no other renderer competing for the GPU.
@@ -10,11 +10,14 @@ from pathlib import Path
 helper = Path(__file__).with_name('LightingEstimatorEditorSmoke.py')
 exec(compile(helper.read_text().split('def main():')[0], str(helper), 'exec'))
 import copy
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import silpom_editor_paths as silpom_paths
 import azlmbr.components as components
 import azlmbr.math as azmath
 from PySide6 import QtCore
 
-ORIGINAL_BINARY = all(mode == "original" for mode in os.environ.get("TG_PAINT_BAKE_MODES", "0,1,1,0").split(","))
+ORIGINAL_BINARY = all(mode == "original" for mode in os.environ.get("SILPOM_PAINT_BAKE_MODES", "0,1,1,0").split(","))
 
 
 def put(d):
@@ -61,14 +64,14 @@ def game():
             'assets/silpomplanarab/irishfieldstonetowerwelded/wall/wall.azmaterial', 1, 1., 1.)
         general.idle_wait_frames(60)
         assert silpom.SilPomPlanarBenchmarkBus(bus.Broadcast, 'IsReady')
-        modes = os.environ.get('TG_PAINT_BAKE_MODES', '0,1,1,0').split(',')
+        modes = os.environ.get('SILPOM_PAINT_BAKE_MODES', '0,1,1,0').split(',')
         if (OUTPUT / 'hold-for-assets').exists():
             result['stage'] = 'waiting for asset-idle marker'; flush()
             deadline = time.monotonic() + 600
             while not (OUTPUT / 'assets-ready').exists():
                 assert time.monotonic() < deadline, 'Asset-idle marker timed out'
                 general.idle_wait_frames(1)
-        selected=os.environ.get('TG_PAINT_BAKE_FIXTURES','saved,spread,patch').split(',')
+        selected=os.environ.get('SILPOM_PAINT_BAKE_FIXTURES','saved,spread,patch').split(',')
         for fixture, doc in fixtures.items():
             if fixture not in selected:continue
             if not ORIGINAL_BINARY:
@@ -147,9 +150,9 @@ def game():
 try:
     source = LEVEL.read_bytes()
     result['level_sha256'] = hashlib.sha256(source).hexdigest()
-    evidence=[Path(__file__),PROJECT/'Gems/silpom/Assets/Shaders/SilPOM/PaintBake.azsl',
-        PROJECT/'user/engine-source/Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalComposite.azsli',
-        PROJECT/'build/windows/bin/profile'/os.environ.get('TG_PAINT_BAKE_MODULE','SilPOM.Editor.Bake.dll')]
+    evidence=[Path(__file__),silpom_paths.GEM/'Assets/Shaders/SilPOM/PaintBake.azsl',
+        silpom_paths.ENGINE/'Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalComposite.azsli',
+        silpom_paths.binary_dir()/os.environ.get('SILPOM_PAINT_BAKE_MODULE','SilPOM.Editor.Bake.dll')]
     result['implementation_sha256']={str(p.relative_to(PROJECT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in evidence if p.is_file()}
     result['bake_settings']={'density':128,'patch_density':512,'budget_mib':128} if not ORIGINAL_BINARY else None
 

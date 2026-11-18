@@ -6,6 +6,9 @@ from pathlib import Path
 import time
 import traceback
 
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import silpom_editor_paths as silpom_paths
 import azlmbr.bus as bus
 import azlmbr.editor as editor
 import azlmbr.entity as entity
@@ -16,7 +19,7 @@ import azlmbr.silpom as silpom
 project = Path(paths.projectroot)
 output = project / "user/SilPOMQualitySmoke/result.json"
 output.parent.mkdir(parents=True, exist_ok=True)
-level = project / "Levels/VueLiveLink/VueLiveLink.prefab"
+level = silpom_paths.LEVEL
 result = {"passed": False, "cases": []}
 originals = {}
 component = None

@@ -111,10 +111,10 @@ three-index draws and scheduled 301,560 rectangle pixels versus 12,902,400
 full-screen batch pixels. These are coverage counts, not measured GPU time.
 
 Reproduce with a dedicated Editor using
-`--runpython Gems/silpom/Tests/TowerResolveRegionsEditorSmoke.py`,
-`TG_SILPOM_RESOLVE_OUTPUT` set to a fresh output directory, and then run
+`--runpython <gem>/Tests/TowerResolveRegionsEditorSmoke.py`,
+`SILPOM_RESOLVE_OUTPUT` set to a fresh output directory, and then run
 `python Tests/test_tower_resolve_regions.py <output> <output>/report.json` from
-the gem directory. Set `TG_SILPOM_RESOLVE_SAMPLES=4` to check the experimental
+the gem directory. Set `SILPOM_RESOLVE_SAMPLES=4` to check the experimental
 raw-coverage 4x route separately. Use the same canonical project path as the
 asset database when launching the asset processor and Editor.
 
@@ -188,7 +188,7 @@ Raw captures, machine inventory, hashes and `report.json` are retained in
 contains the separate validation. A [compact measurement and provenance record](../Tests/Reference/Ryzen5700GResolveRegions20261116.json)
 is retained with the tests. Reproduce with
 `Tests/TowerResolveRegionsBenchmark.py` and
-`TG_SILPOM_RESOLVE_BENCH_OUTPUT` pointing to a fresh directory, then run
+`SILPOM_RESOLVE_BENCH_OUTPUT` pointing to a fresh directory, then run
 `Tests/analyze_resolve_regions_benchmark.py <output> --output <output>/report.json`.
 The separate `Tests/TowerResolveRegionsNormalsValidation.py` harness checks
 sample equality with the same effective normals-on configuration; its output

@@ -3,7 +3,7 @@ Level 4B shared visibility and Level 5B bounded proxy depth
 
 These are separate, default-off experiments, implemented at the user's request
 before benchmarking. No GPU speedup is established. The baseline, 4A and 5A
-remain selectable. The saved VueLiveLink prefab is not modified by installation.
+remain selectable. The saved level is not modified by installation.
 
 Controls on the tower's SilPOM Mesh component
 --------------------------------------------
@@ -98,7 +98,7 @@ image for the far path, while replacing near material evaluation with 4B.
 
 Training and reproducibility
 ----------------------------
-  python Tools/train_shared_depth.py <TGProject> <native-DLL-folder> <scratch-output> --queries 16384 --steps 3500 --samples 16
+  python Tools/train_shared_depth.py <project> <native-DLL-folder> <scratch-output> --queries 16384 --steps 3500 --samples 16
 
 Use NumPy, Pillow and PyTorch offline. The DLL is silpom_appearance_reference.
 The expensive teacher traces/filters the detailed source heightfield on a
@@ -134,11 +134,11 @@ the output hash, renderer hash and reference-cache contract. Cached references
 also verify their partition seed and renderer/query contract.
 LevelFourFiveBQuality.json contains the full partition/subset metrics.
 
-Copy the two bundles into TGProject/Assets/SilPOMLearned. The builder verifies
+Copy the two bundles into <project>/Assets/SilPOMLearned (the fixture project builds them in place). The builder verifies
 SHA256 of basecolor/normal/roughness/height PNGs plus the tower mesh sidecar.
 Header kinds cannot be interchanged between 4A/4B/5A/5B. Provisional version 1
 bundles, wrong sizes and nonfinite weights are rejected. Runtime has no torch
-dependency. The source models belong to TG's asset repository; datasets,
+dependency. The source models belong to the project's assets; datasets,
 packages, checkpoints, captures and build outputs remain ignored scratch data.
 
 Verification

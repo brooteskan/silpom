@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 import numpy as np
 
-project=Path(__file__).resolve().parents[3]
+project=Path(__file__).resolve().parent/'Fixtures/TowerBenchmark'
 source=project/'Assets/SilPOMPlanarAB/IrishFieldstoneTowerOpenShaft/tower-open-shaft-no-landings-silpom.silpom.json'
 target=Path(__file__).resolve().parent/'Reference/FaceCoefficientTowerPacked.bin'
 document=json.loads(source.read_text())

@@ -9,10 +9,13 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT/"Tools"))
+import o3de_patches
 REL="Gems/Atom/Feature/Common/Assets/ShaderLib/Atom/Features/PBR/DecalComposite.azsli"
 
 
@@ -113,10 +116,12 @@ class NativePaintShader(unittest.TestCase):
     def test_production_traversal(self):
         compiler=shutil.which("clang++")
         if not compiler:self.skipTest("clang++ is required for the portable shader adapter")
+        bundle=o3de_patches.locate()
+        if bundle is None:self.skipTest("pinned o3de-patches checkout not found; see Integration/README.md")
         # The experimental shader adds bake-field resource sampling; its shared
         # receiver/reference control flow is checked against the stable source.
-        shader=extract_added_shader(ROOT/"Integration/O3DE/engine.patch")
-        experimental=extract_added_shader(ROOT/"Integration/O3DE/experiments/paint-bake.patch")
+        shader=extract_added_shader(bundle/"engine.patch")
+        experimental=extract_added_shader(bundle/"experiments/paint-bake.patch")
         for name in ("PaintReceiverSelected","ApplyPaintForward"):
             self.assertEqual(function(shader,name),function(experimental,name))
         for text in (shader,experimental):

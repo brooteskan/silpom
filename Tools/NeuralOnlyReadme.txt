@@ -11,7 +11,7 @@ This tests the existing four-probe / 10 -> 12 -> 1 network as a replacement
 for the local shadow marcher. It does not qualify that network's quality for
 production use. Baseline remains the default and the saved level is unchanged.
 
-In VueLiveLink, select Irish Fieldstone Tower (Open Shaft), then SilPOM Mesh
+In the tower benchmark level, select Irish Fieldstone Tower (Open Shaft), then SilPOM Mesh
 and Local shadow method. The new Level 3 neural only option is distinct from
 the retained Hybrid neural + march reference. Hybrid shadow confidence only
 affects the hybrid. Neural-only uses fixed per-profile classification cutoffs
@@ -92,7 +92,7 @@ The current weights still have appreciably worse standalone visibility quality.
 Keep this as an experiment rather than promoting it as the production default.
 See NeuralOnlyBenchmark.txt and NeuralOnlyBenchmark.json.
 
-Run the GPU/scene comparison from the TG source project using
+Run the GPU/scene comparison (by default on the fixture project) using
 Tests/Run-VisibilityOnlyBenchmark.ps1. The versioned Python driver is
 Tests/visibility_only_editor_benchmark.py; it validates unsupported settings,
 prewarms all methods, captures matching cameras, and restores the original

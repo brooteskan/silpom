@@ -1,4 +1,5 @@
 """Train local relief visibility on native probes and an independent FP64 cell trace."""
+from silpom_project import add_project_argument
 import argparse
 import ctypes
 import hashlib
@@ -108,13 +109,14 @@ def main():
     cli.add_argument("--training-rays",type=int,default=300000)
     cli.add_argument("--rays",type=int,default=50000);cli.add_argument("--steps",type=int,default=6500)
     cli.add_argument("--reuse",action="store_true")
+    add_project_argument(cli)
     a=cli.parse_args()
     if min(a.training_rays,a.rays,a.steps)<1:cli.error("Counts must be positive")
     if a.output.resolve().is_relative_to(Path(__file__).resolve().parents[1]/"Assets"):
         cli.error("Write experiment output outside shipping assets")
     a.output.mkdir(parents=True,exist_ok=True)
     native=Native(a.binary_dir);geometry=Evaluator(a.binary_dir)
-    project=Path(__file__).resolve().parents[3]
+    project=a.project.resolve()
     paths=["IrishFieldstoneTowerWelded/wall","IrishFieldstoneTowerOpenShaft/sculpted-stair-silpom",
            "IrishFieldstoneTowerOpenShaft/welded-doorway/trim-blocks","IrishFieldstoneTowerOpenShaft/welded-doorway/reveal"]
     report={"architecture":[10,12,1],"seed_policy":"disjoint train/calibration/held-out seeds", "profiles":{}}

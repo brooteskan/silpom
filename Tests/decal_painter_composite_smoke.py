@@ -1,7 +1,7 @@
 """Legacy rolling 100-dab retention, native undo, >4096 projections and GPU equivalence.
 
 Run in a dedicated Editor --runpython session. QTimer returns control to the
-normal event loop between checks. Never saves VueLiveLink; exits automatically.
+normal event loop between checks. Never saves the level; exits automatically.
 Fixtures explicitly select legacy projection storage rather than the new
 authoritative surface-texture default.
 """
@@ -11,6 +11,9 @@ import json
 import time
 import traceback
 from pathlib import Path
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import silpom_editor_paths as silpom_paths
 import azlmbr.atom as atom
 import azlmbr.bus as bus
 import azlmbr.components as components
@@ -24,7 +27,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 project = Path(paths.projectroot)
 output = project / "user/DecalPainterCompositeSmoke"
 output.mkdir(parents=True, exist_ok=True)
-level = project / "Levels/VueLiveLink/VueLiveLink.prefab"
+level = silpom_paths.LEVEL
 result = {"passed": False, "stage": "startup", "level_sha256": hashlib.sha256(level.read_bytes()).hexdigest()}
 original_background = None
 original_display_info = None

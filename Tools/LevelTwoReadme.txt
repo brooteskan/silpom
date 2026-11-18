@@ -1,6 +1,6 @@
 SILPOM Level 2 experimental intersection predictor
 
-VueLiveLink > Irish Fieldstone Tower (Open Shaft) > SilPOM Mesh:
+SilPOMTowerBenchmark > Irish Fieldstone Tower (Open Shaft) > SilPOM Mesh:
   Level 2 predictor (experimental)
 
 Off selects Level 1. On selects the new predictor for open-shaft models 4-7;

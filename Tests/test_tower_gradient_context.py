@@ -18,8 +18,8 @@ import numpy as np
 
 
 VIEWS = ('exterior', 'lower-facing', 'lower-glancing', 'upper-glancing')
-DEFAULT_LEGACY = (Path(__file__).resolve().parents[3] / 'user' /
-                  'silpom-multi-rect-2x-20261116/quality')
+# Earlier capture set to compare against; pass --legacy (no default capture is bundled).
+DEFAULT_LEGACY = None
 FORMATS = {
     'hit': (3, '<u4', 4), 'depth': (41, '<u4', 1),
     'diffuse': (10, '<u2', 4), 'specular': (10, '<u2', 4), 'normal': (10, '<u2', 4),
@@ -440,6 +440,7 @@ if __name__ == '__main__':
         outcome = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(AtlasContractTests))
         raise SystemExit(0 if outcome.wasSuccessful() else 1)
     assert args.folder is not None, 'Provide a capture folder or --self-test'
+    if args.legacy is None: parser.error('--legacy <earlier capture folder> is required to compare a capture')
     output = validate(args.folder, args.legacy)
     if args.output: args.output.write_text(json.dumps(output, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(output, indent=2))

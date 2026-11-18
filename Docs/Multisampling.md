@@ -60,8 +60,8 @@ suite. It checks the real VueLiveLink widget, sample counts, identical 2× image
 after restoration, independence from a disabled tower and 2×/4× gameplay.
 The historical `Tests/MsaaGameplayEditorSmoke.py` separately exercises fresh 1×, initialized
 4×, 1× → 4× → 1×, live 4× handoff and mixed-selector history. Set
-`TG_SILPOM_GAMEPLAY_CASE` and `TG_SILPOM_ESTIMATOR_OUTPUT`; optional
-`TG_SILPOM_GAMEPLAY_REPEATS=3` repeats Ctrl-G without restarting. The `startup4`
+`SILPOM_GAMEPLAY_CASE` and `SILPOM_ESTIMATOR_OUTPUT`; optional
+`SILPOM_GAMEPLAY_REPEATS=3` repeats Ctrl-G without restarting. The `startup4`
 case also requires the launch argument
 `--regset=/O3DE/Autoexec/ConsoleCommands/r_multiSampleCount=4`.
 The `minimal` case creates a separate lit animated-raven fixture from the
@@ -71,7 +71,7 @@ fail before gameplay with a sample-count/pipeline-state mismatch. Use the
 selector or the SilPOM sample-policy controls for guarded transitions.
 
 The visual suite does not collect timings by default. Set
-`TG_SILPOM_MSAA_TIMING=1` to add the existing 120-frame GPU captures. New visual
+`SILPOM_MSAA_TIMING=1` to add the existing 120-frame GPU captures. New visual
 reports verify SMAA through its active pipeline mode and enabled feature
 processor; older reports can still use their recorded pass timing evidence.
 The established 1× reference includes classify/fill and the backup shell, while
@@ -254,10 +254,10 @@ also passes three MSAA gameplay entries and restores Current default.
 coordinates, integer extremes, clamp, power-of-two sizes and the tower atlas.
 
 `Tests/MsaaCostEditorSmoke.py` profiles without changing tower quality or lighting.
-Use `TG_SILPOM_MSAA_TIMING=1`, `TG_SILPOM_COST_MODE=4` and the startup-4× argument
-documented above. `TG_SILPOM_COST_TIMING_ONLY=1` skips image/readback work;
+Use `SILPOM_MSAA_TIMING=1`, `SILPOM_COST_MODE=4` and the startup-4× argument
+documented above. `SILPOM_COST_TIMING_ONLY=1` skips image/readback work;
 measurements always disable inspection and warm the view before capturing.
-`TG_SILPOM_COST_MODE=switch` tests both 1× and a live transition to 4×.
+`SILPOM_COST_MODE=switch` tests both 1× and a live transition to 4×.
 
 The longer comparison exposed another independent engine lifecycle defect:
 diffuse-probe-grid draw packets refreshed only when their sort order changed,

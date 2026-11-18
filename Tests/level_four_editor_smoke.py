@@ -1,6 +1,9 @@
 """Level 4A render correctness only. No timing capture or benchmark service."""
 import hashlib,json,math,os,struct,time,traceback
 from pathlib import Path
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import silpom_editor_paths as silpom_paths
 import azlmbr.atom as atom
 import azlmbr.bus as bus
 import azlmbr.editor as editor
@@ -10,8 +13,8 @@ import azlmbr.paths as paths
 import azlmbr.silpom as silpom
 from PySide6 import QtCore,QtWidgets,QtGui
 PROJECT=Path(paths.projectroot)
-LEVEL=PROJECT/'Levels/VueLiveLink/VueLiveLink.prefab'
-OUTPUT=Path(os.environ['TG_SILPOM_LEVEL_FOUR_TEST_OUTPUT']);OUTPUT.mkdir(parents=True,exist_ok=True)
+LEVEL=silpom_paths.LEVEL
+OUTPUT=Path(os.environ['SILPOM_LEVEL_FOUR_TEST_OUTPUT']);OUTPUT.mkdir(parents=True,exist_ok=True)
 DEPTH='Relief depth multiplier';METHOD='Local shadow method';MATERIAL='Level 4A wall material (experimental)'
 BRIGHT='Spiral light master brightness';NORMAL='Height-derived normals (off = cheaper)'
 result={'passed':False,'benchmark_performed':False,'stage':'startup'}

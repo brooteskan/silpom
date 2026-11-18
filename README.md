@@ -20,11 +20,19 @@ intersection**. Expanded camera coverage is never a shadow caster. Coverage does
 not depend on off-screen image data. See [planar A/B testing](Docs/PlanarAB.md) for
 the issue #3 comparison harness and its acceptance limitations.
 
+## Engine requirement
+
+SilPOM needs O3DE 2.7.0 (`061180bf`) with the engine patch bundle from
+[brooteskan/o3de-patches](https://github.com/brooteskan/o3de-patches) applied;
+a stock engine does not build it. The tested revision and the reasons are in
+[Integration](Integration/README.md).
+
 ## Add to an O3DE project
 
-1. Clone this repository into `Gems/silpom` in your project.
-2. Add `Gems/silpom` to `external_subdirectories` and `SilPOM` to `gem_names` in
-   the project's `project.json`.
+1. Clone this repository into your project (for example `Gems/silpom`), or
+   anywhere and register it as an external subdirectory.
+2. Add the gem's folder to `external_subdirectories` and `SilPOM` to `gem_names`
+   in the project's `project.json`.
 3. Configure/build the project, including `SilPOM` and `SilPOM.Editor`, then let
    Asset Processor finish processing the new material type and shaders.
 4. Make a material using `Materials/Types/SilPOM/SilPOM.materialtype`, assign its
@@ -44,16 +52,28 @@ the component's Opacity and Normal Map Opacity control the two blends separately
 Projection uses the displaced surface position. Decal normals feed both direct
 and indirect lighting, and decals leave the heightfield geometry unchanged.
 
+## Test project
+
+`Tests/Fixtures/TowerBenchmark` is a complete O3DE project (`SilPOMTowerTest`)
+that loads this gem from `../../..` and holds the tower benchmark level and
+every asset it uses. Editor harnesses under `Tests/` open its
+`Levels/SilPOMTowerBenchmark` level unless `SILPOM_TEST_LEVEL` names another,
+and the `Tests/Run-*.ps1` runners default to it (`-ProjectPath`, `-EnginePath`
+and `-BinaryPath` select others). Offline tools under `Tools/` read their
+inputs from it unless given `--project`. See its
+[README](Tests/Fixtures/TowerBenchmark/README.md).
+
 `Tests/editor_smoke.py` creates an unsaved wall fixture, captures front/grazing/
-inside views, checks component lifecycle and exits. For TG's existing StoneWall
-textures, first run:
+inside views, checks component lifecycle and exits. First create its materials
+(by default from the fixture's fieldstone wall textures; pass `--project` and
+`--height/--basecolor/--normal` for another project's textures):
 
 ```powershell
-python Tools/prepare_tg_fixture.py --project D:/TG/TGProject
+python Tools/prepare_wall_fixture.py
 ```
 
 Then process assets and launch a separate Editor session with
-`--project-path=D:/TG/TGProject --runpython <absolute-path-to-Tests/editor_smoke.py>`.
+`--project-path=<gem>/Tests/Fixtures/TowerBenchmark --runpython <absolute-path-to-Tests/editor_smoke.py>`.
 Captures and the JSON result go to the project's `user/SilPOMValidation` directory,
 or to `SILPOM_CAPTURE_DIR` if set. The script does not save DefaultLevel.
 

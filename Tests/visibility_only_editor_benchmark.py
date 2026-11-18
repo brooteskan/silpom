@@ -1,4 +1,4 @@
-"""Fixed-camera GPU timestamps and images; never saves VueLiveLink."""
+"""Fixed-camera GPU timestamps and images; never saves the level."""
 import hashlib
 import json
 import math
@@ -8,6 +8,9 @@ import statistics
 import time
 import traceback
 
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import silpom_editor_paths as silpom_paths
 import azlmbr.atom as atom
 import azlmbr.bus as bus
 import azlmbr.editor as editor
@@ -17,10 +20,10 @@ import azlmbr.paths as paths
 import azlmbr.silpom as silpom
 
 PROJECT = Path(paths.projectroot)
-LEVEL = PROJECT / "Levels/VueLiveLink/VueLiveLink.prefab"
-OUTPUT = Path(os.environ["TG_SILPOM_HEIGHT_AB_OUTPUT"])
+LEVEL = silpom_paths.LEVEL
+OUTPUT = Path(os.environ["SILPOM_HEIGHT_AB_OUTPUT"])
 OUTPUT.mkdir(parents=True, exist_ok=True)
-SAMPLES = int(os.environ.get("TG_SILPOM_HEIGHT_AB_SAMPLES", "180"))
+SAMPLES = int(os.environ.get("SILPOM_HEIGHT_AB_SAMPLES", "180"))
 VIEWPORT = (1280, 720)
 R16 = "R16 height textures (less GPU memory)"
 LEVEL2 = "Level 2 predictor (experimental)"
@@ -186,7 +189,7 @@ def main():
                         rotation=(rotation.x, rotation.y, rotation.z),
                         size=(int(size.x), int(size.y)),
                         policy=general.get_viewport_expansion_policy())
-    recovery=os.environ.get("TG_SILPOM_RECOVER_VIEW")
+    recovery=os.environ.get("SILPOM_RECOVER_VIEW")
     recovery_data=json.loads(Path(recovery).read_text()) if recovery else {}
     if recovery_data:
         initial_view.update(recovery_data["initial_view"])

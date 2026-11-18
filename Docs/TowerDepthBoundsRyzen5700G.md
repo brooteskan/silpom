@@ -184,8 +184,8 @@ $out = "$project/user/depth-bounds-repeat-$(Get-Date -Format yyyyMMdd-HHmmss)"
 New-Item -ItemType Directory -Path "$out/inputs" | Out-Null
 $config = Get-Content "$raw/captured-inputs/config.json" -Raw | ConvertFrom-Json
 $config.output = "$out/inputs"
-$env:TG_SILPOM_COVERAGE_CONFIG = "$out/config.json"
-$config | ConvertTo-Json -Depth 6 | Set-Content $env:TG_SILPOM_COVERAGE_CONFIG
+$env:SILPOM_COVERAGE_CONFIG = "$out/config.json"
+$config | ConvertTo-Json -Depth 6 | Set-Content $env:SILPOM_COVERAGE_CONFIG
 Start-Process "$rd/qrenderdoc.exe" -ArgumentList @('--python', "$repo/Tests/TowerBenchmarkDepthBoundProbe.py") -WorkingDirectory $rd -WindowStyle Hidden -Wait
 $state = Get-Content "$out/inputs/depth-bound-probe.json" -Raw | ConvertFrom-Json
 if (-not $state.passed) { throw $state.error }

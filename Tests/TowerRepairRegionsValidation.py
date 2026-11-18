@@ -20,7 +20,7 @@ import azlmbr.silpom as silpom
 
 PROJECT = Path(paths.projectroot)
 LEVEL = PROJECT / 'Levels/SilPOMTowerBenchmark/SilPOMTowerBenchmark.prefab'
-OUTPUT = Path(os.environ['TG_SILPOM_REPAIR_OUTPUT'])
+OUTPUT = Path(os.environ['SILPOM_REPAIR_OUTPUT'])
 assert not (OUTPUT / 'results.json').exists(), 'Use a fresh correctness directory'
 OUTPUT.mkdir(parents=True, exist_ok=True)
 result = {'passed': False, 'stage': 'startup', 'runs': [], 'benchmark_performed': False, 'repair_traces': {},

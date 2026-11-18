@@ -1,7 +1,7 @@
 """Real Inspector/API switching and Ctrl-G regression; never saves the level.
 
 Uses the capture helpers from the estimator smoke test in the same directory.
-TG_SILPOM_ESTIMATOR_OUTPUT chooses the isolated report/capture directory.
+SILPOM_ESTIMATOR_OUTPUT chooses the isolated report/capture directory.
 """
 from pathlib import Path
 helper=Path(__file__).with_name('LightingEstimatorEditorSmoke.py')

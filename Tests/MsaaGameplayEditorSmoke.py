@@ -1,8 +1,10 @@
 """Fresh-process gameplay matrix. No neural/lighting/quality edits or level saves.
 
-TG_SILPOM_GAMEPLAY_CASE: baseline1, startup4, roundtrip, handoff4, history, minimal.
-TG_SILPOM_ESTIMATOR_OUTPUT: per-process report/capture directory.
-The minimal case generates a separate fixture from the saved raven actor assets.
+SILPOM_GAMEPLAY_CASE: baseline1, startup4, roundtrip, handoff4, history, minimal.
+SILPOM_ESTIMATOR_OUTPUT: per-process report/capture directory.
+The minimal case builds a separate level around an animated actor supplied by the
+host project: SILPOM_GAMEPLAY_ACTOR_LEVEL names a level containing it and
+SILPOM_GAMEPLAY_ACTOR_ENTITY its entity name. The bundled fixture has none.
 """
 from pathlib import Path
 helper=Path(__file__).with_name('AntiAliasingSelectorEditorSmoke.py')
@@ -12,18 +14,20 @@ exec(compile(helper.read_text().split('\ndef main():')[0],str(helper),'exec'))
 def animated_fixture():
     """Create a separate lit actor-only level; never modify the tower prefab."""
     import copy
-    templates=PROJECT/'user/engine-source/Assets/Editor/Prefabs'
-    source=json.loads(LEVEL.read_bytes())
+    actor_level=os.environ.get('SILPOM_GAMEPLAY_ACTOR_LEVEL');actor_name=os.environ.get('SILPOM_GAMEPLAY_ACTOR_ENTITY')
+    assert actor_level and actor_name,'The minimal case needs SILPOM_GAMEPLAY_ACTOR_LEVEL and SILPOM_GAMEPLAY_ACTOR_ENTITY (an animated actor)'
+    templates=silpom_paths.ENGINE/'Assets/Editor/Prefabs'
+    source=json.loads(Path(actor_level).read_bytes())
     default=json.loads((templates/'Default_Level.prefab').read_text())
     fixture=json.loads((templates/'Empty.prefab').read_text())
     root=fixture['ContainerEntity'];root['Name']='SilPomMsaaAnimatedRepro'
     entities={}
-    for scene,name in ((source,'Raven Visual'),(default,'Sun'),(default,'Camera'),(default,'Global Sky')):
+    for scene,name in ((source,actor_name),(default,'Sun'),(default,'Camera'),(default,'Global Sky')):
         key,value=next((k,v) for k,v in scene['Entities'].items() if v['Name']==name)
         e=copy.deepcopy(value);entities[key]=e
         for c in e['Components'].values():
             if 'TransformComponent' in c['$type']:c['Parent Entity']=root['Id']
-        if name=='Raven Visual':e['Name']='AA Repro Animated Raven'
+        if name==actor_name:e['Name']='AA Repro Animated Actor'
         if name=='Camera':
             for c in e['Components'].values():
                 if 'TransformComponent' in c['$type']:
@@ -42,12 +46,12 @@ def animated_fixture():
 
 def main():
     global tower,component
-    case=os.environ.get('TG_SILPOM_GAMEPLAY_CASE','baseline1')
+    case=os.environ.get('SILPOM_GAMEPLAY_CASE','baseline1')
     assert case in ('baseline1','startup4','roundtrip','handoff4','history','minimal')
     original=LEVEL.read_bytes()
     result.update(case=case,level_sha256=hashlib.sha256(original).hexdigest(),stage='initialize')
     flush();general.idle_enable(True)
-    for name,value in (('r_silpomAaTrace',int(os.environ.get('TG_SILPOM_AA_TRACE','0'))),('ed_keepEditorActive',1),('ed_backgroundUpdatePeriod',-1),
+    for name,value in (('r_silpomAaTrace',int(os.environ.get('SILPOM_AA_TRACE','0'))),('ed_keepEditorActive',1),('ed_backgroundUpdatePeriod',-1),
                        ('r_displayInfo',0),('vsync_interval',0),('sys_MaxFPS',-1)):
         command(name,value)
     if case=='startup4':
@@ -98,12 +102,12 @@ def main():
         assert result['runtime_state']==[expected,0,0],result['runtime_state']
         assert silpom.SilPomMeshRequestBus(bus.Event,'IsReady',runtime)
     else:
-        runtime=general.find_game_entity('AA Repro Animated Raven');assert runtime.IsValid()
+        runtime=general.find_game_entity('AA Repro Animated Actor');assert runtime.IsValid()
         result['animated_actor']=str(runtime)
     renderer_clean();result['stage']='gameplay stable';flush()
     screenshot(OUTPUT/'game.png')
     general.exit_game_mode();general.idle_enable(True);general.idle_wait(4.0)
-    for _ in range(int(os.environ.get('TG_SILPOM_GAMEPLAY_REPEATS','1'))-1):
+    for _ in range(int(os.environ.get('SILPOM_GAMEPLAY_REPEATS','1'))-1):
         general.enter_game_mode();general.idle_enable(True);general.idle_wait(6.0)
         assert general.is_in_game_mode();renderer_clean()
         if case!='minimal':
@@ -118,7 +122,7 @@ def main():
         assert result['restored_default']==[1,0,0],'Handoff lost the original AA baseline'
     renderer_clean();assert LEVEL.read_bytes()==original
     result.update(passed=True,stage='complete',saved_level_unchanged=True,
-        gameplay_entries=int(os.environ.get('TG_SILPOM_GAMEPLAY_REPEATS','1')))
+        gameplay_entries=int(os.environ.get('SILPOM_GAMEPLAY_REPEATS','1')))
 
 
 try:

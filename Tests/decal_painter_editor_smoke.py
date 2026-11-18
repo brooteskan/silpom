@@ -14,6 +14,9 @@ from pathlib import Path
 import time
 import traceback
 
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import silpom_editor_paths as silpom_paths
 import azlmbr.atom as atom
 import azlmbr.bus as bus
 import azlmbr.components as components
@@ -31,7 +34,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 project = Path(paths.projectroot)
 output = project / "user/DecalPainterSmoke"
 output.mkdir(parents=True, exist_ok=True)
-level = project / "Levels/VueLiveLink/VueLiveLink.prefab"
+level = silpom_paths.LEVEL
 result = {"passed": False, "stage": "starting"}
 
 

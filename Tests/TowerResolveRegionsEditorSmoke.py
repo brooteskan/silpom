@@ -1,13 +1,13 @@
 """Unsaved per-sample A/B for conservative tower resolve regions.
 
 Run in a dedicated source-built Editor --runpython, with processed assets and
-TG_SILPOM_RESOLVE_OUTPUT pointing to a fresh directory. Compare the output with
+SILPOM_RESOLVE_OUTPUT pointing to a fresh directory. Compare the output with
 test_tower_resolve_regions.py. Capture work is intentionally separate from GPU
 timing. No level or component property is saved or edited.
 
-Optional TG_SILPOM_RESOLVE_SAMPLES=1,2,4 (default 1,2),
-TG_SILPOM_RESOLVE_VIEWS=exterior,lower-facing,lower-glancing,upper-glancing,
-and TG_SILPOM_RESOLVE_ODD_SIZE=1 to repeat exterior at 1281 x 721.
+Optional SILPOM_RESOLVE_SAMPLES=1,2,4 (default 1,2),
+SILPOM_RESOLVE_VIEWS=exterior,lower-facing,lower-glancing,upper-glancing,
+and SILPOM_RESOLVE_ODD_SIZE=1 to repeat exterior at 1281 x 721.
 """
 import hashlib
 import json
@@ -26,7 +26,7 @@ import azlmbr.silpom as silpom
 
 PROJECT = Path(paths.projectroot)
 LEVEL = PROJECT / 'Levels/SilPOMTowerBenchmark/SilPOMTowerBenchmark.prefab'
-OUTPUT = Path(os.environ['TG_SILPOM_RESOLVE_OUTPUT'])
+OUTPUT = Path(os.environ['SILPOM_RESOLVE_OUTPUT'])
 OUTPUT.mkdir(parents=True, exist_ok=True)
 result = {'passed': False, 'stage': 'startup', 'runs': [], 'benchmark_performed': False}
 cvars = {}
@@ -122,10 +122,10 @@ def main():
     command('r_silpomMsaaRawCoverage', 1)
     general.close_pane('Console')
     general.set_viewport_expansion_policy('FixedSize')
-    samples_list = [int(value) for value in os.environ.get('TG_SILPOM_RESOLVE_SAMPLES', '1,2').split(',')]
-    names = os.environ.get('TG_SILPOM_RESOLVE_VIEWS', 'exterior,lower-facing,lower-glancing,upper-glancing').split(',')
+    samples_list = [int(value) for value in os.environ.get('SILPOM_RESOLVE_SAMPLES', '1,2').split(',')]
+    names = os.environ.get('SILPOM_RESOLVE_VIEWS', 'exterior,lower-facing,lower-glancing,upper-glancing').split(',')
     views = [(name, fixture['views'][name], (1280, 720)) for name in names]
-    if os.environ.get('TG_SILPOM_RESOLVE_ODD_SIZE', '1') == '1':
+    if os.environ.get('SILPOM_RESOLVE_ODD_SIZE', '1') == '1':
         views.append(('exterior-odd', fixture['views']['exterior'], (1281, 721)))
     for samples in samples_list:
         assert samples in (1, 2, 4)

@@ -1,6 +1,6 @@
 """Frozen saved-tower cost/edge comparison. No quality edits or level saves.
 
-TG_SILPOM_ESTIMATOR_OUTPUT selects a fresh output directory. Timings exclude
+SILPOM_ESTIMATOR_OUTPUT selects a fresh output directory. Timings exclude
 inspection/readback, use 120 frames twice per view, and keep all saved settings.
 """
 from pathlib import Path
@@ -18,7 +18,7 @@ def hit_samples(stem):
 
 def main():
     global tower,component
-    requested=os.environ.get('TG_SILPOM_COST_MODE','4')
+    requested=os.environ.get('SILPOM_COST_MODE','4')
     mode4=requested=='4'
     general.idle_enable(True);source=LEVEL.read_bytes()
     # Apply before loading/warm-up too: hidden test Editors otherwise inherit
@@ -28,10 +28,10 @@ def main():
     assert general.open_level(str(LEVEL));general.idle_wait_frames(90)
     q=entity.SearchFilter();q.names=['Irish Fieldstone Tower (Open Shaft)']
     found=entity.SearchBus(bus.Broadcast,'SearchEntities',q);assert len(found)==1;tower=found[0];ready()
-    if os.environ.get('TG_SILPOM_COST_WAIT_FOR_ASSETS'):
+    if os.environ.get('SILPOM_COST_WAIT_FOR_ASSETS'):
         result['stage']='waiting for assets';flush()
         deadline=time.monotonic()+600
-        marker=Path(os.environ['TG_SILPOM_COST_WAIT_FOR_ASSETS'])
+        marker=Path(os.environ['SILPOM_COST_WAIT_FOR_ASSETS'])
         while not marker.exists():
             assert time.monotonic()<deadline,'Asset readiness marker timed out'
             general.idle_wait(1)
@@ -64,7 +64,7 @@ def main():
         for name,eye,direction,pose in cases:
             result['stage']=label+'/'+name;flush();view(eye,direction,pose);general.idle_wait_frames(180)
             for repeat in range(2):gpu_cost(f'{label}-{name}-{repeat}')
-            if os.environ.get('TG_SILPOM_COST_TIMING_ONLY','0')=='1':continue
+            if os.environ.get('SILPOM_COST_TIMING_ONLY','0')=='1':continue
             screenshot(OUTPUT/f'{label}-{name}.png')
             if mode4:
                 hit_samples(label+'-'+name)

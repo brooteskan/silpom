@@ -3,7 +3,7 @@ SILPOM Level 1 solver evaluation and checkpoint selection
 Run Tools/Evaluate-LevelOne.ps1 from PowerShell. It builds standalone CPU tools
 without rebuilding or launching the Editor. Defaults evaluate active tower
 profiles 1, 3 and 4; profile 2 is the stairs, currently ordinary geometry.
-Use -Profiles 1,2,3,4 to include it. Results go under ignored TGProject/user/
+Use -Profiles 1,2,3,4 to include it. Results go under ignored <project>/user/
 SilPOMLevelOne. Add -Train to generate candidate weights and -RunTests to run
 the CPU/GPU regression suite. -PythonExe can override automatic O3DE discovery.
 

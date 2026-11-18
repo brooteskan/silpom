@@ -1,14 +1,12 @@
 """Validate renderer-wide AA, exact 2x restoration and mesh-independent ownership.
 
-Run in a scripted Editor with TG_SILPOM_ESTIMATOR_OUTPUT and optional
-TG_SILPOM_CAMERA_REFERENCE set. Never saves a level.
+Run in a scripted Editor with SILPOM_ESTIMATOR_OUTPUT and optional
+SILPOM_CAMERA_REFERENCE set. Never saves a level.
 """
 from pathlib import Path
 helper=Path(__file__).with_name('MsaaEditorSmoke.py')
 exec(compile(helper.read_text().split('\ndef main():')[0],str(helper),'exec'))
-import sys
-sys.path.insert(0,str(PROJECT/'Editor/Scripts'))
-import rendering_controls
+import silpom_rendering_controls as rendering_controls
 
 
 def state():
@@ -45,7 +43,7 @@ def main():
         'Height-derived normals (off = cheaper)','Lighting estimator','Level 2 predictor (experimental)',
         'Validation iterations (lower = cheaper)','Validation retry cap (lower = cheaper)',
         'Spiral light master brightness','Level 5A learned relief LOD (experimental)'))}
-    camera_file=os.environ.get('TG_SILPOM_CAMERA_REFERENCE')
+    camera_file=os.environ.get('SILPOM_CAMERA_REFERENCE')
     if camera_file:
         camera=json.loads(Path(camera_file).read_text())
         general.set_viewport_expansion_policy('FixedSize');general.set_viewport_size(*camera['viewport_size'])

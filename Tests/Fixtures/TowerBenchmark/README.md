@@ -27,13 +27,20 @@ path, so the IDs stored in the level and the tower prefab resolve here.
 4. Run the tower editor harnesses (`Tests/TowerBenchmarkEditorSmoke.py`,
    `TowerResolveRegions*.py`, `TowerRepairRegionsValidation.py`,
    `TowerGradientContextValidation.py`, `TowerFaceCacheBenchmark.py`, ...) in
-   this project. They open `Levels/SilPOMTowerBenchmark` from the project root.
+   this project. They open `Levels/SilPOMTowerBenchmark` from the project root,
+   or the level named by `SILPOM_TEST_LEVEL`. `Tests/Run-*.ps1` launch a
+   dedicated Editor on this project by default.
+5. `python Tools/prepare_wall_fixture.py` creates the `Assets/SilPOM` wall
+   materials `Tests/editor_smoke.py` uses (git-ignored here).
 
-SilPOM's shaders and decal painting currently require the engine changes in
-`Integration/O3DE/engine.patch`; see that folder for applying them.
+The engine must have the [o3de-patches](https://github.com/brooteskan/o3de-patches)
+bundle applied at the revision in `Integration/O3DEPatches.json`; see
+`Integration/README.md`.
 
 `Tools/prepare_tower_benchmark.py --project <other project>` still installs this
-level into another project that already has the tower assets.
+level into another project that already has the tower assets. Its `--generate`
+mode rebuilds the level from `--source-level` (any level instancing the tower
+prefab) and `--engine` (for the stock level template).
 
 ## Changes from the original project assets
 

@@ -45,7 +45,7 @@ try{
         $state.enabled=$true
         $state | ConvertTo-Json | Set-Content -LiteralPath $statePath
     }
-    $env:TG_SILPOM_RENDERDOC_CONFIG=$ConfigPath
+    $env:SILPOM_RENDERDOC_CONFIG=$ConfigPath
     $profileScript=(Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\Tests\TowerBenchmarkRenderDocProfile.py')).Path
     $process=Start-Process -FilePath $config.qrenderdoc -ArgumentList @('--python',('"'+$profileScript+'"')) -WorkingDirectory ([IO.Path]::GetDirectoryName([string]$config.qrenderdoc)) -WindowStyle Hidden -PassThru
     if(-not $process.WaitForExit($TimeoutSeconds*1000)){

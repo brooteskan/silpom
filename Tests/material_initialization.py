@@ -1,6 +1,6 @@
-"""PSO initialization regression for TG's existing planar-mesh and StoneWall fixtures.
+"""PSO initialization regression for the planar-mesh and StoneWall fixtures (prepared by Tools/prepare_wall_fixture.py and --prepare).
 
-Prepare with ordinary Python: material_initialization.py --prepare --project D:/TG/TGProject
+Prepare with ordinary Python: material_initialization.py --prepare --project <O3DE project>
 Process the generated assets, then launch a separate Editor with --runpython <this file>.
 SILPOM_MATERIAL_OUTPUT selects a directory under project/user. The test never saves
 the level and exits the Editor. Warnings are recorded without suppressing them.

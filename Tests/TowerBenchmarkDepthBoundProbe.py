@@ -1,6 +1,6 @@
 """Read captured constants and buffer metadata for offline conservative bounds.
 
-Run through qrenderdoc --python, TG_SILPOM_COVERAGE_CONFIG points to JSON.
+Run through qrenderdoc --python, SILPOM_COVERAGE_CONFIG points to JSON.
 No counters, shader replacement, Editor, or Windows setting changes.
 """
 from pathlib import Path
@@ -13,7 +13,7 @@ import traceback
 import struct
 import renderdoc as rd
 
-config=json.loads(Path(os.environ['TG_SILPOM_COVERAGE_CONFIG']).read_text(encoding='utf-8-sig'))
+config=json.loads(Path(os.environ['SILPOM_COVERAGE_CONFIG']).read_text(encoding='utf-8-sig'))
 output=Path(config['output'])
 result={'passed':False,'event':int(config['event']),'scope':__doc__}
 cap=controller=setting=None

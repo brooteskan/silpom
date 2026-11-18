@@ -1,6 +1,6 @@
 Level 3 local relief visibility experiments -- 2026-11-12
 
-In the VueLiveLink level, select Irish Fieldstone Tower (Open Shaft), then
+In the tower benchmark level, select Irish Fieldstone Tower (Open Shaft), then
 expand the SilPOM Mesh component. Local shadow method selects the original
 marcher, Gather, the historical hybrid, or a separately compiled neural-only
 experiment. Baseline remains the default. Hybrid shadow confidence defaults

@@ -4,6 +4,7 @@ Historical hybrid coefficients and schedules are deliberately kept separately.
 Train/calibration/test partitions use independent seeds. Calibration selects only
 the binary cutoff; a fixed training schedule never selects a test checkpoint.
 """
+from silpom_project import add_project_argument
 import argparse,hashlib,json
 from pathlib import Path
 import numpy as np
@@ -19,7 +20,8 @@ def main():
     cli.add_argument('manifest',type=Path);cli.add_argument('binary_dir',type=Path);cli.add_argument('output',type=Path)
     cli.add_argument('--training-rays',type=int,default=100000);cli.add_argument('--rays',type=int,default=20000)
     cli.add_argument('--steps',type=int,default=6500);cli.add_argument('--reuse',action='store_true')
-    a=cli.parse_args();root=Path(__file__).resolve().parents[1];project=root.parents[1]
+    add_project_argument(cli)
+    a=cli.parse_args();root=Path(__file__).resolve().parents[1];project=a.project.resolve()
     if min(a.training_rays,a.rays,a.steps)<1:cli.error('Counts must be positive')
     if a.output.resolve().is_relative_to(root/'Assets'):cli.error('Datasets belong outside shipping assets')
     a.output.mkdir(parents=True,exist_ok=True)

@@ -1,4 +1,4 @@
-"""Run via qrenderdoc --python with TG_SILPOM_COVERAGE_CONFIG JSON path.
+"""Run via qrenderdoc --python with SILPOM_COVERAGE_CONFIG JSON path.
 
 Read-only pipeline, post-VS and optional before/after depth extraction.
 Requests no counters and needs no Developer Mode or persistent setting changes.
@@ -13,7 +13,7 @@ import sys
 import traceback
 import renderdoc as rd
 
-config = json.loads(Path(os.environ['TG_SILPOM_COVERAGE_CONFIG']).read_text(encoding='utf-8-sig'))
+config = json.loads(Path(os.environ['SILPOM_COVERAGE_CONFIG']).read_text(encoding='utf-8-sig'))
 output = Path(config['output'])
 result = {'passed': False, 'event': int(config.get('event',464)), 'scope': 'Read-only replay and diagnostic mesh readbacks; no baseline timing or shader edits'}
 cap = controller = setting = None

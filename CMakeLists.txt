@@ -161,6 +161,13 @@ if(NOT COMMAND o3de_gem_setup)
             ${CMAKE_CURRENT_SOURCE_DIR}/Tests/test_receiver_uv_analysis.py)
         add_test(NAME SilPOM.NativePaintShader COMMAND "${SILPOM_PYTHON}"
             ${CMAKE_CURRENT_SOURCE_DIR}/Tests/test_native_paint_shader.py)
+        # Reads DecalComposite.azsli from the pinned o3de-patches checkout
+        # (Integration/O3DEPatches.json); reported as skipped without one.
+        set(SILPOM_O3DE_PATCHES_DIR "" CACHE PATH "Checkout of brooteskan/o3de-patches at the pinned commit")
+        set_tests_properties(SilPOM.NativePaintShader PROPERTIES SKIP_REGULAR_EXPRESSION "skipped=")
+        if(SILPOM_O3DE_PATCHES_DIR)
+            set_tests_properties(SilPOM.NativePaintShader PROPERTIES ENVIRONMENT "SILPOM_O3DE_PATCHES=${SILPOM_O3DE_PATCHES_DIR}")
+        endif()
         add_test(NAME SilPOM.SurfaceTextureAnalysis COMMAND "${SILPOM_PYTHON}"
             ${CMAKE_CURRENT_SOURCE_DIR}/Tests/test_surface_texture_analysis.py)
         add_test(NAME SilPOM.DirectionalEstimator.Models COMMAND "${SILPOM_PYTHON}"

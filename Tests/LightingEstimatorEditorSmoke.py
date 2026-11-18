@@ -7,6 +7,9 @@ from pathlib import Path
 import time
 import traceback
 
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import silpom_editor_paths as silpom_paths
 import azlmbr.atom as atom
 import azlmbr.bus as bus
 import azlmbr.editor as editor
@@ -16,8 +19,8 @@ import azlmbr.paths as paths
 import azlmbr.silpom as silpom
 
 PROJECT = Path(paths.projectroot)
-LEVEL = PROJECT / "Levels/VueLiveLink/VueLiveLink.prefab"
-OUTPUT = Path(os.environ["TG_SILPOM_ESTIMATOR_OUTPUT"])
+LEVEL = silpom_paths.LEVEL
+OUTPUT = Path(os.environ["SILPOM_ESTIMATOR_OUTPUT"])
 OUTPUT.mkdir(parents=True, exist_ok=True)
 VIEWPORT = (1280, 720)
 result = {"passed": False, "stage": "startup", "variants": {}, "benchmark_performed": False}

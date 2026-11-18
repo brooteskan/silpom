@@ -1,5 +1,0 @@
-*.patch text eol=lf whitespace=-blank-at-eol
-*.json text eol=lf
-*.py text eol=lf
-*.ps1 text eol=lf
-*.md text eol=lf

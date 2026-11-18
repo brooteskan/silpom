@@ -73,16 +73,16 @@ the shared raw buffer remain allocated for fallback and editing.
 
 ## Reproducing the comparison
 
-First install the opt-in engine overlay with `Integration/O3DE/apply.py
---engine ENGINE --project PROJECT --experimental-paint-bake`, build this branch's
+First install the opt-in engine overlay with o3de-patches' `apply.py
+--engine ENGINE --skip terrain-compositor --experimental-paint-bake` (see `Integration/README.md`), build this branch's
 native modules, and let Asset Processor rebuild every dependent shader/material.
 The ordinary installer selects the stable shader; running it without the flag
 restores an unedited experiment by its exact hash. Rebuild assets after restoring.
 The profiling build script also selects the stable bundle by default.
 
 Run `Tests/decal_bake_benchmark.py` using Editor's `--runpython` in an isolated
-session, with `TG_SILPOM_ESTIMATOR_OUTPUT` set to a fresh evidence directory.
-`TG_PAINT_BAKE_MODES=0,1,1,0` performs a matched ABBA comparison. The saved
+session, with `SILPOM_ESTIMATOR_OUTPUT` set to a fresh evidence directory.
+`SILPOM_PAINT_BAKE_MODES=0,1,1,0` performs a matched ABBA comparison. The saved
 13,000-dab tower paint, mixed-operation spread fixture and compact overlapping
 normal-paint patch are timed separately. Cameras, 1280x720 resolution and 2x
 MSAA are fixed. Each timed run captures 180 GPU timestamp frames after warmup;

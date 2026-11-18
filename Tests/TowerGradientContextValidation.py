@@ -1,12 +1,12 @@
 """Capture explicit per-winning-sample gradients on the fixed 2x tower fixture.
 
 Run in a dedicated Editor --runpython with processed assets and
-TG_SILPOM_GRADIENT_OUTPUT set to a fresh directory. This script never
+SILPOM_GRADIENT_OUTPUT set to a fresh directory. This script never
 collects timestamps. Run test_tower_gradient_context.py on its output afterward.
 The saved level is unchanged and the temporary normals/AA/view settings are
 restored. The four fixed tower views match TowerResolveRegionsBenchmark.py. A final
 wider representation probe is enabled by default; set
-TG_SILPOM_GRADIENT_DIAGNOSTIC=0 to omit it. No timestamps are collected.
+SILPOM_GRADIENT_DIAGNOSTIC=0 to omit it. No timestamps are collected.
 """
 import copy
 import hashlib
@@ -21,6 +21,9 @@ import time
 import traceback
 import uuid
 
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import silpom_editor_paths as silpom_paths
 import azlmbr.atom as atom
 import azlmbr.asset as asset
 import azlmbr.bus as bus
@@ -34,26 +37,26 @@ import azlmbr.silpom as silpom
 
 PROJECT = Path(paths.projectroot)
 LEVEL = PROJECT / 'Levels/SilPOMTowerBenchmark/SilPOMTowerBenchmark.prefab'
-OUTPUT = Path(os.environ['TG_SILPOM_GRADIENT_OUTPUT'])
+OUTPUT = Path(os.environ['SILPOM_GRADIENT_OUTPUT'])
 assert not (OUTPUT / 'results.json').exists(), 'Choose a fresh capture output directory'
 OUTPUT.mkdir(parents=True, exist_ok=True)
 VIEWS = ('exterior', 'lower-facing', 'lower-glancing', 'upper-glancing')
-if os.environ.get('TG_SILPOM_GRADIENT_VIEWS'):
-    requested = tuple(name.strip() for name in os.environ['TG_SILPOM_GRADIENT_VIEWS'].split(','))
+if os.environ.get('SILPOM_GRADIENT_VIEWS'):
+    requested = tuple(name.strip() for name in os.environ['SILPOM_GRADIENT_VIEWS'].split(','))
     assert requested and len(set(requested)) == len(requested) and all(name in VIEWS for name in requested)
     VIEWS = requested
 SAMPLES = 2
 VIEWPORT = (1280, 720)
 result = {'passed': False, 'stage': 'startup', 'runs': [],
           'benchmark_performed': False, 'samples': SAMPLES, 'viewport': list(VIEWPORT),
-          'validation_scope': 'focused-pilot' if os.environ.get('TG_SILPOM_GRADIENT_VIEWS') else 'full-view-set',
+          'validation_scope': 'focused-pilot' if os.environ.get('SILPOM_GRADIENT_VIEWS') else 'full-view-set',
           'gradient_contract': 'owner-local-first-order-per-raster-pixel',
           'normal_query_policy': 'prepared-normal-stencil-with-probe-validity',
           'face_cache_policy': 'generation-coefficients-frame-local-implicit-near-v1',
-          'face_cache_enabled': os.environ.get('TG_SILPOM_FACE_CACHE', '1') != '0',
-          'face_cache_validation_sequence': 'off/on/off' if os.environ.get('TG_SILPOM_FACE_CACHE_COMPARE', '0') == '1' else 'fixed',
+          'face_cache_enabled': os.environ.get('SILPOM_FACE_CACHE', '1') != '0',
+          'face_cache_validation_sequence': 'off/on/off' if os.environ.get('SILPOM_FACE_CACHE_COMPARE', '0') == '1' else 'fixed',
           'attachment_suffixes': ['hit', 'depth', 'diffuse', 'specular', 'normal', 'uv-gradients', 'depth-gradients'],
-          'paint_probe_enabled': os.environ.get('TG_SILPOM_GRADIENT_PAINT_PROBE', '1') != '0'}
+          'paint_probe_enabled': os.environ.get('SILPOM_GRADIENT_PAINT_PROBE', '1') != '0'}
 cvars = {}
 initial_view = {}
 component = None
@@ -411,7 +414,7 @@ def main():
     general.set_viewport_expansion_policy('FixedSize')
     general.set_viewport_size(*VIEWPORT)
     cases = [(name, fixture['views'][name], 'fixed-benchmark') for name in VIEWS]
-    if os.environ.get('TG_SILPOM_GRADIENT_DIAGNOSTIC', '1') != '0':
+    if os.environ.get('SILPOM_GRADIENT_DIAGNOSTIC', '1') != '0':
         pose = dict(fixture['views']['exterior'])
         pose['position'] = [pose['position'][0] * 2, pose['position'][1] * 2, pose['position'][2]]
         cases.append(('wide-representations', pose, 'representation-probe'))
@@ -419,7 +422,7 @@ def main():
         cases.append(('painted-lower-facing', fixture['views']['lower-facing'], 'paint-probe'))
     result['view_poses'] = {name: pose for name, pose, _ in cases}
     result['source_sha256'] = {}
-    gem = PROJECT / 'Gems/silpom'
+    gem = silpom_paths.GEM
     for relative in (
         'Assets/Materials/Types/SilPOMMesh/SilPOMMesh.azsli',
         'Assets/Materials/Types/SilPOMMesh/SilPOMMesh_DirectionalLighting.azsli',
@@ -460,8 +463,8 @@ def main():
         'Source/ResolvePass.cpp',
     ):
         result['source_sha256'][relative] = hashlib.sha256((gem / relative).read_bytes()).hexdigest()
-    integration = PROJECT / 'EngineIntegration/O3DE/manifest.json'
-    result['engine_integration_manifest_sha256'] = hashlib.sha256(integration.read_bytes()).hexdigest()
+    import o3de_patches
+    result['o3de_patches'] = o3de_patches.evidence()
     for name, pose, fixture_kind in cases:
         overrides = {}
         if fixture_kind == 'paint-probe':

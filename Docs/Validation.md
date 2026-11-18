@@ -60,7 +60,7 @@ selection alone will not remove the per-heightfield traversal cost.
 - Run `Tests/editor_smoke.py` in a separate Editor process. It creates an unsaved
   wall, restores viewport/background preferences and exits without saving the level.
 - The local run wrote images, six raw GPU timestamp files and `result.json` to
-  `D:/TG/TGProject/user/SilPOMValidation`.
+  `<project>/user/SilPOMValidation`.
 - Build/test logs are in the ignored local `build` directory: `conformance.log`,
   `atom-build-4.log`, `asset-build.log`, and `asset-build-2.log`.
 - The optional Atom intersection shader builds on DX12. Vulkan was disabled for

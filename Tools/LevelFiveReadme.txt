@@ -150,15 +150,15 @@ Reproduce and test
 ------------------
 Build the standalone CMake targets, then with NumPy, Pillow and PyTorch:
 
-  python Tools/relief_appearance.py <TGProject> <Release-DLL-folder> <scratch-output> --queries 16384 --steps 1500 --samples 64
-  python Tools/train_appearance_tail.py <TGProject> <Release-DLL-folder> <scratch-output>/wall.l5app <scratch-tail> --steps 1500
+  python Tools/relief_appearance.py <project> <Release-DLL-folder> <scratch-output> --queries 16384 --steps 1500 --samples 64
+  python Tools/train_appearance_tail.py <project> <Release-DLL-folder> <scratch-output>/wall.l5app <scratch-tail> --steps 1500
 
-Copy scratch-tail/wall.l5app to TGProject/Assets/SilPOMLearned/wall-appearance.l5app.
+Copy scratch-tail/wall.l5app to <project>/Assets/SilPOMLearned/wall-appearance.l5app.
 Asset Processor creates wall-appearance.silpommaterial. The builder verifies
 SHA256 of the original basecolor/normal/roughness/height PNGs and tower sidecar.
 Retrain when those sources change. Runtime/builders do not need PyTorch.
 Large checkpoints, packages, training sets and captures remain in ignored
-scratch/user folders. Only the runtime source encoding belongs in TG assets.
+scratch/user folders. Only the runtime source encoding belongs in the project's assets.
 
 CTest covers existing geometry/visibility/material behavior plus the projected
 bound, viewport scaling, hysteresis, boundary/grazing guards, bundle validation,

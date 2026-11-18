@@ -47,8 +47,8 @@ floating-point values and a projection spanning every cell. It also checks empty
 paint, the ungrouped baseline, dense overlap and the reference/handle caps.
 
 `Tests/decal_spatial_benchmark.py` runs in a dedicated Editor and never saves
-VueLiveLink. Set `TG_SILPOM_ESTIMATOR_OUTPUT` to an evidence directory and run it
-with Editor's `--runpython` argument. Use `TG_PAINT_GROUPING_MODES=original,original`
+VueLiveLink. Set `SILPOM_ESTIMATOR_OUTPUT` to an evidence directory and run it
+with Editor's `--runpython` argument. Use `SILPOM_PAINT_GROUPING_MODES=original,original`
 for the original binary, or `0,1,1,0` for a matched ABBA comparison in one process.
 It retains tower quality settings, uses two fixed gameplay cameras at 1280Ãƒâ€”720
 with 2Ãƒâ€” MSAA, and captures 180 GPU timestamp frames per run after warm-up. An
@@ -64,7 +64,7 @@ Graphics timestamp span includes waits between graphics passes; the reported CPU
 frame period includes waits and is not paired to the delayed GPU query frame.
 These are neither isolated CPU work measurements nor guaranteed frame rates.
 
-The updated shader is supplied in `Integration/O3DE/engine.patch`; its manifest
+The updated shader is supplied in o3de-patches' `engine.patch` (see `Integration/README.md`); its manifest
 hashes and install tests cover LF and CRLF checkouts. Rebuild shader dependencies
 after applying the integration, including generated forward shaders. A local
 engine snapshot excluded from broad project scans can require explicit shader
