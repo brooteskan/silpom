@@ -7,7 +7,7 @@ import math
 from pathlib import Path
 
 NAME = 'SilPOMTowerBenchmark'
-FIXTURE = Path(__file__).resolve().parents[1] / 'Tests/Fixtures/TowerBenchmark'
+FIXTURE = Path(__file__).resolve().parents[1] / 'Tests/Fixtures/TowerBenchmark/Levels' / NAME
 TOWER = 'Assets/SilPOMPlanarAB/IrishFieldstoneTowerOpenShaft/IrishFieldstoneTowerOpenShaft.prefab'
 
 

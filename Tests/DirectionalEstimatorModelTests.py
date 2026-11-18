@@ -52,6 +52,10 @@ def predict(x,light,reach,mode,weights):
             margin=(dot-threshold).max(axis=1);value=sigmoid(-32*margin)
     return np.where(light[:,2]<=0,0,value).astype(np.float32)
 
+def text_sha256(path):
+    # Git may check text out with CRLF or LF; hash the LF form.
+    return hashlib.sha256(path.read_bytes().replace(b'\r\n',b'\n')).hexdigest()
+
 def main():
     # Independent cosine-integral oracle. A narrow normal-centered hard cap
     # blocks sin(radius)^2 of a constant-radiance diffuse hemisphere. The
@@ -75,10 +79,10 @@ def main():
         assert abs((outer-inner)/(2*sigma*np.log(9))-1)<.01,'Angular edge width depends on cap radius'
     fixture=json.loads((ROOT/'Tests/Reference/DirectionalEstimator.json').read_text())
     angular=json.loads((ROOT/'Tests/Reference/AngularEdges.json').read_text())
-    assert hashlib.sha256((ROOT/'Assets/Shaders/SilPOM/AngularEdgeWeights.azsli').read_bytes()).hexdigest()==angular['weights_sha256']
+    assert text_sha256(ROOT/'Assets/Shaders/SilPOM/AngularEdgeWeights.azsli')==angular['weights_sha256']
     np.testing.assert_array_equal(fixture['x'],angular['x'])
     fixture['expected']['5']=angular['expected']
-    assert hashlib.sha256((ROOT/'Assets/Shaders/SilPOM/DirectionalEstimatorWeights.azsli').read_bytes()).hexdigest()==fixture['weights_sha256'],'Frozen neural weights changed'
+    assert text_sha256(ROOT/'Assets/Shaders/SilPOM/DirectionalEstimatorWeights.azsli')==fixture['weights_sha256'],'Frozen neural weights changed'
     weights=read_weights();x=np.asarray(fixture['x'],np.float32);light=np.asarray(fixture['light'],np.float32)
     reach=np.asarray(fixture['reach'],np.float32)
     for mode in KINDS:

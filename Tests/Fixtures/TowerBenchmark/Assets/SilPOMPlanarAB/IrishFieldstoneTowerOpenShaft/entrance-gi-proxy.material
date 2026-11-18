@@ -1,0 +1,7 @@
+{
+  "materialType": "entrance-gi-proxy.materialtype",
+  "materialTypeVersion": 1,
+  "propertyValues": {
+    "proxy.drawDepth": false
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "values": [
+    {
+      "$type": "{5B03C8E6-8CEE-4DA0-A7FA-CD88689DD45B} MeshGroup",
+      "name": "OpenShaftNoLandingsCollision",
+      "id": "{773E844E-B196-4C36-9C59-69A6CD5D8670}",
+      "NodeSelectionList": {
+        "selectedNodes": [
+          "RootNode.Tower_Open_Shaft_Welded"
+        ],
+        "unselectedNodes": []
+      },
+      "export method": 0,
+      "TriangleMeshAssetParams": {
+        "MergeMeshes": true
+      },
+      "rules": {
+        "rules": [
+          {
+            "$type": "CoordinateSystemRule",
+            "targetCoordinateSystem": 1
+          }
+        ]
+      }
+    },
+    {
+      "$type": "{07B356B7-3635-40B5-878A-FAC4EFD5AD86} MeshGroup",
+      "name": "TowerEntranceGiProxy",
+      "id": "{20AA71ED-8FB5-5C12-BE6C-AB7AAC0FADCE}",
+      "nodeSelectionList": {
+        "selectedNodes": [
+          "RootNode.Tower_Open_Shaft_Welded"
+        ],
+        "unselectedNodes": []
+      },
+      "rules": {
+        "rules": [
+          {
+            "$type": "CoordinateSystemRule",
+            "targetCoordinateSystem": 1
+          },
+          {
+            "$type": "MaterialRule"
+          },
+          {
+            "$type": "TangentsRule",
+            "tangentSpace": 1,
+            "tSpaceMethod": 1
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -67,11 +67,103 @@
 #include <AzCore/std/containers/map.h>
 #include <AzCore/std/containers/set.h>
 #include <AzCore/std/parallel/atomic.h>
+#include <AzCore/Settings/SettingsRegistry.h>
+#include <SilPOM/LearnedMaterialAsset.h>
 
 namespace SilPOM
 {
 namespace
 {
+// Trained models and learned materials are project data. The gem never names
+// a project's assets: each project registers the assets its models were
+// trained on under /SilPOM in its own .setreg files. A model with no entry is
+// unavailable and the component reports that instead of guessing.
+constexpr const char* TrainedModelsRegistryRoot = "/SilPOM/TrainedModels";
+constexpr const char* LearnedWallMaterialRegistryRoot = "/SilPOM/LearnedWallMaterial";
+constexpr const char* LearnedBundlesRegistryRoot = "/SilPOM/LearnedBundles";
+
+struct TrainedModelEntry
+{
+    AZStd::string heightAsset; // product path of the height image the model was trained on
+    float scale = 0, reference = 0;
+    AZ::u32 address = 0, width = 0, height = 0, profileId = 0;
+};
+
+bool ReadRegistryString(const AZStd::string& path, AZStd::string& value)
+{
+    auto* registry = AZ::SettingsRegistry::Get();
+    return registry && registry->Get(value, path) && !value.empty();
+}
+
+bool ReadRegistryU32(const AZStd::string& path, AZ::u32& value)
+{
+    AZ::u64 raw = 0;
+    auto* registry = AZ::SettingsRegistry::Get();
+    if (!registry || !registry->Get(raw, path) || raw > AZStd::numeric_limits<AZ::u32>::max()) return false;
+    value = AZ::u32(raw);
+    return true;
+}
+
+bool ReadRegistryFloat(const AZStd::string& path, float& value)
+{
+    double raw = 0;
+    auto* registry = AZ::SettingsRegistry::Get();
+    if (!registry || !registry->Get(raw, path) || !std::isfinite(raw)) return false;
+    value = float(raw);
+    return true;
+}
+
+// Reads /SilPOM/TrainedModels/<model>. Every field is required so a partial
+// entry cannot silently accept an asset the model was not trained on.
+bool FindTrainedModel(AZ::u32 model, TrainedModelEntry& entry)
+{
+    const auto base = AZStd::string::format("%s/%u", TrainedModelsRegistryRoot, model);
+    return ReadRegistryU32(base + "/ProfileId", entry.profileId)
+        && ReadRegistryFloat(base + "/Scale", entry.scale)
+        && ReadRegistryFloat(base + "/Reference", entry.reference)
+        && ReadRegistryU32(base + "/AddressMode", entry.address)
+        && ReadRegistryU32(base + "/Width", entry.width)
+        && ReadRegistryU32(base + "/Height", entry.height);
+}
+
+// Optional per-model height asset. Neural-only visibility requires it.
+bool FindTrainedHeightAsset(AZ::u32 model, AZ::Data::AssetId& id)
+{
+    AZStd::string path;
+    if (!ReadRegistryString(AZStd::string::format("%s/%u/HeightAsset", TrainedModelsRegistryRoot, model), path)) return false;
+    AZ::Data::AssetCatalogRequestBus::BroadcastResult(id, &AZ::Data::AssetCatalogRequests::GetAssetIdByPath,
+        path.c_str(), azrtti_typeid<AZ::RPI::StreamingImageAsset>(), false);
+    return id.IsValid();
+}
+
+// Product path of a learned bundle (.silpommaterial) registered under
+// /SilPOM/LearnedBundles/<key>: LevelFourMaterial, LevelFourShared,
+// LevelFiveAppearance or LevelFiveDepth.
+bool FindLearnedBundle(const char* key, AZ::Data::AssetId& id)
+{
+    AZStd::string path;
+    if (!ReadRegistryString(AZStd::string::format("%s/%s", LearnedBundlesRegistryRoot, key), path)) return false;
+    AZ::Data::AssetCatalogRequestBus::BroadcastResult(id, &AZ::Data::AssetCatalogRequests::GetAssetIdByPath,
+        path.c_str(), azrtti_typeid<LearnedMaterialAsset>(), false);
+    return id.IsValid();
+}
+
+// Product paths of the base color, normal and roughness images the learned
+// wall material was trained from, in that order.
+bool FindLearnedWallMaterialImages(AZ::Data::AssetId (&ids)[3])
+{
+    const char* keys[] = {"BaseColor", "Normal", "Roughness"};
+    for (size_t channel = 0; channel < 3; ++channel)
+    {
+        AZStd::string path;
+        if (!ReadRegistryString(AZStd::string::format("%s/%s", LearnedWallMaterialRegistryRoot, keys[channel]), path)) return false;
+        AZ::Data::AssetCatalogRequestBus::BroadcastResult(ids[channel], &AZ::Data::AssetCatalogRequests::GetAssetIdByPath,
+            path.c_str(), AZ::Data::AssetType::CreateNull(), false);
+        if (!ids[channel].IsValid()) return false;
+    }
+    return true;
+}
+
 AZStd::atomic_uint64_t ReceiverSurfaceRevision{0};
 AZ_CVAR(bool, r_silpomReuseDepthHits, false, nullptr, AZ::ConsoleFunctorFlags::Null,
     "Use the DX12 SilPOM hit buffer in MainPipeline (1x, 2x or 4x).");
@@ -1153,18 +1245,16 @@ void MeshController::ConnectAssets()
     if(m_configuration.m_useLevelFourWallMaterial||m_configuration.m_useLevelFourShared)
     {
         AZ::Data::AssetId id;
-        AZ::Data::AssetCatalogRequestBus::BroadcastResult(id,&AZ::Data::AssetCatalogRequests::GetAssetIdByPath,
-            m_configuration.m_useLevelFourShared?"assets/silpomlearned/wall-shared.silpommaterial":"assets/silpomlearned/wall.silpommaterial",azrtti_typeid<LearnedMaterialAsset>(),false);
-        if(id.IsValid())m_learnedMaterial=AZ::Data::AssetManager::Instance().GetAsset<LearnedMaterialAsset>(id,AZ::Data::AssetLoadBehavior::NoLoad);
+        if(FindLearnedBundle(m_configuration.m_useLevelFourShared?"LevelFourShared":"LevelFourMaterial",id))
+            m_learnedMaterial=AZ::Data::AssetManager::Instance().GetAsset<LearnedMaterialAsset>(id,AZ::Data::AssetLoadBehavior::NoLoad);
         queue(m_learnedMaterial);
     }
     if(m_configuration.m_useLevelFiveProxy)
     {
         AZ::Data::AssetId id;
-        // The two encodings have different source stems and products.
-        AZ::Data::AssetCatalogRequestBus::BroadcastResult(id,&AZ::Data::AssetCatalogRequests::GetAssetIdByPath,
-            m_configuration.m_useLevelFiveDepth?"assets/silpomlearned/wall-depth.silpommaterial":"assets/silpomlearned/wall-appearance.silpommaterial",azrtti_typeid<LearnedMaterialAsset>(),false);
-        if(id.IsValid())m_appearance=AZ::Data::AssetManager::Instance().GetAsset<LearnedMaterialAsset>(id,AZ::Data::AssetLoadBehavior::NoLoad);
+        // The two encodings are separate registered bundles.
+        if(FindLearnedBundle(m_configuration.m_useLevelFiveDepth?"LevelFiveDepth":"LevelFiveAppearance",id))
+            m_appearance=AZ::Data::AssetManager::Instance().GetAsset<LearnedMaterialAsset>(id,AZ::Data::AssetLoadBehavior::NoLoad);
         queue(m_appearance);
     }
     for (auto& binding : m_configuration.m_materials) queue(binding.m_material);
@@ -1340,14 +1430,18 @@ bool MeshController::Prepare()
         {m_status="Level 5A requires neural-only local visibility";return false;}
         if(!std::isfinite(c.m_levelFivePixelBudget)||c.m_levelFivePixelBudget<.05f||c.m_levelFivePixelBudget>4.f)
         {m_status="Level 5A pixel error budget must be 0.05-4 pixels";return false;}
-        if(!m_appearance.IsReady()){m_status=c.m_useLevelFiveDepth?"Process Assets/SilPOMLearned/wall-depth.l5depth before enabling Level 5B":"Process Assets/SilPOMLearned/wall-appearance.l5app before enabling Level 5A";return m_appearance.GetId().IsValid();}
+        if(!m_appearance.IsReady()){m_status=AZStd::string::format("Register and process the %s bundle (%s/%s) before enabling Level %s",
+            c.m_useLevelFiveDepth?"Level 5B depth":"Level 5A appearance",LearnedBundlesRegistryRoot,c.m_useLevelFiveDepth?"LevelFiveDepth":"LevelFiveAppearance",
+            c.m_useLevelFiveDepth?"5B":"5A");return m_appearance.GetId().IsValid();}
         if(!m_appearance->Validate()||memcmp(m_appearance->Header().magic,c.m_useLevelFiveDepth?"SILPDEP5":"SILPAPP5",8))
         {m_status="Invalid Level 5A appearance bundle";return false;}
     }
     if(c.m_useLevelFourWallMaterial||c.m_useLevelFourShared)
     {
         if(c.m_localShadowMethod!=LocalShadowMethod::NeuralOnly){m_status="Level 4A requires neural-only local visibility; select it before enabling material decoding";return false;}
-        if(!m_learnedMaterial.GetId().IsValid()){m_status=c.m_useLevelFourShared?"Process Assets/SilPOMLearned/wall-shared.l4shared before enabling Level 4B":"Process Assets/SilPOMLearned/wall.l4mat before enabling Level 4A";return false;}
+        if(!m_learnedMaterial.GetId().IsValid()){m_status=AZStd::string::format("Register and process the %s bundle (%s/%s) before enabling Level %s",
+            c.m_useLevelFourShared?"Level 4B shared":"Level 4A material",LearnedBundlesRegistryRoot,c.m_useLevelFourShared?"LevelFourShared":"LevelFourMaterial",
+            c.m_useLevelFourShared?"4B":"4A");return false;}
         if(!m_learnedMaterial.IsReady()){m_status="Loading Level 4 material";return true;}
         if(!m_learnedMaterial->Validate()||memcmp(m_learnedMaterial->Header().magic,c.m_useLevelFourShared?"SILPSHR4":"SILPMAT4",8))
         {m_status="Invalid Level 4 material bundle";return false;}
@@ -1530,16 +1624,14 @@ bool MeshController::Prepare()
                 if((c.m_useLevelFourWallMaterial||c.m_useLevelFourShared||c.m_useLevelFiveProxy) && p.m_neuralModel==4)
                 {
                     const char* names[]={"baseColor.textureMap","normal.textureMap","roughness.textureMap"};
-                    const char* files[]={"basecolor.png","normal.png","roughness.png"};
                     const auto layout=binding.m_material->GetMaterialPropertiesLayout();const auto& values=binding.m_material->GetPropertyValues();
-                    decoded=true;
-                    for(size_t channel=0;channel<3;++channel)
+                    AZ::Data::AssetId expected[3];
+                    decoded=FindLearnedWallMaterialImages(expected);
+                    for(size_t channel=0;decoded&&channel<3;++channel)
                     {
-                        const auto index=layout->FindPropertyIndex(AZ::Name(names[channel]));AZ::Data::AssetId expected;
-                        const auto path=AZStd::string::format("assets/silpomplanarab/irishfieldstonetowerwelded/wall/%s.streamingimage",files[channel]);
-                        AZ::Data::AssetCatalogRequestBus::BroadcastResult(expected,&AZ::Data::AssetCatalogRequests::GetAssetIdByPath,path.c_str(),AZ::Data::AssetType::CreateNull(),false);
-                        decoded=decoded && index.IsValid() && values[index.GetIndex()].Is<AZ::Data::Asset<AZ::RPI::ImageAsset>>()
-                            && values[index.GetIndex()].GetValue<AZ::Data::Asset<AZ::RPI::ImageAsset>>().GetId()==expected && expected.IsValid();
+                        const auto index=layout->FindPropertyIndex(AZ::Name(names[channel]));
+                        decoded=index.IsValid() && values[index.GetIndex()].Is<AZ::Data::Asset<AZ::RPI::ImageAsset>>()
+                            && values[index.GetIndex()].GetValue<AZ::Data::Asset<AZ::RPI::ImageAsset>>().GetId()==expected[channel];
                     }
                     if(decoded)
                     {
@@ -1572,37 +1664,24 @@ bool MeshController::Prepare()
                 {
                     if (p.m_neuralModel<4 || p.m_neuralModel>7 || reliefScale<0)
                         return fail("Neural-only visibility has no model for this profile; assign an open-shaft model 4-7 with nonnegative relief");
-                    if(p.m_neuralModel!=4&&static_cast<AZ::u32>(c.m_lightingEstimator)>=2u)
-                        return fail("Selected directional/angular estimator is trained only for wall model 4; unsupported profiles cannot use a different estimator");
-                    if(static_cast<AZ::u32>(c.m_lightingEstimator)>=2u&&(!decoded||!c.m_useLevelFourShared))
+                    const auto profileEstimator=StrictNeuralPolicy::LightingEstimatorForProfile(p.m_neuralModel,static_cast<AZ::u32>(c.m_lightingEstimator));
+                    if(profileEstimator>=2u&&(!decoded||!c.m_useLevelFourShared))
                         return fail("Selected directional/angular estimator requires its canonical wall material and shared features; unsupported materials cannot use a different estimator");
-                    constexpr const char* images[] = {
-                        "assets/silpomplanarab/irishfieldstonetowerwelded/wall/height.png.streamingimage",
-                        "assets/silpomplanarab/irishfieldstonetoweropenshaft/sculpted-stair-silpom/height.png.streamingimage",
-                        "assets/silpomplanarab/irishfieldstonetoweropenshaft/welded-doorway/trim-blocks/height.png.streamingimage",
-                        "assets/silpomplanarab/irishfieldstonetoweropenshaft/welded-doorway/reveal/height.png.streamingimage"};
                     AZ::Data::AssetId expected;
-                    AZ::Data::AssetCatalogRequestBus::BroadcastResult(expected,&AZ::Data::AssetCatalogRequests::GetAssetIdByPath,
-                        images[p.m_neuralModel-4],azrtti_typeid<AZ::RPI::StreamingImageAsset>(),false);
-                    if (!expected.IsValid() || expected!=p.m_height.GetId())
+                    if (!FindTrainedHeightAsset(p.m_neuralModel, expected))
+                        return fail(AZStd::string::format("Neural-only visibility model %u has no registered height asset (%s/%u/HeightAsset)",
+                            p.m_neuralModel, TrainedModelsRegistryRoot, p.m_neuralModel));
+                    if (expected!=p.m_height.GetId())
                         return fail("Neural-only visibility requires its trained height asset; retrain for a different material");
                 }
                 if (requiresTrainedHits)
                 {
-                    struct TrainedProfile { float scale, reference; AZ::u32 address, width, height, profileId; };
-                    constexpr TrainedProfile trained[] = {
-                        {.10f, .05f, 0, 6656, 6144, 1},
-                        {.12f, 32768.f/65535.f, 1, 2176, 1440, 2},
-                        {.045f, 32768.f/65535.f, 1, 1728, 1728, 3},
-                        {.10f, .05f, 0, 6656, 6144, 1},
-                        {.19f, 32768.f/65535.f, 1, 4096, 4096, 2},
-                        {.052f, 32768.f/65535.f, 1, 1728, 1728, 3},
-                        {.10f, .05f, 1, 512, 4096, 4}
-                    };
-                    if (p.m_neuralModel < 1 || p.m_neuralModel > AZ_ARRAY_SIZE(trained)
-                        || p.m_neuralCache.GetId().IsValid())
+                    TrainedModelEntry model;
+                    if (p.m_neuralModel < 1 || p.m_neuralCache.GetId().IsValid())
                         return fail("Assign each displaced profile its matching trained model and no legacy cache");
-                    const auto& model = trained[p.m_neuralModel - 1];
+                    if (!FindTrainedModel(p.m_neuralModel, model))
+                        return fail(AZStd::string::format("Trained model %u is not registered for this project (%s/%u)",
+                            p.m_neuralModel, TrainedModelsRegistryRoot, p.m_neuralModel));
                     if (model.profileId != key.second || std::abs(p.m_scale - model.scale) > 1e-6f
                         || std::abs(p.m_reference - model.reference) > 1e-6f
                         || p.m_addressMode != model.address || desc.m_size.m_width != model.width || desc.m_size.m_height != model.height
