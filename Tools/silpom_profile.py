@@ -168,6 +168,17 @@ def compiled_weights(model, layout=None):
         weights['PhysicalVisibilityThreshold'] = header_scalar('VisibilityClassificationThresholds.azsli',
                                                                f'Visibility{open_shaft}Threshold')
     if model == 0:
+        # Optional visibility networks (no Level 2), when a trained folder has them.
+        try:
+            weights['Visibility'] = {k: header_array('NeuralVisibilityWeights.azsli', 'VisibilityModelZero' + k, n)
+                                     for k, n in VISIBILITY}
+            weights['PhysicalVisibility'] = {k: header_array('NeuralVisibilityPhysicalWeights.azsli',
+                                                             'PhysicalVisibilityModelZero' + k, n) for k, n in VISIBILITY}
+            weights['PhysicalVisibilityThreshold'] = header_scalar('VisibilityClassificationThresholds.azsli',
+                                                                   'VisibilityModelZeroThreshold')
+        except (MissingNetwork, ValueError):
+            for key in ('Visibility', 'PhysicalVisibility', 'PhysicalVisibilityThreshold'):
+                weights.pop(key, None)
         seed = {k: header_array('NeuralTowerWeights.azsli', f'TowerNeural{k}', n) for k, n in SEED}
         seed['OutputBias'] = [header_scalar('NeuralTowerWeights.azsli', 'TowerNeuralOutputBias')]
         weights['Seed'] = seed

@@ -1687,9 +1687,12 @@ bool MeshController::Prepare()
     if (!scene) { m_status = "Waiting for render scene"; return true; }
     m_processor = scene->GetFeatureProcessor<AZ::Render::MeshFeatureProcessorInterface>();
     if (!m_processor) { m_status = "Waiting for MeshFeatureProcessor"; return true; }
-    // Profiles resolved to a trained model 1-7 (model 0 profiles are the seed path).
+    // Profiles resolved to a trained model 1-7 or to a model 0 surface profile:
+    // both run in the DX12 hit passes at the calibrated relief depth. Only a
+    // profile-less model 0 binding (the gem default) keeps the older path.
     const bool requiresTrainedHits = AZStd::any_of(profiles.begin(), profiles.end(),
-        [](const auto& entry) { return !entry.second.m_useBaseMesh && entry.second.m_neuralModel != 0; });
+        [this](const auto& entry) { return !entry.second.m_useBaseMesh
+            && (entry.second.m_neuralModel != 0 || m_profileAssets.contains(entry.first)); });
     if (c.m_useNeuralSeed && m_modelZero.GetId().IsValid() && !m_modelZero.IsReady())
     { m_status = "Loading model 0 networks"; return true; }
     // SilPOM::SurfaceRole of a profile ID; untrained profiles are plain surfaces.
@@ -1701,13 +1704,7 @@ bool MeshController::Prepare()
     const float depthMultiplier = requiresTrainedHits ? c.m_reliefDepthMultiplier : 1.0f;
     if (!std::isfinite(depthMultiplier) || depthMultiplier < 0.0f || depthMultiplier > MeshConfig::MaxReliefDepthMultiplier)
     { m_status = "Relief depth multiplier must be between 0 and 2"; return false; }
-    // A model 0 surface profile's seed and no-march hit networks run in the
-    // same hit passes as the trained models, so they install them too rather
-    // than depending on r_silpomReuseDepthHits.
-    const bool usesModelZeroProfiles = c.m_useNeuralSeed && AZStd::any_of(profiles.begin(), profiles.end(),
-        [this](const auto& entry) { return !entry.second.m_useBaseMesh && entry.second.m_neuralModel == 0
-            && m_profileAssets.contains(entry.first); });
-    const bool reuseDepthHits = InstallHitPasses(*scene, requiresTrainedHits || usesModelZeroProfiles);
+    const bool reuseDepthHits = InstallHitPasses(*scene, requiresTrainedHits);
     const bool neuralVisibilityOnly = c.m_localShadowMethod == LocalShadowMethod::NeuralOnly;
     if((c.m_neuralDirectionalVisibility||c.m_proxyDirectionalResponse)&&!neuralVisibilityOnly)
     {m_status="Learned directional controls require neural-only visibility; they never enable a marcher";return false;}
@@ -1777,6 +1774,9 @@ bool MeshController::Prepare()
     AZStd::map<AZ::u32, Image> depthHeightBounds;
     AZStd::map<AZ::Data::AssetId, Image> heightImages;
     size_t decodedBatches=0;
+    // Batches of the canonical wall model (4), the only one the learned
+    // Level 4/5 wall bundles were trained for.
+    size_t wallModelBatches=0;
     for (AZ::u32 i = 0; i < asset.m_faces.size(); ++i)
     {
         const auto& f = asset.m_faces[i];
@@ -1826,6 +1826,7 @@ bool MeshController::Prepare()
                     const char* names[]={"baseColor.textureMap","normal.textureMap","roughness.textureMap"};
                     const auto layout=binding.m_material->GetMaterialPropertiesLayout();const auto& values=binding.m_material->GetPropertyValues();
                     AZ::Data::AssetId expected[3];
+                    ++wallModelBatches;
                     decoded=FindLearnedWallMaterialImages(expected);
                     for(size_t channel=0;decoded&&channel<3;++channel)
                     {
@@ -1880,9 +1881,11 @@ bool MeshController::Prepare()
                 {
                     const auto trained = m_profileAssets.find(key.second);
                     // Model 0 surface profiles may sit beside trained models
-                    // (seed path per batch); the legacy model 0 cache may not.
-                    if (p.m_neuralCache.GetId().IsValid() || trained == m_profileAssets.end())
-                        return fail("Assign each displaced profile a surface profile (model 0 included) and no model 0 cache");
+                    // (seed path per batch), with their own seed cache; a
+                    // binding's legacy model 0 cache may not.
+                    if (trained == m_profileAssets.end() || (p.m_neuralCache.GetId().IsValid()
+                        && !(p.m_neuralModel == 0 && trained->second->HasCacheLayout())))
+                        return fail("Assign each displaced profile a surface profile (model 0 included) and no legacy model 0 cache");
                     if (desc.m_size.m_width != trained->second->m_width || desc.m_size.m_height != trained->second->m_heightPixels
                         || p.m_tiling != AZ::Vector2(1) || p.m_offset != AZ::Vector2(0))
                         return fail("Trained surface profile does not match its height image, or the profile is tiled/offset");
@@ -2202,7 +2205,7 @@ bool MeshController::Prepare()
                 }
                 candidate->buffers.push_back(buffer); candidate->heights.push_back(height);
                 candidate->neuralSeed |= neuralSeed;
-                if (p.m_neuralModel != 0) ++candidate->trainedModelBatches;
+                if (p.m_neuralModel != 0 || profileAsset != m_profileAssets.end()) ++candidate->trainedModelBatches;
                 if (neuralCache)
                 {
                     candidate->heights.push_back(neuralCache);
@@ -2269,8 +2272,11 @@ bool MeshController::Prepare()
             candidate->packetHandlers.push_back(AZStd::move(handler));
         }
     }
-    if((c.m_useLevelFourWallMaterial||c.m_useLevelFourShared) && !decodedBatches)return fail("Level 4 has no matching fieldstone-wall material; no representation was changed");
-    if(c.m_useLevelFiveProxy&&candidate->proxyBatches.empty())return fail("Level 5A has no matching canonical wall batches");
+    // The wall bundles apply only to model 4 wall batches. A mesh whose wall
+    // uses another model (model 0, say) renders without them; a model 4 wall
+    // whose material does not match is still an error.
+    if((c.m_useLevelFourWallMaterial||c.m_useLevelFourShared) && wallModelBatches && !decodedBatches)return fail("Level 4 has no matching fieldstone-wall material; no representation was changed");
+    if(c.m_useLevelFiveProxy&&wallModelBatches&&candidate->proxyBatches.empty())return fail("Level 5A has no matching canonical wall batches");
     m_pending = AZStd::move(candidate); m_status = "Preparing complete mesh generation"; return false;
 }
 AZ::Vector3 MeshController::GetProxyLodState() const

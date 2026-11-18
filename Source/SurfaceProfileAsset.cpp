@@ -43,9 +43,9 @@ AZStd::vector<float> SurfaceProfileAsset::PackNetworks() const
     const bool estimators = HasEstimator(0) || HasEstimator(1) || HasEstimator(2) || HasEstimator(3);
     AZStd::vector<float> packed(estimators ? EstimatorBufferFloats : NetworkFloats, 0.0f);
     AZStd::copy(m_hitModel.begin(), m_hitModel.end(), packed.begin());
-    if (HasOpenShaftNetworks())
+    if (HasLevelTwo()) AZStd::copy(m_levelTwo.begin(), m_levelTwo.end(), packed.begin() + LevelTwoOffset);
+    if (HasVisibility())
     {
-        AZStd::copy(m_levelTwo.begin(), m_levelTwo.end(), packed.begin() + LevelTwoOffset);
         AZStd::copy(m_visibility.begin(), m_visibility.end(), packed.begin() + VisibilityOffset);
         AZStd::copy(m_physicalVisibility.begin(), m_physicalVisibility.end(), packed.begin() + PhysicalVisibilityOffset);
         packed[PhysicalThresholdOffset] = m_physicalVisibilityThreshold;
@@ -72,14 +72,17 @@ AZStd::string SurfaceProfileAsset::Validate() const
     if (m_addressMode > 1 || static_cast<AZ::u32>(m_role) > 2) return "invalid address mode or role";
     if (m_shaderModel > 7) return "shader model must be 0-7";
     if (m_hitModel.size() != HitModelFloats || !finite(m_hitModel)) return "hit model must have 226 finite weights";
-    // Level 2 and both visibility networks come together, for any role and model.
-    const bool openShaft = HasOpenShaftNetworks();
-    if (openShaft != !m_visibility.empty() || openShaft != !m_physicalVisibility.empty())
-        return "Level 2, visibility and physical visibility networks must be present together";
-    if (openShaft && (m_levelTwo.size() != LevelTwoFloats || m_visibility.size() != VisibilityFloats
-        || m_physicalVisibility.size() != VisibilityFloats || !finite(m_levelTwo) || !finite(m_visibility)
-        || !finite(m_physicalVisibility) || !std::isfinite(m_physicalVisibilityThreshold)))
-        return "invalid Level 2 or visibility networks";
+    // Both visibility networks come together; Level 2 needs them. Any role and
+    // model may carry them (model 0: visibility without Level 2).
+    const bool visibility = HasVisibility();
+    if (visibility != !m_physicalVisibility.empty())
+        return "visibility and physical visibility networks must be present together";
+    if (HasLevelTwo() && !visibility) return "Level 2 needs the visibility networks";
+    if (HasLevelTwo() && (m_levelTwo.size() != LevelTwoFloats || !finite(m_levelTwo)))
+        return "invalid Level 2 network";
+    if (visibility && (m_visibility.size() != VisibilityFloats || m_physicalVisibility.size() != VisibilityFloats
+        || !finite(m_visibility) || !finite(m_physicalVisibility) || !std::isfinite(m_physicalVisibilityThreshold)))
+        return "invalid visibility networks";
     // Model 0 carries its seed network; a seed cache needs its layout.
     if ((m_shaderModel == 0) != HasSeed()) return "model 0 profiles (and only they) need a seed network";
     if (HasSeed() && (m_seed.size() != SeedFloats || !finite(m_seed))) return "seed network must have 65 finite weights";

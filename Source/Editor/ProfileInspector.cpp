@@ -190,9 +190,11 @@ public:
         m_set->addItem("Hit network", "hit");
         m_set->addItem("Hit network, Level 2 and visibility", "full");
         m_set->addItem("Model 0: seed and no-march hit networks", "model0");
+        m_set->addItem("Model 0 with visibility (for neural-only lighting)", "model0vis");
         m_set->setItemData(0, "Predicts where each ray hits the relief; the shader refines and checks it against the height image.", Qt::ToolTipRole);
         m_set->setItemData(1, "Adds a second candidate predictor and neural visibility (needed for neural-only shadows).", Qt::ToolTipRole);
         m_set->setItemData(2, "A seed network (and, for a 6656 x 6144 image, a baked seed cache) and a no-march hit network, trained on this profile ID's faces.", Qt::ToolTipRole);
+        m_set->setItemData(3, "Model 0's networks plus the visibility networks a mesh with neural-only local shadows needs.", Qt::ToolTipRole);
         m_set->setCurrentIndex(trained && (AZ::u32(profile["flags"].toInt()) & SurfaceProfileAsset::LevelTwoFlag) ? 1 : 0);
         form->addRow("Networks", m_set);
         m_quality = new QComboBox(this);
@@ -476,7 +478,8 @@ private:
         const QFileInfo weightsFile(info.dir().filePath(weightsName));
         QFile weightsIn(weightsFile.filePath());
         const QJsonObject weights = weightsIn.open(QIODevice::ReadOnly) ? QJsonDocument::fromJson(weightsIn.readAll()).object() : QJsonObject();
-        const QString networks = weights.contains("Seed") ? "model 0 (seed, no-march hit)"
+        const QString networks = weights.contains("Seed")
+            ? (weights.contains("Visibility") ? "model 0 with visibility" : "model 0 (seed, no-march hit)")
             : weights.contains("LevelTwo") ? "hit, Level 2, visibility" : weights.isEmpty() ? "(weights not written yet)" : "hit";
         const QString origin = profile.contains("Networks") ? "trained for this surface" : "reference networks";
         auto* item = new QTreeWidgetItem(m_list, {info.fileName() + (file == m_current ? "  (current)" : QString()),

@@ -154,7 +154,8 @@ bool ReadWeights(const AZStd::string& path, SurfaceProfileAsset& asset, AZStd::s
             {"OutputBias", 1}}, asset.m_seed, error))
             return false;
         const auto layout = root.FindMember("CacheLayout");
-        if (layout == root.MemberEnd()) return true;
+        if (layout != root.MemberEnd())
+        {
         const auto& value = layout->value;
         const auto tiles = value.IsObject() ? value.FindMember("Tiles") : value.MemberEnd();
         const auto rows = value.IsObject() ? value.FindMember("Rows") : value.MemberEnd();
@@ -171,16 +172,19 @@ bool ReadWeights(const AZStd::string& path, SurfaceProfileAsset& asset, AZStd::s
             if (!rows->value[i].IsUint()) { error = "CacheLayout.Rows must be unsigned words"; return false; }
             asset.m_cacheLayout[2 + i] = rows->value[i].GetUint();
         }
-        return true;
+        }
     }
-    // Level 2 and the visibility networks are optional, for any model and role.
-    if (root.FindMember("LevelTwo") == root.MemberEnd()) return true;
+    // The visibility networks, and Level 2 with them, are optional for any model
+    // and role (model 0 carries visibility without Level 2).
+    if (root.FindMember("LevelTwo") != root.MemberEnd()
+        && !ReadSection(root, "LevelTwo", {{"W0", 24 * 19}, {"B0", 24}, {"W1", 24 * 5}, {"B1", 5}}, asset.m_levelTwo, error))
+        return false;
+    if (root.FindMember("Visibility") == root.MemberEnd()) return true;
     const auto threshold = root.FindMember("PhysicalVisibilityThreshold");
     if (threshold == root.MemberEnd() || !threshold->value.IsNumber()) { error = "missing PhysicalVisibilityThreshold"; return false; }
     asset.m_physicalVisibilityThreshold = float(threshold->value.GetDouble());
     const AZStd::vector<AZStd::pair<const char*, size_t>> visibility{{"W0", 12 * 10}, {"B0", 12}, {"W1", 12}, {"B1", 1}};
-    return ReadSection(root, "LevelTwo", {{"W0", 24 * 19}, {"B0", 24}, {"W1", 24 * 5}, {"B1", 5}}, asset.m_levelTwo, error)
-        && ReadSection(root, "Visibility", visibility, asset.m_visibility, error)
+    return ReadSection(root, "Visibility", visibility, asset.m_visibility, error)
         && ReadSection(root, "PhysicalVisibility", visibility, asset.m_physicalVisibility, error);
 }
 
@@ -238,8 +242,8 @@ void SurfaceProfileBuilder::Activate()
 {
     AssetBuilderSDK::AssetBuilderDesc desc;
     desc.m_name = JobKey;
-    desc.m_version = 6;
-    desc.m_analysisFingerprint = "profile-v6";
+    desc.m_version = 8;
+    desc.m_analysisFingerprint = "profile-v8";
     desc.m_busId = azrtti_typeid<SurfaceProfileBuilder>();
     desc.m_patterns.emplace_back("*.silpomprofile", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
     desc.m_createJobFunction = AZStd::bind(&SurfaceProfileBuilder::CreateJobs, this, AZStd::placeholders::_1, AZStd::placeholders::_2);

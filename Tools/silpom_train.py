@@ -2,7 +2,7 @@
 
   python silpom_train.py --surface SURFACE.silpom.json --profile-id ID
       --height HEIGHT.png --scale METRES --reference R --address repeat|clamp
-      --role Surface|Wall|Opening --networks model0|hit|full
+      --role Surface|Wall|Opening --networks model0|model0vis|hit|full
       --tools TOOLS_DIR --profile OUT.silpomprofile [--work DIR] [--quick]
 
 The rays are cast at the surface's own faces tagged with the profile ID (its
@@ -14,6 +14,8 @@ silpom_visibility libraries.
 Networks:
   model0  model 0's seed network, no-march hit network and, for a 6656 x 6144
           image, its seed cache (train_model_zero.py)
+  model0vis  model 0's networks and both visibility networks (for neural-only
+          lighting; no Level 2)
   hit     the hit network (16 hidden units, checkpoints ranked by solver outcome)
   full    the hit network, Level 2 and both visibility networks
 
@@ -47,7 +49,8 @@ import silpom_profile  # noqa: E402
 # reference networks closest to it.
 SLOTS = {("hit", "Wall"): 1, ("hit", "Surface"): 2, ("hit", "Opening"): 3, ("full", "Wall"): 4,
          ("full", "Surface"): 5, ("full", "Opening"): 6,
-         ("model0", "Surface"): 0, ("model0", "Wall"): 0, ("model0", "Opening"): 0}
+         ("model0", "Surface"): 0, ("model0", "Wall"): 0, ("model0", "Opening"): 0,
+         ("model0vis", "Surface"): 0, ("model0vis", "Wall"): 0, ("model0vis", "Opening"): 0}
 PRESETS = {"full": dict(rays=230000, held=48000, selection=4000, steps=3300, l2_steps=4500,
                         vis_rays=300000, vis_steps=6500, phys_rays=100000, phys_held=20000),
            "quick": dict(rays=40000, held=8000, selection=2000, steps=1200, l2_steps=1200,
@@ -339,10 +342,12 @@ def train_level_two(args, preset, profile, slot, networks, report):
     (networks / "LevelTwo.azsli").write_text(level_two.shader({short: weights}))
 
 
-def train_visibility(args, preset, profile, slot, networks, report):
+def train_visibility(args, preset, profile, slot, networks, report, short=None):
+    """slot selects the CPU evaluator's model (an open-shaft model 4-7; the
+    descriptors and labels do not depend on it); short names the networks."""
     import level_three
     from evaluate_visibility_only import classification, threshold
-    short = silpom_profile.MODELS[slot][2]
+    short = short or silpom_profile.MODELS[slot][2]
     native = level_three.Native(args.tools)
     progress(66, "Visibility: tracing reference visibility")
     q, ids = level_three.requests(profile, preset["vis_rays"], 39913)
@@ -408,7 +413,7 @@ def main():
     cli.add_argument("--reference", type=float, required=True)
     cli.add_argument("--address", choices=("repeat", "clamp"), required=True)
     cli.add_argument("--role", choices=silpom_profile.ROLES, required=True)
-    cli.add_argument("--networks", choices=("model0", "hit", "full"), required=True)
+    cli.add_argument("--networks", choices=("model0", "model0vis", "hit", "full"), required=True)
     cli.add_argument("--tools", type=Path, required=True, help="Folder with the standalone tool libraries")
     cli.add_argument("--profile", type=Path, required=True, help="The .silpomprofile to write")
     cli.add_argument("--work", type=Path)
@@ -445,11 +450,16 @@ def main():
               "role": args.role, "networks": args.networks, "slot_model": slot, "faces": faces,
               "height_size": profile.atlas.tolist(), "preset": "quick" if args.quick else "full"}
     cache = None
-    if args.networks == "model0":
+    if args.networks in ("model0", "model0vis"):
         from train_welded_tower import Profile  # noqa: F401  (load order for train_model_zero)
         _, details = profile.dataset(dll.TraceRays, 20000, 52001, retain_rays=True)
         write_visuals(args.work / "visuals", profile, profile.height, details, faces, profile.surface)
         cache = train_model_zero(args, args.work, networks, report)
+        if args.networks == "model0vis":
+            # Visibility reads only the height along the light ray, so model 0
+            # takes the same networks as the full set (no Level 2: it refines
+            # the trained models' hit network, not model 0's).
+            train_visibility(args, preset, profile, SLOTS[("full", args.role)], networks, report, short="ModelZero")
     else:
         train_hit(args, preset, profile, dll, slot, networks, report)
         if args.networks == "full":
@@ -468,6 +478,10 @@ def main():
     if cache is not None:
         target = folder / (stem + ".seedcache.dds")
         shutil.copy(cache, target)
+        # The texture settings keep it a raw single-mip RGBA16F image.
+        settings = cache.with_name(cache.name + ".assetinfo")
+        if settings.exists():
+            shutil.copy(settings, target.with_name(target.name + ".assetinfo"))
         entry["Cache"] = target.name
     args.profile.write_text(json.dumps(entry, indent=2) + "\n")
     weights = silpom_profile.weights_path(args.profile, entry)

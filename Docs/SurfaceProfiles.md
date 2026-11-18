@@ -95,8 +95,8 @@ surface's own data: the faces of its `.silpom.json` tagged with that ID, their
 height image and calibration. Those default to the mesh's own binding for the
 ID (the prefab, from the Blender export), not to the profile assigned now, and
 can be overridden in the dialog. Choose the role (Surface, Wall or Opening) and the
-networks (a hit network; a hit network with Level 2 and visibility; or model
-0's seed and no-march hit networks), Quick or Full training, the profile file
+networks (a hit network; a hit network with Level 2 and visibility; model
+0's seed and no-march hit networks; or model 0 with visibility), Quick or Full training, the profile file
 (default `profiles/<surface>-<id>.silpomprofile` next to the surface) and where
 to assign it: this entity's *Trained profile override* (an undoable prefab
 edit, made once the Asset Processor has built the profile), every use of the
@@ -104,13 +104,18 @@ surface in its `.silpomprofiles` file (a Blender export of the surface rewrites
 that file from the add-on's assignments), or nowhere. Any role can have any
 network set, model 0 included: its seed and no-march hit networks are trained
 on the profile ID's own faces, and an image without the 6656 x 6144 seed-cache
-format evaluates the seed network per ray. One mesh may mix model 0 profiles
-with trained models 1-7 (each batch runs its own model), and a model 0
-profile installs the DX12 hit passes it needs, as trained profiles do; the
-legacy model 0 seed cache still cannot sit beside trained models. A profile's role and networks are its own:
-the shader model number only selects the network layout (and, for model 0,
-the seed path), and Level 2 and the visibility networks are optional for any
-model.
+format evaluates the seed network per ray. A model 0 surface profile renders
+like a trained one: in the DX12 hit passes, at the calibrated relief depth,
+beside trained models 1-7 on the same mesh (each batch runs its own model),
+with its own seed cache; only a binding's legacy model 0 cache cannot sit
+beside trained models. A mesh with neural-only local shadows needs visibility
+networks on every displaced profile: train model 0 profiles for it with
+*Model 0 with visibility*, which adds the same visibility networks as the full
+set (they read only the height along the light ray) without Level 2. Level 2
+refines the trained models' hit network and needs the visibility networks; the
+visibility networks are optional for any model. A profile's role and networks
+are its own: the shader model number only selects the network layout (and,
+for model 0, the seed path).
 
 Training runs `Tools/silpom_train.py` in the background with a progress bar,
 using the engine's Python (`python/python.cmd`, whose requirements include

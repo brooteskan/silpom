@@ -65,12 +65,13 @@ public:
     AZStd::vector<float>& Estimator(size_t i)
     { return i == 0 ? m_directionalField : i == 1 ? m_angularOccluders4 : i == 2 ? m_angularOccluders8 : m_angularEdges4; }
 
-    bool HasOpenShaftNetworks() const { return !m_levelTwo.empty(); }
+    bool HasLevelTwo() const { return !m_levelTwo.empty(); }
+    bool HasVisibility() const { return !m_visibility.empty(); }
     bool HasSeed() const { return !m_seed.empty(); }
     bool HasCacheLayout() const { return !m_cacheLayout.empty(); }
     AZ::u32 NetworkFlags() const
     {
-        return (HasOpenShaftNetworks() ? LevelTwoFlag | VisibilityFlag : 0u) | (HasSeed() ? SeedFlag : 0u)
+        return (HasLevelTwo() ? LevelTwoFlag : 0u) | (HasVisibility() ? VisibilityFlag : 0u) | (HasSeed() ? SeedFlag : 0u)
             | (HasCacheLayout() ? CacheLayoutFlag : 0u)
             | (HasEstimator(0) ? EstimatorFlag(0) : 0u) | (HasEstimator(1) ? EstimatorFlag(1) : 0u)
             | (HasEstimator(2) ? EstimatorFlag(2) : 0u) | (HasEstimator(3) ? EstimatorFlag(3) : 0u);

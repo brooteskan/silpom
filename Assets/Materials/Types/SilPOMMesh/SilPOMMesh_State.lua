@@ -30,7 +30,9 @@ function Process(context)
         context:GetMaterialPropertyValue_bool("surface.useNeuralCache"))
     -- SilPOM::ReliefMode values 4-8 are the LOD modes (2/4/8 px, shell, 4 px + resolve).
     local mode = context:GetMaterialPropertyValue_uint("surface.reliefMode")
+    -- A trained model, or model 0's seed network (cached or evaluated per ray).
     local hasLodEstimator = context:GetMaterialPropertyValue_bool("surface.useNeuralCache")
+        or context:GetMaterialPropertyValue_bool("surface.useNeuralSeed")
         or context:GetMaterialPropertyValue_uint("surface.neuralModel") ~= 0
     context:SetInternalMaterialPropertyValue_bool("silpomReliefLod", hasLodEstimator and mode >= 4 and mode <= 8)
 end
