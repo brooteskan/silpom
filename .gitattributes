@@ -2,3 +2,4 @@ Tests/Fixtures/TowerBenchmark/**/*.png filter=lfs diff=lfs merge=lfs -text
 Tests/Fixtures/TowerBenchmark/**/*.fbx filter=lfs diff=lfs merge=lfs -text
 Tests/Fixtures/TowerBenchmark/**/*.ico filter=lfs diff=lfs merge=lfs -text
 Tests/Fixtures/TowerBenchmark/**/*.silpom.json filter=lfs diff=lfs merge=lfs -text
+Tests/Fixtures/TowerBenchmark/**/*.bmp filter=lfs diff=lfs merge=lfs -text
