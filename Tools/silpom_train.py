@@ -41,9 +41,12 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import silpom_profile  # noqa: E402
 
-# Network symbol names (Tools/CompiledNetworks) for each role and network set.
-SLOTS = {("hit", "Wall"): 1, ("hit", "Surface"): 2, ("full", "Wall"): 4, ("full", "Surface"): 5,
-         ("full", "Opening"): 6, ("model0", "Surface"): 0}
+# The shader model (and so the Tools/CompiledNetworks symbol names) used for
+# each role and network set. The role itself is the profile's; the model number
+# only selects the network layout and, for the reference comparison, the
+# reference networks closest to it.
+SLOTS = {("hit", "Wall"): 1, ("hit", "Surface"): 2, ("hit", "Opening"): 3, ("full", "Wall"): 4,
+         ("full", "Surface"): 5, ("full", "Opening"): 6, ("model0", "Surface"): 0}
 PRESETS = {"full": dict(rays=230000, held=48000, selection=4000, steps=3300, l2_steps=4500,
                         vis_rays=300000, vis_steps=6500, phys_rays=100000, phys_held=20000),
            "quick": dict(rays=40000, held=8000, selection=2000, steps=1200, l2_steps=1200,
@@ -243,25 +246,49 @@ def train_hit(args, preset, profile, dll, slot, networks, report):
     test, test_details = profile.dataset(dll.TraceRays, preset["held"], 78306, retain_rays=True)
     selection, selection_details = profile.dataset(dll.TraceRays, preset["selection"], 192877, retain_rays=True)
     write_visuals(args.work / "visuals", profile, profile.height, train_details, report["faces"], profile.surface)
-    candidates = []
-    def checkpoint(step, weights):
-        hits, stats = evaluator.evaluate(profile, selection_details, slot, (2, 1, 5.), weights)
-        summary = outcomes(selection, selection_details, hits, stats)
-        candidates.append((checkpoint_rank(summary), step, [w.copy() for w in weights], summary))
-        progress(15 + 30 * step / preset["steps"], f"Hit network step {step}: {summary['uncovered_teacher_hits']} uncovered hits")
-    steps = preset["steps"]
-    fit(train, 7112026, checkpoint=checkpoint, steps=steps,
-        checkpoint_steps=tuple(sorted({max(1, steps * k // 4) for k in (1, 2, 3, 4)})))
-    rank, step, weights, _ = min(candidates, key=lambda c: c[0])
-    hits, stats = evaluator.evaluate(profile, test_details, slot, (2, 1, 5.), weights)
-    report["hit_network"] = {"selected_step": step, "held_out": score(test, weights),
+    # Checkpoints are chosen, and results measured, with the solver budget the
+    # mesh renders with (validation iterations, retries, tolerance multiplier).
+    budget = args.budget
+    steps, rounds = preset["steps"], args.rounds
+    # Each round refits with extra weight on the training rays the previous
+    # round's network left to the solver to miss, fill or get wrong.
+    sampling = np.ones(len(train[0]))
+    candidates, history = [], []
+    for round_index in range(rounds):
+        def checkpoint(step, weights):
+            hits, stats = evaluator.evaluate(profile, selection_details, slot, budget, weights)
+            summary = outcomes(selection, selection_details, hits, stats)
+            candidates.append((checkpoint_rank(summary), round_index, step, [w.copy() for w in weights], summary))
+            done = (round_index + step / steps) / rounds
+            progress(15 + 30 * done, f"Hit network round {round_index + 1}/{rounds}, step {step}: "
+                     f"{summary['uncovered_teacher_hits']} of {summary['teacher_hits']} selection hits uncovered")
+        fit(train, 7112026 + round_index, checkpoint=checkpoint, steps=steps, sample_weights=sampling,
+            checkpoint_steps=tuple(sorted({max(1, steps * k // 4) for k in (1, 2, 3, 4)})))
+        best = min((c for c in candidates if c[1] == round_index), key=lambda c: c[0])
+        if round_index + 1 < rounds:
+            hits, stats = evaluator.evaluate(profile, train_details, slot, budget, best[3])
+            teacher_hit = train[1]
+            refined = stats[:, 2:4].sum(axis=1) > 0
+            depth_bad = np.abs(hits[:, 1] - train_details["teacher"][:, 1]) > .00025
+            hard = (((hits[:, 0] != 1) & teacher_hit) | (stats[:, 7] > 0) | (refined & (~teacher_hit | depth_bad)))
+            sampling = sampling + 2.0 * hard
+            history.append({"round": round_index + 1, "selection": best[4], "hard_training_rays": int(hard.sum())})
+        else:
+            history.append({"round": round_index + 1, "selection": best[4]})
+    rank, chosen_round, step, weights, _ = min(candidates, key=lambda c: c[0])
+    hits, stats = evaluator.evaluate(profile, test_details, slot, budget, weights)
+    reference_hits, reference_stats = evaluator.evaluate(profile, test_details, slot, budget)
+    report["solver_budget"] = list(budget)
+    report["hit_network"] = {"selected_round": chosen_round + 1, "selected_step": step, "rounds": history,
+                             "held_out": score(test, weights),
                              "solver_held_out": outcomes(test, test_details, hits, stats)}
     report["hit_network"]["within_1mm"] = write_errors(args.work / "visuals", "errors.png", profile, profile.height,
                                                        test_details, test, weights, "Trained hit network")
     # The reference networks of the same role, on this surface, for comparison.
     from level_one import load_weights
     reference = load_weights(silpom_profile.SHADERS / silpom_profile.MODELS[slot][0], name)
-    report["reference_hit_network"] = {"model": slot, "held_out": score(test, reference)}
+    report["reference_hit_network"] = {"model": slot, "held_out": score(test, reference),
+                                       "solver_held_out": outcomes(test, test_details, reference_hits, reference_stats)}
     report["reference_hit_network"]["within_1mm"] = write_errors(
         args.work / "visuals", "errors-reference.png", profile, profile.height, test_details, test, reference,
         "Reference network (another image)")
@@ -285,7 +312,7 @@ def train_level_two(args, preset, profile, slot, networks, report):
     candidates = []
     def checkpoint(step, weights):
         level_two.calibrate(native, profile, slot, cal_data, cal_details, weights)
-        hits, stats = native.evaluate2(profile, selection_details, slot, (6, 4, 1), weights)
+        hits, stats = native.evaluate2(profile, selection_details, slot, args.budget, weights)
         summary = outcomes(selection, selection_details, hits, stats)
         candidates.append((level_two.quality_rank(summary), step, [w.copy() for w in weights], summary))
         progress(48 + 17 * step / preset["l2_steps"], f"Level 2 step {step}")
@@ -369,7 +396,14 @@ def main():
     cli.add_argument("--profile", type=Path, required=True, help="The .silpomprofile to write")
     cli.add_argument("--work", type=Path)
     cli.add_argument("--quick", action="store_true", help="Fewer rays and steps, for trying a surface")
+    cli.add_argument("--budget", default="6,4,1", help="Solver budget the mesh renders with: "
+                     "validation iterations, retry cap, tolerance multiplier")
+    cli.add_argument("--rounds", type=int, help="Training rounds, each reweighting the solver's failures "
+                     "(default 3, Quick 2)")
     args = cli.parse_args()
+    iterations, retries, tolerance = args.budget.split(",")
+    args.budget = (int(iterations), int(retries), float(tolerance))
+    args.rounds = args.rounds or (2 if args.quick else 3)
     slot = SLOTS.get((args.networks, args.role))
     if slot is None:
         raise SystemExit(f"No {args.networks} network set exists for the {args.role} role")

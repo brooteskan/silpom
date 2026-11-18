@@ -190,8 +190,8 @@ public:
         m_set->setCurrentIndex(trained && (AZ::u32(profile["flags"].toInt()) & SurfaceProfileAsset::LevelTwoFlag) ? 1 : 0);
         form->addRow("Networks", m_set);
         m_quality = new QComboBox(this);
-        m_quality->addItem("Quick (fewer rays and steps; minutes)", true);
-        m_quality->addItem("Full (230,000 rays; can take an hour)", false);
+        m_quality->addItem("Quick (fewer rays and steps; seconds)", true);
+        m_quality->addItem("Full (230,000 rays, 3 rounds; about a minute)", false);
         form->addRow("Training", m_quality);
         const QString existing = SourceOfProduct(entry["product"].toString());
         const QFileInfo surface(sidecar);
@@ -255,8 +255,6 @@ private:
     {
         const QString set = m_set->currentData().toString(), role = m_role->currentData().toString();
         if (set == "model0" && role != "Surface") { if (why) *why = "Model 0 profiles are plain surfaces; choose the Surface role."; return false; }
-        if (set == "hit" && role == "Opening")
-        { if (why) *why = "Openings use the full network set: their coverage relies on the Level 2 and visibility networks."; return false; }
         return true;
     }
     void Update()
@@ -375,6 +373,15 @@ private:
             lines << QString("In the solver: %1 of %2 hits uncovered, %3 base-plane fills.")
                 .arg(solver["uncovered_teacher_hits"].toInt()).arg(solver["teacher_hits"].toInt()).arg(solver["fallback_fills"].toInt());
             lines << "<b>Reference network (trained for another image), on these rays:</b> " + hit(r["reference_hit_network"].toObject());
+            const QJsonObject reference = r["reference_hit_network"].toObject()["solver_held_out"].toObject();
+            if (!reference.isEmpty())
+                lines << QString("Reference in the solver: %1 of %2 hits uncovered, %3 base-plane fills.")
+                    .arg(reference["uncovered_teacher_hits"].toInt()).arg(reference["teacher_hits"].toInt()).arg(reference["fallback_fills"].toInt());
+            const QJsonArray budget = r["solver_budget"].toArray();
+            if (budget.size() == 3)
+                lines << QString("Solver budget: %1 iterations, %2 retries, tolerance x%3 (the mesh's). Round %4 of %5 selected.")
+                    .arg(budget[0].toInt()).arg(budget[1].toInt()).arg(Number(budget[2].toDouble()))
+                    .arg(r["hit_network"].toObject()["selected_round"].toInt()).arg(r["hit_network"].toObject()["rounds"].toArray().size());
         }
         if (r.contains("physical_visibility"))
         {
@@ -612,7 +619,12 @@ private:
         const AZ::EntityId mesh = m_mesh;
         connect(dialog, &QDialog::accepted, this, [this, dialog, mesh]
         {
-            StartJob(dialog->Python(), dialog->Arguments(), dialog->Profile(), dialog->ProfileId(), dialog->Assignment(), mesh);
+            // Select and measure the networks with the solver budget this mesh renders with.
+            QStringList arguments = dialog->Arguments();
+            const QJsonArray budget = QJsonDocument::fromJson(m_report.toUtf8()).object()["validation"].toArray();
+            if (budget.size() == 3)
+                arguments << "--budget" << QString("%1,%2,%3").arg(budget[0].toInt()).arg(budget[1].toInt()).arg(Number(budget[2].toDouble()));
+            StartJob(dialog->Python(), arguments, dialog->Profile(), dialog->ProfileId(), dialog->Assignment(), mesh);
         });
         dialog->open();
     }

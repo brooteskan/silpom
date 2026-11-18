@@ -304,7 +304,8 @@ def main(argv=None):
         if not Path(folder).is_dir():
             raise ValueError(f'trained networks folder not found: {folder}')
     expected = compiled_weights(profile['ShaderModel'], layout_for(profile))
-    if MODELS[profile['ShaderModel']][3] != profile['Role']:
+    # Reference networks keep the role they were trained for; trained ones take any role.
+    if not TRAINED and MODELS[profile['ShaderModel']][3] != profile['Role']:
         raise ValueError(f'{args.profile}: ShaderModel {profile["ShaderModel"]} is a {MODELS[profile["ShaderModel"]][3]} model')
     if args.command == 'weights':
         output = args.output or weights_path(args.profile, profile)

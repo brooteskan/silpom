@@ -1081,6 +1081,11 @@ AZStd::string MeshController::GetProfileReportJson() const
     json.StartObject();
     string("status", GetStatus());
     string("surface", hint(c.m_surface));
+    // The solver budget this mesh renders with, so training can select for it.
+    json.Key("validation");
+    json.StartArray();
+    json.Uint(c.m_validationIterations); json.Uint(c.m_validationRetryCap); json.Double(c.m_validationToleranceMultiplier);
+    json.EndArray();
     AZStd::map<AZ::u32, AZStd::string> surfaceProfiles;
     if (c.m_surface.IsReady())
         for (const auto& profile : c.m_surface->m_profiles) surfaceProfiles[profile.m_id] = profile.m_profileProduct;
@@ -1851,8 +1856,10 @@ bool MeshController::Prepare()
                 const auto& desc = p.m_height->GetImageDescriptor();
                 if (neuralVisibilityOnly)
                 {
-                    if (p.m_neuralModel<4 || p.m_neuralModel>7 || reliefScale<0)
-                        return fail("Neural-only visibility has no model for this profile; assign an open-shaft model 4-7 with nonnegative relief");
+                    const auto visibilityProfile = m_profileAssets.find(key.second);
+                    if (visibilityProfile == m_profileAssets.end() || !visibilityProfile->second.IsReady()
+                        || !(visibilityProfile->second->NetworkFlags() & SurfaceProfileAsset::VisibilityFlag) || reliefScale<0)
+                        return fail("Neural-only visibility needs a trained profile with visibility networks (Train profile: hit network, Level 2 and visibility) and nonnegative relief");
                     const auto profileEstimator=StrictNeuralPolicy::LightingEstimatorForProfile(p.m_neuralModel,static_cast<AZ::u32>(c.m_lightingEstimator));
                     if(profileEstimator>=2u&&(!decoded||!c.m_useLevelFourShared))
                         return fail("Selected directional/angular estimator requires its canonical wall material and shared features; unsupported materials cannot use a different estimator");

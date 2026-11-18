@@ -72,14 +72,14 @@ AZStd::string SurfaceProfileAsset::Validate() const
     if (m_addressMode > 1 || static_cast<AZ::u32>(m_role) > 2) return "invalid address mode or role";
     if (m_shaderModel > 7) return "shader model must be 0-7";
     if (m_hitModel.size() != HitModelFloats || !finite(m_hitModel)) return "hit model must have 226 finite weights";
-    // Models 4-7 also carry Level 2 and both visibility networks.
-    const bool openShaft = m_shaderModel >= 4;
-    if (openShaft != HasOpenShaftNetworks()) return "open-shaft profiles (models 4-7) need Level 2 and visibility networks";
+    // Level 2 and both visibility networks come together, for any role and model.
+    const bool openShaft = HasOpenShaftNetworks();
+    if (openShaft != !m_visibility.empty() || openShaft != !m_physicalVisibility.empty())
+        return "Level 2, visibility and physical visibility networks must be present together";
     if (openShaft && (m_levelTwo.size() != LevelTwoFloats || m_visibility.size() != VisibilityFloats
         || m_physicalVisibility.size() != VisibilityFloats || !finite(m_levelTwo) || !finite(m_visibility)
         || !finite(m_physicalVisibility) || !std::isfinite(m_physicalVisibilityThreshold)))
         return "invalid Level 2 or visibility networks";
-    if (!openShaft && (!m_visibility.empty() || !m_physicalVisibility.empty())) return "unexpected visibility networks";
     // Model 0 carries its seed network; a seed cache needs its layout.
     if ((m_shaderModel == 0) != HasSeed()) return "model 0 profiles (and only they) need a seed network";
     if (HasSeed() && (m_seed.size() != SeedFloats || !finite(m_seed))) return "seed network must have 65 finite weights";

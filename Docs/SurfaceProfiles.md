@@ -100,15 +100,28 @@ networks (a hit network; a hit network with Level 2 and visibility; or model
 to assign it: this entity's *Trained profile override* (an undoable prefab
 edit, made once the Asset Processor has built the profile), every use of the
 surface in its `.silpomprofiles` file (a Blender export of the surface rewrites
-that file from the add-on's assignments), or nowhere. Openings need the full
-network set; model 0 is a Surface.
+that file from the add-on's assignments), or nowhere. Any role can have either
+network set; model 0 is a Surface. A profile's role and networks are its own:
+the shader model number only selects the network layout (and, for model 0,
+the seed path), and Level 2 and the visibility networks are optional for any
+model.
 
 Training runs `Tools/silpom_train.py` in the background with a progress bar,
 using the engine's Python (`python/python.cmd`, whose requirements include
 NumPy and Pillow) and the training libraries `silpom_welded_teacher`,
 `silpom_level_one` and `silpom_visibility`, which the `SilPOM.Editor` target
 builds next to the Editor. `SILPOM_PYTHON` and `SILPOM_TOOLS_BIN` override
-them. Labels and fitting run on the CPU. It writes, next to the profile,
+them. Labels and fitting run on the CPU.
+
+The hit network is trained in rounds (3 for Full, 2 for Quick): after each
+round the CPU solver runs on the training rays with that round's network, and
+the rays it misses, fills or gets wrong count three times as much in the next
+round. Checkpoints are selected, and results measured, with the solver budget
+the mesh renders with (its validation iterations, retry cap and tolerance
+multiplier). On the tower's trim at its budget, three rounds took a minute and
+beat the reference network trained for that atlas: 46.9% of held-out hits
+seeded within 1 mm (reference 43.0%), 2160 of 27138 hits left to the solver to
+miss (reference 2254). It writes, next to the profile,
 `<name>.training/` (the manifest, `networks/*.azsli`, `report.json` and
 images) and then the profile, whose `Networks` names that folder, and its
 weights. Networks the folder lacks are not taken from the tower references:

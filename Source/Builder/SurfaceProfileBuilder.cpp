@@ -173,7 +173,8 @@ bool ReadWeights(const AZStd::string& path, SurfaceProfileAsset& asset, AZStd::s
         }
         return true;
     }
-    if (asset.m_shaderModel < 4) return true;
+    // Level 2 and the visibility networks are optional, for any model and role.
+    if (root.FindMember("LevelTwo") == root.MemberEnd()) return true;
     const auto threshold = root.FindMember("PhysicalVisibilityThreshold");
     if (threshold == root.MemberEnd() || !threshold->value.IsNumber()) { error = "missing PhysicalVisibilityThreshold"; return false; }
     asset.m_physicalVisibilityThreshold = float(threshold->value.GetDouble());
@@ -237,8 +238,8 @@ void SurfaceProfileBuilder::Activate()
 {
     AssetBuilderSDK::AssetBuilderDesc desc;
     desc.m_name = JobKey;
-    desc.m_version = 5;
-    desc.m_analysisFingerprint = "profile-v5";
+    desc.m_version = 6;
+    desc.m_analysisFingerprint = "profile-v6";
     desc.m_busId = azrtti_typeid<SurfaceProfileBuilder>();
     desc.m_patterns.emplace_back("*.silpomprofile", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
     desc.m_createJobFunction = AZStd::bind(&SurfaceProfileBuilder::CreateJobs, this, AZStd::placeholders::_1, AZStd::placeholders::_2);
