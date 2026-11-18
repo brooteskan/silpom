@@ -1,0 +1,48 @@
+{
+  "description": "Opaque stone for the tower entrance ray-tracing proxy. The raster shader is disabled.",
+  "version": 1,
+  "shaders": [
+    {
+      "file": "Shaders/Depth/DepthPass.shader",
+      "tag": "depth"
+    }
+  ],
+  "propertyLayout": {
+    "propertyGroups": [
+      {
+        "name": "proxy",
+        "properties": [
+          {
+            "name": "drawDepth",
+            "type": "Bool",
+            "defaultValue": false,
+            "connection": {
+              "type": "ShaderEnabled",
+              "name": "depth"
+            }
+          }
+        ]
+      },
+      {
+        "name": "baseColor",
+        "properties": [
+          {
+            "name": "color",
+            "type": "Color",
+            "defaultValue": [
+              0.24,
+              0.22,
+              0.19,
+              1.0
+            ]
+          },
+          {
+            "name": "factor",
+            "type": "Float",
+            "defaultValue": 1.0
+          }
+        ]
+      }
+    ]
+  }
+}

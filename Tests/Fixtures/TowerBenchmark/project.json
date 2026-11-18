@@ -1,0 +1,49 @@
+{
+    "project_name": "SilPOMTowerTest",
+    "version": "1.0.0",
+    "project_id": "{E81FB3B1-BB44-4B35-81FC-CA0537F72FBA}",
+    "origin": "https://github.com/brooteskan/silpom",
+    "license": "MIT",
+    "display_name": "SilPOM Tower Test",
+    "summary": "Self-contained test project for the SilPOM gem: the tower test level, its assets and its training data.",
+    "canonical_tags": [
+        "Project"
+    ],
+    "user_tags": [
+        "SilPOMTowerTest"
+    ],
+    "icon_path": "preview.png",
+    "engine": "o3de",
+    "external_subdirectories": [
+        "Gem",
+        "../../.."
+    ],
+    "restricted": "SilPOMTowerTest",
+    "gem_names": [
+        "SilPOMTowerTest",
+        "SilPOM",
+        "Atom",
+        "AudioSystem",
+        "CameraFramework",
+        "DebugDraw",
+        "DiffuseProbeGrid",
+        "EditorPythonBindings",
+        "EMotionFX",
+        "GameState",
+        "ImGui",
+        "LandscapeCanvas",
+        "LyShine",
+        "MiniAudio",
+        "PhysX5",
+        "PrimitiveAssets",
+        "PrefabBuilder",
+        "SaveData",
+        "ScriptCanvasPhysics",
+        "ScriptEvents",
+        "StartingPointInput",
+        "TextureAtlas",
+        "WhiteBox",
+        "RemoteTools"
+    ],
+    "license_url": "https://opensource.org/licenses/MIT"
+}

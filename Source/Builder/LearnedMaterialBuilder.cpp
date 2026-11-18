@@ -4,12 +4,89 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContextConstants.inl>
 #include <AzCore/Serialization/Utils.h>
+#include <AzCore/Serialization/Json/JsonUtils.h>
 #include <AzCore/Utils/Utils.h>
 #include <AzCore/IO/Path/Path.h>
 #include <AzCore/std/functional.h>
 #include <openssl/sha.h>
 namespace SilPOM
 {
+namespace
+{
+// A learned bundle names the files it was trained from in a sidecar next to
+// it: <bundle>.sources, e.g. wall.l4mat.sources. Paths are relative to the
+// bundle's folder, so the bundle and its sources can live in any project.
+//
+// {
+//     "Material": ["basecolor.png", "normal.png", "roughness.png"],
+//     "Training": ["height.png", "surface.silpom.json"]
+// }
+//
+// "Material" is required and hashed for every bundle. "Training" is hashed
+// after it for bundles that are not SILPMAT4 (Level 5 bundles). The order in
+// each list is the order the trainer hashed the files in.
+struct BundleSources
+{
+    AZStd::vector<AZStd::string> material, training;
+};
+
+AZStd::string SidecarPath(const AZStd::string& bundlePath)
+{
+    return bundlePath + ".sources";
+}
+
+bool ReadPathList(const rapidjson::Value& root, const char* key, const AZ::IO::Path& folder, bool required,
+    AZStd::vector<AZStd::string>& out, AZStd::string& error)
+{
+    const auto member = root.FindMember(key);
+    if (member == root.MemberEnd())
+    {
+        if (required) error = AZStd::string::format("missing \"%s\" list", key);
+        return !required;
+    }
+    if (!member->value.IsArray() || member->value.Empty())
+    {
+        error = AZStd::string::format("\"%s\" must be a non-empty list of paths", key);
+        return false;
+    }
+    for (const auto& entry : member->value.GetArray())
+    {
+        if (!entry.IsString())
+        {
+            error = AZStd::string::format("\"%s\" entries must be strings", key);
+            return false;
+        }
+        const AZ::IO::Path relative(entry.GetString());
+        if (relative.IsAbsolute())
+        {
+            error = AZStd::string::format("\"%s\" paths must be relative to the bundle folder", key);
+            return false;
+        }
+        out.push_back((folder / relative).LexicallyNormal().String());
+    }
+    return true;
+}
+
+bool ReadBundleSources(const AZStd::string& bundlePath, BundleSources& sources, AZStd::string& error)
+{
+    const auto sidecar = SidecarPath(bundlePath);
+    auto document = AZ::JsonSerializationUtils::ReadJsonFile(sidecar);
+    if (!document.IsSuccess())
+    {
+        error = AZStd::string::format("cannot read %s: %s", sidecar.c_str(), document.GetError().c_str());
+        return false;
+    }
+    const auto& root = document.GetValue();
+    if (!root.IsObject())
+    {
+        error = AZStd::string::format("%s must contain a JSON object", sidecar.c_str());
+        return false;
+    }
+    const auto folder = AZ::IO::Path(bundlePath).ParentPath();
+    return ReadPathList(root, "Material", folder, true, sources.material, error)
+        && ReadPathList(root, "Training", folder, false, sources.training, error);
+}
+}
 void LearnedMaterialBuilder::Reflect(AZ::ReflectContext* c)
 {
     if(auto* sc=azrtti_cast<AZ::SerializeContext*>(c))sc->Class<LearnedMaterialBuilder,AZ::Component>()->Version(1)
@@ -17,8 +94,8 @@ void LearnedMaterialBuilder::Reflect(AZ::ReflectContext* c)
 }
 void LearnedMaterialBuilder::Activate()
 {
-    AssetBuilderSDK::AssetBuilderDesc d;d.m_name="SilPOM learned material";d.m_version=4;
-    d.m_analysisFingerprint="material-v4-shared-visibility-bounded-depth";d.m_busId=azrtti_typeid<LearnedMaterialBuilder>();
+    AssetBuilderSDK::AssetBuilderDesc d;d.m_name="SilPOM learned material";d.m_version=5;
+    d.m_analysisFingerprint="material-v5-sidecar-sources";d.m_busId=azrtti_typeid<LearnedMaterialBuilder>();
     d.m_patterns.emplace_back("*.l4mat",AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
     d.m_patterns.emplace_back("*.l5app",AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
     d.m_patterns.emplace_back("*.l4shared",AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
@@ -30,13 +107,17 @@ void LearnedMaterialBuilder::Activate()
 void LearnedMaterialBuilder::Deactivate(){BusDisconnect();}
 void LearnedMaterialBuilder::CreateJobs(const AssetBuilderSDK::CreateJobsRequest& q,AssetBuilderSDK::CreateJobsResponse& r)
 {
-    for(const char* file:{"basecolor.png","normal.png","roughness.png"})
-        r.m_sourceFileDependencyList.emplace_back((AZ::IO::Path(AZ::Utils::GetProjectPath())/"Assets/SilPOMPlanarAB/IrishFieldstoneTowerWelded/wall"/file).String(),AZ::Uuid::CreateNull());
-    if(AZ::IO::Path(q.m_sourceFile).Extension()!=".l4mat")
+    const auto bundle=(AZ::IO::Path(q.m_watchFolder)/q.m_sourceFile).LexicallyNormal().String();
+    // Reprocess when the sidecar changes, and when any listed source changes.
+    r.m_sourceFileDependencyList.emplace_back(SidecarPath(bundle),AZ::Uuid::CreateNull());
+    BundleSources sources;AZStd::string error;
+    if(!ReadBundleSources(bundle,sources,error))
     {
-        r.m_sourceFileDependencyList.emplace_back((AZ::IO::Path(AZ::Utils::GetProjectPath())/"Assets/SilPOMPlanarAB/IrishFieldstoneTowerWelded/wall/height.png").String(),AZ::Uuid::CreateNull());
-        r.m_sourceFileDependencyList.emplace_back((AZ::IO::Path(AZ::Utils::GetProjectPath())/"Assets/SilPOMPlanarAB/IrishFieldstoneTowerOpenShaft/tower-open-shaft-no-landings-silpom.silpom.json").String(),AZ::Uuid::CreateNull());
+        AZ_Error("SilPOM",false,"Learned bundle %s: %s",q.m_sourceFile.c_str(),error.c_str());
+        r.m_result=AssetBuilderSDK::CreateJobsResultCode::Failed;return;
     }
+    for(const auto& file:sources.material)r.m_sourceFileDependencyList.emplace_back(file,AZ::Uuid::CreateNull());
+    for(const auto& file:sources.training)r.m_sourceFileDependencyList.emplace_back(file,AZ::Uuid::CreateNull());
     for(const auto& p:q.m_enabledPlatforms){AssetBuilderSDK::JobDescriptor j;j.m_jobKey="SilPOM learned material";j.SetPlatformIdentifier(p.m_identifier.c_str());j.m_failOnError=true;r.m_createJobOutputs.push_back(j);}
     r.m_result=AssetBuilderSDK::CreateJobsResultCode::Success;
 }
@@ -46,25 +127,23 @@ void LearnedMaterialBuilder::ProcessJob(const AssetBuilderSDK::ProcessJobRequest
     auto bytes=AZ::Utils::ReadFile(q.m_fullPath);if(!bytes.IsSuccess())return;
     LearnedMaterialAsset asset;asset.m_bytes.assign(bytes.GetValue().begin(),bytes.GetValue().end());
     if(!asset.Validate()){AZ_Error("SilPOM",false,"Invalid learned material bundle");return;}
+    BundleSources sources;AZStd::string error;
+    if(!ReadBundleSources(q.m_fullPath,sources,error)){AZ_Error("SilPOM",false,"Learned bundle %s: %s",q.m_sourceFile.c_str(),error.c_str());return;}
     AZStd::string original;
-    for(const char* file:{"basecolor.png","normal.png","roughness.png"})
+    auto append=[&original](const AZStd::string& file)
     {
-        auto data=AZ::Utils::ReadFile((AZ::IO::Path(AZ::Utils::GetProjectPath())/"Assets/SilPOMPlanarAB/IrishFieldstoneTowerWelded/wall"/file).String());
-        if(!data.IsSuccess()){AZ_Error("SilPOM",false,"Learned wall material source is unavailable");return;}
-        original+=data.GetValue();
-    }
+        auto data=AZ::Utils::ReadFile(file);
+        if(!data.IsSuccess()){AZ_Error("SilPOM",false,"Learned bundle source is unavailable: %s",file.c_str());return false;}
+        original+=data.GetValue();return true;
+    };
+    for(const auto& file:sources.material)if(!append(file))return;
     if(memcmp(asset.Header().magic,"SILPMAT4",8))
     {
-        for(const char* file:{"Assets/SilPOMPlanarAB/IrishFieldstoneTowerWelded/wall/height.png",
-            "Assets/SilPOMPlanarAB/IrishFieldstoneTowerOpenShaft/tower-open-shaft-no-landings-silpom.silpom.json"})
-        {
-            auto data=AZ::Utils::ReadFile((AZ::IO::Path(AZ::Utils::GetProjectPath())/file).String());
-            if(!data.IsSuccess()){AZ_Error("SilPOM",false,"Level 5 training source is unavailable");return;}
-            original+=data.GetValue();
-        }
+        if(sources.training.empty()){AZ_Error("SilPOM",false,"Level 5 bundle %s needs a \"Training\" list in its .sources sidecar",q.m_sourceFile.c_str());return;}
+        for(const auto& file:sources.training)if(!append(file))return;
     }
     unsigned char sourceHash[32];SHA256(reinterpret_cast<const unsigned char*>(original.data()),original.size(),sourceHash);
-    if(memcmp(sourceHash,asset.Header().sourceHash,32)){AZ_Error("SilPOM",false,"Wall training source changed; retrain the learned bundle");return;}
+    if(memcmp(sourceHash,asset.Header().sourceHash,32)){AZ_Error("SilPOM",false,"Training sources changed; retrain the learned bundle");return;}
     unsigned char hash[32];SHA256(asset.m_bytes.data(),asset.m_bytes.size(),hash);
     for(auto b:hash)asset.m_generation+=AZStd::string::format("%02x",b);
     const auto output=(AZ::IO::Path(q.m_tempDirPath)/(AZ::IO::Path(q.m_sourceFile).Stem().String()+".silpommaterial")).String();

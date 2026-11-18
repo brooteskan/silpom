@@ -106,7 +106,7 @@ def main():
         reference='continuous FP64 cells; repeat; four reaches; receiver-footprint fraction, not uncertainty',
         formula='max_k((dot(L,A)-c)/sqrt(max(1-c*c,1e-6))/sigma); sigmoid(-max)',benchmark_performed=False)
     header(model,args.output/'AngularEdgeWeights.azsli')
-    result['weights_sha256']=sha(args.output/'AngularEdgeWeights.azsli')
+    result['weights_sha256']=hashlib.sha256((args.output/'AngularEdgeWeights.azsli').read_bytes().replace(b'\r\n',b'\n')).hexdigest()  # LF form, as the tests hash it
     (args.output/'quality.json').write_text(json.dumps(result,indent=2)+'\n')
     # Independent Torch receiver queries freeze interpolation and near-horizon
     # behavior for the NumPy parser and actual shipping GPU evaluator tests.

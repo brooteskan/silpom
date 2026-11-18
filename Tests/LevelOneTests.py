@@ -131,9 +131,8 @@ class LevelOne(unittest.TestCase):
 
     def test_captured_reveal_multiple_roots(self):
         fixture = json.loads((Path(__file__).parent / "Fixtures/level_one_reveal_rays.json").read_text())
-        height_path = Path(__file__).resolve().parents[4] / fixture["height"]
-        if not height_path.exists():
-            self.skipTest("Tower source height map is outside the standalone gem checkout")
+        # The height map ships with the gem's tower test level.
+        height_path = Path(__file__).resolve().parent / "Fixtures" / fixture["height"]
         self.assertEqual(hashlib.sha256(height_path.read_bytes()).hexdigest(),fixture["height_sha256"])
         image=np.asarray(Image.open(height_path),dtype=np.float32)/65535
         for case in fixture["cases"]:

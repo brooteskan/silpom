@@ -1,0 +1,3302 @@
+{
+    "ContainerEntity": {
+        "Id": "ContainerEntity",
+        "Name": "Irish Fieldstone Tower (Open Shaft Prefab)",
+        "Components": {
+            "EditorLockComponent": {
+                "$type": "EditorLockComponent",
+                "Id": 2936813998101419801
+            },
+            "EditorPrefabComponent": {
+                "$type": "EditorPrefabComponent",
+                "Id": 7209691501234674591
+            },
+            "EditorVisibilityComponent": {
+                "$type": "EditorVisibilityComponent",
+                "Id": 4966842763290180056
+            },
+            "TransformComponent": {
+                "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                "Id": 7514983163252731191,
+                "Parent Entity": ""
+            }
+        }
+    },
+    "Entities": {
+        "BlenderLight_f77cc8dbe87557e8ba4099121240915a": {
+            "Id": "BlenderLight_f77cc8dbe87557e8ba4099121240915a",
+            "Name": "Tower daylight | South | recessed.005",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 6797674485365557438
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 14574634441040152341
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 7782947583305270338
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 6091171062831861660
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 297688122107511200
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 5556227988238189003
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 11415209044332136081
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 18002499498688005334
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            -0.061279,
+                            -1.507256,
+                            5.083971
+                        ],
+                        "Rotate": [
+                            89.999524,
+                            94.628453,
+                            0.00048
+                        ]
+                    },
+                    "Id": 1319665868090133174
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Controller": {
+                        "Configuration": {
+                            "Intensity": 1.0,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 2.0,
+                            "LightEmitsBothDirections": false,
+                            "Affects GI": false,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    false,
+                                    false,
+                                    false,
+                                    true,
+                                    false
+                                ]
+                            },
+                            "LightType": 4
+                        }
+                    },
+                    "Id": 2327129599366480159
+                },
+                "EditorQuadShapeComponent": {
+                    "Visible": false,
+                    "Id": 11765668469307228350,
+                    "$type": "{E8E60770-40E9-426F-B134-3964BF8BDD84} LmbrCentral::EditorQuadShapeComponent",
+                    "QuadShape": {
+                        "Configuration": {
+                            "Width": 0.253485,
+                            "Height": 1.237701
+                        }
+                    }
+                }
+            }
+        },
+        "BlenderLight_425a8a813ca45fb2a85520f695b077e1": {
+            "Id": "BlenderLight_425a8a813ca45fb2a85520f695b077e1",
+            "Name": "Tower daylight | South | recessed.006",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 2896827793233626638
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 13286598962142462286
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 6911831703201660935
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 7466864682455681744
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 5310567206796938367
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 10056301775133363127
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 17469916757437924503
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 17213084059374206999
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            -0.061279,
+                            0.024339,
+                            25.987488
+                        ],
+                        "Rotate": [
+                            -4.628876,
+                            0.774733,
+                            90.062731
+                        ]
+                    },
+                    "Id": 225026396738110501
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Controller": {
+                        "Configuration": {
+                            "Intensity": 1.0,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 2.0,
+                            "LightEmitsBothDirections": false,
+                            "Affects GI": false,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    false,
+                                    false,
+                                    false,
+                                    true,
+                                    false
+                                ]
+                            },
+                            "LightType": 4
+                        }
+                    },
+                    "Id": 8287015399015991206
+                },
+                "EditorQuadShapeComponent": {
+                    "Visible": false,
+                    "Id": 6322371317247592148,
+                    "$type": "{E8E60770-40E9-426F-B134-3964BF8BDD84} LmbrCentral::EditorQuadShapeComponent",
+                    "QuadShape": {
+                        "Configuration": {
+                            "Width": 0.253485,
+                            "Height": 1.2377
+                        }
+                    }
+                }
+            }
+        },
+        "UpperEastWindowDiffuseProbeGrid": {
+            "Id": "UpperEastWindowDiffuseProbeGrid",
+            "Name": "Tower | East upper window Diffuse Probe Grid",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 11748488872794152062
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 708800754585591268
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 6919571705294248512
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 12722359907466106292
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 13631515876941585345
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 5884837992902188673,
+                    "IsEditorOnly": true
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 8073038465340758244
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 6687814364031636892
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 5700125195057256261,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            2.66421,
+                            -3e-05,
+                            21.665
+                        ],
+                        "Rotate": [
+                            0.0,
+                            0.0,
+                            -90
+                        ]
+                    }
+                },
+                "EditorBoxShapeComponent": {
+                    "$type": "EditorBoxShapeComponent",
+                    "Id": 11364819287152743736,
+                    "DisplayFilled": false,
+                    "BoxShape": {
+                        "Configuration": {
+                            "Dimensions": [
+                                0.4497,
+                                1.0445,
+                                1.4784
+                            ],
+                            "IsFilled": false
+                        }
+                    }
+                },
+                "AZ::Render::EditorDiffuseProbeGridComponent": {
+                    "$type": "AZ::Render::EditorDiffuseProbeGridComponent",
+                    "Id": 11295188323118961503,
+                    "probeSpacingX": 0.2142,
+                    "probeSpacingY": 0.2548,
+                    "probeSpacingZ": 0.3606,
+                    "ambientMultiplier": 0.65,
+                    "edgeBlendIbl": true,
+                    "numRaysPerProbe": 0,
+                    "frameUpdateCount": 4,
+                    "editorMode": 0,
+                    "runtimeMode": 1,
+                    "Controller": {
+                        "Configuration": {
+                            "Extents": [
+                                0.4497,
+                                1.0445,
+                                1.4784
+                            ],
+                            "ProbeSpacing": [
+                                0.2142,
+                                0.2548,
+                                0.3606
+                            ],
+                            "AmbientMultiplier": 0.65,
+                            "EdgeBlendIbl": true,
+                            "NumRaysPerProbe": 0,
+                            "FrameUpdateCount": 4,
+                            "EditorMode": 0,
+                            "RuntimeMode": 1
+                        }
+                    }
+                }
+            }
+        },
+        "StairNortheastWindowDiffuseProbeGrid": {
+            "Id": "StairNortheastWindowDiffuseProbeGrid",
+            "Name": "Tower | Northeast stair window Diffuse Probe Grid",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 17954303568641609880
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 13371654602577698416
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 6862512851235790673
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 3754285243266782196
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 12304499622571629777
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 3542235606382564208,
+                    "IsEditorOnly": true
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 1603078518979123722
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 12885641725339852509
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 14826240364566306720,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            2.02162,
+                            2.0216,
+                            15.24478
+                        ],
+                        "Rotate": [
+                            0.0,
+                            0.0,
+                            -45
+                        ]
+                    }
+                },
+                "EditorBoxShapeComponent": {
+                    "$type": "EditorBoxShapeComponent",
+                    "Id": 12519921314497059935,
+                    "DisplayFilled": false,
+                    "BoxShape": {
+                        "Configuration": {
+                            "Dimensions": [
+                                0.4833,
+                                1.3559,
+                                0.8612
+                            ],
+                            "IsFilled": false
+                        }
+                    }
+                },
+                "AZ::Render::EditorDiffuseProbeGridComponent": {
+                    "$type": "AZ::Render::EditorDiffuseProbeGridComponent",
+                    "Id": 13017225227193899247,
+                    "probeSpacingX": 0.2302,
+                    "probeSpacingY": 0.3307,
+                    "probeSpacingZ": 0.2778,
+                    "ambientMultiplier": 0.65,
+                    "edgeBlendIbl": true,
+                    "numRaysPerProbe": 0,
+                    "frameUpdateCount": 4,
+                    "editorMode": 0,
+                    "runtimeMode": 1,
+                    "Controller": {
+                        "Configuration": {
+                            "Extents": [
+                                0.4833,
+                                1.3559,
+                                0.8612
+                            ],
+                            "ProbeSpacing": [
+                                0.2302,
+                                0.3307,
+                                0.2778
+                            ],
+                            "AmbientMultiplier": 0.65,
+                            "EdgeBlendIbl": true,
+                            "NumRaysPerProbe": 0,
+                            "FrameUpdateCount": 4,
+                            "EditorMode": 0,
+                            "RuntimeMode": 1
+                        }
+                    }
+                }
+            }
+        },
+        "UpperNorthWindowDiffuseProbeGrid": {
+            "Id": "UpperNorthWindowDiffuseProbeGrid",
+            "Name": "Tower | North upper window Diffuse Probe Grid",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 10958007269977642614
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 16306384588544627730
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 4842139673434411958
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 4025473454438503499
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 15262395236147024218
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 17557934615697183711,
+                    "IsEditorOnly": true
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 3359036367493028875
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 8462637113833444374
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 11062894257521973774,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            3e-05,
+                            2.7225,
+                            19.84269
+                        ],
+                        "Rotate": [
+                            0.0,
+                            0.0,
+                            0
+                        ]
+                    }
+                },
+                "EditorBoxShapeComponent": {
+                    "$type": "EditorBoxShapeComponent",
+                    "Id": 12439705440276471604,
+                    "DisplayFilled": false,
+                    "BoxShape": {
+                        "Configuration": {
+                            "Dimensions": [
+                                0.4645,
+                                1.1383,
+                                1.4784
+                            ],
+                            "IsFilled": false
+                        }
+                    }
+                },
+                "AZ::Render::EditorDiffuseProbeGridComponent": {
+                    "$type": "AZ::Render::EditorDiffuseProbeGridComponent",
+                    "Id": 11042920861376077019,
+                    "probeSpacingX": 0.2211,
+                    "probeSpacingY": 0.2776,
+                    "probeSpacingZ": 0.3606,
+                    "ambientMultiplier": 0.65,
+                    "edgeBlendIbl": true,
+                    "numRaysPerProbe": 0,
+                    "frameUpdateCount": 4,
+                    "editorMode": 0,
+                    "runtimeMode": 1,
+                    "Controller": {
+                        "Configuration": {
+                            "Extents": [
+                                0.4645,
+                                1.1383,
+                                1.4784
+                            ],
+                            "ProbeSpacing": [
+                                0.2211,
+                                0.2776,
+                                0.3606
+                            ],
+                            "AmbientMultiplier": 0.65,
+                            "EdgeBlendIbl": true,
+                            "NumRaysPerProbe": 0,
+                            "FrameUpdateCount": 4,
+                            "EditorMode": 0,
+                            "RuntimeMode": 1
+                        }
+                    }
+                }
+            }
+        },
+        "StairNorthwestWindowDiffuseProbeGrid": {
+            "Id": "StairNorthwestWindowDiffuseProbeGrid",
+            "Name": "Tower | Northwest stair window Diffuse Probe Grid",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 5388835407179372026
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 17129286146052806031
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 323823911240620664
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 12829598736022196641
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 2462597235635803807
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 6839447999941794220,
+                    "IsEditorOnly": true
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 15447744673226251093
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 16997009194812331979
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 6052874002958275285,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            -2.00034,
+                            2.00037,
+                            16.25034
+                        ],
+                        "Rotate": [
+                            0.0,
+                            0.0,
+                            45
+                        ]
+                    }
+                },
+                "EditorBoxShapeComponent": {
+                    "$type": "EditorBoxShapeComponent",
+                    "Id": 15205714341666050367,
+                    "DisplayFilled": false,
+                    "BoxShape": {
+                        "Configuration": {
+                            "Dimensions": [
+                                0.4829,
+                                1.3085,
+                                0.9746
+                            ],
+                            "IsFilled": false
+                        }
+                    }
+                },
+                "AZ::Render::EditorDiffuseProbeGridComponent": {
+                    "$type": "AZ::Render::EditorDiffuseProbeGridComponent",
+                    "Id": 5059529955558838818,
+                    "probeSpacingX": 0.2299,
+                    "probeSpacingY": 0.3191,
+                    "probeSpacingZ": 0.3144,
+                    "ambientMultiplier": 0.65,
+                    "edgeBlendIbl": true,
+                    "numRaysPerProbe": 0,
+                    "frameUpdateCount": 4,
+                    "editorMode": 0,
+                    "runtimeMode": 1,
+                    "Controller": {
+                        "Configuration": {
+                            "Extents": [
+                                0.4829,
+                                1.3085,
+                                0.9746
+                            ],
+                            "ProbeSpacing": [
+                                0.2299,
+                                0.3191,
+                                0.3144
+                            ],
+                            "AmbientMultiplier": 0.65,
+                            "EdgeBlendIbl": true,
+                            "NumRaysPerProbe": 0,
+                            "FrameUpdateCount": 4,
+                            "EditorMode": 0,
+                            "RuntimeMode": 1
+                        }
+                    }
+                }
+            }
+        },
+        "UpperWestWindowDiffuseProbeGrid": {
+            "Id": "UpperWestWindowDiffuseProbeGrid",
+            "Name": "Tower | West upper window Diffuse Probe Grid",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 14993487998090501108
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 17330180985994435106
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 17051750967494401676
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 8246896837052813810
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 12154864775319870302
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 16719200645143220965,
+                    "IsEditorOnly": true
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 5199803224758507896
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 14932901636294529417
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 1998497969560899642,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            -2.69014,
+                            3e-05,
+                            20.85428
+                        ],
+                        "Rotate": [
+                            0.0,
+                            0.0,
+                            90
+                        ]
+                    }
+                },
+                "EditorBoxShapeComponent": {
+                    "$type": "EditorBoxShapeComponent",
+                    "Id": 15063931608285928344,
+                    "DisplayFilled": false,
+                    "BoxShape": {
+                        "Configuration": {
+                            "Dimensions": [
+                                0.4562,
+                                1.0863,
+                                1.4784
+                            ],
+                            "IsFilled": false
+                        }
+                    }
+                },
+                "AZ::Render::EditorDiffuseProbeGridComponent": {
+                    "$type": "AZ::Render::EditorDiffuseProbeGridComponent",
+                    "Id": 8871555044008287913,
+                    "probeSpacingX": 0.2173,
+                    "probeSpacingY": 0.2649,
+                    "probeSpacingZ": 0.3606,
+                    "ambientMultiplier": 0.65,
+                    "edgeBlendIbl": true,
+                    "numRaysPerProbe": 0,
+                    "frameUpdateCount": 4,
+                    "editorMode": 0,
+                    "runtimeMode": 1,
+                    "Controller": {
+                        "Configuration": {
+                            "Extents": [
+                                0.4562,
+                                1.0863,
+                                1.4784
+                            ],
+                            "ProbeSpacing": [
+                                0.2173,
+                                0.2649,
+                                0.3606
+                            ],
+                            "AmbientMultiplier": 0.65,
+                            "EdgeBlendIbl": true,
+                            "NumRaysPerProbe": 0,
+                            "FrameUpdateCount": 4,
+                            "EditorMode": 0,
+                            "RuntimeMode": 1
+                        }
+                    }
+                }
+            }
+        },
+        "UpperSouthWindowDiffuseProbeGrid": {
+            "Id": "UpperSouthWindowDiffuseProbeGrid",
+            "Name": "Tower | South upper window Diffuse Probe Grid",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 10568663280054983580
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 12412510092134078579
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 10983933020020563347
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 3594098618529043733
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 2277338942059666781
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 9729799889280718006,
+                    "IsEditorOnly": true
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 7510025838359830169
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 12914908460601139106
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 3488069308035979695,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            -3e-05,
+                            -2.6646,
+                            21.65274
+                        ],
+                        "Rotate": [
+                            0.0,
+                            0.0,
+                            180
+                        ]
+                    }
+                },
+                "EditorBoxShapeComponent": {
+                    "$type": "EditorBoxShapeComponent",
+                    "Id": 4099030966365477160,
+                    "DisplayFilled": false,
+                    "BoxShape": {
+                        "Configuration": {
+                            "Dimensions": [
+                                0.4498,
+                                1.0452,
+                                1.4784
+                            ],
+                            "IsFilled": false
+                        }
+                    }
+                },
+                "AZ::Render::EditorDiffuseProbeGridComponent": {
+                    "$type": "AZ::Render::EditorDiffuseProbeGridComponent",
+                    "Id": 10842892316563364639,
+                    "probeSpacingX": 0.2142,
+                    "probeSpacingY": 0.2549,
+                    "probeSpacingZ": 0.3606,
+                    "ambientMultiplier": 0.65,
+                    "edgeBlendIbl": true,
+                    "numRaysPerProbe": 0,
+                    "frameUpdateCount": 4,
+                    "editorMode": 0,
+                    "runtimeMode": 1,
+                    "Controller": {
+                        "Configuration": {
+                            "Extents": [
+                                0.4498,
+                                1.0452,
+                                1.4784
+                            ],
+                            "ProbeSpacing": [
+                                0.2142,
+                                0.2549,
+                                0.3606
+                            ],
+                            "AmbientMultiplier": 0.65,
+                            "EdgeBlendIbl": true,
+                            "NumRaysPerProbe": 0,
+                            "FrameUpdateCount": 4,
+                            "EditorMode": 0,
+                            "RuntimeMode": 1
+                        }
+                    }
+                }
+            }
+        },
+        "StairSoutheastWindowDiffuseProbeGrid": {
+            "Id": "StairSoutheastWindowDiffuseProbeGrid",
+            "Name": "Tower | Southeast stair window Diffuse Probe Grid",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 2990326780481396710
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 3592300359397366693
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 8613557377159551685
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 12420490814889156349
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 9245152654695030736
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 3754262895819905497,
+                    "IsEditorOnly": true
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 11414595164623821647
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 5364401815325465922
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 12266560684230860586,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            2.13411,
+                            -2.13412,
+                            10.25554
+                        ],
+                        "Rotate": [
+                            0.0,
+                            0.0,
+                            225
+                        ]
+                    }
+                },
+                "EditorBoxShapeComponent": {
+                    "$type": "EditorBoxShapeComponent",
+                    "Id": 15243471470518820651,
+                    "DisplayFilled": false,
+                    "BoxShape": {
+                        "Configuration": {
+                            "Dimensions": [
+                                0.5152,
+                                1.6107,
+                                0.8234
+                            ],
+                            "IsFilled": false
+                        }
+                    }
+                },
+                "AZ::Render::EditorDiffuseProbeGridComponent": {
+                    "$type": "AZ::Render::EditorDiffuseProbeGridComponent",
+                    "Id": 11689254873819733424,
+                    "probeSpacingX": 0.2454,
+                    "probeSpacingY": 0.3929,
+                    "probeSpacingZ": 0.2656,
+                    "ambientMultiplier": 0.65,
+                    "edgeBlendIbl": true,
+                    "numRaysPerProbe": 0,
+                    "frameUpdateCount": 4,
+                    "editorMode": 0,
+                    "runtimeMode": 1,
+                    "Controller": {
+                        "Configuration": {
+                            "Extents": [
+                                0.5152,
+                                1.6107,
+                                0.8234
+                            ],
+                            "ProbeSpacing": [
+                                0.2454,
+                                0.3929,
+                                0.2656
+                            ],
+                            "AmbientMultiplier": 0.65,
+                            "EdgeBlendIbl": true,
+                            "NumRaysPerProbe": 0,
+                            "FrameUpdateCount": 4,
+                            "EditorMode": 0,
+                            "RuntimeMode": 1
+                        }
+                    }
+                }
+            }
+        },
+        "EntranceDiffuseProbeGrid": {
+            "Id": "EntranceDiffuseProbeGrid",
+            "Name": "Tower | Entrance Diffuse Probe Grid",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 482885443756708111
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 18338315631386711520
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 2020118203851561415
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 18130221642458618506
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 205633179800654128
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 8015282060460055011,
+                    "IsEditorOnly": true
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 7925854242504201278
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 13176795332878358451
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 14173058055898354395,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            0.0,
+                            -3.18,
+                            5.1
+                        ]
+                    }
+                },
+                "EditorBoxShapeComponent": {
+                    "$type": "EditorBoxShapeComponent",
+                    "Id": 3010152480895949274,
+                    "DisplayFilled": false,
+                    "BoxShape": {
+                        "Configuration": {
+                            "Dimensions": [
+                                1.85,
+                                2.9,
+                                2.8
+                            ],
+                            "IsFilled": false
+                        }
+                    }
+                },
+                "AZ::Render::EditorDiffuseProbeGridComponent": {
+                    "$type": "AZ::Render::EditorDiffuseProbeGridComponent",
+                    "Id": 11628168119504688197,
+                    "probeSpacingX": 0.45,
+                    "probeSpacingY": 0.7,
+                    "probeSpacingZ": 0.68,
+                    "ambientMultiplier": 0.65,
+                    "edgeBlendIbl": true,
+                    "numRaysPerProbe": 0,
+                    "frameUpdateCount": 4,
+                    "editorMode": 0,
+                    "runtimeMode": 1,
+                    "Controller": {
+                        "Configuration": {
+                            "Extents": [
+                                1.85,
+                                2.9,
+                                2.8
+                            ],
+                            "ProbeSpacing": [
+                                0.45,
+                                0.7,
+                                0.68
+                            ],
+                            "AmbientMultiplier": 0.65,
+                            "EdgeBlendIbl": true,
+                            "NumRaysPerProbe": 0,
+                            "FrameUpdateCount": 4,
+                            "EditorMode": 0,
+                            "RuntimeMode": 1
+                        }
+                    }
+                }
+            }
+        },
+        "EntranceGiRayProxy": {
+            "Id": "EntranceGiRayProxy",
+            "Name": "Tower | Entrance GI Ray-Tracing Proxy",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 12530417258350530750
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 10004708945591359056
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 16155224072019661182
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 4434108220677838860
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 13466157482534131101
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 4192696216835675666,
+                    "IsEditorOnly": true
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 15961745367815508716
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 18308058485870186619
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 5155701763545848507,
+                    "Parent Entity": "TowerMesh"
+                },
+                "AZ::Render::EditorMeshComponent": {
+                    "$type": "AZ::Render::EditorMeshComponent",
+                    "Id": 18250724056160230663,
+                    "Controller": {
+                        "Configuration": {
+                            "ModelAsset": {
+                                "assetId": {
+                                    "guid": "{CC6E26F3-F972-562E-AE93-32D25168EC9E}",
+                                    "subId": 281723053
+                                },
+                                "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/towerentrancegiproxy.fbx.azmodel"
+                            },
+                            "IsRayTracingEnabled": true,
+                            "ExcludeFromReflectionCubeMaps": true
+                        }
+                    }
+                },
+                "EditorMaterialComponent": {
+                    "$type": "EditorMaterialComponent",
+                    "Id": 2776727626156235826,
+                    "Controller": {
+                        "Configuration": {
+                            "materials": {
+                                "{}": {
+                                    "MaterialAsset": {
+                                        "assetId": {
+                                            "guid": "{E1BFE819-FD89-5736-867D-0B7FCD69AA19}"
+                                        },
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/entrance-gi-proxy.azmaterial",
+                                        "loadBehavior": "QueueLoad"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "BlenderLight_ce3c56e02ac456499dd7a6103ba67cc1": {
+            "Id": "BlenderLight_ce3c56e02ac456499dd7a6103ba67cc1",
+            "Name": "Tower daylight | South | recessed.001",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 14630433494955280602
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 8644492598395945736
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 17280994400197101001
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 8282651139378662321
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 6746762801727227936
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 1868319497856959071
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 7396749241976178135
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 1691107279903343231
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            1.200652,
+                            -1.22688,
+                            10.234329
+                        ],
+                        "Rotate": [
+                            -89.057293,
+                            -46.515187,
+                            1.773841
+                        ]
+                    },
+                    "Id": 6797565010089167058
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Controller": {
+                        "Configuration": {
+                            "Intensity": 1.0,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 2.0,
+                            "LightEmitsBothDirections": false,
+                            "Affects GI": false,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    false,
+                                    false,
+                                    false,
+                                    true,
+                                    false
+                                ]
+                            },
+                            "LightType": 4
+                        }
+                    },
+                    "Id": 15621217336768482578
+                },
+                "EditorQuadShapeComponent": {
+                    "Visible": false,
+                    "Id": 11639585377514835479,
+                    "$type": "{E8E60770-40E9-426F-B134-3964BF8BDD84} LmbrCentral::EditorQuadShapeComponent",
+                    "QuadShape": {
+                        "Configuration": {
+                            "Width": 0.244425,
+                            "Height": 1.445799
+                        }
+                    }
+                }
+            }
+        },
+        "BlenderLight_dd1920a807fd5f168909852eae2e0af0": {
+            "Id": "BlenderLight_dd1920a807fd5f168909852eae2e0af0",
+            "Name": "Tower daylight | South | recessed.002",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 10619757712703572187
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 7953514959780466036
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 2826491621506631479
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 7897946763937139099
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 14944543611899693158
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 16630156675817883974
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 15658560640941639578
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 1652444444222311958
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            1.324449,
+                            1.280866,
+                            15.351084
+                        ],
+                        "Rotate": [
+                            -90.87247,
+                            -138.035282,
+                            0.506405
+                        ]
+                    },
+                    "Id": 16099209009938976540
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Controller": {
+                        "Configuration": {
+                            "Intensity": 1.0,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 2.0,
+                            "LightEmitsBothDirections": false,
+                            "Affects GI": false,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    false,
+                                    false,
+                                    false,
+                                    true,
+                                    false
+                                ]
+                            },
+                            "LightType": 4
+                        }
+                    },
+                    "Id": 10110528322746272871
+                },
+                "EditorQuadShapeComponent": {
+                    "Visible": false,
+                    "Id": 10287129681984963818,
+                    "$type": "{E8E60770-40E9-426F-B134-3964BF8BDD84} LmbrCentral::EditorQuadShapeComponent",
+                    "QuadShape": {
+                        "Configuration": {
+                            "Width": 0.244425,
+                            "Height": 1.445799
+                        }
+                    }
+                }
+            }
+        },
+        "BlenderLight_296829b720e3562aaa6b45feadd5050f": {
+            "Id": "BlenderLight_296829b720e3562aaa6b45feadd5050f",
+            "Name": "Tower daylight | South | recessed.003",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 9464323003601928728
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 3195725684834323008
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 913163265812349699
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 15338392655634515683
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 681464627075501475
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 3200358553264081335
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 2567055103482283820
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 9498402155635689669
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            -1.145168,
+                            1.211914,
+                            16.246962
+                        ],
+                        "Rotate": [
+                            -90.936565,
+                            133.842092,
+                            1.765354
+                        ]
+                    },
+                    "Id": 11874628458060860281
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Controller": {
+                        "Configuration": {
+                            "Intensity": 1.0,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 2.0,
+                            "LightEmitsBothDirections": false,
+                            "Affects GI": false,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    false,
+                                    false,
+                                    false,
+                                    true,
+                                    false
+                                ]
+                            },
+                            "LightType": 4
+                        }
+                    },
+                    "Id": 15565548895545542311
+                },
+                "EditorQuadShapeComponent": {
+                    "Visible": false,
+                    "Id": 7406578071015345378,
+                    "$type": "{E8E60770-40E9-426F-B134-3964BF8BDD84} LmbrCentral::EditorQuadShapeComponent",
+                    "QuadShape": {
+                        "Configuration": {
+                            "Width": 0.244425,
+                            "Height": 1.445799
+                        }
+                    }
+                }
+            }
+        },
+        "BlenderLight_e2fc23c99c1657a395568c90a5a67d61": {
+            "Id": "BlenderLight_e2fc23c99c1657a395568c90a5a67d61",
+            "Name": "Tower daylight | South | recessed.004",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 4566772337091561040
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 618496877010831472
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 17734152388848731043
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 17863502245952113088
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 12320077203433014136
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 16854592121897830919
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 13188568129823328091
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 2036421987099689736
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            -0.017827,
+                            -4.276093,
+                            4.962139
+                        ],
+                        "Rotate": [
+                            -89.344741,
+                            8.099415,
+                            0.997502
+                        ]
+                    },
+                    "Id": 4352722169443468574
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Controller": {
+                        "Configuration": {
+                            "Intensity": 1.0,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 2.0,
+                            "LightEmitsBothDirections": false,
+                            "Affects GI": false,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    false,
+                                    false,
+                                    false,
+                                    true,
+                                    false
+                                ]
+                            },
+                            "LightType": 4
+                        }
+                    },
+                    "Id": 10464859080467301142
+                },
+                "EditorQuadShapeComponent": {
+                    "Visible": false,
+                    "Id": 17595863390596973018,
+                    "$type": "{E8E60770-40E9-426F-B134-3964BF8BDD84} LmbrCentral::EditorQuadShapeComponent",
+                    "QuadShape": {
+                        "Configuration": {
+                            "Width": 0.718652,
+                            "Height": 1.614884
+                        }
+                    }
+                }
+            }
+        },
+        "UpperEastWindowTrimFill": {
+            "Id": "UpperEastWindowTrimFill",
+            "Name": "Tower | East upper window trim fill",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 4413571162175085000
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 4413571162175085001
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 4413571162175085002
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 4413571162175085003
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 4413571162175085004
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 4413571162175085005
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 4413571162175085006
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 4413571162175085007
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 4413571162175085008,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            1.12,
+                            0.0,
+                            21.67
+                        ],
+                        "Rotate": [
+                            -0.0,
+                            90.0,
+                            0.0
+                        ]
+                    }
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Id": 4413571162175085009,
+                    "Controller": {
+                        "Configuration": {
+                            "LightType": 2,
+                            "Color": [
+                                0.82,
+                                0.9,
+                                1.0,
+                                1.0
+                            ],
+                            "Intensity": 0.24,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 1.8,
+                            "EnableShutters": true,
+                            "InnerShutterAngleDegrees": 20.0,
+                            "OuterShutterAngleDegrees": 72.0,
+                            "Enable Shadow": false,
+                            "LightEmitsBothDirections": false,
+                            "Affects GI": false,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    false,
+                                    false,
+                                    false,
+                                    true,
+                                    false
+                                ]
+                            }
+                        }
+                    }
+                },
+                "EditorDiskShapeComponent": {
+                    "$type": "EditorDiskShapeComponent",
+                    "Id": 4413571162175085010,
+                    "Visible": false,
+                    "DiskShape": {
+                        "Configuration": {
+                            "Radius": 0.18
+                        }
+                    }
+                }
+            }
+        },
+        "UpperSouthWindowTrimFill": {
+            "Id": "UpperSouthWindowTrimFill",
+            "Name": "Tower | South upper window trim fill",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 4413571162175085100
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 4413571162175085101
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 4413571162175085102
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 4413571162175085103
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 4413571162175085104
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 4413571162175085105
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 4413571162175085106
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 4413571162175085107
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 4413571162175085108,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            0.0,
+                            -1.12,
+                            21.66
+                        ],
+                        "Rotate": [
+                            90.0,
+                            0.0,
+                            0.0
+                        ]
+                    }
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Id": 4413571162175085109,
+                    "Controller": {
+                        "Configuration": {
+                            "LightType": 2,
+                            "Color": [
+                                0.84,
+                                0.92,
+                                1.0,
+                                1.0
+                            ],
+                            "Intensity": 0.27,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 1.8,
+                            "EnableShutters": true,
+                            "InnerShutterAngleDegrees": 20.0,
+                            "OuterShutterAngleDegrees": 72.0,
+                            "Enable Shadow": false,
+                            "LightEmitsBothDirections": false,
+                            "Affects GI": false,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    false,
+                                    false,
+                                    false,
+                                    true,
+                                    false
+                                ]
+                            }
+                        }
+                    }
+                },
+                "EditorDiskShapeComponent": {
+                    "$type": "EditorDiskShapeComponent",
+                    "Id": 4413571162175085110,
+                    "Visible": false,
+                    "DiskShape": {
+                        "Configuration": {
+                            "Radius": 0.18
+                        }
+                    }
+                }
+            }
+        },
+        "UpperWestWindowTrimFill": {
+            "Id": "UpperWestWindowTrimFill",
+            "Name": "Tower | West upper window trim fill",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 4413571162175085200
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 4413571162175085201
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 4413571162175085202
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 4413571162175085203
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 4413571162175085204
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 4413571162175085205
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 4413571162175085206
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 4413571162175085207
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 4413571162175085208,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            -1.12,
+                            0.0,
+                            20.86
+                        ],
+                        "Rotate": [
+                            -0.0,
+                            -90.0,
+                            0.0
+                        ]
+                    }
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Id": 4413571162175085209,
+                    "Controller": {
+                        "Configuration": {
+                            "LightType": 2,
+                            "Color": [
+                                1.0,
+                                0.94,
+                                0.85,
+                                1.0
+                            ],
+                            "Intensity": 0.22,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 1.8,
+                            "EnableShutters": true,
+                            "InnerShutterAngleDegrees": 20.0,
+                            "OuterShutterAngleDegrees": 72.0,
+                            "Enable Shadow": false,
+                            "LightEmitsBothDirections": false,
+                            "Affects GI": false,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    false,
+                                    false,
+                                    false,
+                                    true,
+                                    false
+                                ]
+                            }
+                        }
+                    }
+                },
+                "EditorDiskShapeComponent": {
+                    "$type": "EditorDiskShapeComponent",
+                    "Id": 4413571162175085210,
+                    "Visible": false,
+                    "DiskShape": {
+                        "Configuration": {
+                            "Radius": 0.18
+                        }
+                    }
+                }
+            }
+        },
+        "UpperNorthWindowDaylight": {
+            "Id": "UpperNorthWindowDaylight",
+            "Name": "Tower | North recessed upper window daylight",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 4413571162175084000
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 4413571162175084001
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 4413571162175084002
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 4413571162175084003
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 4413571162175084004
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 4413571162175084005
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 4413571162175084006
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 4413571162175084007
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 4413571162175084008,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            0.0,
+                            1.772785,
+                            19.823784
+                        ],
+                        "Rotate": [
+                            96.619053,
+                            -7.722703,
+                            0.0
+                        ]
+                    }
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Id": 4413571162175084009,
+                    "Controller": {
+                        "Configuration": {
+                            "LightType": 4,
+                            "Color": [
+                                0.88,
+                                0.94,
+                                1.0,
+                                1.0
+                            ],
+                            "Intensity": 1.35,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 4.0,
+                            "EnableShutters": true,
+                            "InnerShutterAngleDegrees": 24.0,
+                            "OuterShutterAngleDegrees": 55.0,
+                            "Enable Shadow": true,
+                            "Shadowmap Max Size": "Size256",
+                            "Shadow Filter Method": 1,
+                            "Filtering Sample Count": 24,
+                            "LightEmitsBothDirections": false,
+                            "Affects GI": false,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    false,
+                                    false,
+                                    false,
+                                    true,
+                                    false
+                                ]
+                            }
+                        }
+                    }
+                },
+                "EditorQuadShapeComponent": {
+                    "$type": "{E8E60770-40E9-426F-B134-3964BF8BDD84} LmbrCentral::EditorQuadShapeComponent",
+                    "Id": 4413571162175084010,
+                    "Visible": false,
+                    "QuadShape": {
+                        "Configuration": {
+                            "Width": 0.225851,
+                            "Height": 1.460958
+                        }
+                    }
+                }
+            }
+        },
+        "UpperNorthWindowTrimFill": {
+            "Id": "UpperNorthWindowTrimFill",
+            "Name": "Tower | North upper window trim fill",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 4413571162175085300
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 4413571162175085301
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 4413571162175085302
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 4413571162175085303
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 4413571162175085304
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 4413571162175085305
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 4413571162175085306
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 4413571162175085307
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 4413571162175085308,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            0.0,
+                            1.12,
+                            19.85
+                        ],
+                        "Rotate": [
+                            -90.0,
+                            0.0,
+                            0.0
+                        ]
+                    }
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Id": 4413571162175085309,
+                    "Controller": {
+                        "Configuration": {
+                            "LightType": 2,
+                            "Color": [
+                                0.88,
+                                0.94,
+                                1.0,
+                                1.0
+                            ],
+                            "Intensity": 0.22,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 1.8,
+                            "EnableShutters": true,
+                            "InnerShutterAngleDegrees": 20.0,
+                            "OuterShutterAngleDegrees": 72.0,
+                            "Enable Shadow": false,
+                            "LightEmitsBothDirections": false,
+                            "Affects GI": false,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    false,
+                                    false,
+                                    false,
+                                    true,
+                                    false
+                                ]
+                            }
+                        }
+                    }
+                },
+                "EditorDiskShapeComponent": {
+                    "$type": "EditorDiskShapeComponent",
+                    "Id": 4413571162175085310,
+                    "Visible": false,
+                    "DiskShape": {
+                        "Configuration": {
+                            "Radius": 0.18
+                        }
+                    }
+                }
+            }
+        },
+        "UpperShaftFill": {
+            "Id": "UpperShaftFill",
+            "Name": "Tower | Upper shaft fill",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 4413571162175083000
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 4413571162175083001
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 4413571162175083002
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 4413571162175083003
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 4413571162175083004
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 4413571162175083005
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 4413571162175083006
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 4413571162175083007
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 4413571162175083008,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            0.0,
+                            0.0,
+                            21.25
+                        ],
+                        "Rotate": [
+                            180.0,
+                            0.0,
+                            0.0
+                        ]
+                    }
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Id": 4413571162175083009,
+                    "Controller": {
+                        "Configuration": {
+                            "LightType": 2,
+                            "Color": [
+                                0.9,
+                                0.94,
+                                1.0,
+                                1.0
+                            ],
+                            "Intensity": 0.9,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 3.25,
+                            "EnableShutters": true,
+                            "InnerShutterAngleDegrees": 50.0,
+                            "OuterShutterAngleDegrees": 70.0,
+                            "Enable Shadow": true,
+                            "Shadowmap Max Size": "Size256",
+                            "Shadow Filter Method": 1,
+                            "Filtering Sample Count": 24,
+                            "LightEmitsBothDirections": false,
+                            "Affects GI": false,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    false,
+                                    false,
+                                    false,
+                                    true,
+                                    false
+                                ]
+                            }
+                        }
+                    }
+                },
+                "EditorDiskShapeComponent": {
+                    "$type": "EditorDiskShapeComponent",
+                    "Id": 4413571162175083010,
+                    "Visible": false,
+                    "DiskShape": {
+                        "Configuration": {
+                            "Radius": 0.12
+                        }
+                    }
+                }
+            }
+        },
+        "UpperRoofLining": {
+            "Id": "UpperRoofLining",
+            "Name": "Tower | Bronze roof lining",
+            "Components": {
+                "AZ::Render::EditorMeshComponent": {
+                    "$type": "AZ::Render::EditorMeshComponent",
+                    "Id": 4413571162175082001,
+                    "Controller": {
+                        "Configuration": {
+                            "ModelAsset": {
+                                "assetId": {
+                                    "guid": "{940514B7-F758-5E33-9F2D-A5F94EC245FA}",
+                                    "subId": 273832928
+                                },
+                                "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/upper-roof-lining.fbx.azmodel"
+                            },
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    false,
+                                    false,
+                                    false,
+                                    true,
+                                    false
+                                ]
+                            }
+                        }
+                    }
+                },
+                "EditorMaterialComponent": {
+                    "$type": "EditorMaterialComponent",
+                    "Id": 4413571162175082002,
+                    "Controller": {
+                        "Configuration": {
+                            "materials": {
+                                "{}": {
+                                    "MaterialAsset": {
+                                        "assetId": {
+                                            "guid": "{F5CAFA41-115A-54FC-B21C-FA774F00B87C}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/welded-doorway/sabazios-roof/sabazios-roof.azmaterial"
+                                    },
+                                    "PropertyOverrides": {
+                                        "general.enableIBL": {
+                                            "$type": "bool",
+                                            "Value": false
+                                        },
+                                        "general.enableDirectionalLights": {
+                                            "$type": "bool",
+                                            "Value": false
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 4413571162175082003,
+                    "Parent Entity": "TowerMesh"
+                }
+            }
+        },
+        "UpperWestWindowDaylight": {
+            "Id": "UpperWestWindowDaylight",
+            "Name": "Tower | West recessed upper window daylight",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 4413571162175081000
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 4413571162175081001
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 4413571162175081002
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 4413571162175081003
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 4413571162175081004
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 4413571162175081005
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 4413571162175081006
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 4413571162175081007
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 4413571162175081008,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            -1.750899,
+                            0.0,
+                            20.865036
+                        ],
+                        "Rotate": [
+                            -161.146841,
+                            73.525502,
+                            0.0
+                        ]
+                    }
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Id": 4413571162175081009,
+                    "Controller": {
+                        "Configuration": {
+                            "LightType": 4,
+                            "Color": [
+                                1.0,
+                                0.94,
+                                0.85,
+                                1.0
+                            ],
+                            "Intensity": 1.3,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 4.0,
+                            "EnableShutters": true,
+                            "InnerShutterAngleDegrees": 24.0,
+                            "OuterShutterAngleDegrees": 55.0,
+                            "Enable Shadow": true,
+                            "Shadowmap Max Size": "Size256",
+                            "Shadow Filter Method": 1,
+                            "Filtering Sample Count": 24,
+                            "LightEmitsBothDirections": false,
+                            "Affects GI": false,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    false,
+                                    false,
+                                    false,
+                                    true,
+                                    false
+                                ]
+                            }
+                        }
+                    }
+                },
+                "EditorQuadShapeComponent": {
+                    "$type": "{E8E60770-40E9-426F-B134-3964BF8BDD84} LmbrCentral::EditorQuadShapeComponent",
+                    "Id": 4413571162175081010,
+                    "Visible": false,
+                    "QuadShape": {
+                        "Configuration": {
+                            "Width": 0.239604,
+                            "Height": 1.419679
+                        }
+                    }
+                }
+            }
+        },
+        "TowerMesh": {
+            "Id": "TowerMesh",
+            "Name": "Irish Fieldstone Tower (Open Shaft)",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 16103156753104903873
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 9562749522854126175
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 2694731713618115532,
+                    "Child Entity Order": [
+                        "SETrialDaylight",
+                        "SETrialFillA",
+                        "EntranceStairFill",
+                        "UpperSouthWindowDaylight",
+                        "UpperEastWindowDaylight",
+                        "UpperWestWindowDaylight",
+                        "UpperRoofLining",
+                        "UpperShaftFill",
+                        "UpperEastWindowTrimFill",
+                        "UpperSouthWindowTrimFill",
+                        "UpperWestWindowTrimFill",
+                        "UpperNorthWindowDaylight",
+                        "UpperNorthWindowTrimFill",
+                        "BlenderLight_ce3c56e02ac456499dd7a6103ba67cc1",
+                        "BlenderLight_dd1920a807fd5f168909852eae2e0af0",
+                        "BlenderLight_296829b720e3562aaa6b45feadd5050f",
+                        "BlenderLight_e2fc23c99c1657a395568c90a5a67d61",
+                        "EntranceDiffuseProbeGrid",
+                        "EntranceGiRayProxy",
+                        "UpperEastWindowDiffuseProbeGrid",
+                        "StairNortheastWindowDiffuseProbeGrid",
+                        "UpperNorthWindowDiffuseProbeGrid",
+                        "StairNorthwestWindowDiffuseProbeGrid",
+                        "UpperWestWindowDiffuseProbeGrid",
+                        "UpperSouthWindowDiffuseProbeGrid",
+                        "StairSoutheastWindowDiffuseProbeGrid",
+                        "BlenderLight_f77cc8dbe87557e8ba4099121240915a",
+                        "BlenderLight_425a8a813ca45fb2a85520f695b077e1"
+                    ]
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 3205395832400042443
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 10433809413225252486
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 616135059287266810
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 7675855683834074237
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 14729470569459296846
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 7158165313243140554,
+                    "Parent Entity": "ContainerEntity"
+                },
+                "EditorMeshComponent": {
+                    "$type": "EditorMeshComponent",
+                    "Id": 13321654796237618027,
+                    "Controller": {
+                        "Configuration": {
+                            "Surface": {
+                                "assetId": {
+                                    "guid": "{9FF7CCF9-EC76-557E-936F-9C60D6031777}",
+                                    "subId": 1
+                                },
+                                "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/tower-open-shaft-no-landings-silpom.fbx.silpommesh",
+                                "loadBehavior": "QueueLoad"
+                            },
+                            "Materials": [
+                                {
+                                    "MaterialIdentity": "54172e30-0a57-516c-ab8d-715a16f23f30",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{BDF7197B-92C6-50DA-91EF-7F638CBC4D1A}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/doorway-trim-daylight.azmaterial"
+                                    },
+                                    "LightingChannelMask": 0
+                                },
+                                {
+                                    "MaterialIdentity": "b612644c-b3f4-5ae8-aeeb-6449c880a78d",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{0C7B28C7-6B6C-5061-8882-1450440282C8}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/doorway-mortar-daylight.azmaterial"
+                                    },
+                                    "LightingChannelMask": 0
+                                },
+                                {
+                                    "MaterialIdentity": "7f0d5dab-2f0b-52aa-89df-fcb668627073",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{BDF7197B-92C6-50DA-91EF-7F638CBC4D1A}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/doorway-trim-daylight.azmaterial"
+                                    }
+                                },
+                                {
+                                    "MaterialIdentity": "af808a3a-9893-5330-98fc-aa6abb103b72",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{0C7B28C7-6B6C-5061-8882-1450440282C8}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/doorway-mortar-daylight.azmaterial"
+                                    }
+                                },
+                                {
+                                    "MaterialIdentity": "00249d42-34d8-46ad-abdf-255e20162ee6",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{A6188A6F-9484-5740-9E85-621CDBF71A5C}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetowerwelded/plain-shell-rims.azmaterial"
+                                    }
+                                },
+                                {
+                                    "MaterialIdentity": "0fd9b688-137f-4fc8-ae02-30197df83fa5",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{46FA048F-DEE6-5655-BD1C-6A86C7B4157B}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/welded-doorway/trim-blocks/trim-blocks.azmaterial"
+                                    }
+                                },
+                                {
+                                    "MaterialIdentity": "17cd37ed-074d-4fe9-9694-a01a91f0964c",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{F5CAFA41-115A-54FC-B21C-FA774F00B87C}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/welded-doorway/sabazios-roof/sabazios-roof.azmaterial"
+                                    }
+                                },
+                                {
+                                    "MaterialIdentity": "1a3247b7-5448-4de6-828a-70c7078dfa20",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{D489452B-7072-5D5E-92B1-533DA63B027C}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/weathered-basalt.azmaterial"
+                                    }
+                                },
+                                {
+                                    "MaterialIdentity": "1ef364c4-fb63-4354-b6a2-a9b271dc5305",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{C9D22743-3B47-5AA7-A6F3-B4D3E6AB9AC3}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/basalt-stair-cuts.azmaterial"
+                                    }
+                                },
+                                {
+                                    "MaterialIdentity": "20f1c97d-27d2-4fb6-9057-6e124f68eb13",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{D48CAFD7-EC14-50A7-900E-92A20E2B9463}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/window-reveal-daylight-shade-1.azmaterial"
+                                    },
+                                    "LightingChannelMask": 0
+                                },
+                                {
+                                    "MaterialIdentity": "4113a472-c51f-49f1-8c7c-4132f3320429",
+                                    "DisableEnvironmentLighting": true,
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{0939D885-9C73-5FEC-8F44-B3E455DF4C86}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/landing.azmaterial"
+                                    },
+                                    "LightingChannelMask": 8
+                                },
+                                {
+                                    "MaterialIdentity": "416d8baf-5e6c-4216-a0bd-34cb9467e892",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{23961A33-86EB-5EE6-AD82-49F43255E389}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetowerwelded/wall/wall.azmaterial"
+                                    }
+                                },
+                                {
+                                    "MaterialIdentity": "56c0b21f-e7a4-44ae-b46c-71b43d6e58ee",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{6DD17A7C-82EB-5CC1-BB1F-E811F64CF324}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetowerwelded/door-mortar.azmaterial"
+                                    }
+                                },
+                                {
+                                    "MaterialIdentity": "5dc863e0-4f7b-41f6-bcec-7873d7feceeb",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{4861D182-19EA-53CA-8BC1-1D6F18764497}",
+                                            "subId": 0
+                                        },
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/shaft-stairs.azmaterial",
+                                        "loadBehavior": "QueueLoad"
+                                    },
+                                    "LightingChannelMask": 8,
+                                    "DisableEnvironmentLighting": true,
+                                    "ReceiveSpiralLight": true
+                                },
+                                {
+                                    "MaterialIdentity": "69295b02-77ba-4bdc-8d8a-252462f26137",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{4552E675-6EE7-50BC-A12C-B8DF942E9B26}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/welded-doorway/terrain-skirt/towerterrainskirtblend.azmaterial"
+                                    }
+                                },
+                                {
+                                    "MaterialIdentity": "71e9e1cb-88ac-4572-ac23-d02b56559ffb",
+                                    "LightingChannelMask": 1,
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{0053CC81-D1D5-560D-867B-95A3CBE24ECF}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/welded-doorway/reveal/reveal.azmaterial"
+                                    }
+                                },
+                                {
+                                    "MaterialIdentity": "9dfd82d3-27da-4abf-9b17-cb3c0a5665f4",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{83F9FAFC-DF0F-548A-BF8E-827CC4C999AF}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetowerwelded/stair-and-floor-stone.azmaterial"
+                                    },
+                                    "LightingChannelMask": 0,
+                                    "DisableEnvironmentLighting": true
+                                },
+                                {
+                                    "MaterialIdentity": "77e91a6f-c5d9-55bd-a78c-ac8f8c90d41c",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{02FF170D-D1F1-5C0A-9DAA-2DCB7F44519D}",
+                                            "subId": 0
+                                        },
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/shaft-wall.azmaterial",
+                                        "loadBehavior": "QueueLoad"
+                                    },
+                                    "LightingChannelMask": 8,
+                                    "DisableEnvironmentLighting": true,
+                                    "ReceiveSpiralLight": false
+                                },
+                                {
+                                    "MaterialIdentity": "74675e2c-aa17-52de-aeb7-3ca495c127e9",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{9E24389A-8738-5D32-807D-4E4F311BAA45}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/window-inner-trim-daylight.azmaterial"
+                                    },
+                                    "LightingChannelMask": 8,
+                                    "DisableEnvironmentLighting": true,
+                                    "ReceiveSpiralLight": false
+                                },
+                                {
+                                    "MaterialIdentity": "7001ff0e-4e23-58c3-b7c7-416106b62f8c",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{E0B22694-9DD9-51F7-B789-E616553AF5F5}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/window-reveal-daylight-sun-1.azmaterial"
+                                    },
+                                    "LightingChannelMask": 1
+                                },
+                                {
+                                    "MaterialIdentity": "b6e54c00-5ee2-5065-9183-a4e95e9bed9a",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{4861D182-19EA-53CA-8BC1-1D6F18764497}",
+                                            "subId": 0
+                                        },
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/shaft-stairs.azmaterial",
+                                        "loadBehavior": "QueueLoad"
+                                    },
+                                    "LightingChannelMask": 8,
+                                    "DisableEnvironmentLighting": true,
+                                    "ReceiveSpiralLight": true
+                                },
+                                {
+                                    "MaterialIdentity": "d5b0d43c-79f3-5387-ac24-3ae7c050ee30",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{02FF170D-D1F1-5C0A-9DAA-2DCB7F44519D}",
+                                            "subId": 0
+                                        },
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/shaft-wall.azmaterial",
+                                        "loadBehavior": "QueueLoad"
+                                    },
+                                    "LightingChannelMask": 8,
+                                    "DisableEnvironmentLighting": true,
+                                    "ReceiveSpiralLight": false
+                                },
+                                {
+                                    "MaterialIdentity": "53c41085-e0d9-5e48-84ce-c452a2622614",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{0C7B28C7-6B6C-5061-8882-1450440282C8}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/doorway-mortar-daylight.azmaterial"
+                                    },
+                                    "LightingChannelMask": 8,
+                                    "DisableEnvironmentLighting": false
+                                },
+                                {
+                                    "MaterialIdentity": "d2411952-15c1-55f7-b8b9-632fe5111539",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{8C2A4C3A-25E6-5AE1-BA19-B3686DB86D3B}",
+                                            "subId": 0
+                                        },
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/shaft-stair-back.azmaterial",
+                                        "loadBehavior": "QueueLoad"
+                                    },
+                                    "LightingChannelMask": 8,
+                                    "DisableEnvironmentLighting": true
+                                },
+                                {
+                                    "MaterialIdentity": "dc682c9c-955b-5c40-84ef-2f5466be7318",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{8C2A4C3A-25E6-5AE1-BA19-B3686DB86D3B}",
+                                            "subId": 0
+                                        },
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/shaft-stair-back.azmaterial",
+                                        "loadBehavior": "QueueLoad"
+                                    },
+                                    "LightingChannelMask": 8,
+                                    "DisableEnvironmentLighting": true
+                                },
+                                {
+                                    "MaterialIdentity": "4e0cad7b-f461-5459-85d3-2f186ff774d9",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{07E8EB91-71FC-54F7-85F9-43098A6EDCB3}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/window-outer-trim-daylight.azmaterial"
+                                    },
+                                    "LightingChannelMask": 0
+                                },
+                                {
+                                    "MaterialIdentity": "b7485ef0-b1a1-5cbb-903b-5d104356081e",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{07E8EB91-71FC-54F7-85F9-43098A6EDCB3}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/window-outer-trim-daylight.azmaterial"
+                                    },
+                                    "LightingChannelMask": 1
+                                },
+                                {
+                                    "MaterialIdentity": "f7e3adbc-0b50-5d79-9118-5e93e22956c6",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{0C7B28C7-6B6C-5061-8882-1450440282C8}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/doorway-mortar-daylight.azmaterial"
+                                    },
+                                    "LightingChannelMask": 0
+                                },
+                                {
+                                    "MaterialIdentity": "338f294c-334f-5129-8d98-77feed1d1eb7",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{0C7B28C7-6B6C-5061-8882-1450440282C8}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/doorway-mortar-daylight.azmaterial"
+                                    },
+                                    "LightingChannelMask": 1
+                                },
+                                {
+                                    "MaterialIdentity": "8d2063b4-9c75-5b03-805b-13950cb4b06b",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{26FCF9AF-C550-5E3D-ACCB-22BE79760CF6}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/window-reveal-daylight-shade-2.azmaterial"
+                                    },
+                                    "LightingChannelMask": 0
+                                },
+                                {
+                                    "MaterialIdentity": "d01c80e2-2902-5a93-a0d0-13b3a28dea0a",
+                                    "Material": {
+                                        "assetId": {
+                                            "guid": "{B90C1429-A537-53FF-A94C-2FB5B7C77608}",
+                                            "subId": 0
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/interior-lighting/window-reveal-daylight-shade-3.azmaterial"
+                                    },
+                                    "LightingChannelMask": 0
+                                }
+                            ],
+                            "Profiles": [
+                                {
+                                    "ProfileId": 1,
+                                    "NeuralModel": 4,
+                                    "Height": {
+                                        "assetId": {
+                                            "guid": "{74D7052F-B0CF-528D-A83E-065F36BB017B}",
+                                            "subId": 1000
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetowerwelded/wall/height.png.streamingimage"
+                                    },
+                                    "ScaleMetres": 0.1,
+                                    "Reference": 0.05,
+                                    "AddressMode": 0
+                                },
+                                {
+                                    "ProfileId": 2,
+                                    "UseBaseMesh": true,
+                                    "NeuralModel": 5,
+                                    "Height": {
+                                        "assetId": {
+                                            "guid": "{29EF2473-C0BC-5EE1-83E6-EF32A9FDF1C3}",
+                                            "subId": 1000
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/sculpted-stair-silpom/height.png.streamingimage"
+                                    },
+                                    "ScaleMetres": 0.19,
+                                    "Reference": 0.5000076295109483,
+                                    "AddressMode": 1
+                                },
+                                {
+                                    "ProfileId": 3,
+                                    "NeuralModel": 6,
+                                    "Height": {
+                                        "assetId": {
+                                            "guid": "{EF08B089-5C88-58D6-8909-70ABD1045CFF}",
+                                            "subId": 1000
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/welded-doorway/trim-blocks/height.png.streamingimage"
+                                    },
+                                    "ScaleMetres": 0.052,
+                                    "Reference": 0.5000076295109483,
+                                    "AddressMode": 1
+                                },
+                                {
+                                    "ProfileId": 4,
+                                    "NeuralModel": 7,
+                                    "Height": {
+                                        "assetId": {
+                                            "guid": "{6E430F78-EEBE-532C-BBE9-DCF71562FD90}",
+                                            "subId": 1000
+                                        },
+                                        "loadBehavior": "QueueLoad",
+                                        "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/welded-doorway/reveal/height.png.streamingimage"
+                                    },
+                                    "ScaleMetres": 0.1,
+                                    "Reference": 0.05,
+                                    "AddressMode": 1
+                                }
+                            ],
+                            "ReliefDepthMultiplier": 0.3,
+                            "MaxCells": 65525,
+                            "ReliefShadowSteps": 0,
+                            "SpiralLightPath": [1.302481, -0.963297, 9.994835, 4.010000],
+                            "SpiralLightPeakLux": 1.35,
+                            "SpiralLightEnd": [
+                                24.0,
+                                2.0
+                            ],
+                            "SpiralLightWindows": [
+                                [-0.450000, 1.05],
+                                [1.226350, 1.42],
+                                [1.476350, 1.46],
+                                [2.351350, 1.50],
+                                [2.601350, 1.55],
+                                [2.851350, 1.59],
+                                [3.101350, 1.63]
+                            ],
+                            "UseNeuralSeed": true
+                        }
+                    }
+                },
+                "EditorStaticRigidBodyComponent": {
+                    "$type": "EditorStaticRigidBodyComponent",
+                    "Id": 6053183287267235864
+                },
+                "EditorMeshColliderComponent": {
+                    "$type": "EditorMeshColliderComponent",
+                    "Id": 1441383376889423021,
+                    "ColliderConfiguration": {
+                        "Rotation": [
+                            0.0,
+                            0.0,
+                            1.0,
+                            0.0
+                        ]
+                    },
+                    "ShapeConfiguration": {
+                        "PhysicsAsset": {
+                            "Asset": {
+                                "assetId": {
+                                    "guid": "{CC6E26F3-F972-562E-AE93-32D25168EC9E}",
+                                    "subId": 630718542
+                                },
+                                "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/openshaftnolandingscollision.fbx.pxmesh",
+                                "loadBehavior": "QueueLoad"
+                            },
+                            "Configuration": {
+                                "PhysicsAsset": {
+                                    "assetId": {
+                                        "guid": "{CC6E26F3-F972-562E-AE93-32D25168EC9E}",
+                                        "subId": 630718542
+                                    },
+                                    "assetHint": "assets/silpomplanarab/irishfieldstonetoweropenshaft/openshaftnolandingscollision.fbx.pxmesh",
+                                    "loadBehavior": "QueueLoad"
+                                },
+                                "UseMaterialsFromAsset": false
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "SETrialDaylight": {
+            "Id": "SETrialDaylight",
+            "Name": "Lighting trial | SE window daylight",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 2811666201785402824
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 15659765820796448712
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 822610298379409505
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 12253352823382135416
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 7227979878408379422
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 5495349809218549412
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 628905948970848538
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 11221435492269965414
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 3008946843879606263,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            1.569777011871338,
+                            -1.569777011871338,
+                            10.405537605285645
+                        ],
+                        "Rotate": [
+                            -77.704547,
+                            -35.370083,
+                            0.0
+                        ]
+                    }
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Id": 4019539539855203285,
+                    "Controller": {
+                        "Configuration": {
+                            "LightType": 2,
+                            "Color": [
+                                0.86,
+                                0.93,
+                                1.0,
+                                1.0
+                            ],
+                            "Intensity": 6.0,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 2.25,
+                            "EnableShutters": true,
+                            "InnerShutterAngleDegrees": 5.0,
+                            "OuterShutterAngleDegrees": 36.0,
+                            "Enable Shadow": true,
+                            "Shadowmap Max Size": "Size256",
+                            "Shadow Filter Method": 1,
+                            "Filtering Sample Count": 24,
+                            "LightEmitsBothDirections": false,
+                            "Affects GI": false,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    false,
+                                    false,
+                                    false,
+                                    false,
+                                    true
+                                ]
+                            }
+                        }
+                    }
+                },
+                "EditorDiskShapeComponent": {
+                    "$type": "EditorDiskShapeComponent",
+                    "Id": 3916575934404604582,
+                    "Visible": false,
+                    "DiskShape": {
+                        "Configuration": {
+                            "Radius": 0.19
+                        }
+                    }
+                }
+            }
+        },
+        "UpperSouthWindowDaylight": {
+            "Id": "UpperSouthWindowDaylight",
+            "Name": "Tower | South recessed upper window daylight",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 4413571162175021401
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 4413571162175021402
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 4413571162175021403
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 4413571162175021404
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 4413571162175021405
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 4413571162175021406
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 4413571162175021407
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 4413571162175021408
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 4413571162175021409,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            0.0,
+                            -1.787323,
+                            21.667631
+                        ],
+                        "Rotate": [
+                            -114.737927,
+                            6.191904,
+                            0.0
+                        ]
+                    }
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Id": 4413571162175021410,
+                    "Controller": {
+                        "Configuration": {
+                            "LightType": 4,
+                            "Color": [
+                                0.84,
+                                0.92,
+                                1.0,
+                                1.0
+                            ],
+                            "Intensity": 2.7,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 4.0,
+                            "EnableShutters": true,
+                            "InnerShutterAngleDegrees": 24.0,
+                            "OuterShutterAngleDegrees": 55.0,
+                            "Enable Shadow": true,
+                            "Shadowmap Max Size": "Size256",
+                            "Shadow Filter Method": 1,
+                            "Filtering Sample Count": 24,
+                            "LightEmitsBothDirections": false,
+                            "Affects GI": false,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    false,
+                                    false,
+                                    false,
+                                    true,
+                                    false
+                                ]
+                            }
+                        }
+                    }
+                },
+                "EditorQuadShapeComponent": {
+                    "$type": "{E8E60770-40E9-426F-B134-3964BF8BDD84} LmbrCentral::EditorQuadShapeComponent",
+                    "Id": 4413571162175021411,
+                    "Visible": false,
+                    "QuadShape": {
+                        "Configuration": {
+                            "Width": 0.244425,
+                            "Height": 1.445799
+                        }
+                    }
+                }
+            }
+        },
+        "UpperEastWindowDaylight": {
+            "Id": "UpperEastWindowDaylight",
+            "Name": "Tower | East recessed upper window daylight",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 4413571162175021501
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 4413571162175021502
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 4413571162175021503
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 4413571162175021504
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 4413571162175021505
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 4413571162175021506
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 4413571162175021507
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 4413571162175021508
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 4413571162175021509,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            1.783496,
+                            0.0,
+                            21.653976
+                        ],
+                        "Rotate": [
+                            87.276369,
+                            -91.204903,
+                            -2.368717
+                        ]
+                    }
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Id": 4413571162175021510,
+                    "Controller": {
+                        "Configuration": {
+                            "LightType": 4,
+                            "Color": [
+                                0.82,
+                                0.9,
+                                1.0,
+                                1.0
+                            ],
+                            "Intensity": 2.2,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 4.0,
+                            "EnableShutters": true,
+                            "InnerShutterAngleDegrees": 24.0,
+                            "OuterShutterAngleDegrees": 55.0,
+                            "Enable Shadow": true,
+                            "Shadowmap Max Size": "Size256",
+                            "Shadow Filter Method": 1,
+                            "Filtering Sample Count": 24,
+                            "LightEmitsBothDirections": false,
+                            "Affects GI": false,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    false,
+                                    false,
+                                    false,
+                                    true,
+                                    false
+                                ]
+                            }
+                        }
+                    }
+                },
+                "EditorQuadShapeComponent": {
+                    "$type": "{E8E60770-40E9-426F-B134-3964BF8BDD84} LmbrCentral::EditorQuadShapeComponent",
+                    "Id": 4413571162175021511,
+                    "Visible": false,
+                    "QuadShape": {
+                        "Configuration": {
+                            "Width": 0.205408,
+                            "Height": 1.408474
+                        }
+                    }
+                }
+            }
+        },
+        "EntranceStairFill": {
+            "Id": "EntranceStairFill",
+            "Name": "Tower | Doorway daylight",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 4413571162175021301
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 4413571162175021302
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 4413571162175021303
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 4413571162175021304
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 4413571162175021305
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 4413571162175021306
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 4413571162175021307
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 4413571162175021308
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 4413571162175021309,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [0.45, -2.0, 5.22],
+                        "Rotate": [-73.661425, 11.528629, 0.0]
+                    }
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Id": 4413571162175021310,
+                    "Controller": {
+                        "Configuration": {
+                            "LightType": 2,
+                            "Color": [0.98, 0.95, 0.9, 1.0],
+                            "Intensity": 2.4,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 2.25,
+                            "EnableShutters": true,
+                            "InnerShutterAngleDegrees": 5.0,
+                            "OuterShutterAngleDegrees": 36.0,
+                            "Enable Shadow": true,
+                            "Shadowmap Max Size": "Size256",
+                            "Shadow Filter Method": 1,
+                            "Filtering Sample Count": 24,
+                            "LightEmitsBothDirections": false,
+                            "Affects GI": false,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [false, false, false, true, false]
+                            }
+                        }
+                    }
+                },
+                "EditorDiskShapeComponent": {
+                    "$type": "EditorDiskShapeComponent",
+                    "Id": 4413571162175021311,
+                    "Visible": false,
+                    "DiskShape": {
+                        "Configuration": {
+                            "Radius": 0.19
+                        }
+                    }
+                }
+            }
+        },
+        "SETrialFillA": {
+            "Id": "SETrialFillA",
+            "Name": "Lighting trial | stair fill A",
+            "Components": {
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 6539765033787087142
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 14095445709936685169
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 2899353086180180468
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 16243692554465903430
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 15232310903160300574
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 1226526716171985238
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 1623447428742996065
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 14794196624381965005
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 5107156475036897922,
+                    "Parent Entity": "TowerMesh",
+                    "Transform Data": {
+                        "Translate": [
+                            0.526711,
+                            -1.447127,
+                            9.078855
+                        ]
+                    }
+                },
+                "AZ::Render::EditorAreaLightComponent": {
+                    "$type": "AZ::Render::EditorAreaLightComponent",
+                    "Id": 13256402703102374794,
+                    "Controller": {
+                        "Configuration": {
+                            "LightType": 6,
+                            "Color": [
+                                0.98,
+                                0.95,
+                                0.9,
+                                1.0
+                            ],
+                            "Intensity": 0.7,
+                            "IntensityMode": 0,
+                            "AttenuationRadiusMode": 0,
+                            "AttenuationRadius": 1.35,
+                            "LightingChannelConfig": {
+                                "lightingChannelFlags": [
+                                    false,
+                                    false,
+                                    false,
+                                    true,
+                                    true
+                                ]
+                            },
+                            "Affects GI": false
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

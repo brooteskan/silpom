@@ -1,18 +1,39 @@
-# Self-contained tower test level
+# SilPOMTowerTest: self-contained test project
 
-This fixture holds everything the tower test level needs, so SilPOM's tower
-tests do not depend on any consuming project's assets.
+This folder is an O3DE project, `SilPOMTowerTest`. It holds SilPOM's tower test
+level and everything that level needs, so SilPOM's tower tests and assets build
+without any consuming project. It enables the SilPOM gem from this checkout
+(`external_subdirectories` points at `../../..`) and O3DE's stock gems.
 
 | Path | Contents |
 |---|---|
-| `SilPOMTowerBenchmark.prefab` | Base level: camera, lights, stock O3DE ground plane and `LightingPresets/HighContrast` IBL. Stock components and engine assets only. |
-| `scene.json` | Frozen tower component configuration and views. Its asset references resolve to files under `Assets/`. |
-| `Assets/SilPOMPlanarAB/IrishFieldstoneTower*/` | The tower mesh, its `.silpom.json` surface, height images, materials and their textures, with import settings (`.assetinfo`). Only files the scene references, directly or through materials, are included. |
-| `Assets/SilPOMLearned/*.sources` | Training-source lists for the learned bundles (see below). |
-| `Registry/silpom_tower_fixture.setreg` | `/SilPOM` registrations for the tower's trained models, learned wall material and learned bundles. |
+| `Levels/SilPOMTowerBenchmark/` | The tower test level (`SilPOMTowerBenchmark.prefab`) and its frozen tower configuration and views (`scene.json`). |
+| `Assets/SilPOMPlanarAB/IrishFieldstoneTower*/` | The tower prefab, meshes (SilPOM surface, welded collision/GI proxy, roof lining), the `.silpom.json` surface, height images, materials, textures and import settings. Only what the level uses, directly or through the tower prefab. |
+| `Assets/SilPOMLearned/` | Training-source lists for the learned bundles. The bundles themselves are built (see below) and git-ignored. |
+| `Registry/silpom_tower_fixture.setreg` | `/SilPOM` registrations: trained models, learned wall material, learned bundles. |
+| `Training/tower.json` | The level's training manifest. |
+| `Gem/`, `CMakeLists.txt`, `cmake/`, `Platform/`, `Registry/`, ... | O3DE's DefaultProject template, instantiated for this project. |
 
-`Assets/` keeps each file's original relative path. O3DE derives source asset
-IDs from that path, so the IDs in `scene.json` resolve unchanged.
+Every asset keeps the project-relative path it had where the tower was
+authored (`Assets/SilPOMPlanarAB/...`). O3DE derives source asset IDs from that
+path, so the IDs stored in the level and the tower prefab resolve here.
+
+## Using the project
+
+1. Register it with your engine: `o3de register --project-path <this folder>`.
+2. Configure and build it like any O3DE project (it has a project gem), e.g.
+   `cmake -B build/windows -S . -G "Visual Studio 17"` then build `Editor`.
+3. Run the Asset Processor or open the Editor with `--project-path <this folder>`.
+4. Run the tower editor harnesses (`Tests/TowerBenchmarkEditorSmoke.py`,
+   `TowerResolveRegions*.py`, `TowerRepairRegionsValidation.py`,
+   `TowerGradientContextValidation.py`, `TowerFaceCacheBenchmark.py`, ...) in
+   this project. They open `Levels/SilPOMTowerBenchmark` from the project root.
+
+SilPOM's shaders and decal painting currently require the engine changes in
+`Integration/O3DE/engine.patch`; see that folder for applying them.
+
+`Tools/prepare_tower_benchmark.py --project <other project>` still installs this
+level into another project that already has the tower assets.
 
 ## Changes from the original project assets
 
@@ -22,16 +43,18 @@ project ground texture in world space. Here it is a stock StandardPBR material
 with the same color, F0 and roughness. That texture is a uniform grey (linear
 0.51), so its color is reproduced exactly. The original faded the skirt normal
 toward +Z over its bottom 0.15 m; this version does not. Images of the skirt
-base are therefore not pixel-comparable with captures from the project level.
+base are therefore not pixel-comparable with captures from the original level.
 
-The level omits the project's diffuse probe grids and GI ray-tracing proxy, as
-`scene.json` records under `removed_from_benchmark_only`.
+The level removes the tower prefab's diffuse probe grids and GI ray-tracing
+proxy, as `scene.json` records under `removed_from_benchmark_only`. The tower
+prefab still contains them, so the project enables DiffuseProbeGrid, and
+includes the GI proxy material.
 
 ## Learned bundles are built, not committed
 
 The level enables Level 4B shared features and Level 5B proxy depth, which use
 `wall-shared.l4shared` and `wall-depth.l5depth`. Build them with SilPOM's tools,
-passing this fixture folder as the project root:
+passing this folder as the project root:
 
 1. `Tools/material_codec.py` writes `wall.l4mat`.
 2. `Tools/relief_appearance.py`, then `Tools/train_appearance_tail.py`, write
@@ -39,19 +62,8 @@ passing this fixture folder as the project root:
 3. `Tools/train_shared_depth.py` reads both and writes `wall-shared.l4shared`
    and `wall-depth.l5depth`.
 
-Each tool documents its arguments (`--help`). Write the outputs to
-`Assets/SilPOMLearned/`; they are git-ignored. The SilPOM learned-material
+Write the outputs to `Assets/SilPOMLearned/`. The SilPOM learned-material
 builder checks each bundle against the files listed in its `.sources` sidecar.
-
-## Using the fixture in a host project
-
-A host project needs the SilPOM gem enabled and two additions:
-
-1. A scan folder for this fixture's `Assets/` folder.
-2. The settings in `Registry/silpom_tower_fixture.setreg`.
-
-Register both only in a test project. They would conflict with a project that
-already contains assets at the same relative paths.
 
 ## Training the level's models
 

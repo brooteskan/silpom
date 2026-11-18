@@ -1,6 +1,6 @@
 {
   "description": "Frozen Torch decoder outputs at spatially held-out wall receivers, arbitrary directions/reach interpolation.",
-  "weights_sha256": "083d5463b48d76f0ce16bd3a56f6d126388d6be59eaf449356af2314b4f22bf4",
+  "weights_sha256": "99a10f3afd6ebd91535d31daf6b5738fc0b2e53a282166b93ce30ebfc8690ca1",
   "directions": [
     [
       0.125,

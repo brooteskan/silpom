@@ -219,7 +219,7 @@ def validate(folder, legacy=DEFAULT_LEGACY, hit_uv_roundoff_ulps=0):
     assert state['gradient_contract'] == 'owner-local-first-order-per-raster-pixel'
     for key in ('scene_sha256', 'effective_tower_configuration_sha256', 'controls'):
         assert state[key] == old_state[key], (key, 'Historical fixture settings differ')
-    fixture = read_json(Path(__file__).resolve().parents[3] / 'Levels/SilPOMTowerBenchmark/scene.json')
+    fixture = read_json(Path(__file__).resolve().parent / 'Fixtures/TowerBenchmark/Levels/SilPOMTowerBenchmark/scene.json')
     assert fixture['scene_sha256'] == state['scene_sha256']
     for name in VIEWS:
         assert state['view_poses'][name] == fixture['views'][name], (name, 'Fixed camera changed')
