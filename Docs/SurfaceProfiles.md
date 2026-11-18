@@ -103,11 +103,12 @@ surface in its `.silpomprofiles` file (a Blender export of the surface rewrites
 that file from the add-on's assignments), or nowhere. Openings need the full
 network set; model 0 is a Surface.
 
-Training runs `Tools/silpom_train.py` in the background with a progress bar.
-It needs a Python with NumPy and Pillow and the folder of the gem's standalone
-build with `silpom_welded_teacher`, `silpom_level_one` and `silpom_visibility`
-(the dialog remembers both; `SILPOM_PYTHON` and `SILPOM_TOOLS_BIN` give
-defaults). Labels and fitting run on the CPU. It writes, next to the profile,
+Training runs `Tools/silpom_train.py` in the background with a progress bar,
+using the engine's Python (`python/python.cmd`, whose requirements include
+NumPy and Pillow) and the training libraries `silpom_welded_teacher`,
+`silpom_level_one` and `silpom_visibility`, which the `SilPOM.Editor` target
+builds next to the Editor. `SILPOM_PYTHON` and `SILPOM_TOOLS_BIN` override
+them. Labels and fitting run on the CPU. It writes, next to the profile,
 `<name>.training/` (the manifest, `networks/*.azsli`, `report.json` and
 images) and then the profile, whose `Networks` names that folder, and its
 weights. Networks the folder lacks are not taken from the tower references:

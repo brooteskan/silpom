@@ -520,6 +520,25 @@ if(PAL_TRAIT_BUILD_HOST_TOOLS)
     ly_add_target(NAME ${gem_name}.Editor GEM_MODULE NAMESPACE Gem FILES_CMAKE silpom_editor_files.cmake
         INCLUDE_DIRECTORIES PRIVATE Include Source
         BUILD_DEPENDENCIES PRIVATE Gem::${gem_name}.Static AZ::AzToolsFramework Gem::AtomLyIntegration_CommonFeatures.Public Gem::AtomToolsFramework.Static)
+    # The CPU reference libraries SilPOM's trainers load (Tools/silpom_train.py),
+    # built next to the Editor so the SilPOM Profiles pane can train profiles.
+    if(WIN32)
+        foreach(tool IN ITEMS level_one_evaluator:silpom_level_one welded_tower_teacher:silpom_welded_teacher
+                visibility_evaluator:silpom_visibility)
+            string(REPLACE ":" ";" parts ${tool})
+            list(GET parts 0 source)
+            list(GET parts 1 library)
+            add_library(${library} SHARED Tools/${source}.cpp)
+            target_compile_features(${library} PRIVATE cxx_std_17)
+            target_include_directories(${library} PRIVATE Include)
+            # Labels must be the exact reference: no fast-math contractions.
+            # The shaders compiled as C++ warn about HLSL idioms; the standalone
+            # build checks these sources without O3DE's warnings-as-errors.
+            target_compile_options(${library} PRIVATE /fp:precise /WX- /wd4100 /wd4244)
+            set_target_properties(${library} PROPERTIES FOLDER "Gems/SilPOM/Training")
+            add_dependencies(${gem_name}.Editor ${library})
+        endforeach()
+    endif()
     ly_create_alias(NAME ${gem_name}.Tools NAMESPACE Gem TARGETS Gem::${gem_name}.Editor)
     ly_create_alias(NAME ${gem_name}.Builders NAMESPACE Gem TARGETS Gem::${gem_name}.Editor Gem::${gem_name}.Builder)
 endif()

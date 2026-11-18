@@ -19,7 +19,7 @@
 #include <QProcess>
 #include <QProgressBar>
 #include <QScrollArea>
-#include <QSettings>
+#include <QCoreApplication>
 #include <QSplitter>
 #include <QTabWidget>
 #include <QDesktopServices>
@@ -106,13 +106,20 @@ AZ::EntityId SelectedMesh()
     return AZ::EntityId();
 }
 
-// Training setup, remembered per user: the Python with NumPy and Pillow, and
-// the standalone build's folder with the SilPOM tool libraries.
-QString SettingOrEnvironment(const char* key, const char* variable)
+// What training runs with: the engine's Python (its requirements include NumPy
+// and Pillow) and the SilPOM tool libraries built next to the Editor.
+// SILPOM_PYTHON and SILPOM_TOOLS_BIN override them.
+QString TrainingPython()
 {
-    const QString saved = QSettings("O3DE", "SilPOM").value(key).toString();
-    return saved.isEmpty() ? QString::fromLocal8Bit(qgetenv(variable)) : saved;
+    if (const QString python = QString::fromLocal8Bit(qgetenv("SILPOM_PYTHON")); !python.isEmpty()) return python;
+    return QDir(QString::fromUtf8(AZ::Utils::GetEnginePath().c_str())).filePath("python/python.cmd");
 }
+QString TrainingTools()
+{
+    if (const QString tools = QString::fromLocal8Bit(qgetenv("SILPOM_TOOLS_BIN")); !tools.isEmpty()) return tools;
+    return QCoreApplication::applicationDirPath();
+}
+constexpr const char* TrainingLibraries[] = {"silpom_welded_teacher.dll", "silpom_level_one.dll", "silpom_visibility.dll"};
 QString GemFolder()
 {
     AZStd::string found;
@@ -209,26 +216,6 @@ public:
         m_assign->addItem("Do not assign");
         m_assign->setCurrentIndex(0);  // an undoable prefab edit
         form->addRow("Assign to", m_assign);
-        auto* setup = new QGroupBox("Training setup", this);
-        auto* setupForm = new QFormLayout(setup);
-        m_python = new QLineEdit(QDir::toNativeSeparators(SettingOrEnvironment("TrainingPython", "SILPOM_PYTHON")), this);
-        m_python->setPlaceholderText("python.exe with NumPy and Pillow");
-        setupForm->addRow("Python", browseRow(m_python, [this]
-        {
-            const auto file = QFileDialog::getOpenFileName(this, "Python", m_python->text(), "Python (python.exe)");
-            if (!file.isEmpty()) m_python->setText(QDir::toNativeSeparators(file));
-        }));
-        m_tools = new QLineEdit(QDir::toNativeSeparators(SettingOrEnvironment("TrainingTools", "SILPOM_TOOLS_BIN")), this);
-        m_tools->setPlaceholderText("Folder with silpom_welded_teacher.dll, silpom_level_one.dll, silpom_visibility.dll");
-        setupForm->addRow("SilPOM tools", browseRow(m_tools, [this]
-        {
-            const auto folder = QFileDialog::getExistingDirectory(this, "Standalone SilPOM build folder", m_tools->text());
-            if (!folder.isEmpty()) m_tools->setText(QDir::toNativeSeparators(folder));
-        }));
-        auto* setupNote = new QLabel("The tools are built with the gem's standalone CMake build (cmake -S Gems/silpom), "
-            "in its Release folder.", setup);
-        setupNote->setWordWrap(true);
-        setupForm->addRow(setupNote);
         m_note = new QLabel(this);
         m_note->setWordWrap(true);
         auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
@@ -239,7 +226,6 @@ public:
         auto* layout = new QVBoxLayout(this);
         layout->addWidget(about);
         layout->addLayout(form);
-        layout->addWidget(setup);
         layout->addWidget(m_note);
         layout->addWidget(buttons);
         connect(m_role, qOverload<int>(&QComboBox::currentIndexChanged), this, [this] { Update(); });
@@ -251,14 +237,14 @@ public:
     AZ::u32 ProfileId() const { return m_id; }
     QString Profile() const { return QDir::fromNativeSeparators(m_file->text()); }
     int Assignment() const { return m_assign->currentIndex(); }  // 0 override, 1 surface, 2 none
-    QString Python() const { return m_python->text(); }
+    QString Python() const { return TrainingPython(); }
     QStringList Arguments() const
     {
         QStringList args{QDir(GemFolder()).filePath("Tools/silpom_train.py"),
             "--surface", m_sidecar, "--profile-id", QString::number(m_id), "--height", QDir::fromNativeSeparators(m_height->text()),
             "--scale", Number(m_scale->value()), "--reference", Number(m_reference->value()),
             "--address", m_address->currentIndex() ? "clamp" : "repeat", "--role", m_role->currentData().toString(),
-            "--networks", m_set->currentData().toString(), "--tools", QDir::fromNativeSeparators(m_tools->text()),
+            "--networks", m_set->currentData().toString(), "--tools", TrainingTools(),
             "--profile", Profile()};
         if (m_quality->currentData().toBool()) args << "--quick";
         return args;
@@ -288,11 +274,11 @@ private:
         const auto fail = [this](const QString& message) { QMessageBox::warning(this, windowTitle(), message); };
         if (!QFileInfo::exists(QDir::fromNativeSeparators(m_height->text()))) return fail("The height image does not exist.");
         if (!Profile().endsWith(".silpomprofile")) return fail("Choose a profile file ending in .silpomprofile.");
-        if (m_python->text().isEmpty()) return fail("Choose the Python that has NumPy and Pillow.");
-        const QDir tools(QDir::fromNativeSeparators(m_tools->text()));
-        for (const char* library : {"silpom_welded_teacher.dll", "silpom_level_one.dll", "silpom_visibility.dll"})
-            if (m_tools->text().isEmpty() || !tools.exists(library))
-                return fail(QString("%1 is not in the SilPOM tools folder. Build the gem standalone and choose its Release folder.").arg(library));
+        if (!QFileInfo::exists(TrainingPython())) return fail("The engine's Python was not found: " + QDir::toNativeSeparators(TrainingPython()));
+        for (const char* library : TrainingLibraries)
+            if (!QDir(TrainingTools()).exists(library))
+                return fail(QString("%1 is missing next to the Editor. Build the SilPOM.Editor target again; it builds SilPOM's "
+                    "training libraries.").arg(library));
         if (GemFolder().isEmpty()) return fail("Cannot locate the SilPOM gem.");
         if (QFileInfo::exists(Profile()) && QMessageBox::question(this, windowTitle(),
                 QString("%1 already exists. Training replaces it and its weights for every prefab that uses it. Continue?")
@@ -301,16 +287,13 @@ private:
         if (Assignment() == 1 && QMessageBox::question(this, windowTitle(),
                 "Assigning to the surface changes this profile ID for every prefab that uses the surface. Continue?") != QMessageBox::Yes)
             return;
-        QSettings settings("O3DE", "SilPOM");
-        settings.setValue("TrainingPython", m_python->text());
-        settings.setValue("TrainingTools", m_tools->text());
         QDir().mkpath(QFileInfo(Profile()).absolutePath());
         accept();
     }
 
     QString m_sidecar;
     AZ::u32 m_id = 0;
-    QLineEdit *m_height = nullptr, *m_file = nullptr, *m_python = nullptr, *m_tools = nullptr;
+    QLineEdit *m_height = nullptr, *m_file = nullptr;
     QDoubleSpinBox *m_scale = nullptr, *m_reference = nullptr;
     QComboBox *m_address = nullptr, *m_role = nullptr, *m_set = nullptr, *m_quality = nullptr, *m_assign = nullptr;
     QLabel* m_note = nullptr;
