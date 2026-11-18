@@ -82,7 +82,8 @@ bool ReadBundleSources(const AZStd::string& bundlePath, BundleSources& sources, 
         error = AZStd::string::format("%s must contain a JSON object", sidecar.c_str());
         return false;
     }
-    const auto folder = AZ::IO::Path(bundlePath).ParentPath();
+    // Own the folder: ParentPath() of a temporary is a view into freed storage.
+    const AZ::IO::Path folder(AZ::IO::Path(bundlePath).ParentPath());
     return ReadPathList(root, "Material", folder, true, sources.material, error)
         && ReadPathList(root, "Training", folder, false, sources.training, error);
 }
@@ -94,7 +95,7 @@ void LearnedMaterialBuilder::Reflect(AZ::ReflectContext* c)
 }
 void LearnedMaterialBuilder::Activate()
 {
-    AssetBuilderSDK::AssetBuilderDesc d;d.m_name="SilPOM learned material";d.m_version=5;
+    AssetBuilderSDK::AssetBuilderDesc d;d.m_name="SilPOM learned material";d.m_version=6;
     d.m_analysisFingerprint="material-v5-sidecar-sources";d.m_busId=azrtti_typeid<LearnedMaterialBuilder>();
     d.m_patterns.emplace_back("*.l4mat",AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
     d.m_patterns.emplace_back("*.l5app",AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
