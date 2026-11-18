@@ -11,7 +11,7 @@ ShaderResourceGroup PassSrg : SRG_PerPass
     RWByteAddressBuffer m_faceCoefficients;
     RWByteAddressBuffer m_faceCacheOutput;
     uint m_faceCount,m_cacheOffset,m_ownerBase,m_meshBufferIndex;
-    uint m_neuralModel,m_reliefMode,m_proxyBufferIndex,m_proxyLodEnabled;
+    uint m_profileRole,m_reliefMode,m_proxyBufferIndex,m_proxyLodEnabled;
     float m_scale,m_reference,m_reliefLodPixelBudget,m_maxReliefDistance;
     float4x4 m_objectToWorld;
 }
@@ -56,7 +56,7 @@ void MainCS(uint3 dispatchThreadId:SV_DispatchThreadID)
         SilPomImplicitProfile profile;
         profile.scale=PassSrg::m_scale;profile.reference=PassSrg::m_reference;
         profile.pixelBudget=PassSrg::m_reliefLodPixelBudget;profile.maxDistance=PassSrg::m_maxReliefDistance;
-        profile.reliefMode=PassSrg::m_reliefMode;profile.neuralModel=PassSrg::m_neuralModel;
+        profile.reliefMode=PassSrg::m_reliefMode;profile.role=PassSrg::m_profileRole;
         profile.proxyLodEnabled=PassSrg::m_proxyLodEnabled!=0u;
         bool proxySelected=false;
         if(profile.proxyLodEnabled)

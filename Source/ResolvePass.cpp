@@ -4,6 +4,7 @@
 #include <SilPOM/ResolveRegion.h>
 #include <SilPOM/ResolveRegions.h>
 #include <SilPOM/ReliefMode.h>
+#include <SilPOM/SurfaceProfileAsset.h>
 
 #include <Atom/RHI/Buffer.h>
 #include <Atom/RHI/DevicePipelineState.h>
@@ -155,7 +156,7 @@ namespace SilPOM
         AZ::RPI::Scene* scene = nullptr;
         AZ::u64 generation = 0;
         AZ::u32 ownerBase = 0, ownerCount = 0;
-        AZ::u32 neuralModel = 0;
+        AZ::u32 profileRole = 0;
         bool resolveEligible = false;
         AZ::Aabb localBounds = AZ::Aabb::CreateNull();
         AZStd::shared_ptr<const AZStd::vector<AZ::Aabb>> coverageClusters;
@@ -168,14 +169,14 @@ namespace SilPOM
     ResolveBatchPtr CreateResolveBatch(
         AZ::RPI::Scene* scene, AZ::u64 generation, AZ::u32 ownerBase, AZ::u32 ownerCount,
         const AZ::Aabb& localBounds, const AZ::Transform& world, AZStd::vector<AZ::Aabb> coverageClusters,
-        AZ::u32 neuralModel, bool resolveEligible)
+        AZ::u32 profileRole, bool resolveEligible)
     {
         auto batch = AZStd::make_shared<ResolveBatch>();
         batch->scene = scene;
         batch->generation = generation;
         batch->ownerBase = ownerBase;
         batch->ownerCount = ownerCount;
-        batch->neuralModel = neuralModel;
+        batch->profileRole = profileRole;
         batch->resolveEligible = resolveEligible;
         batch->localBounds = localBounds;
         batch->coverageClusters = AZStd::make_shared<const AZStd::vector<AZ::Aabb>>(AZStd::move(coverageClusters));
@@ -251,7 +252,7 @@ namespace SilPOM
             AZ::u64 generation = 0;
             AZ::u32 ownerBase = 0, ownerCount = 0;
             FaceCacheBatchInputs faceCacheInputs;
-            AZ::u32 neuralModel = 0;
+            AZ::u32 profileRole = 0;
             bool resolveEligible = false;
         };
 
@@ -271,7 +272,7 @@ namespace SilPOM
             }
             selection = {found->second.snapshot, found->second.itemIndex, batch->localBounds, batch->world,
                 batch->coverageClusters, batch->generation, batch->ownerBase, batch->ownerCount, batch->faceCacheInputs,
-                batch->neuralModel, batch->resolveEligible};
+                batch->profileRole, batch->resolveEligible};
             lock.unlock();
             return true;
         }
@@ -283,7 +284,7 @@ namespace SilPOM
             AZStd::vector<AZ::RPI::Ptr<AZ::RPI::PassAttachment>> attachments;
         };
 
-        WallCapability GetWallCapability(const PacketSnapshot& snapshot, size_t itemIndex, AZ::u32 neuralModel)
+        WallCapability GetWallCapability(const PacketSnapshot& snapshot, size_t itemIndex, AZ::u32 profileRole)
         {
             // MeshDrawPacket appends ShaderData and DrawItem in the same order.
             // Check that correspondence rather than inferring a shader from the
@@ -330,15 +331,15 @@ namespace SilPOM
                 return WallCapability::NonWall; // Both publish SHELL without WALL.
             if (tag == AZ::Name("silpom_hit_depth_lod_near_wall"))
             {
-                // The default MSAA shader forces model 4 in both stages. The
-                // NoMSAA supervariant retains the published material model.
-                return supervariant.IsEmpty() || neuralModel == 1 || neuralModel == 4
+                // The default MSAA shader forces the wall role in both stages.
+                // The NoMSAA supervariant retains the published profile role.
+                return supervariant.IsEmpty() || profileRole == static_cast<AZ::u32>(SurfaceRole::Wall)
                     ? WallCapability::Wall : WallCapability::NonWall;
             }
             if (tag == AZ::Name("silpom_hit_depth") || tag == AZ::Name("silpom_hit_depth_bounds")
                 || tag == AZ::Name("silpom_hit_depth_neural") || tag == AZ::Name("silpom_hit_depth_neural_cache")
                 || tag == AZ::Name("silpom_hit_depth_lod_near") || tag == AZ::Name("silpom_hit_depth_lod_shell"))
-                return neuralModel == 1 || neuralModel == 4 ? WallCapability::Wall : WallCapability::NonWall;
+                return profileRole == static_cast<AZ::u32>(SurfaceRole::Wall) ? WallCapability::Wall : WallCapability::NonWall;
             return WallCapability::Unknown;
         }
 
@@ -567,7 +568,7 @@ namespace SilPOM
                     const auto mix = [&](AZ::u64 value)
                     { frame->inputIdentity ^= value + 0x9e3779b97f4a7c15ull + (frame->inputIdentity << 6) + (frame->inputIdentity >> 2); };
                     mix(selected.generation); mix(selected.ownerBase);
-                    mix(inputs.meshBufferIndex); mix(inputs.proxyBufferIndex); mix(inputs.reliefMode); mix(inputs.neuralModel);
+                    mix(inputs.meshBufferIndex); mix(inputs.proxyBufferIndex); mix(inputs.reliefMode); mix(inputs.profileRole);
                     mix(inputs.faceCount); mix(AZ::u64(inputs.proxyLodEnabled));
                     for (float value : {inputs.scale, inputs.reference, inputs.reliefLodPixelBudget, inputs.maxReliefDistance})
                     { AZ::u32 bits; std::memcpy(&bits, &value, sizeof(bits)); mix(bits); }
@@ -656,7 +657,7 @@ namespace SilPOM
                         || !set("m_faceCount", inputs.faceCount) || !set("m_cacheOffset", dispatch.cacheOffsetBytes)
                         || !setOptionalIdentity("m_ownerBase", selected.ownerBase)
                         || !setOptionalIdentity("m_meshBufferIndex", inputs.meshBufferIndex)
-                        || !set("m_neuralModel", inputs.neuralModel) || !set("m_reliefMode", inputs.reliefMode)
+                        || !set("m_profileRole", inputs.profileRole) || !set("m_reliefMode", inputs.reliefMode)
                         || !set("m_proxyBufferIndex", inputs.proxyBufferIndex) || !set("m_proxyLodEnabled", AZ::u32(inputs.proxyLodEnabled))
                         || !set("m_scale", inputs.scale) || !set("m_reference", inputs.reference)
                         || !set("m_reliefLodPixelBudget", inputs.reliefLodPixelBudget) || !set("m_maxReliefDistance", inputs.maxReliefDistance)
@@ -849,12 +850,12 @@ namespace SilPOM
                     { inventory->complete = false; continue; }
                     auto retained = AZStd::make_shared<const Selection>(selected);
                     inventory->sources.emplace_back(retained);
-                    const auto capability = GetWallCapability(*selected.snapshot, selected.itemIndex, selected.neuralModel);
+                    const auto capability = GetWallCapability(*selected.snapshot, selected.itemIndex, selected.profileRole);
                     if (capability == WallCapability::Unknown) { inventory->complete = false; continue; }
                     bool potentialWall = capability == WallCapability::Wall;
                     for (size_t i = 0; !potentialWall && i < selected.snapshot->packet->GetDrawItemCount(); ++i)
                         if (selected.snapshot->packet->GetDrawListTag(i) == depthTag
-                            && GetWallCapability(*selected.snapshot, i, selected.neuralModel) == WallCapability::Wall)
+                            && GetWallCapability(*selected.snapshot, i, selected.profileRole) == WallCapability::Wall)
                             potentialWall = true;
                     if (!potentialWall) continue;
 

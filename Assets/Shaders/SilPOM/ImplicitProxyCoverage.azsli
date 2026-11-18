@@ -4,6 +4,7 @@
 #include "Quality.azsli"
 #include "FrustumDepthBound.azsli"
 #include "ReliefMode.azsli"
+#include "ProfileRole.azsli"
 
 // These helpers describe only the implicit NDC proxy. Authored shell/proxy
 // vertices retain their original clip W, UV and sample-depth interpolation.
@@ -16,7 +17,7 @@ static const uint SP_FACE_COEFFICIENT_BYTES=48u;
 struct SilPomImplicitProfile
 {
     float scale,reference,pixelBudget,maxDistance;
-    uint reliefMode,neuralModel;
+    uint reliefMode,role; // role: SP_ROLE_*
     bool proxyLodEnabled;
 };
 struct SilPomImplicitCoverage
@@ -171,7 +172,7 @@ SilPomImplicitCoverage SilPomBuildImplicitCoverage(SilPomMeshFace f,SilPomImplic
         // Coverage deliberately retains the two-stage projection expression.
         corners[i]=mul(vp,mul(model,float4(p,1)));
     }
-    const bool tightWall=nearPolicy&&(profile.neuralModel==1u||profile.neuralModel==4u)&&profile.reliefMode==SP_RELIEF_LOD_4PX_RESOLVE;
+    const bool tightWall=nearPolicy&&profile.role==SP_ROLE_WALL&&profile.reliefMode==SP_RELIEF_LOD_4PX_RESOLVE;
     SilPomImplicitWallBounds wallBounds=(SilPomImplicitWallBounds)0;
     if(tightWall)
     {

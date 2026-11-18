@@ -34,6 +34,7 @@ static bool EvaluatePredictor(const float* source,uint width,uint height,float s
         s.p={w,h,scale,reference,w,h,s.low.x,s.low.y,width,height,address,65536u};
     }
     const Texture texture{width,height,std::vector<float>(source,source+size_t(width)*height)};
+    const auto trained=SilPomCompiledModel(model);
     levelOneOverride=level==1?weights:nullptr;
     levelTwoOverride=level==2?weights:nullptr;
     levelTwoEnabled=level==2;
@@ -45,7 +46,7 @@ static bool EvaluatePredictor(const float* source,uint width,uint height,float s
         const float* p=rays+i*6;
         const SilPomRay ray{vector(p),vector(p+3),0,150};
         levelOneStats={};levelCaptured=false;levelFeatures={};levelStart=0;levelSpan=0;
-        const auto hit=SilPomIntersectFace(texture,s.p,s.f,ray,s.low,model,iterations,retries,tolerance,SP_RELIEF_NO_MARCH);
+        const auto hit=SilPomIntersectFace(texture,s.p,s.f,ray,s.low,trained,iterations,retries,tolerance,SP_RELIEF_NO_MARCH);
         if(features)
         {
             std::memcpy(features+i*21,levelFeatures.data(),19*sizeof(float));

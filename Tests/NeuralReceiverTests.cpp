@@ -112,15 +112,15 @@ void SameEstimatorAndBoundedProbes()
         for(uint light=0;light<3;++light)
         {
             visibilityStats={};
-            const float actual=SilPomNeuralOnlyVisibilityPrepared(image,patch,face,uv,{0,0},lights[light],9,.3f,4,.6f,cached);
+            const float actual=SilPomNeuralOnlyVisibilityPrepared(image,patch,face,uv,{0,0},lights[light],9,.3f,SilPomCompiledModel(4),.6f,cached);
             const auto cachedReads=visibilityStats[0];
             Require(visibilityStats[5]==0&&visibilityStats[6]==0,"A cached strict neural query invoked marcher recovery");
             visibilityStats={};
-            const float withoutCache=SilPomNeuralOnlyVisibilityPrepared(image,patch,face,uv,{0,0},lights[light],9,.3f,4,.6f,uncached);
+            const float withoutCache=SilPomNeuralOnlyVisibilityPrepared(image,patch,face,uv,{0,0},lights[light],9,.3f,SilPomCompiledModel(4),.6f,uncached);
             Require(visibilityStats[0]==5&&visibilityStats[5]==0&&visibilityStats[6]==0,
                 "Unavailable cache changed the fixed descriptor acquisition or selected a marcher");
             visibilityStats={};
-            const float expected=SilPomNeuralOnlyVisibility(image,patch,face,uv,{0,0},lights[light],9,.3f,4,.6f);
+            const float expected=SilPomNeuralOnlyVisibility(image,patch,face,uv,{0,0},lights[light],9,.3f,SilPomCompiledModel(4),.6f);
             Require(Same(actual,expected)&&Same(withoutCache,expected),"Cache availability changed the selected neural estimator");
             Require(cachedReads==(light==0?5u:4u),"Fixed probes were cached across lights or center work was repeated");
         }
@@ -128,7 +128,7 @@ void SameEstimatorAndBoundedProbes()
     }
     // Every sample invocation owns a fresh receiver, even at the same UV.
     SilPomNeuralPhysicalReceiver anotherSample;SilPomInitNeuralPhysicalReceiver(anotherSample);visibilityStats={};
-    SilPomNeuralOnlyVisibilityPrepared(image,patch,face,uv,{0,0},lights[0],9,.3f,4,.6f,anotherSample);
+    SilPomNeuralOnlyVisibilityPrepared(image,patch,face,uv,{0,0},lights[0],9,.3f,SilPomCompiledModel(4),.6f,anotherSample);
     Require(visibilityStats[0]==5,"A different sample inherited another invocation's center cache");
     visibilityOverride=nullptr;
 }

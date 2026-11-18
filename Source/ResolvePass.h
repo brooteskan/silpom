@@ -31,7 +31,7 @@ namespace SilPOM
     {
         AZ::Data::Instance<AZ::RPI::Buffer> faces, coefficients, proxySelection;
         AZ::u32 meshBufferIndex = 0, proxyBufferIndex = 0, faceCount = 0;
-        AZ::u32 reliefMode = 0, neuralModel = 0; // SilPOM::ReliefMode
+        AZ::u32 reliefMode = 0, profileRole = 0; // SilPOM::ReliefMode, SilPOM::SurfaceRole
         float scale = 0, reference = 0, reliefLodPixelBudget = 0, maxReliefDistance = 0;
         bool proxyLodEnabled = false;
     };
@@ -73,7 +73,7 @@ namespace SilPOM
     ResolveBatchPtr CreateResolveBatch(
         AZ::RPI::Scene* scene, AZ::u64 generation, AZ::u32 ownerBase, AZ::u32 ownerCount,
         const AZ::Aabb& localBounds, const AZ::Transform& world, AZStd::vector<AZ::Aabb> coverageClusters,
-        AZ::u32 neuralModel, bool resolveEligible);
+        AZ::u32 profileRole, bool resolveEligible);
     void SetResolveBatchPublished(const ResolveBatchPtr& batch, bool published);
     void SetResolveBatchWorld(const ResolveBatchPtr& batch, const AZ::Transform& world);
     void SetResolveBatchFaceCacheInputs(const ResolveBatchPtr& batch, const FaceCacheBatchInputs& inputs);

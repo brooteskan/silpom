@@ -19,10 +19,6 @@ static const uint SP_REFINE_REJECTED=4;
 // No-march relief modes use the learned candidate with either coverage proxy.
 #include "ReliefMode.azsli"
 static const float SP_TOWER_MAX_FILL_INCIDENCE=.20f;
-bool SilPomIsTowerWallModel(uint model)
-{
-    return model==1u || model==4u;
-}
 float SilPomUvArea(SilPomMeshFace f)
 {
 #if SILPOM_FACE_COEFFICIENT_CACHE
@@ -370,8 +366,7 @@ static const float2 TowerNoMarchW1[16] = {
     float2(-7.891792059e-02f, 5.089561343e-01f),
 };
 static const float2 TowerNoMarchB1 = float2(1.917806715e-01f, 4.202251509e-02f);
-#include "NeuralWeldedTowerWeights.azsli"
-#include "NeuralOpenShaftTowerWeights.azsli"
+#include "ProfileNetworks.azsli"
 
 float2 SilPomEvaluateHitModel(float feature[11], const float w0[16][11], const float b0[16], const float2 w1[16], float2 b1)
 {
@@ -440,7 +435,7 @@ bool SilPomPreparePrediction(SilPomPatch p,SilPomMeshFace face,SilPomRay worldRa
 }
 
 SilPomHit SilPomPredictTowerHit(Texture2D texture, SilPomPatch p, SilPomMeshFace face,
-    SilPomRay worldRay, SilPomRay search, float2 low, uint model,uint validationIterations,uint retryCap,float toleranceMultiplier,
+    SilPomRay worldRay, SilPomRay search, float2 low, SilPomTrainedModel model,uint validationIterations,uint retryCap,float toleranceMultiplier,
     uint reliefMode)
 {
     SilPomHit miss=SP_ZERO(SilPomHit);
@@ -480,15 +475,9 @@ SilPomHit SilPomPredictTowerHit(Texture2D texture, SilPomPatch p, SilPomMeshFace
 #endif
     {
     // The model is constant for the material batch.
-    SP_BRANCH if(model==1u) logits=SilPomEvaluateHitModel(feature,WeldedWallW0,WeldedWallB0,WeldedWallW1,WeldedWallB1);
-    else if(model==2u) logits=SilPomEvaluateHitModel(feature,WeldedStairsW0,WeldedStairsB0,WeldedStairsW1,WeldedStairsB1);
-    else if(model==3u) logits=SilPomEvaluateHitModel(feature,WeldedDoorW0,WeldedDoorB0,WeldedDoorW1,WeldedDoorB1);
-    else if(model==4u) logits=SilPomEvaluateHitModel(feature,OpenShaftWallW0,OpenShaftWallB0,OpenShaftWallW1,OpenShaftWallB1);
-    else if(model==5u) logits=SilPomEvaluateHitModel(feature,OpenShaftStairsW0,OpenShaftStairsB0,OpenShaftStairsW1,OpenShaftStairsB1);
-    else if(model==6u) logits=SilPomEvaluateHitModel(feature,OpenShaftTrimW0,OpenShaftTrimB0,OpenShaftTrimW1,OpenShaftTrimB1);
-    else if(model==7u) logits=SilPomEvaluateHitModel(feature,OpenShaftRevealW0,OpenShaftRevealB0,OpenShaftRevealW1,OpenShaftRevealB1);
-    else if(model==0u) logits=SilPomEvaluateHitModel(feature,TowerNoMarchW0,TowerNoMarchB0,TowerNoMarchW1,TowerNoMarchB1);
-    else return miss;
+    // Trained profiles read their own networks; model 0 is compiled in.
+    SP_BRANCH if(model.id!=0u) logits=SilPomHitNetwork(feature,model.weights);
+    else logits=SilPomEvaluateHitModel(feature,TowerNoMarchW0,TowerNoMarchB0,TowerNoMarchW1,TowerNoMarchB1);
     }
     float4 residuals=abs(float4(feature[0],feature[1],feature[2],feature[3]));
     const float nearestResidual=min(min(residuals.x,residuals.y),min(residuals.z,residuals.w));
@@ -504,7 +493,7 @@ SilPomHit SilPomPredictTowerHit(Texture2D texture, SilPomPatch p, SilPomMeshFace
     // Retry independent descriptor seeds in residual order. An unsuccessful
     // solve does not advance the ray or supply the start of the next solve.
     // The welded wall model gets one retry after its first Newton attempt.
-    const uint attempts=min(retryCap,(!SilPomIsTowerWallModel(model) && recoverMiss && logits.y>0.0f) ? 4u : 1u);
+    const uint attempts=min(retryCap,(!SilPomIsWallProfile(model) && recoverMiss && logits.y>0.0f) ? 4u : 1u);
     SP_LOOP for(uint attempt=0;attempt<attempts;++attempt)
     {
         SILPOM_DIAGNOSTIC(9,0);
@@ -557,7 +546,7 @@ SilPomHit SilPomTowerBaseHit(SilPomPatch p, SilPomMeshFace face, SilPomRay ray, 
 
 SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilPomRay worldRay,float2 low
 #if SILPOM_NEURAL_NO_MARCH
-    ,uint model,uint validationIterations,uint retryCap,float toleranceMultiplier,uint reliefMode
+    ,SilPomTrainedModel model,uint validationIterations,uint retryCap,float toleranceMultiplier,uint reliefMode
 #endif
 #if SILPOM_HIT_NEURAL_CACHE
     ,SP_TEX neuralCache
@@ -590,7 +579,7 @@ SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilP
 #if SILPOM_HIT_NEURAL
 #if SILPOM_NEURAL_NO_MARCH
     // The welded profiles do not have a legacy cache or compatible legacy weights.
-    if(model==0u)
+    if(model.id==0u)
 #endif
     {
     SilPomHit neural=SilPomTryTowerNeural(texture,p,f,worldRay,searchRay,low
@@ -603,12 +592,12 @@ SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilP
 #if SILPOM_NEURAL_NO_MARCH
     SilPomHit predicted;
 #ifdef SILPOM_LEVEL2
-    SP_BRANCH if(SILPOM_LEVEL2 && model>=4u && model<=7u)
+    SP_BRANCH if(SILPOM_LEVEL2 && SilPomHasLevelTwo(model))
         predicted=SilPomPredictTowerHit2(texture,p,f,worldRay,searchRay,low,model,validationIterations,retryCap,toleranceMultiplier,reliefMode);
     else
 #endif
         predicted=SilPomPredictTowerHit(texture,p,f,worldRay,searchRay,low,model,validationIterations,retryCap,toleranceMultiplier,reliefMode);
-    predicted=SilPomRecoverNearestHit(texture,p,f,worldRay,searchRay,low,predicted,model);
+    predicted=SilPomRecoverNearestHit(texture,p,f,worldRay,searchRay,low,predicted,model.id);
     if(predicted.status==SP_HIT || !SilPomReliefFillEnabled(reliefMode)) return predicted;
     SILPOM_DIAGNOSTIC(10,0);
     SilPomHit fill=SilPomTowerBaseHit(p,f,worldRay,low);

@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+// Mirrors SilPOM::SurfaceRole: how a trained profile's surface is used by
+// coverage, wall hit records and backup shells.
+static const uint SP_ROLE_SURFACE=0u;
+static const uint SP_ROLE_WALL=1u;
+static const uint SP_ROLE_OPENING=2u;

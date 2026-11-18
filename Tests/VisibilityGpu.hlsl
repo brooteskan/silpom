@@ -8,6 +8,9 @@
 #include "../Assets/Shaders/SilPOM/PlanarFace.azsli"
 SamplerState testSampler : register(s0);
 #define GetMaterialTextureSampler() testSampler
+// Profile networks: the compiled reference of the model, uploaded by the test.
+ByteAddressBuffer profileWeights : register(t2);
+#define SILPOM_WEIGHT_BUFFER(index) profileWeights
 #include "../Assets/Shaders/SilPOM/BlendedFace.azsli"
 #include "../Assets/Shaders/SilPOM/ReliefShadow.azsli"
 static uint counters[12];
@@ -35,13 +38,17 @@ void Main(uint3 id : SV_DispatchThreadID)
     face.origin=float3(0,0,0);face.du=float3(1,0,0);face.dv=float3(0,1,0);
     face.normal=float3(0,0,1);face.uv0=float2(0,0);face.uv1=float2(1,0);face.uv2=float2(0,1);
     face.d0=float3(0,0,1);face.d1=float3(.2f,0,1);face.d2=float3(0,.1f,1);
+    SilPomTrainedModel trained;
+    trained.id=model;trained.weights.buffer=0;
+    trained.role=(model==1u||model==4u)?SP_ROLE_WALL:(model==6u||model==7u)?SP_ROLE_OPENING:SP_ROLE_SURFACE;
+    trained.flags=(model>=4u&&model<=7u)?(SP_PROFILE_LEVEL_TWO|SP_PROFILE_VISIBILITY):0u;
     Request q=requests[id.x];
 #if defined(SILPOM_NEURAL_VISIBILITY_ONLY)
     float visibility=SilPomNeuralOnlyVisibility(heightImage,patch,face,q.uv,float2(0,0),q.light,q.steps,q.reach,
-        model,SilPomNeuralOnlyThreshold(model));
+        trained,SilPomNeuralOnlyThreshold(trained));
 #else
     float visibility=SilPomLearnedReliefVisibility(heightImage,patch,face,q.uv,float2(0,0),q.light,q.steps,q.reach,
-        model,mode==2u,confidence);
+        trained,mode==2u,confidence);
 #endif
     Result result;
     result.values=float4(visibility,probability,0,0);

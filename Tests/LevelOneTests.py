@@ -67,7 +67,7 @@ class LevelOne(unittest.TestCase):
         self.assertAlmostEqual(hit[0,1], .4, places=5)
 
     def test_shipping_and_exported_weight_order_match(self):
-        header = Path(__file__).resolve().parents[1] / "Assets/Shaders/SilPOM/NeuralOpenShaftTowerWeights.azsli"
+        header = Path(__file__).resolve().parents[1] / "Tools/CompiledNetworks/NeuralOpenShaftTowerWeights.azsli"
         profile = Profile(np.asarray([[.1,.7,.2,.8,.3]]*3))
         ray = details([.2,.2,1,.03,.01,-.9995])
         for model,name in enumerate(("Wall","Stairs","Trim","Reveal"),4):

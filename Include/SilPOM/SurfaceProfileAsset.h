@@ -21,12 +21,23 @@ public:
     AZ_CLASS_ALLOCATOR(SurfaceProfileAsset, AZ::SystemAllocator);
     static void Reflect(AZ::ReflectContext* context);
 
-    // Flattened sizes, in the declaration order of the shader arrays.
-    static constexpr size_t HitModelFloats = 16 * 11 + 16 + 16 * 2 + 2;    // W0, B0, W1, B1
-    static constexpr size_t LevelTwoFloats = 24 * 19 + 24 * 5 + 24 + 5;    // W0, W1, B0, B1
-    static constexpr size_t VisibilityFloats = 12 * 10 + 12 + 12 + 1;      // W0, B0, W1, B1
+    // Flattened network sizes; each network is stored W0, B0, W1, B1.
+    static constexpr size_t HitModelFloats = 16 * 11 + 16 + 16 * 2 + 2;
+    static constexpr size_t LevelTwoFloats = 24 * 19 + 24 + 24 * 5 + 5;
+    static constexpr size_t VisibilityFloats = 12 * 10 + 12 + 12 + 1;
+    // Offsets of the GPU weights buffer (SP_NET_* in ProfileNetworks.azsli).
+    static constexpr size_t LevelTwoOffset = HitModelFloats;
+    static constexpr size_t VisibilityOffset = LevelTwoOffset + LevelTwoFloats;
+    static constexpr size_t PhysicalVisibilityOffset = VisibilityOffset + VisibilityFloats;
+    static constexpr size_t PhysicalThresholdOffset = PhysicalVisibilityOffset + VisibilityFloats;
+    static constexpr size_t NetworkFloats = PhysicalThresholdOffset + 1;
+    // Flags of the networks present beyond the hit model (SP_PROFILE_*).
+    static constexpr AZ::u32 LevelTwoFlag = 1, VisibilityFlag = 2;
 
     bool HasOpenShaftNetworks() const { return !m_levelTwo.empty(); }
+    AZ::u32 NetworkFlags() const { return HasOpenShaftNetworks() ? LevelTwoFlag | VisibilityFlag : 0u; }
+    // All networks in the GPU weights buffer layout; absent ones are zero.
+    AZStd::vector<float> PackNetworks() const;
     // Sizes, ranges and finiteness; an empty string when valid.
     AZStd::string Validate() const;
 

@@ -1555,6 +1555,12 @@ bool MeshController::Prepare()
     if (!m_processor) { m_status = "Waiting for MeshFeatureProcessor"; return true; }
     const bool requiresTrainedHits = AZStd::any_of(profiles.begin(), profiles.end(),
         [](const auto& entry) { return entry.second.IsTrained(); });
+    // SilPOM::SurfaceRole of a profile ID; untrained profiles are plain surfaces.
+    const auto ProfileRole = [this](AZ::u32 id)
+    {
+        const auto found = m_profileAssets.find(id);
+        return found != m_profileAssets.end() && found->second.IsReady() ? static_cast<AZ::u32>(found->second->m_role) : 0u;
+    };
     const float depthMultiplier = requiresTrainedHits ? c.m_reliefDepthMultiplier : 1.0f;
     if (!std::isfinite(depthMultiplier) || depthMultiplier < 0.0f || depthMultiplier > MeshConfig::MaxReliefDepthMultiplier)
     { m_status = "Relief depth multiplier must be between 0 and 2"; return false; }
@@ -1817,7 +1823,7 @@ bool MeshController::Prepare()
                     faceCacheInputs.meshBufferIndex=bindless.begin()->second;
                     faceCacheInputs.faceCount=aznumeric_cast<AZ::u32>(faces.size());
                     faceCacheInputs.scale=reliefScale;faceCacheInputs.reference=p.m_reference;
-                    faceCacheInputs.reliefMode=static_cast<AZ::u32>(c.m_reliefMode);faceCacheInputs.neuralModel=p.m_neuralModel;
+                    faceCacheInputs.reliefMode=static_cast<AZ::u32>(c.m_reliefMode);faceCacheInputs.profileRole=ProfileRole(key.second);
                     faceCacheInputs.reliefLodPixelBudget=c.m_reliefLodPixelBudget;
                     faceCacheInputs.maxReliefDistance=c.m_maxReliefDistance;
                 }
@@ -1997,6 +2003,22 @@ bool MeshController::Prepare()
                     && Set(material,"surface.reliefShadowSteps",c.m_reliefShadowSteps)
                     && Set(material,"mesh.paintReceiver",candidate->paintReceiver);
                 if(!valid) return fail("Planar face material contract mismatch");
+                // A trained profile's networks: one weights buffer per batch.
+                if(const auto trained=m_profileAssets.find(key.second); trained!=m_profileAssets.end() && p.m_neuralModel!=0)
+                {
+                    const auto& profile=*trained->second;
+                    const auto networks=profile.PackNetworks();
+                    auto weights=AZ::RPI::Buffer::FindOrCreate(Buffer(networks.data(),networks.size(),4,true));
+                    if(!weights) return fail("Cannot allocate trained profile networks");
+                    weights->WaitForUpload();
+                    const auto weightIndices=weights->GetBufferView()->GetBindlessReadIndex();
+                    if(weightIndices.size()!=1||weightIndices.begin()->second==AZ::u32(-1)) return fail("Trained profiles require one bindless-capable GPU");
+                    if(!Set(material,"surface.profileWeights",weightIndices.begin()->second)
+                        ||!Set(material,"surface.profileRole",static_cast<AZ::u32>(profile.m_role))
+                        ||!Set(material,"surface.profileFlags",profile.NetworkFlags()))
+                        return fail("Trained profile material contract mismatch");
+                    candidate->buffers.push_back(weights);
+                }
                 if (hasSpiralLight && (c.m_spiralLightMode == SpiralLightMode::AllSilPomSurfaces || binding.m_receiveSpiralLight))
                 {
                     if (!Set(material, "spiralLight.path", spiralPath)
@@ -2053,7 +2075,7 @@ bool MeshController::Prepare()
             candidate->resolveBatches.push_back(resolveOwnerBase
                 ? CreateResolveBatch(scene, candidate->paintReceiver, resolveOwnerBase,
                     aznumeric_cast<AZ::u32>(faces.size()), resolveBounds, rigid, AZStd::move(resolveClusters),
-                    faceCacheInputs.neuralModel, c.m_reliefMode == ReliefMode::Lod4pxResolve)
+                    faceCacheInputs.profileRole, c.m_reliefMode == ReliefMode::Lod4pxResolve)
                 : ResolveBatchPtr{});
             if(faceCacheInputs.faces)
             {

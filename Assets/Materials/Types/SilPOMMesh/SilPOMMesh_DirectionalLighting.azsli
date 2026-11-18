@@ -57,8 +57,8 @@ float SilPomLocalVisibility(Texture2D texture,SilPomPatch p,SilPomMeshFace face,
 {
 #if defined(SILPOM_NEURAL_VISIBILITY_ONLY) && SILPOM_DIRECTIONAL_COMPARISON
     if(o_silpomLightingEstimator==SilPomLightingEstimator::PhysicalRayNeural)
-        return SilPomNeuralOnlyVisibilityPrepared(texture,p,face,uv,low,light,steps,reach,params.m_silpomNeuralModel,
-            SilPomNeuralOnlyThreshold(params.m_silpomNeuralModel),receiver.physical);
+        return SilPomNeuralOnlyVisibilityPrepared(texture,p,face,uv,low,light,steps,reach,SilPomMaterialModel(params),
+            SilPomNeuralOnlyThreshold(SilPomMaterialModel(params)),receiver.physical);
 #if SILPOM_SHARED_VISIBILITY
     if(o_silpomLightingEstimator!=SilPomLightingEstimator::CurrentRouting)
     {
@@ -84,15 +84,15 @@ float SilPomLocalVisibility(Texture2D texture,SilPomPatch p,SilPomMeshFace face,
     return SilPomSharedVisibility(light,steps,reach,params);
 #endif
 #elif defined(SILPOM_NEURAL_VISIBILITY_ONLY)
-    return SilPomNeuralOnlyVisibilityPrepared(texture,p,face,uv,low,light,steps,reach,params.m_silpomNeuralModel,
-        SilPomNeuralOnlyThreshold(params.m_silpomNeuralModel),receiver.physical);
+    return SilPomNeuralOnlyVisibilityPrepared(texture,p,face,uv,low,light,steps,reach,SilPomMaterialModel(params),
+        SilPomNeuralOnlyThreshold(SilPomMaterialModel(params)),receiver.physical);
 #else
     if(o_silpomLocalShadowMethod==SilPomLocalShadowMethod::Baseline)
         return SilPomReliefVisibility(texture,p,face,uv,low,light,steps,reach);
     // NeuralOnly is enabled exclusively on the separately compiled forward
     // shader. An invalid material/shader binding must never start a march.
     if(o_silpomLocalShadowMethod==SilPomLocalShadowMethod::NeuralOnly) return 0;
-    return SilPomLearnedReliefVisibility(texture,p,face,uv,low,light,steps,reach,params.m_silpomNeuralModel,
+    return SilPomLearnedReliefVisibility(texture,p,face,uv,low,light,steps,reach,SilPomMaterialModel(params),
         o_silpomLocalShadowMethod==SilPomLocalShadowMethod::Neural,params.m_silpomNeuralShadowConfidence);
 #endif
 }

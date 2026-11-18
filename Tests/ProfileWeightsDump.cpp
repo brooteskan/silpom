@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
-// Prints the float32 bits of every compiled-in trained network, as the C++
-// compiler parsed the shader headers. ProfileWeightsTests.py compares them
+// Prints the float32 bits of the reference networks in Tools/CompiledNetworks
+// (formerly compiled into the shaders), as the C++ compiler parses them. ProfileWeightsTests.py compares them
 // with Tools/silpom_profile.py, whose weights files feed the profile assets.
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 struct float2 { float x = 0, y = 0; float2() = default; constexpr float2(float a, float b) : x(a), y(b) {} };
-#include "../Assets/Shaders/SilPOM/NeuralWeldedTowerWeights.azsli"
-#include "../Assets/Shaders/SilPOM/NeuralOpenShaftTowerWeights.azsli"
-#include "../Assets/Shaders/SilPOM/NeuralTowerLevelTwoWeights.azsli"
-#include "../Assets/Shaders/SilPOM/NeuralVisibilityWeights.azsli"
-#include "../Assets/Shaders/SilPOM/NeuralVisibilityPhysicalWeights.azsli"
-#include "../Assets/Shaders/SilPOM/VisibilityClassificationThresholds.azsli"
+#include "../Tools/CompiledNetworks/NeuralWeldedTowerWeights.azsli"
+#include "../Tools/CompiledNetworks/NeuralOpenShaftTowerWeights.azsli"
+#include "../Tools/CompiledNetworks/NeuralTowerLevelTwoWeights.azsli"
+#include "../Tools/CompiledNetworks/NeuralVisibilityWeights.azsli"
+#include "../Tools/CompiledNetworks/NeuralVisibilityPhysicalWeights.azsli"
+#include "../Tools/CompiledNetworks/VisibilityClassificationThresholds.azsli"
 
 static void Dump(const char* name, const void* data, size_t bytes)
 {

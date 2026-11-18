@@ -12,7 +12,7 @@ void SurfaceProfileAsset::Reflect(AZ::ReflectContext* context)
     {
         sc->Enum<SurfaceRole>()->Value("Surface", SurfaceRole::Surface)->Value("Wall", SurfaceRole::Wall)
             ->Value("Opening", SurfaceRole::Opening);
-        sc->Class<SurfaceProfileAsset, AZ::Data::AssetData>()->Version(1)
+        sc->Class<SurfaceProfileAsset, AZ::Data::AssetData>()->Version(2) // Level 2 stored W0, B0, W1, B1
             ->Field("HeightProduct", &SurfaceProfileAsset::m_heightProduct)
             ->Field("Width", &SurfaceProfileAsset::m_width)->Field("HeightPixels", &SurfaceProfileAsset::m_heightPixels)
             ->Field("Scale", &SurfaceProfileAsset::m_scale)->Field("Reference", &SurfaceProfileAsset::m_reference)
@@ -26,6 +26,19 @@ void SurfaceProfileAsset::Reflect(AZ::ReflectContext* context)
     }
 }
 
+AZStd::vector<float> SurfaceProfileAsset::PackNetworks() const
+{
+    AZStd::vector<float> packed(NetworkFloats, 0.0f);
+    AZStd::copy(m_hitModel.begin(), m_hitModel.end(), packed.begin());
+    if (HasOpenShaftNetworks())
+    {
+        AZStd::copy(m_levelTwo.begin(), m_levelTwo.end(), packed.begin() + LevelTwoOffset);
+        AZStd::copy(m_visibility.begin(), m_visibility.end(), packed.begin() + VisibilityOffset);
+        AZStd::copy(m_physicalVisibility.begin(), m_physicalVisibility.end(), packed.begin() + PhysicalVisibilityOffset);
+        packed[PhysicalThresholdOffset] = m_physicalVisibilityThreshold;
+    }
+    return packed;
+}
 AZStd::string SurfaceProfileAsset::Validate() const
 {
     const auto finite = [](const AZStd::vector<float>& values)

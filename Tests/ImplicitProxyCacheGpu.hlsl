@@ -53,7 +53,7 @@ TestCase LoadCase(uint index)
     const float4 extra=asfloat(Cases.Load4(offset+304u));
     input.profile.scale=profile.x;input.profile.reference=profile.y;
     input.profile.pixelBudget=profile.z;input.profile.maxDistance=profile.w;
-    input.profile.reliefMode=asuint(extra.y);input.profile.neuralModel=policy.y;
+    input.profile.reliefMode=asuint(extra.y);input.profile.role=(policy.y==1u||policy.y==4u)?SP_ROLE_WALL:(policy.y==6u||policy.y==7u)?SP_ROLE_OPENING:SP_ROLE_SURFACE;
     input.profile.proxyLodEnabled=policy.z!=0u;
     input.legacyProfile.scale=profile.x;input.legacyProfile.reference=profile.y;
     input.legacyProfile.pixelBudget=profile.z;input.legacyProfile.maxDistance=profile.w;

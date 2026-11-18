@@ -376,8 +376,8 @@ if(NOT COMMAND o3de_gem_setup)
                 COMMAND "${SILPOM_DXC}" -T cs_${profile} -E Main -Fo ${visibility_shader} ${CMAKE_CURRENT_SOURCE_DIR}/Tests/VisibilityGpu.hlsl
                 DEPENDS Tests/VisibilityGpu.hlsl Assets/Shaders/SilPOM/LevelThree.azsli
                     Assets/Shaders/SilPOM/PhysicalShadowReach.azsli
-                    Assets/Shaders/SilPOM/VisibilityInputs.azsli Assets/Shaders/SilPOM/VisibilityClassificationThresholds.azsli
-                    Assets/Shaders/SilPOM/NeuralVisibilityWeights.azsli Assets/Shaders/SilPOM/ReliefShadow.azsli
+                    Assets/Shaders/SilPOM/VisibilityInputs.azsli Assets/Shaders/SilPOM/ProfileNetworks.azsli
+                    Assets/Shaders/SilPOM/ProfileNetworks.azsli Assets/Shaders/SilPOM/ReliefShadow.azsli
                     Assets/Shaders/SilPOM/ValidationHeight.azsli Assets/Shaders/SilPOM/BlendedFace.azsli
                     Assets/Shaders/SilPOM/PlanarFace.azsli Assets/Shaders/SilPOM/Heightfield.azsli VERBATIM)
             add_custom_target(silpom_visibility_shader_${profile} DEPENDS ${visibility_shader})
@@ -388,9 +388,9 @@ if(NOT COMMAND o3de_gem_setup)
                 COMMAND "${SILPOM_DXC}" -T cs_${profile} -D SILPOM_NEURAL_VISIBILITY_ONLY=1 -E Main
                     -Fo ${visibility_only_shader} ${CMAKE_CURRENT_SOURCE_DIR}/Tests/VisibilityGpu.hlsl
                 DEPENDS Tests/VisibilityGpu.hlsl Assets/Shaders/SilPOM/NeuralVisibility.azsli
-                    Assets/Shaders/SilPOM/PhysicalShadowReach.azsli Assets/Shaders/SilPOM/NeuralVisibilityPhysicalWeights.azsli
-                    Assets/Shaders/SilPOM/VisibilityInputs.azsli Assets/Shaders/SilPOM/VisibilityClassificationThresholds.azsli
-                    Assets/Shaders/SilPOM/NeuralVisibilityWeights.azsli Assets/Shaders/SilPOM/ReliefShadow.azsli
+                    Assets/Shaders/SilPOM/PhysicalShadowReach.azsli Assets/Shaders/SilPOM/ProfileNetworks.azsli
+                    Assets/Shaders/SilPOM/VisibilityInputs.azsli Assets/Shaders/SilPOM/ProfileNetworks.azsli
+                    Assets/Shaders/SilPOM/ProfileNetworks.azsli Assets/Shaders/SilPOM/ReliefShadow.azsli
                     Assets/Shaders/SilPOM/ValidationHeight.azsli Assets/Shaders/SilPOM/BlendedFace.azsli
                     Assets/Shaders/SilPOM/PlanarFace.azsli Assets/Shaders/SilPOM/Heightfield.azsli VERBATIM)
             add_custom_target(silpom_visibility_only_shader_${profile} DEPENDS ${visibility_only_shader})
@@ -409,9 +409,9 @@ if(NOT COMMAND o3de_gem_setup)
                 DEPENDS Tests/LevelOneGpu.hlsl Assets/Shaders/SilPOM/EvaluationHooks.azsli
                     Assets/Shaders/SilPOM/BlendedFace.azsli Assets/Shaders/SilPOM/LevelTwo.azsli
                     Assets/Shaders/SilPOM/NearestHit.azsli Assets/Shaders/SilPOM/Heightfield.azsli
-                    Assets/Shaders/SilPOM/NeuralTowerLevelTwoWeights.azsli
-                    Assets/Shaders/SilPOM/NeuralOpenShaftTowerWeights.azsli
-                    Assets/Shaders/SilPOM/NeuralWeldedTowerWeights.azsli VERBATIM)
+                    Assets/Shaders/SilPOM/ProfileNetworks.azsli
+                    Assets/Shaders/SilPOM/ProfileNetworks.azsli
+                    Assets/Shaders/SilPOM/ProfileNetworks.azsli VERBATIM)
             add_custom_target(silpom_level_one_shader_${profile} DEPENDS ${level_one_shader})
             add_dependencies(silpom_level_one_gpu_tests silpom_level_one_shader_${profile})
             add_test(NAME SilPOM.LevelOne.GPU.SM${profile}
@@ -422,9 +422,9 @@ if(NOT COMMAND o3de_gem_setup)
                     -Fo ${level_two_shader} ${CMAKE_CURRENT_SOURCE_DIR}/Tests/LevelOneGpu.hlsl
                 DEPENDS Tests/LevelOneGpu.hlsl Assets/Shaders/SilPOM/LevelTwo.azsli
                     Assets/Shaders/SilPOM/NearestHit.azsli Assets/Shaders/SilPOM/Heightfield.azsli
-                    Assets/Shaders/SilPOM/NeuralTowerLevelTwoWeights.azsli
-                    Assets/Shaders/SilPOM/NeuralOpenShaftTowerWeights.azsli
-                    Assets/Shaders/SilPOM/NeuralWeldedTowerWeights.azsli
+                    Assets/Shaders/SilPOM/ProfileNetworks.azsli
+                    Assets/Shaders/SilPOM/ProfileNetworks.azsli
+                    Assets/Shaders/SilPOM/ProfileNetworks.azsli
                     Assets/Shaders/SilPOM/BlendedFace.azsli VERBATIM)
             add_custom_target(silpom_level_two_shader_${profile} DEPENDS ${level_two_shader})
             add_dependencies(silpom_level_one_gpu_tests silpom_level_two_shader_${profile})

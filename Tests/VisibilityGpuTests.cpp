@@ -65,7 +65,8 @@ int main(int argc,char** argv)
         if(!input) throw std::runtime_error("Cannot open shader");
         std::vector<char> shader{std::istreambuf_iterator<char>(input),{}};
         D3D12_DESCRIPTOR_RANGE range{D3D12_DESCRIPTOR_RANGE_TYPE_SRV,1,0,0,0};
-        D3D12_ROOT_PARAMETER parameters[4]{};
+        D3D12_ROOT_PARAMETER parameters[5]{};
+        parameters[4].ParameterType=D3D12_ROOT_PARAMETER_TYPE_SRV;parameters[4].Descriptor={2,0}; // profile weights
         parameters[0].ParameterType=D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;parameters[0].DescriptorTable={1,&range};
         parameters[1].ParameterType=D3D12_ROOT_PARAMETER_TYPE_SRV;parameters[1].Descriptor={1,0};
         parameters[2].ParameterType=D3D12_ROOT_PARAMETER_TYPE_UAV;parameters[2].Descriptor={0,0};
@@ -74,7 +75,7 @@ int main(int argc,char** argv)
         sampler.Filter=D3D12_FILTER_MIN_MAG_MIP_LINEAR;
         sampler.AddressU=sampler.AddressV=sampler.AddressW=D3D12_TEXTURE_ADDRESS_MODE_WRAP;
         sampler.MaxLOD=D3D12_FLOAT32_MAX;sampler.ShaderVisibility=D3D12_SHADER_VISIBILITY_ALL;
-        D3D12_ROOT_SIGNATURE_DESC rd{4,parameters,1,&sampler,D3D12_ROOT_SIGNATURE_FLAG_NONE};
+        D3D12_ROOT_SIGNATURE_DESC rd{5,parameters,1,&sampler,D3D12_ROOT_SIGNATURE_FLAG_NONE};
         ComPtr<ID3DBlob> signature,error;Check(D3D12SerializeRootSignature(&rd,D3D_ROOT_SIGNATURE_VERSION_1,&signature,&error));
         ComPtr<ID3D12RootSignature> root;Check(device->CreateRootSignature(0,signature->GetBufferPointer(),signature->GetBufferSize(),IID_PPV_ARGS(&root)));
         D3D12_COMPUTE_PIPELINE_STATE_DESC pd{};pd.pRootSignature=root.Get();pd.CS={shader.data(),shader.size()};
@@ -128,6 +129,9 @@ int main(int argc,char** argv)
             ID3D12DescriptorHeap* heaps[]={heap.Get()};list->SetDescriptorHeaps(1,heaps);list->SetComputeRootSignature(root.Get());
             list->SetComputeRootDescriptorTable(0,heap->GetGPUDescriptorHandleForHeapStart());
             list->SetComputeRootShaderResourceView(1,inputs->GetGPUVirtualAddress());
+            const auto& networks=CompiledNetworks::Weights(model);
+            auto weights=upload(networks.data(),networks.size()*sizeof(float));
+            list->SetComputeRootShaderResourceView(4,weights->GetGPUVirtualAddress());
             list->SetComputeRootUnorderedAccessView(2,output->GetGPUVirtualAddress());
             list->SetComputeRoot32BitConstants(3,12,&patch,0);list->SetComputeRoot32BitConstant(3,count,12);
             list->SetComputeRoot32BitConstant(3,model,13);list->SetComputeRoot32BitConstant(3,mode,14);
@@ -142,8 +146,8 @@ int main(int argc,char** argv)
                 visibilityStats={};visibilityProbability=.5f;
                 const auto q=requests[i];
                 float expected=neuralOnly
-                    ?SilPomNeuralOnlyVisibility(texture,patch,face,q.uv,{0,0},q.light,q.steps,q.reach,model,SilPomNeuralOnlyThreshold(model))
-                    :SilPomLearnedReliefVisibility(texture,patch,face,q.uv,{0,0},q.light,q.steps,q.reach,model,mode==2,confidence);
+                    ?SilPomNeuralOnlyVisibility(texture,patch,face,q.uv,{0,0},q.light,q.steps,q.reach,SilPomCompiledModel(model),SilPomNeuralOnlyThreshold(SilPomCompiledModel(model)))
+                    :SilPomLearnedReliefVisibility(texture,patch,face,q.uv,{0,0},q.light,q.steps,q.reach,SilPomCompiledModel(model),mode==2,confidence);
                 if(neuralOnly && (visibilityStats[5]||visibilityStats[6]||visibilityStats[0]>5))
                     throw std::runtime_error("Neural-only violated its no-march/fixed-probe contract");
                 const auto& result=values[i];

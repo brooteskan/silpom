@@ -211,7 +211,7 @@ def main():
     report = {"schema": 1, "backend": "CPU shared shader solver; ideal FP32 bilinear descriptor sampling",
               "reference": "existing CPU teacher plus independent FP64 cell-polynomial audit",
               "selection_budget": [2, 1, 5], "profiles": {}}
-    header = HERE.parent / "Assets/Shaders/SilPOM" / (
+    header = HERE.parent / "Tools/CompiledNetworks" / (
         "NeuralWeldedTowerWeights.azsli" if args.welded else "NeuralOpenShaftTowerWeights.azsli")
     report["shipping_weights_sha256"] = hashlib.sha256(header.read_bytes()).hexdigest()
     report["solver_source_sha256"] = hashlib.sha256((HERE.parent / "Assets/Shaders/SilPOM/BlendedFace.azsli").read_bytes()).hexdigest()

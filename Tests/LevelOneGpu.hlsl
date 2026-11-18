@@ -34,6 +34,9 @@ void Diagnostic(uint event,uint value)
     }
 }
 #define SILPOM_DIAGNOSTIC(event,value) Diagnostic(event,value)
+// Profile networks: the compiled reference of the model, uploaded by the test.
+ByteAddressBuffer profileWeights : register(t2);
+#define SILPOM_WEIGHT_BUFFER(index) profileWeights
 #include "../Assets/Shaders/SilPOM/BlendedFace.azsli"
 Texture2D heightImage : register(t0);
 StructuredBuffer<SilPomRay> rays : register(t1);
@@ -49,10 +52,14 @@ void Main(uint3 id : SV_DispatchThreadID)
     face.origin=float3(0,0,0);face.du=float3(1,0,0);face.dv=float3(0,1,0);
     face.normal=float3(0,0,1);face.uv0=float2(0,0);face.uv1=float2(1,0);face.uv2=float2(0,1);
     face.d0=float3(0,0,1);face.d1=float3(.2f,0,1);face.d2=float3(0,.1f,1);
+    SilPomTrainedModel trained;
+    trained.id=model;trained.weights.buffer=0;
+    trained.role=(model==1u||model==4u)?SP_ROLE_WALL:(model==6u||model==7u)?SP_ROLE_OPENING:SP_ROLE_SURFACE;
+    trained.flags=(model>=4u&&model<=7u)?(SP_PROFILE_LEVEL_TWO|SP_PROFILE_VISIBILITY):0u;
     SilPomHit hit;
     if(recoveryFixture!=0u)
         hit=SilPomRecoverNearestHit(heightImage,patch,face,rays[id.x],rays[id.x],float2(0,0),(SilPomHit)0,model);
-    else hit=SilPomIntersectFace(heightImage,patch,face,rays[id.x],float2(0,0),model,iterations,1,5,SP_RELIEF_NO_MARCH);
+    else hit=SilPomIntersectFace(heightImage,patch,face,rays[id.x],float2(0,0),trained,iterations,1,5,SP_RELIEF_NO_MARCH);
     Result result;
     result.hit=float4(float(hit.status),hit.t,hit.faceUv);
     [unroll] for(uint j=0;j<16;++j) result.counts[j]=counters[j];

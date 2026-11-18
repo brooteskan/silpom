@@ -134,8 +134,8 @@ inline bool OverrideModel(float feature[11],uint,float2& logits)
 #define SP_LOOP
 #define SP_SAMPLE_HEIGHT(texture,uv) SampleHeight(texture,uv)
 #define SILPOM_DIAGNOSTIC(event,value) Diagnostic(event,value)
-#define SILPOM_OVERRIDE_MODEL(feature,model,logits) OverrideModel(feature,model,logits)
-#define SILPOM_OVERRIDE_LEVEL2(feature,model,output) OverrideLevelTwo(feature,model,output)
+#define SILPOM_OVERRIDE_MODEL(feature,model,logits) OverrideModel(feature,0u,logits)
+#define SILPOM_OVERRIDE_LEVEL2(feature,model,output) OverrideLevelTwo(feature,0u,output)
 #define SILPOM_CAPTURE_FEATURES(feature,size) CaptureFeatures(feature,size)
 #define SILPOM_CAPTURE_INTERVAL(start,span) levelStart=start;levelSpan=span
 #define SILPOM_LEVEL2 levelTwoEnabled
@@ -145,6 +145,8 @@ inline bool OverrideModel(float feature[11],uint,float2& logits)
 // Models 1-7 are supported; model 0 is the separate legacy path.
 inline SilPomHit SilPomTryTowerNeural(const Texture&,SilPomPatch,SilPomMeshFace,SilPomRay,SilPomRay,float2) { return {}; }
 #include "../Assets/Shaders/SilPOM/BlendedFace.azsli"
+// Models 1-7 as they were compiled into the shaders (the CPU reference).
+#include "CompiledNetworks/CompiledNetworks.h"
 #undef SP_OUT
 #undef SILPOM_LEVEL2
 #undef SILPOM_CAPTURE_FEATURES

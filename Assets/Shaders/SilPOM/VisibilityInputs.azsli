@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
-#include "NeuralVisibilityWeights.azsli"
+#include "ProfileNetworks.azsli"
 #include "PhysicalShadowReach.azsli"
 #ifndef SILPOM_SHADOW_STAT
 #define SILPOM_SHADOW_STAT(event)
@@ -55,17 +55,6 @@ float SilPomLocalShadowTime(SilPomLocalShadowRay ray,uint i)
     float fraction=float(i)/float(ray.count);
     return float(i)*ray.step+ray.extra*fraction*fraction;
 }
-float SilPomVisibilityNetwork(float feature[10],const float w0[12][10],const float b0[12],const float w1[12],float b1)
-{
-    float value=b1;
-    SP_UNROLL for(uint j=0;j<12;++j)
-    {
-        float unit=b0[j];
-        SP_UNROLL for(uint k=0;k<10;++k) unit+=feature[k]*w0[j][k];
-        unit=max(unit,0.0f);value+=unit*unit*w1[j];
-    }
-    return value;
-}
 bool SilPomVisibilityFeatures(SP_TEX texture,SilPomPatch p,float2 uv,float2 low,
     SilPomLocalShadowRay ray,SP_OUT float feature[10])
 {
@@ -100,17 +89,14 @@ float SilPomVisibilityProbabilityFromLogit(float logit)
     SILPOM_SHADOW_STAT(7);
     return visible;
 }
-float SilPomVisibilityProbability(float feature[10],uint model)
+float SilPomVisibilityProbability(float feature[10],SilPomTrainedModel model)
 {
     float logit;
 #ifdef SILPOM_OVERRIDE_VISIBILITY
     if(!SILPOM_OVERRIDE_VISIBILITY(feature,logit))
 #endif
     {
-        SP_BRANCH if(model==4u) logit=SilPomVisibilityNetwork(feature,VisibilityWallW0,VisibilityWallB0,VisibilityWallW1,VisibilityWallB1);
-        else if(model==5u) logit=SilPomVisibilityNetwork(feature,VisibilityStairsW0,VisibilityStairsB0,VisibilityStairsW1,VisibilityStairsB1);
-        else if(model==6u) logit=SilPomVisibilityNetwork(feature,VisibilityTrimW0,VisibilityTrimB0,VisibilityTrimW1,VisibilityTrimB1);
-        else logit=SilPomVisibilityNetwork(feature,VisibilityRevealW0,VisibilityRevealB0,VisibilityRevealW1,VisibilityRevealB1);
+        logit=SilPomVisibilityLogit(feature,model.weights,SP_NET_VISIBILITY);
     }
     return SilPomVisibilityProbabilityFromLogit(logit);
 }

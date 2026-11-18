@@ -140,7 +140,7 @@ def main():
                     requests.append(q); ids.append(np.full(len(q), point["face"], np.uint32))
                     groups.append((cursor, cursor + len(q), len(offsets)))
                     cursor += len(q)
-        header = (gem / "Assets/Shaders/SilPOM/VisibilityClassificationThresholds.azsli").read_text()
+        header = (gem / "Tools/CompiledNetworks/VisibilityClassificationThresholds.azsli").read_text()
         threshold = float(re.search(r"VisibilityWallThreshold\s*=\s*([\d.eE+\-]+)f", header).group(1))
         print("Generating", cursor, "directional teacher/classifier queries", flush=True)
         output, stats, _ = native.evaluate(profile, np.concatenate(requests), np.concatenate(ids), 4, 3, threshold)

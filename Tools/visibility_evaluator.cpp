@@ -48,8 +48,8 @@ extern "C" __declspec(dllexport) bool EvaluateVisibility(const float* source,uin
         // In mode 3, confidence is the final classification threshold. It does
         // not select fallback, and the result is binary, not a sigmoid value.
         const float result=mode==0?baseline:mode==3
-            ?SilPomNeuralOnlyVisibility(texture,patch,face,uv,low,light,steps,q[5],model,confidence)
-            :SilPomLearnedReliefVisibility(texture,patch,face,uv,low,light,steps,q[5],model,mode==2,confidence);
+            ?SilPomNeuralOnlyVisibility(texture,patch,face,uv,low,light,steps,q[5],SilPomCompiledModel(model),confidence)
+            :SilPomLearnedReliefVisibility(texture,patch,face,uv,low,light,steps,q[5],SilPomCompiledModel(model),mode==2,confidence);
         visibilityStats[8]=baselineQuads;visibilityStats[9]=cells;visibilityStats[10]=visibilityCaptured?1:0;
         const float values[]={baseline,result,float(exact),visibilityProbability};
         std::memcpy(output+i*4,values,sizeof(values));

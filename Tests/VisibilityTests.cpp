@@ -29,7 +29,7 @@ int main()
         auto evaluate=[&](float2 uv,float3 light,uint steps,bool neural)
         {
             visibilityStats={};image.loads=0;
-            return SilPomLearnedReliefVisibility(image,p,f,uv,{0,0},light,steps,.3f,4,neural,.995f);
+            return SilPomLearnedReliefVisibility(image,p,f,uv,{0,0},light,steps,.3f,SilPomCompiledModel(4),neural,.995f);
         };
         Check(evaluate({.2f,.2f},{1,0,.01f},0,true)==1 && image.loads==0,"Disabled shadows must not read heights");
         p.scale=0;
@@ -45,11 +45,11 @@ int main()
         Check(evaluate({.2f,.2f},{1,0,.01f},64,true)==0 && visibilityStats[4]==1,"Shadow prediction branch must execute");
         forced[144]=0;
         visibilityStats={};
-        Check(SilPomNeuralOnlyVisibility(image,p,f,{.2f,.2f},{0,0},{1,0,.01f},64,.3f,4,.6f)==0
+        Check(SilPomNeuralOnlyVisibility(image,p,f,{.2f,.2f},{0,0},{1,0,.01f},64,.3f,SilPomCompiledModel(4),.6f)==0
             && visibilityStats[4]==1 && visibilityStats[5]==0 && visibilityStats[6]==0 && visibilityStats[0]==5,
             "Uncertain neural-only prediction must classify, never march");
         visibilityStats={};
-        Check(SilPomNeuralOnlyVisibility(image,p,f,{.2f,.2f},{0,0},{1,0,.01f},64,.3f,4,.4f)==1
+        Check(SilPomNeuralOnlyVisibility(image,p,f,{.2f,.2f},{0,0},{1,0,.01f},64,.3f,SilPomCompiledModel(4),.4f)==1
             && visibilityStats[3]==1 && visibilityStats[0]==5,"Binary threshold must apply to standalone neural visibility");
         // Physical support is independent of descriptor budget. Include a
         // blocker-distance contract without relying on classifier coefficients.
@@ -78,10 +78,10 @@ int main()
             uint steps=i%65;float reach=i%2?.3f:0;
             float baseline=SilPomReliefVisibility(image,p,f,uv,{0,0},light,steps,reach);
             visibilityStats={};
-            float gather=SilPomLearnedReliefVisibility(image,p,f,uv,{0,0},light,steps,reach,4,false,.995f);
+            float gather=SilPomLearnedReliefVisibility(image,p,f,uv,{0,0},light,steps,reach,SilPomCompiledModel(4),false,.995f);
             Check(gather==baseline,"Gather marcher must preserve baseline visibility");
             visibilityStats={};
-            float fallback=SilPomLearnedReliefVisibility(image,p,f,uv,{0,0},light,steps,reach,4,true,.995f);
+            float fallback=SilPomLearnedReliefVisibility(image,p,f,uv,{0,0},light,steps,reach,SilPomCompiledModel(4),true,.995f);
             Check(fallback==baseline,"Uncertain neural fallback must preserve baseline visibility");
             Check(visibilityStats[0]<=steps+1,"Fallback must not duplicate tested positions");
             ++comparisons;

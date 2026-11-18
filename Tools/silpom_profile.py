@@ -4,11 +4,12 @@ the trained networks. The SilPOM profile builder runs this tool when the
 weights file is missing.
 
   python silpom_profile.py weights PROFILE [--output WEIGHTS]
-      Write the profile's weights. Until per-asset retraining (stage 4) this
-      extracts the networks of the profile's ShaderModel from the compiled-in
-      shader headers, rounding each literal exactly as the shader compiler does.
+      Write the profile's weights. Until per-asset retraining this extracts
+      the networks of the profile's ShaderModel from Tools/CompiledNetworks
+      (formerly compiled into the shaders), rounding each literal exactly as
+      the C++ and shader compilers do.
   python silpom_profile.py check PROFILE
-      Validate the profile and confirm its weights equal the shader headers.
+      Validate the profile and confirm its weights equal Tools/CompiledNetworks.
 
 Profile format (paths are relative to the profile file):
 {
@@ -35,7 +36,7 @@ import struct
 import sys
 
 GEM = Path(__file__).resolve().parents[1]
-SHADERS = GEM / 'Assets/Shaders/SilPOM'
+SHADERS = GEM / 'Tools/CompiledNetworks'  # networks formerly compiled into the shaders
 WEIGHTS_VERSION = 1
 PROFILE_VERSION = 1
 ROLES = ('Surface', 'Wall', 'Opening')

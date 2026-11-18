@@ -32,6 +32,16 @@ static uint silpomPaintReceiverFace=0,silpomPaintReceiverOwner=0;
 #define SILPOM_LEVEL2 o_silpomLevelTwo
 #endif
 #include "../../../Shaders/SilPOM/BlendedFace.azsli"
+#include "../../../Shaders/SilPOM/ProfileNetworks.azsli"
+// The batch's trained profile: model 0 when untrained, else the networks in
+// its weights buffer, with the role and network flags of its profile asset.
+SilPomTrainedModel SilPomMaterialModel(MaterialParameters params)
+{
+    SilPomTrainedModel model;
+    model.id=params.m_silpomNeuralModel;model.role=params.m_silpomProfileRole;
+    model.flags=params.m_silpomProfileFlags;model.weights.buffer=params.m_silpomProfileWeights;
+    return model;
+}
 #include "../../../Shaders/SilPOM/ReliefShadow.azsli"
 #if defined(SILPOM_NEURAL_VISIBILITY_ONLY)
 #include "../../../Shaders/SilPOM/NeuralVisibility.azsli"
@@ -133,7 +143,7 @@ SilPomImplicitProfile SilPomImplicitMaterialProfile(const MaterialParameters par
     SilPomImplicitProfile profile;
     profile.scale=params.m_silpomScale;profile.reference=params.m_silpomReference;
     profile.pixelBudget=params.m_silpomReliefLodPixelBudget;profile.maxDistance=params.m_silpomMaxReliefDistance;
-    profile.reliefMode=params.m_silpomReliefMode;profile.neuralModel=params.m_silpomNeuralModel;
+    profile.reliefMode=params.m_silpomReliefMode;profile.role=params.m_silpomProfileRole;
     profile.proxyLodEnabled=params.m_silpomProxyLodEnabled;
     return profile;
 }
@@ -337,7 +347,7 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
 #endif
     SilPomHit hit=SilPomIntersectFace(GetMaterialTexture(params.m_silpomHeightMap),p,f,ray,low
 #if SILPOM_NEURAL_NO_MARCH
-        ,params.m_silpomNeuralModel,validationIterations,validationRetryCap,validationTolerance,params.m_silpomReliefMode
+        ,SilPomMaterialModel(params),validationIterations,validationRetryCap,validationTolerance,params.m_silpomReliefMode
 #endif
 #if SILPOM_HIT_NEURAL_CACHE
         ,GetMaterialTexture(params.m_silpomNeuralCache)

@@ -79,9 +79,8 @@ SilPomShellVertex VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
 #if SILPOM_WALL_BACKUP_SHELL
     // The opening trim and doorway reveal need the same inset coverage
     // when a neural hit is missed along a triangle edge.
-    const uint model=params.m_silpomNeuralModel;
-    const bool isOpeningSurface=model==6u || model==7u;
-    if((!SilPomIsTowerWallModel(model) && !isOpeningSurface)
+    const bool isOpeningSurface=params.m_silpomProfileRole==SP_ROLE_OPENING;
+    if((params.m_silpomProfileRole!=SP_ROLE_WALL && !isOpeningSurface)
         || params.m_silpomReliefMode!=SP_RELIEF_LOD_4PX_RESOLVE)
         return output;
 #endif
@@ -147,7 +146,7 @@ SilPomShellVertex VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
     output.uv=polyUv[corner];
     output.face=params.m_silpomHitFaceBase+uint(round(IN.position.z));
     output.instance=instanceId;
-    if(SilPomIsTowerWallModel(params.m_silpomNeuralModel)) output.face|=SP_HIT_RECORD_WALL;
+    if(params.m_silpomProfileRole==SP_ROLE_WALL) output.face|=SP_HIT_RECORD_WALL;
     return output;
 }
 
@@ -236,7 +235,7 @@ VsOutput VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
     SV.m_instanceId = instanceId;
 #if SILPOM_MSAA_STATIC_WALL
     MaterialParameters params = GetMaterialParameters();
-    params.m_silpomNeuralModel=4u;
+    params.m_silpomNeuralModel=4u;params.m_silpomProfileRole=SP_ROLE_WALL;
 #else
     const MaterialParameters params = GetMaterialParameters();
 #endif
@@ -264,7 +263,7 @@ PsOutput PixelShader(VsOutput IN, bool isFrontFace : SV_IsFrontFace,uint sampleI
 
 #if SILPOM_MSAA_STATIC_WALL
     MaterialParameters params = GetMaterialParameters();
-    params.m_silpomNeuralModel=4u;
+    params.m_silpomNeuralModel=4u;params.m_silpomProfileRole=SP_ROLE_WALL;
 #else
     const MaterialParameters params = GetMaterialParameters();
 #endif
@@ -275,7 +274,7 @@ PsOutput PixelShader(VsOutput IN, bool isFrontFace : SV_IsFrontFace,uint sampleI
 
     PsOutput OUT;
     OUT.m_depth = IN.position.z;
-    const uint flags = SilPomIsTowerWallModel(params.m_silpomNeuralModel) ? SP_HIT_RECORD_WALL : 0u;
+    const uint flags = params.m_silpomProfileRole==SP_ROLE_WALL ? SP_HIT_RECORD_WALL : 0u;
     OUT.m_hit = uint4(asuint(silpomDepthHitUv), asuint(IN.position.z)|flags,
         ((params.m_silpomHitFaceBase + IN.faceIndex) << 2) | uint(IN.silpomDiagnostic.x));
     OUT.m_uvGradients=silpomDepthUvGradients;

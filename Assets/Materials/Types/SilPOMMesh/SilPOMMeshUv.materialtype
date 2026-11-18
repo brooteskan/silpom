@@ -536,6 +536,36 @@
               "name": "m_silpomMaxCells"
             }
           },
+      {
+        "name": "profileWeights",
+        "description": "Bindless index of the trained profile networks (SurfaceProfileAsset::PackNetworks).",
+        "type": "UInt",
+        "defaultValue": 0,
+        "connection": {
+          "type": "ShaderInput",
+          "name": "m_silpomProfileWeights"
+        }
+      },
+      {
+        "name": "profileRole",
+        "description": "SilPOM::SurfaceRole of the trained profile: 0 surface, 1 wall, 2 opening.",
+        "type": "UInt",
+        "defaultValue": 0,
+        "connection": {
+          "type": "ShaderInput",
+          "name": "m_silpomProfileRole"
+        }
+      },
+      {
+        "name": "profileFlags",
+        "description": "Networks present beyond the hit model: 1 Level 2, 2 visibility.",
+        "type": "UInt",
+        "defaultValue": 0,
+        "connection": {
+          "type": "ShaderInput",
+          "name": "m_silpomProfileFlags"
+        }
+      },
           {
             "name": "reliefMode",
             "description": "SilPOM::ReliefMode: 0 traverses within maxCells; other values are no-march routes.",

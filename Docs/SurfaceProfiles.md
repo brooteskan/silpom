@@ -19,12 +19,21 @@ weights file is missing it runs `Tools/silpom_profile.py weights <profile>`
 weights become part of the project's sources. It also checks that a PNG height
 image has the size the profile was trained on.
 
-`ShaderModel` is transitional: shaders still select compiled-in networks by
-model number (1-3 welded tower, 4-7 open-shaft wall, stairs, trim, reveal).
-Until per-asset retraining, `silpom_profile.py` produces the weights by
-extracting those networks exactly (`silpom_profile.py check` and the
-`SilPOM.ProfileWeights` test confirm bit identity). Reading the networks from
-the asset instead of the shader headers is the next stage.
+At runtime each trained batch gets a GPU buffer with the profile's networks
+(`SurfaceProfileAsset::PackNetworks`, layout in
+`Assets/Shaders/SilPOM/ProfileNetworks.azsli`: hit model, Level 2, visibility,
+physical visibility, threshold; each network W0, B0, W1, B1). The material
+receives its bindless index (`surface.profileWeights`), the role
+(`surface.profileRole`) and which optional networks exist
+(`surface.profileFlags`). Shaders no longer contain trained networks, except
+model 0's cached seed. Wall records, backup shells and coverage use the role.
+
+`ShaderModel` remains for the canonical wall's learned bundles and lighting
+comparisons (model 4) and the model 4 recovery tuning. The networks once
+compiled into the shaders are kept in `Tools/CompiledNetworks` as the CPU
+reference: `silpom_profile.py weights` extracts a model's networks from there
+exactly, and the CPU tools compare against them. Retraining for a level
+replaces that source with SilPOM's trainers.
 
 ## Assigning profiles
 

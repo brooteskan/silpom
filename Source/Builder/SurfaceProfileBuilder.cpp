@@ -118,7 +118,7 @@ bool ReadWeights(const AZStd::string& path, SurfaceProfileAsset& asset, AZStd::s
     if (threshold == root.MemberEnd() || !threshold->value.IsNumber()) { error = "missing PhysicalVisibilityThreshold"; return false; }
     asset.m_physicalVisibilityThreshold = float(threshold->value.GetDouble());
     const AZStd::vector<AZStd::pair<const char*, size_t>> visibility{{"W0", 12 * 10}, {"B0", 12}, {"W1", 12}, {"B1", 1}};
-    return ReadSection(root, "LevelTwo", {{"W0", 24 * 19}, {"W1", 24 * 5}, {"B0", 24}, {"B1", 5}}, asset.m_levelTwo, error)
+    return ReadSection(root, "LevelTwo", {{"W0", 24 * 19}, {"B0", 24}, {"W1", 24 * 5}, {"B1", 5}}, asset.m_levelTwo, error)
         && ReadSection(root, "Visibility", visibility, asset.m_visibility, error)
         && ReadSection(root, "PhysicalVisibility", visibility, asset.m_physicalVisibility, error);
 }
@@ -177,8 +177,8 @@ void SurfaceProfileBuilder::Activate()
 {
     AssetBuilderSDK::AssetBuilderDesc desc;
     desc.m_name = JobKey;
-    desc.m_version = 1;
-    desc.m_analysisFingerprint = "profile-v1";
+    desc.m_version = 2;
+    desc.m_analysisFingerprint = "profile-v2";
     desc.m_busId = azrtti_typeid<SurfaceProfileBuilder>();
     desc.m_patterns.emplace_back("*.silpomprofile", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
     desc.m_createJobFunction = AZStd::bind(&SurfaceProfileBuilder::CreateJobs, this, AZStd::placeholders::_1, AZStd::placeholders::_2);

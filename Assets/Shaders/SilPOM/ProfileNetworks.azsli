@@ -1,0 +1,77 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#include "EvaluationHooks.azsli"
+#include "ProfileRole.azsli"
+// Trained networks of a surface profile, read from its weights buffer
+// (SurfaceProfileAsset::PackNetworks). Every network is stored W0, B0, W1, B1,
+// row-major; the evaluators keep the arithmetic order of the compiled-in
+// versions they replace, so results are bit-identical on the CPU.
+static const uint SP_NET_HIT=0u;                   // 16x11, 16, 16x2, 2
+static const uint SP_NET_LEVEL_TWO=226u;           // 24x19, 24, 24x5, 5
+static const uint SP_NET_VISIBILITY=831u;          // 12x10, 12, 12, 1
+static const uint SP_NET_PHYSICAL_VISIBILITY=976u; // 12x10, 12, 12, 1
+static const uint SP_NET_PHYSICAL_THRESHOLD=1121u;
+static const uint SP_NET_FLOATS=1122u;
+// Networks present beyond the hit model.
+static const uint SP_PROFILE_LEVEL_TWO=1u;
+static const uint SP_PROFILE_VISIBILITY=2u;
+
+#ifdef SILPOM_CPU
+struct SilPomWeights { const float* data; };
+float SilPomWeight(SilPomWeights w,uint i) { return w.data[i]; }
+#else
+#ifndef SILPOM_WEIGHT_BUFFER
+#define SILPOM_WEIGHT_BUFFER(index) Bindless::GetByteAddressBuffer(index)
+#endif
+struct SilPomWeights { uint buffer; };
+float SilPomWeight(SilPomWeights w,uint i) { return asfloat(SILPOM_WEIGHT_BUFFER(w.buffer).Load(i*4u)); }
+#endif
+
+// id: 0 selects the compiled-in model 0 seed; nonzero is a trained profile
+// whose networks are in weights. role and flags come from the profile asset.
+struct SilPomTrainedModel
+{
+    uint id;
+    uint role;
+    uint flags;
+    SilPomWeights weights;
+};
+bool SilPomIsWallProfile(SilPomTrainedModel model) { return model.role==SP_ROLE_WALL; }
+bool SilPomIsOpeningProfile(SilPomTrainedModel model) { return model.role==SP_ROLE_OPENING; }
+bool SilPomHasLevelTwo(SilPomTrainedModel model) { return (model.flags&SP_PROFILE_LEVEL_TWO)!=0u; }
+
+float2 SilPomHitNetwork(float feature[11],SilPomWeights w)
+{
+    float2 logits=float2(SilPomWeight(w,SP_NET_HIT+224u),SilPomWeight(w,SP_NET_HIT+225u));
+    SP_UNROLL for(uint j=0;j<16;++j)
+    {
+        float unit=SilPomWeight(w,SP_NET_HIT+176u+j);
+        SP_UNROLL for(uint k=0;k<11;++k) unit+=feature[k]*SilPomWeight(w,SP_NET_HIT+j*11u+k);
+        unit=max(unit,0.0f);
+        logits+=unit*unit*float2(SilPomWeight(w,SP_NET_HIT+192u+j*2u),SilPomWeight(w,SP_NET_HIT+193u+j*2u));
+    }
+    return logits;
+}
+void SilPomLevelTwoNetwork(float feature[19],SilPomWeights w,SP_OUT float output[5])
+{
+    SP_UNROLL for(uint k=0;k<5;++k) output[k]=SilPomWeight(w,SP_NET_LEVEL_TWO+600u+k);
+    SP_UNROLL for(uint j=0;j<24;++j)
+    {
+        float unit=SilPomWeight(w,SP_NET_LEVEL_TWO+456u+j);
+        SP_UNROLL for(uint i=0;i<19;++i) unit+=feature[i]*SilPomWeight(w,SP_NET_LEVEL_TWO+j*19u+i);
+        unit=max(unit,0.0f);unit*=unit;
+        SP_UNROLL for(uint n=0;n<5;++n) output[n]+=unit*SilPomWeight(w,SP_NET_LEVEL_TWO+480u+j*5u+n);
+    }
+}
+// base is SP_NET_VISIBILITY or SP_NET_PHYSICAL_VISIBILITY.
+float SilPomVisibilityLogit(float feature[10],SilPomWeights w,uint base)
+{
+    float value=SilPomWeight(w,base+144u);
+    SP_UNROLL for(uint j=0;j<12;++j)
+    {
+        float unit=SilPomWeight(w,base+120u+j);
+        SP_UNROLL for(uint k=0;k<10;++k) unit+=feature[k]*SilPomWeight(w,base+j*10u+k);
+        unit=max(unit,0.0f);value+=unit*unit*SilPomWeight(w,base+132u+j);
+    }
+    return value;
+}
