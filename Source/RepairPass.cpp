@@ -3,6 +3,7 @@
 #include "ResolvePass.h"
 #include <SilPOM/RepairRegion.h>
 #include <SilPOM/RepairExecution.h>
+#include <SilPOM/Profile.h>
 #include <Atom/RPI.Public/Pass/FullscreenTrianglePass.h>
 #include <Atom/RPI.Public/Pass/PassAttachment.h>
 #include <Atom/RPI.Public/Pass/PassSystemInterface.h>
@@ -274,6 +275,7 @@ namespace SilPOM
             }
             void FrameBeginInternal(FramePrepareParams params) override
             {
+                AZ_PROFILE_SCOPE(SilPOM, "SilPOM: RepairPass FrameBegin");
                 if(m_classify)m_retired[m_retireIndex++%m_retired.size()]=AZStd::move(m_decision);
                 else m_decision.reset();
                 m_preparation.reset();
@@ -362,6 +364,7 @@ namespace SilPOM
             }
             void SetupFrameGraphDependencies(AZ::RHI::FrameGraphInterface frameGraph) override
             {
+                AZ_PROFILE_SCOPE(SilPOM, "SilPOM: RepairPass SetupFrameGraph");
                 // Keep original attachment declarations, clears and DontCare
                 // scopes even when there will be no draw.
                 FullscreenTrianglePass::SetupFrameGraphDependencies(frameGraph);
@@ -549,6 +552,7 @@ namespace SilPOM
             }
             void CompileResources(const AZ::RHI::FrameGraphCompileContext& context) override
             {
+                AZ_PROFILE_SCOPE(SilPOM, "SilPOM: RepairPass CompileResources");
                 const auto* other=Partner();
                 if(!m_preparation||!other||!other->IsEnabled()||other->m_preparation!=m_preparation)
                 { QueuePairRebuild();return; }
@@ -561,6 +565,7 @@ namespace SilPOM
             }
             void BuildCommandListInternal(const AZ::RHI::FrameGraphExecuteContext& context) override
             {
+                AZ_PROFILE_SCOPE(SilPOM, "SilPOM: RepairPass BuildCommandList");
                 const auto& decision=m_decision;
                 if(!decision)return;
                 const auto range=context.GetSubmitRange();

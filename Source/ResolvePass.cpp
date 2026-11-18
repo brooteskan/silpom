@@ -5,6 +5,7 @@
 #include <SilPOM/ResolveRegions.h>
 #include <SilPOM/ReliefMode.h>
 #include <SilPOM/SurfaceProfileAsset.h>
+#include <SilPOM/Profile.h>
 
 #include <Atom/RHI/Buffer.h>
 #include <Atom/RHI/DevicePipelineState.h>
@@ -489,6 +490,7 @@ namespace SilPOM
 
             void FrameBeginInternal(FramePrepareParams params) override
             {
+                AZ_PROFILE_SCOPE(SilPOM, "SilPOM: FaceCachePass FrameBegin");
                 m_retired[m_retireFrame++ % m_retired.size()] = AZStd::move(m_frame);
                 {
                     auto& registry = GetRegistry();
@@ -500,6 +502,7 @@ namespace SilPOM
 
             void SetupFrameGraphDependencies(AZ::RHI::FrameGraphInterface frameGraph) override
             {
+                AZ_PROFILE_SCOPE(SilPOM, "SilPOM: FaceCachePass SetupFrameGraph");
                 ComputePass::SetupFrameGraphDependencies(frameGraph);
                 frameGraph.SetEstimatedItemCount(0);
                 const auto view = GetView();
@@ -621,6 +624,7 @@ namespace SilPOM
 
             void CompileResources(const AZ::RHI::FrameGraphCompileContext&) override
             {
+                AZ_PROFILE_SCOPE(SilPOM, "SilPOM: FaceCachePass CompileResources");
                 if (!m_frame || !m_shader) return;
                 if (m_drawSrg) m_drawSrg->Compile();
                 for (auto& dispatch : m_frame->dispatches)
@@ -693,6 +697,7 @@ namespace SilPOM
 
             void BuildCommandListInternal(const AZ::RHI::FrameGraphExecuteContext& context) override
             {
+                AZ_PROFILE_SCOPE(SilPOM, "SilPOM: FaceCachePass BuildCommandList");
                 if (!m_frame || !m_frame->ready) return;
                 const auto range = context.GetSubmitRange();
                 const auto end = AZStd::min<size_t>(range.m_endIndex, m_frame->dispatches.size());
@@ -721,6 +726,7 @@ namespace SilPOM
             explicit HitRasterPass(const AZ::RPI::PassDescriptor& descriptor) : RasterPass(descriptor) {}
             void FrameBeginInternal(FramePrepareParams params) override
             {
+                AZ_PROFILE_SCOPE(SilPOM, "SilPOM: HitRasterPass FrameBegin");
                 m_faceCache.reset();
                 m_retiredInventories[m_inventoryFrame++ % m_retiredInventories.size()] = AZStd::move(m_repairInventory);
                 if (GetDrawListTag() == AZ::RHI::RHISystemInterface::Get()->GetDrawListTagRegistry()->FindTag(AZ::Name("silpomHitDepth")))
@@ -733,6 +739,7 @@ namespace SilPOM
             }
             void SetupFrameGraphDependencies(AZ::RHI::FrameGraphInterface frameGraph) override
             {
+                AZ_PROFILE_SCOPE(SilPOM, "SilPOM: HitRasterPass SetupFrameGraph");
                 CaptureRepairInventory();
                 // A RasterPass binds one ViewSrg. Never reuse its first eye's
                 // cache for a tag that resolves to multiple actual views.
@@ -763,6 +770,7 @@ namespace SilPOM
             }
             void CompileResources(const AZ::RHI::FrameGraphCompileContext& context) override
             {
+                AZ_PROFILE_SCOPE(SilPOM, "SilPOM: HitRasterPass CompileResources");
                 if (m_shaderResourceGroup)
                 {
                     const auto index = m_shaderResourceGroup->FindShaderInputConstantIndex(AZ::Name("m_silpomViewport"));
@@ -929,6 +937,7 @@ namespace SilPOM
                 // for the in-flight frame window. Each pass owns its scissors,
                 // geometry and clones; other views never share mutable items.
                 m_retiredDraws[m_retireFrame++ % m_retiredDraws.size()] = AZStd::move(m_resolveDraws);
+                AZ_PROFILE_SCOPE(SilPOM, "SilPOM: ResolvePass FrameBegin");
                 m_resolveList.clear();
                 m_compiledRegions = false;
                 HitRasterPass::FrameBeginInternal(params);
@@ -939,7 +948,7 @@ namespace SilPOM
                 // Scene::UpdateSrgs has supplied the current jittered projection
                 // before this callback. Expand the list now, so Atom partitions
                 // command recording using the actual number of rectangle draws.
-                PrepareRegions();
+                {AZ_PROFILE_SCOPE(SilPOM, "SilPOM: ResolvePass PrepareRegions");PrepareRegions();}
                 HitRasterPass::SetupFrameGraphDependencies(frameGraph);
             }
 

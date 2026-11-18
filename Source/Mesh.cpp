@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #include <SilPOM/Mesh.h>
+#include <SilPOM/Profile.h>
 #include <SilPOM/CameraCollisionMath.h>
 #include <SilPOM/DecalPaint.h>
 #include <AzCore/Serialization/Json/JsonUtils.h>
@@ -67,6 +68,8 @@
 #include <AzCore/std/containers/map.h>
 #include <AzCore/std/containers/set.h>
 #include <AzCore/std/parallel/atomic.h>
+
+AZ_DEFINE_BUDGET(SilPOM);
 #include <AzCore/Settings/SettingsRegistry.h>
 #include <SilPOM/LearnedMaterialAsset.h>
 
@@ -251,7 +254,7 @@ struct HitSampleTransition
         AZ::RPI::SceneNotificationBus::Router::BusRouterDisconnect();
         AZ::TickBus::Handler::BusDisconnect();
     }
-    void OnTick(float,AZ::ScriptTimePoint) override { Resume(); }
+    void OnTick(float,AZ::ScriptTimePoint) override { AZ_PROFILE_SCOPE(SilPOM, "SilPOM: pipeline resume tick"); Resume(); }
     void OnPipelineStateLookupRebuilt() override
     {
         const auto* scene=AZ::RPI::SceneNotificationBus::GetCurrentBusId();
@@ -1434,7 +1437,7 @@ namespace
 {
 struct RenderingSettingsTicker : AZ::TickBus::Handler
 {
-    void OnTick(float,AZ::ScriptTimePoint) override { TickRenderingSettings(); }
+    void OnTick(float,AZ::ScriptTimePoint) override { AZ_PROFILE_SCOPE(SilPOM, "SilPOM: rendering settings tick"); TickRenderingSettings(); }
 };
 RenderingSettingsTicker& RenderingTicker() { static RenderingSettingsTicker ticker;return ticker; }
 }
@@ -2289,10 +2292,21 @@ AZStd::vector<AZ::u32> MeshController::GetProxyFaceOwners() const
         for(size_t i=0;i<batch.flags.size();++i)if(batch.flags[i])owners.push_back(batch.hitFaceBase+aznumeric_cast<AZ::u32>(i));
     return owners;
 }
-void MeshController::OnBeginPrepareRender(){EnforceStrictGenerationPolicy();UpdateProxyLod();SyncSurfacePaintMaterials();}
-void MeshController::OnEndPrepareRender(){EnforceStrictGenerationPolicy(true);}
+void MeshController::OnBeginPrepareRender()
+{
+    AZ_PROFILE_SCOPE(SilPOM, "SilPOM: Mesh OnBeginPrepareRender");
+    {AZ_PROFILE_SCOPE(SilPOM, "SilPOM: EnforceStrictGenerationPolicy");EnforceStrictGenerationPolicy();}
+    UpdateProxyLod();
+    {AZ_PROFILE_SCOPE(SilPOM, "SilPOM: SyncSurfacePaintMaterials");SyncSurfacePaintMaterials();}
+}
+void MeshController::OnEndPrepareRender()
+{
+    AZ_PROFILE_SCOPE(SilPOM, "SilPOM: Mesh OnEndPrepareRender");
+    EnforceStrictGenerationPolicy(true);
+}
 void MeshController::UpdateProxyLod()
 {
+    AZ_PROFILE_SCOPE(SilPOM, "SilPOM: UpdateProxyLod");
     if(!m_active||m_active->proxyBatches.empty()||!m_configuration.m_surface.IsReady())return;
     auto* scene=AZ::RPI::Scene::GetSceneForEntityId(m_entity);
     auto* manager=AZ::Interface<AZ::RPI::ViewportContextRequestsInterface>::Get();
@@ -2383,6 +2397,7 @@ void MeshController::UpdateProxyLod()
 }
 void MeshController::OnTick(float, AZ::ScriptTimePoint)
 {
+    AZ_PROFILE_SCOPE(SilPOM, "SilPOM: Mesh OnTick");
     EnforceStrictGenerationPolicy();
     if(!m_surfacePaintRuntime)TickReceiverUvPaint();
     const unsigned policy=UpdateHitSamplePolicy(AZ::RPI::Scene::GetSceneForEntityId(m_entity));
