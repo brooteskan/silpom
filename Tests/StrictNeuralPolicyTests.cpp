@@ -118,6 +118,14 @@ int main()
     try
     {
         CheckSceneSubscriptionLifecycle();
+        // A tower combines the wall model with trim/reveal profiles. Wall-only
+        // comparisons must not reject those profiles or change their shader route.
+        for(unsigned estimator=0;estimator<=5;++estimator)
+        {
+            Require(LightingEstimatorForProfile(4,estimator)==estimator,"Wall comparison selection was lost");
+            for(unsigned model:{2u,5u,6u,7u})
+                Require(LightingEstimatorForProfile(model,estimator)==0u,"Wall comparison leaked into a non-wall profile");
+        }
         Require(Pair().Complete(),"Built-in strict lighting plus trained no-march depth was rejected");
         const std::array<std::pair<const char*,const char*>,6> strictForward{{
             {"silpom_hit_forward_neural_only","silpomhitforwardneuralonly.azshader"},

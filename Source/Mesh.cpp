@@ -2138,11 +2138,10 @@ bool MeshController::Prepare()
                     && Set(material,"surface.distantValidationToleranceMultiplier",c.m_distantValidationToleranceMultiplier)
                     && Set(material,"surface.spiralLightShadowSteps",c.m_spiralLightShadowSteps)
                     && Set(material,"surface.localShadowMethod",static_cast<AZ::u32>(c.m_localShadowMethod))
-                    // PhysicalRayNeural is also the non-wall CurrentRouting
-                    // path. Unsupported directional/angular profiles were
-                    // rejected above rather than silently rerouted.
-                    && Set(material,"surface.lightingEstimator",p.m_neuralModel==4u
-                        ?static_cast<AZ::u32>(c.m_lightingEstimator):0u)
+                    // Wall comparisons do not change the other profiles'
+                    // documented physical neural-only visibility route.
+                    && Set(material,"surface.lightingEstimator",StrictNeuralPolicy::LightingEstimatorForProfile(
+                        p.m_neuralModel,static_cast<AZ::u32>(c.m_lightingEstimator)))
                     && Set(material,"surface.diffuseAccessibility",p.m_neuralModel==4u && c.m_diffuseAccessibility)
                     && Set(material,"surface.neuralDirectionalVisibility",c.m_neuralDirectionalVisibility)
                     && Set(material,"surface.proxyDirectionalResponse",c.m_proxyDirectionalResponse)

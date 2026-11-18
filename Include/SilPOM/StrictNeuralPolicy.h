@@ -4,6 +4,10 @@
 
 namespace SilPOM::StrictNeuralPolicy
 {
+// The inspector's directional/angular comparisons are wall-model controls.
+// Other supported profiles retain their physical neural-only visibility route.
+inline unsigned LightingEstimatorForProfile(unsigned model,unsigned requested)
+{ return model==4u?requested:0u; }
 enum class Capability { Unsupported, Flat, Visibility, TrainedDepth, AnalyticDepth };
 
 // Tags alone are insufficient: a material can override a shader while keeping
