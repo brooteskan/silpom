@@ -57,6 +57,8 @@ if(NOT COMMAND o3de_gem_setup)
     add_executable(silpom_relief_mode_tests Tests/ReliefModeTests.cpp)
     target_compile_features(silpom_relief_mode_tests PRIVATE cxx_std_17)
     add_test(NAME SilPOM.ReliefMode COMMAND silpom_relief_mode_tests)
+    add_executable(silpom_profile_weights_dump Tests/ProfileWeightsDump.cpp)
+    target_compile_features(silpom_profile_weights_dump PRIVATE cxx_std_17)
     add_executable(silpom_strict_neural_policy_tests Tests/StrictNeuralPolicyTests.cpp)
     target_compile_features(silpom_strict_neural_policy_tests PRIVATE cxx_std_17)
     add_executable(silpom_neural_receiver_tests Tests/NeuralReceiverTests.cpp)
@@ -160,6 +162,8 @@ if(NOT COMMAND o3de_gem_setup)
         endforeach()
         set(SILPOM_PYTHON "" CACHE FILEPATH "Python with numpy/Pillow for Level 1 evaluation tests")
         if(SILPOM_PYTHON)
+        add_test(NAME SilPOM.ProfileWeights COMMAND "${SILPOM_PYTHON}"
+            ${CMAKE_CURRENT_SOURCE_DIR}/Tests/ProfileWeightsTests.py $<TARGET_FILE:silpom_profile_weights_dump>)
         add_test(NAME SilPOM.ReceiverUvAnalysis COMMAND "${SILPOM_PYTHON}"
             ${CMAKE_CURRENT_SOURCE_DIR}/Tests/test_receiver_uv_analysis.py)
         add_test(NAME SilPOM.NativePaintShader COMMAND "${SILPOM_PYTHON}"

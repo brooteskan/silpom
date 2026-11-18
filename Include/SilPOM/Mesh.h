@@ -5,6 +5,7 @@
 #include <SilPOM/ReceiverUvPaint.h>
 #include <SilPOM/SurfacePaint.h>
 #include <AzCore/Component/TickBus.h>
+#include <AzCore/std/containers/map.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Math/Vector4.h>
 #include <AzFramework/Components/ComponentAdapter.h>
@@ -44,8 +45,13 @@ struct MeshMaterialBinding
 struct MeshProfileBinding
 {
     AZ_TYPE_INFO(MeshProfileBinding, "{9B32A1E0-E4E5-43BC-B321-45B407B75F58}");
-    bool IsTrained() const { return !m_useBaseMesh && m_neuralModel != 0; }
+    // A surface default profile can also make a binding trained; the
+    // controller resolves that once the surface is loaded.
+    bool IsTrained() const { return !m_useBaseMesh && (m_neuralModel != 0 || m_profile.GetId().IsValid()); }
     AZ::u32 m_id = 1;
+    // Overrides the surface's default trained profile for this ID. A profile
+    // supplies the height image, scale, reference, address mode and model.
+    AZ::Data::Asset<SurfaceProfileAsset> m_profile{AZ::Data::AssetLoadBehavior::NoLoad};
     AZ::Data::Asset<AZ::RPI::StreamingImageAsset> m_height{AZ::Data::AssetLoadBehavior::NoLoad};
     AZ::Data::Asset<AZ::RPI::StreamingImageAsset> m_neuralCache{AZ::Data::AssetLoadBehavior::NoLoad};
     float m_scale = .1f, m_reference = .5f;
@@ -202,6 +208,9 @@ private:
     void EnforceStrictGenerationPolicy(bool finalBarrier=false);
     bool Prepare();
     void ConnectAssets();
+    // Profile ID -> trained profile (binding override, else surface default)
+    // and its height image. Returns true if the set of asset IDs changed.
+    bool ResolveProfileAssets();
     void Release(AZStd::unique_ptr<Generation>&);
     AZ::EntityId m_entity;
     AZ::u64 m_paintSurfaceRevision=0;
@@ -210,6 +219,11 @@ private:
     AZ::Data::Asset<AZ::RPI::MaterialAsset> m_template{AZ::Data::AssetLoadBehavior::NoLoad};
     AZ::Data::Asset<LearnedMaterialAsset> m_learnedMaterial{AZ::Data::AssetLoadBehavior::NoLoad};
     AZ::Data::Asset<LearnedMaterialAsset> m_appearance{AZ::Data::AssetLoadBehavior::NoLoad};
+    AZStd::map<AZ::u32, AZ::Data::Asset<SurfaceProfileAsset>> m_profileAssets;
+    AZStd::map<AZ::u32, AZStd::string> m_missingProfiles; // ID -> product path not in the catalog
+    AZStd::map<AZ::u32, AZ::Data::Asset<AZ::RPI::StreamingImageAsset>> m_profileHeights;
+    bool m_profilesStale = false;
+    bool m_resolvedTrained = false;
     AZStd::unique_ptr<Generation> m_active, m_pending;
     AZStd::string m_status = "Inactive";
     bool m_dirty = true;

@@ -8,6 +8,7 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzFramework/Asset/GenericAssetHandler.h>
 #include <SilPOM/LearnedMaterialAsset.h>
+#include <SilPOM/SurfaceProfileAsset.h>
 
 namespace SilPOM
 {
@@ -36,6 +37,14 @@ struct MeshMaterial
     AZ_TYPE_INFO(MeshMaterial, "{8D14A8B7-1233-4336-A5B1-91F059B6A2B7}");
     AZStd::string m_id, m_name;
 };
+// Default trained profile for a Blender profile ID, from the exporter's
+// "profiles" map. The Mesh component uses it unless a binding overrides it.
+struct MeshSurfaceProfile
+{
+    AZ_TYPE_INFO(MeshSurfaceProfile, "{3E0F7C55-1B7B-4F86-9A4D-0B6E1B2E8C41}");
+    AZ::u32 m_id = 0;
+    AZStd::string m_profileProduct; // product path of the .silpomprofile
+};
 class MeshSurfaceAsset final : public AZ::Data::AssetData
 {
 public:
@@ -47,6 +56,7 @@ public:
     AZStd::string m_generation;
     AZStd::vector<MeshFace> m_faces;
     AZStd::vector<MeshMaterial> m_materials;
+    AZStd::vector<MeshSurfaceProfile> m_profiles;
 };
 
 class MeshAssetSystem final : public AZ::Component
@@ -59,5 +69,6 @@ public:
 private:
     AZStd::unique_ptr<AzFramework::GenericAssetHandler<MeshSurfaceAsset>> m_handler;
     AZStd::unique_ptr<AzFramework::GenericAssetHandler<LearnedMaterialAsset>> m_materialHandler;
+    AZStd::unique_ptr<AzFramework::GenericAssetHandler<SurfaceProfileAsset>> m_profileHandler;
 };
 }

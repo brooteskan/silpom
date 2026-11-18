@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Height": "../sculpted-stair-silpom/height.png",
+  "Width": 4096,
+  "HeightPixels": 4096,
+  "Scale": 0.19,
+  "Reference": 0.5000076295109483,
+  "AddressMode": 1,
+  "Role": "Surface",
+  "ShaderModel": 5
+}

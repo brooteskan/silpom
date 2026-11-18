@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Height": "../../IrishFieldstoneTowerWelded/wall/height.png",
+  "Width": 6656,
+  "HeightPixels": 6144,
+  "Scale": 0.1,
+  "Reference": 0.05,
+  "AddressMode": 0,
+  "Role": "Wall",
+  "ShaderModel": 4
+}

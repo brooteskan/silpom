@@ -212,6 +212,8 @@ public:
                         "Receive spiral light","Applies to this binding's relief faces in Selected materials mode. All SILPOM surfaces overrides this flag; ordinary geometry never receives this effect.");
                 edit->Class<MeshProfileBinding>("Displacement profile","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_id,"Profile ID","")
+                    ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_profile,"Trained profile override",
+                        "A .silpomprofile for this ID instead of the one the surface's Blender export names. A trained profile supplies the height image, displacement, reference, address mode and model; those fields below are then ignored.")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_useBaseMesh,"Use base mesh",
                         "Shade these faces using the authored material on the original mesh, including StandardPBR parallax.")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_height,"Height image","Normalized linear single-mip scalar image")
@@ -225,7 +227,7 @@ public:
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_offset,"UV offset","")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_addressMode,"Address mode","0 repeat; 1 clamp")
                     ->DataElement(AZ::Edit::UIHandlers::Default,&MeshProfileBinding::m_neuralModel,"Neural model",
-                        "0 model 0 (cached seed) or disabled. 1–3 welded tower. 4–7 open-shaft walls, stairs, trim and reveal.");
+                        "0 model 0 (cached seed) or disabled. 1–3 welded tower. 4–7 open-shaft walls, stairs, trim and reveal. A trained profile sets this; 1-7 here without one is an error.");
             }
         }
     }

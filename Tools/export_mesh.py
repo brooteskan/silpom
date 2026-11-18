@@ -1,7 +1,13 @@
 """Export tagged static Blender meshes without depending on post-import indices.
 
 blender --background source.blend --python-exit-code 1 --python export_mesh.py --
-    --output DIR [--initialize-identities] [--object NAME ...] [--reorder]
+    --output DIR [--initialize-identities] [--object NAME ...] [--reorder] [--profile ID=PATH ...]
+
+Trained profiles: the scene's "silpom_profiles" property maps profile IDs to
+.silpomprofile files (set in the SilPOM panel, or with --profile). They are
+written, relative to it, to <name>.silpomprofiles next to the sidecar; the
+SilPOM Mesh component uses them as each profile's trained profile. The geometry
+sidecar does not change with them (learned bundles hash its bytes).
 
 The source file is never overwritten. Continue authoring in DIR/authoring.blend,
 which contains any newly allocated persistent identities. Output metadata is an
@@ -12,6 +18,7 @@ from contextlib import contextmanager
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -75,6 +82,7 @@ def output_paths(output, basename=None):
             'Invalid export filename')
     return {'fbx': output / ((basename or 'roundtrip') + '.fbx'),
             'sidecar': output / ((basename or 'roundtrip') + '.silpom.json'),
+            'profiles': output / ((basename or 'roundtrip') + '.silpomprofiles'),
             'authoring': output / (basename + '.authoring.blend' if basename else 'authoring.blend')}
 
 
@@ -126,6 +134,24 @@ def staged_fbx(directory):
         yield path
     finally:
         path.unlink(missing_ok=True)
+
+
+PROFILE_PROPERTY = 'silpom_profiles'
+
+
+def profile_map(mapping, used_ids, sidecar_folder):
+    """{"<id>": "<path relative to the sidecar>"} for the used profile IDs."""
+    profiles = {}
+    for key, value in (mapping or {}).items():
+        require(str(key).isdigit() and int(key) > 0, f'Trained profile key {key!r} is not a profile ID')
+        if int(key) not in used_ids:
+            continue
+        path = Path(bpy.path.abspath(str(value))).resolve()
+        require(path.name.endswith('.silpomprofile'), f'Profile {key}: {path.name} is not a .silpomprofile')
+        relative = os.path.relpath(path, sidecar_folder).replace('\\', '/')
+        require(not Path(relative).is_absolute(), f'Profile {key}: {path} is on another drive than the export')
+        profiles[str(int(key))] = relative
+    return dict(sorted(profiles.items(), key=lambda item: int(item[0])))
 
 
 def export(output, objects, initialize=False, reorder=False, *, basename=None):
@@ -239,11 +265,18 @@ def _export(paths, objects, initialize, reorder):
         document = {'version': 2, 'blender': bpy.app.version_string,
                     'fbx_sha256': hashlib.sha256(fbx.read_bytes()).hexdigest(), **semantics,
                     'semantic_sha256': hashlib.sha256(json.dumps(semantics, sort_keys=True).encode()).hexdigest()}
+
         sidecar.write_text(json.dumps(document, indent=2) + '\n', encoding='utf-8')
         result = bpy.ops.wm.save_as_mainfile(filepath=str(paths['authoring']), copy=True, check_existing=False)
         require(result == {'FINISHED'}, 'Could not save the authoring copy')
         fbx.replace(paths['fbx'])
         sidecar.replace(paths['sidecar'])
+    used = {record['profile'] for record in records if record['profile']}
+    profiles = profile_map(bpy.context.scene.get(PROFILE_PROPERTY), used, paths['profiles'].parent)
+    if profiles:
+        paths['profiles'].write_text(json.dumps(profiles, indent=2) + '\n', encoding='utf-8')
+    elif paths['profiles'].exists():
+        paths['profiles'].unlink()  # no trained profiles any more
     print('SILPOM_EXPORT ' + json.dumps({'faces': len(records), 'objects': len(objects), 'output': str(paths['fbx'].parent)}))
     return document
 
@@ -324,6 +357,15 @@ if __name__ == '__main__':
     parser.add_argument('--object', action='append', dest='objects')
     parser.add_argument('--initialize-identities', action='store_true')
     parser.add_argument('--reorder', action='store_true')
+    parser.add_argument('--profile', action='append', default=[], metavar='ID=PATH',
+                        help='Trained .silpomprofile for a profile ID (overrides the scene setting)')
     args = parser.parse_args(sys.argv[sys.argv.index('--') + 1:])
+    if args.profile:
+        mapping = dict(bpy.context.scene.get(PROFILE_PROPERTY, {}))
+        for item in args.profile:
+            key, _, value = item.partition('=')
+            require(key.isdigit() and value, f'--profile expects ID=PATH, got {item!r}')
+            mapping[key] = str(Path(value).resolve())
+        bpy.context.scene[PROFILE_PROPERTY] = mapping
     objects = [bpy.data.objects[name] for name in args.objects] if args.objects else [o for o in bpy.context.scene.objects if o.type == 'MESH']
     export(args.output.resolve(), objects, args.initialize_identities, args.reorder)

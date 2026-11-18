@@ -74,20 +74,12 @@ namespace SilPOM
 {
 namespace
 {
-// Trained models and learned materials are project data. The gem never names
-// a project's assets: each project registers the assets its models were
-// trained on under /SilPOM in its own .setreg files. A model with no entry is
-// unavailable and the component reports that instead of guessing.
-constexpr const char* TrainedModelsRegistryRoot = "/SilPOM/TrainedModels";
+// Learned materials are project data. The gem never names a project's assets:
+// each project registers its learned bundles under /SilPOM in its own .setreg
+// files. Trained displacement profiles are .silpomprofile assets named by the
+// surface (Blender export) or a profile binding, not registry entries.
 constexpr const char* LearnedWallMaterialRegistryRoot = "/SilPOM/LearnedWallMaterial";
 constexpr const char* LearnedBundlesRegistryRoot = "/SilPOM/LearnedBundles";
-
-struct TrainedModelEntry
-{
-    AZStd::string heightAsset; // product path of the height image the model was trained on
-    float scale = 0, reference = 0;
-    AZ::u32 address = 0, width = 0, height = 0, profileId = 0;
-};
 
 bool ReadRegistryString(const AZStd::string& path, AZStd::string& value)
 {
@@ -95,45 +87,12 @@ bool ReadRegistryString(const AZStd::string& path, AZStd::string& value)
     return registry && registry->Get(value, path) && !value.empty();
 }
 
-bool ReadRegistryU32(const AZStd::string& path, AZ::u32& value)
+AZ::Data::AssetId FindProduct(const AZStd::string& path, const AZ::TypeId& type)
 {
-    AZ::u64 raw = 0;
-    auto* registry = AZ::SettingsRegistry::Get();
-    if (!registry || !registry->Get(raw, path) || raw > AZStd::numeric_limits<AZ::u32>::max()) return false;
-    value = AZ::u32(raw);
-    return true;
-}
-
-bool ReadRegistryFloat(const AZStd::string& path, float& value)
-{
-    double raw = 0;
-    auto* registry = AZ::SettingsRegistry::Get();
-    if (!registry || !registry->Get(raw, path) || !std::isfinite(raw)) return false;
-    value = float(raw);
-    return true;
-}
-
-// Reads /SilPOM/TrainedModels/<model>. Every field is required so a partial
-// entry cannot silently accept an asset the model was not trained on.
-bool FindTrainedModel(AZ::u32 model, TrainedModelEntry& entry)
-{
-    const auto base = AZStd::string::format("%s/%u", TrainedModelsRegistryRoot, model);
-    return ReadRegistryU32(base + "/ProfileId", entry.profileId)
-        && ReadRegistryFloat(base + "/Scale", entry.scale)
-        && ReadRegistryFloat(base + "/Reference", entry.reference)
-        && ReadRegistryU32(base + "/AddressMode", entry.address)
-        && ReadRegistryU32(base + "/Width", entry.width)
-        && ReadRegistryU32(base + "/Height", entry.height);
-}
-
-// Optional per-model height asset. Neural-only visibility requires it.
-bool FindTrainedHeightAsset(AZ::u32 model, AZ::Data::AssetId& id)
-{
-    AZStd::string path;
-    if (!ReadRegistryString(AZStd::string::format("%s/%u/HeightAsset", TrainedModelsRegistryRoot, model), path)) return false;
+    AZ::Data::AssetId id;
     AZ::Data::AssetCatalogRequestBus::BroadcastResult(id, &AZ::Data::AssetCatalogRequests::GetAssetIdByPath,
-        path.c_str(), azrtti_typeid<AZ::RPI::StreamingImageAsset>(), false);
-    return id.IsValid();
+        path.c_str(), type, false);
+    return id;
 }
 
 // Product path of a learned bundle (.silpommaterial) registered under
@@ -994,7 +953,8 @@ void MeshConfig::Reflect(AZ::ReflectContext* context)
             ->Field("LightingChannelMask", &MeshMaterialBinding::m_lightingChannelMask)
             ->Field("DisableEnvironmentLighting", &MeshMaterialBinding::m_disableEnvironmentLighting)
             ->Field("ReceiveSpiralLight", &MeshMaterialBinding::m_receiveSpiralLight);
-        sc->Class<MeshProfileBinding>()->Version(4)->Field("ProfileId", &MeshProfileBinding::m_id)->Field("Height", &MeshProfileBinding::m_height)
+        sc->Class<MeshProfileBinding>()->Version(5)->Field("ProfileId", &MeshProfileBinding::m_id)
+            ->Field("Profile", &MeshProfileBinding::m_profile)->Field("Height", &MeshProfileBinding::m_height)
             ->Field("NeuralCache", &MeshProfileBinding::m_neuralCache)
             ->Field("NeuralModel", &MeshProfileBinding::m_neuralModel)
             ->Field("UseBaseMesh", &MeshProfileBinding::m_useBaseMesh)
@@ -1109,14 +1069,14 @@ AZStd::string MeshController::GetStatus() const
 }
 bool MeshController::HasTrainedRenderingDuty() const
 {
-    return m_configuration.UsesTrainedProfiles()||(m_active&&m_active->trainedModelBatches)
+    return m_configuration.UsesTrainedProfiles()||m_resolvedTrained||(m_active&&m_active->trainedModelBatches)
         ||(m_pending&&m_pending->trainedModelBatches);
 }
 void MeshController::UpdateSceneSubscription()
 {
     StrictNeuralPolicy::SceneDuties duties;
     duties.requestedStrict=m_configuration.m_localShadowMethod==LocalShadowMethod::NeuralOnly;
-    duties.requestedTrained=m_configuration.UsesTrainedProfiles();
+    duties.requestedTrained=m_configuration.UsesTrainedProfiles()||m_resolvedTrained;
     if(m_active)
     {
         duties.activeStrict=m_active->strictRequired.load();
@@ -1237,9 +1197,62 @@ AZ::Vector3 MeshController::GetAntiAliasingState() const
     }
     return AZ::Vector3(float(AZ::RPI::RPISystemInterface::Get()->GetApplicationMultisampleState().m_samples),method,smaa);
 }
+bool MeshController::ResolveProfileAssets()
+{
+    AZStd::map<AZ::u32, AZ::Data::AssetId> wanted;
+    AZStd::map<AZ::u32, AZStd::string> missing;
+    const auto& surface = m_configuration.m_surface;
+    if (surface.IsReady())
+        for (const auto& profile : surface->m_profiles)
+        {
+            const auto id = FindProduct(profile.m_profileProduct, azrtti_typeid<SurfaceProfileAsset>());
+            if (id.IsValid()) wanted[profile.m_id] = id;
+            else missing[profile.m_id] = profile.m_profileProduct;
+        }
+    for (const auto& binding : m_configuration.m_profiles)
+    {
+        if (binding.m_useBaseMesh) { wanted.erase(binding.m_id); missing.erase(binding.m_id); continue; }
+        if (binding.m_profile.GetId().IsValid()) { wanted[binding.m_id] = binding.m_profile.GetId(); missing.erase(binding.m_id); }
+    }
+    bool changed = missing != m_missingProfiles;
+    m_missingProfiles = AZStd::move(missing);
+    for (auto it = m_profileAssets.begin(); it != m_profileAssets.end();)
+    {
+        const auto found = wanted.find(it->first);
+        if (found == wanted.end() || found->second != it->second.GetId()) { it = m_profileAssets.erase(it); changed = true; }
+        else ++it;
+    }
+    for (const auto& [profileId, assetId] : wanted)
+        if (!m_profileAssets.contains(profileId))
+        {
+            m_profileAssets[profileId] = AZ::Data::AssetManager::Instance().GetAsset<SurfaceProfileAsset>(assetId, AZ::Data::AssetLoadBehavior::NoLoad);
+            changed = true;
+        }
+    // Height images follow their loaded profiles.
+    AZStd::map<AZ::u32, AZ::Data::AssetId> heights;
+    for (const auto& [profileId, profile] : m_profileAssets)
+        if (profile.IsReady())
+            heights[profileId] = FindProduct(profile->m_heightProduct, azrtti_typeid<AZ::RPI::StreamingImageAsset>());
+    for (auto it = m_profileHeights.begin(); it != m_profileHeights.end();)
+    {
+        const auto found = heights.find(it->first);
+        if (found == heights.end() || found->second != it->second.GetId()) { it = m_profileHeights.erase(it); changed = true; }
+        else ++it;
+    }
+    for (const auto& [profileId, assetId] : heights)
+        if (!m_profileHeights.contains(profileId))
+        {
+            m_profileHeights[profileId] = AZ::Data::Asset<AZ::RPI::StreamingImageAsset>(assetId,
+                azrtti_typeid<AZ::RPI::StreamingImageAsset>());
+            changed = true;
+        }
+    m_resolvedTrained = !m_profileAssets.empty() || !m_missingProfiles.empty();
+    return changed;
+}
 void MeshController::ConnectAssets()
 {
     AZ::Data::AssetBus::MultiHandler::BusDisconnect();
+    ResolveProfileAssets();
     AZStd::set<AZ::Data::AssetId> connected;
     auto queue = [&](auto& asset)
     {
@@ -1266,9 +1279,12 @@ void MeshController::ConnectAssets()
     for (auto& profile : m_configuration.m_profiles)
     {
         if (profile.m_useBaseMesh) continue;
-        queue(profile.m_height);
+        // A trained profile's own height image replaces the binding's.
+        if (!m_profileAssets.contains(profile.m_id)) queue(profile.m_height);
         queue(profile.m_neuralCache);
     }
+    for (auto& [id, profile] : m_profileAssets) queue(profile);
+    for (auto& [id, height] : m_profileHeights) queue(height);
 }
 void BeginAntiAliasingHandoff()
 {
@@ -1378,7 +1394,9 @@ void MeshController::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) { 
 void MeshController::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
 {
     m_paintSurfaceRevision=++ReceiverSurfaceRevision;
-    if (asset.GetId() == m_configuration.m_surface.GetId()) m_configuration.m_surface = asset;
+    if (asset.GetId() == m_configuration.m_surface.GetId()) { m_configuration.m_surface = asset; m_profilesStale = true; }
+    for (auto& [id, profile] : m_profileAssets) if (asset.GetId() == profile.GetId()) { profile = asset; m_profilesStale = true; }
+    for (auto& [id, height] : m_profileHeights) if (asset.GetId() == height.GetId()) height = asset;
     if (asset.GetId() == m_template.GetId()) m_template = asset;
     if (asset.GetId() == m_learnedMaterial.GetId()) m_learnedMaterial = asset;
     if (asset.GetId() == m_appearance.GetId()) m_appearance = asset;
@@ -1462,7 +1480,12 @@ bool MeshController::Prepare()
         { MeshMaterialBinding binding; binding.m_id = material.m_id; c.m_materials.push_back(binding); initialized = true; }
     for (const auto& face : asset.m_faces)
         if (face.m_region && AZStd::none_of(c.m_profiles.begin(), c.m_profiles.end(), [&](const auto& p) { return p.m_id == face.m_profile; }))
-        { MeshProfileBinding profile; profile.m_id = face.m_profile; c.m_profiles.push_back(profile); initialized = true; }
+        {
+            MeshProfileBinding profile; profile.m_id = face.m_profile; c.m_profiles.push_back(profile);
+            const bool trainedDefault = AZStd::any_of(asset.m_profiles.begin(), asset.m_profiles.end(),
+                [&](const auto& p) { return p.m_id == face.m_profile; });
+            initialized = initialized || !trainedDefault;
+        }
     if (initialized) { m_status = "Material slots and profiles discovered; assign their materials and height images"; return false; }
     AZStd::map<AZStd::string, const MeshMaterialBinding*> materialBindings;
     AZStd::map<AZ::u32, MeshProfileBinding> profiles;
@@ -1472,8 +1495,27 @@ bool MeshController::Prepare()
         if (!b.m_material.GetId().IsValid()) { m_status = "Assign material: " + b.m_id; return false; }
         if (!b.m_material.IsReady()) { m_status = "Loading materials"; return true; }
     }
-    for (const auto& p : c.m_profiles)
+    for (const auto& binding : c.m_profiles)
     {
+        // A trained profile asset supplies the height image and relief parameters.
+        MeshProfileBinding p = binding;
+        if (const auto missing = m_missingProfiles.find(p.m_id); !p.m_useBaseMesh && missing != m_missingProfiles.end())
+        { m_status = AZStd::string::format("Profile %u: surface profile %s is not processed; check Asset Processor", p.m_id, missing->second.c_str()); return false; }
+        if (const auto trained = m_profileAssets.find(p.m_id); !p.m_useBaseMesh && trained != m_profileAssets.end())
+        {
+            if (!trained->second.IsReady()) { m_status = "Loading surface profiles"; return true; }
+            const auto& profile = *trained->second;
+            if (const auto invalid = profile.Validate(); !invalid.empty())
+            { m_status = AZStd::string::format("Profile %u: invalid surface profile (%s)", p.m_id, invalid.c_str()); return false; }
+            const auto height = m_profileHeights.find(p.m_id);
+            if (height == m_profileHeights.end() || !height->second.GetId().IsValid())
+            { m_status = AZStd::string::format("Profile %u: height image %s is not processed", p.m_id, profile.m_heightProduct.c_str()); return false; }
+            p.m_height = height->second;
+            p.m_scale = profile.m_scale; p.m_reference = profile.m_reference;
+            p.m_addressMode = profile.m_addressMode; p.m_neuralModel = profile.m_shaderModel;
+        }
+        else if (!p.m_useBaseMesh && p.m_neuralModel != 0)
+        { m_status = AZStd::string::format("Profile %u needs a trained surface profile (.silpomprofile) for model %u", p.m_id, p.m_neuralModel); return false; }
         if (!profiles.emplace(p.m_id, p).second || p.m_id == 0) { m_status = "Duplicate/zero profile ID"; return false; }
         if (p.m_useBaseMesh) continue;
         if (!p.m_height.GetId().IsValid()) { m_status = AZStd::string::format("Assign height texture for profile %u", p.m_id); return false; }
@@ -1511,7 +1553,8 @@ bool MeshController::Prepare()
     if (!scene) { m_status = "Waiting for render scene"; return true; }
     m_processor = scene->GetFeatureProcessor<AZ::Render::MeshFeatureProcessorInterface>();
     if (!m_processor) { m_status = "Waiting for MeshFeatureProcessor"; return true; }
-    const bool requiresTrainedHits = c.UsesTrainedProfiles();
+    const bool requiresTrainedHits = AZStd::any_of(profiles.begin(), profiles.end(),
+        [](const auto& entry) { return entry.second.IsTrained(); });
     const float depthMultiplier = requiresTrainedHits ? c.m_reliefDepthMultiplier : 1.0f;
     if (!std::isfinite(depthMultiplier) || depthMultiplier < 0.0f || depthMultiplier > MeshConfig::MaxReliefDepthMultiplier)
     { m_status = "Relief depth multiplier must be between 0 and 2"; return false; }
@@ -1675,26 +1718,18 @@ bool MeshController::Prepare()
                     const auto profileEstimator=StrictNeuralPolicy::LightingEstimatorForProfile(p.m_neuralModel,static_cast<AZ::u32>(c.m_lightingEstimator));
                     if(profileEstimator>=2u&&(!decoded||!c.m_useLevelFourShared))
                         return fail("Selected directional/angular estimator requires its canonical wall material and shared features; unsupported materials cannot use a different estimator");
-                    AZ::Data::AssetId expected;
-                    if (!FindTrainedHeightAsset(p.m_neuralModel, expected))
-                        return fail(AZStd::string::format("Neural-only visibility model %u has no registered height asset (%s/%u/HeightAsset)",
-                            p.m_neuralModel, TrainedModelsRegistryRoot, p.m_neuralModel));
-                    if (expected!=p.m_height.GetId())
-                        return fail("Neural-only visibility requires its trained height asset; retrain for a different material");
+                    // The trained profile supplied p.m_height, so it is the training image.
+                    if (!m_profileAssets.contains(key.second))
+                        return fail("Neural-only visibility requires a trained surface profile for this profile ID");
                 }
                 if (requiresTrainedHits)
                 {
-                    TrainedModelEntry model;
-                    if (p.m_neuralModel < 1 || p.m_neuralCache.GetId().IsValid())
-                        return fail("Assign each displaced profile its matching trained model and no model 0 cache");
-                    if (!FindTrainedModel(p.m_neuralModel, model))
-                        return fail(AZStd::string::format("Trained model %u is not registered for this project (%s/%u)",
-                            p.m_neuralModel, TrainedModelsRegistryRoot, p.m_neuralModel));
-                    if (model.profileId != key.second || std::abs(p.m_scale - model.scale) > 1e-6f
-                        || std::abs(p.m_reference - model.reference) > 1e-6f
-                        || p.m_addressMode != model.address || desc.m_size.m_width != model.width || desc.m_size.m_height != model.height
+                    const auto trained = m_profileAssets.find(key.second);
+                    if (p.m_neuralModel < 1 || p.m_neuralCache.GetId().IsValid() || trained == m_profileAssets.end())
+                        return fail("Assign each displaced profile a trained surface profile and no model 0 cache");
+                    if (desc.m_size.m_width != trained->second->m_width || desc.m_size.m_height != trained->second->m_heightPixels
                         || p.m_tiling != AZ::Vector2(1) || p.m_offset != AZ::Vector2(0))
-                        return fail("Trained model does not match the authored displacement profile");
+                        return fail("Trained surface profile does not match its height image, or the profile is tiled/offset");
                 }
                 if (desc.m_mipLevels != 1 || desc.m_arraySize != 1 || desc.m_size.m_depth != 1
                     || (desc.m_format != AZ::RHI::Format::R32_FLOAT && desc.m_format != AZ::RHI::Format::R16_UNORM && desc.m_format != AZ::RHI::Format::R8_UNORM))
@@ -2163,6 +2198,8 @@ void MeshController::OnTick(float, AZ::ScriptTimePoint)
     if(!m_surfacePaintRuntime)TickReceiverUvPaint();
     const unsigned policy=UpdateHitSamplePolicy(AZ::RPI::Scene::GetSceneForEntityId(m_entity));
     if(m_hitSamplePolicy!=policy){m_hitSamplePolicy=policy;m_checkHitPasses=HasTrainedRenderingDuty();}
+    // Newly loaded surfaces/profiles can name further profile and height assets.
+    if (m_profilesStale) { m_profilesStale = false; if (ResolveProfileAssets()) { ConnectAssets(); m_dirty = true; } }
     if (m_dirty) { Release(m_pending); m_dirty = Prepare(); }
     if (m_checkHitPasses && HasTrainedRenderingDuty())
     {

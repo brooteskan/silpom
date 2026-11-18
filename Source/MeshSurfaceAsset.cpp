@@ -18,16 +18,20 @@ void MeshSurfaceAsset::Reflect(AZ::ReflectContext* context)
             ->Field("Region", &MeshFace::m_region)->Field("Profile", &MeshFace::m_profile)
             ->Field("Corners", &MeshFace::m_corners)->Field("Neighbors", &MeshFace::m_neighbors);
         sc->Class<MeshMaterial>()->Version(1)->Field("Id", &MeshMaterial::m_id)->Field("Name", &MeshMaterial::m_name);
-        sc->Class<MeshSurfaceAsset, AZ::Data::AssetData>()->Version(1)
+        sc->Class<MeshSurfaceProfile>()->Version(1)->Field("Id", &MeshSurfaceProfile::m_id)
+            ->Field("ProfileProduct", &MeshSurfaceProfile::m_profileProduct);
+        sc->Class<MeshSurfaceAsset, AZ::Data::AssetData>()->Version(2)
             ->Field("SurfaceVersion", &MeshSurfaceAsset::m_surfaceVersion)
             ->Field("Generation", &MeshSurfaceAsset::m_generation)
-            ->Field("Faces", &MeshSurfaceAsset::m_faces)->Field("Materials", &MeshSurfaceAsset::m_materials);
+            ->Field("Faces", &MeshSurfaceAsset::m_faces)->Field("Materials", &MeshSurfaceAsset::m_materials)
+            ->Field("Profiles", &MeshSurfaceAsset::m_profiles);
     }
 }
 void MeshAssetSystem::Reflect(AZ::ReflectContext* context)
 {
     MeshSurfaceAsset::Reflect(context);
     LearnedMaterialAsset::Reflect(context);
+    SurfaceProfileAsset::Reflect(context);
     if (auto* sc = azrtti_cast<AZ::SerializeContext*>(context))
         sc->Class<MeshAssetSystem, AZ::Component>()->Version(1);
 }
@@ -39,11 +43,14 @@ void MeshAssetSystem::Activate()
     m_handler->Register();
     m_materialHandler=AZStd::make_unique<AzFramework::GenericAssetHandler<LearnedMaterialAsset>>("SilPOM learned material","Graphics","silpommaterial");
     m_materialHandler->Register();
+    m_profileHandler=AZStd::make_unique<AzFramework::GenericAssetHandler<SurfaceProfileAsset>>("SilPOM surface profile","Graphics","silpomprofileasset");
+    m_profileHandler->Register();
 }
 void MeshAssetSystem::Deactivate()
 {
     StopRenderingSettings();
     m_handler.reset();
     m_materialHandler.reset();
+    m_profileHandler.reset();
 }
 }

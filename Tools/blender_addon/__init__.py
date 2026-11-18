@@ -16,9 +16,9 @@ from pathlib import Path
 import bmesh
 import bpy
 from bpy.props import BoolProperty, IntProperty, PointerProperty, StringProperty
-from bpy_extras.io_utils import ExportHelper
+from bpy_extras.io_utils import ExportHelper, ImportHelper
 
-from .export_mesh import export, output_paths, require
+from .export_mesh import PROFILE_PROPERTY, export, output_paths, require
 
 
 class SILPOM_PG_settings(bpy.types.PropertyGroup):
@@ -83,6 +83,35 @@ class SILPOM_OT_assign_region(bpy.types.Operator):
                 count += 1
             bmesh.update_edit_mesh(mesh, loop_triangles=False, destructive=False)
         self.report({'INFO'}, f'Assigned {count} faces to ' + ('ordinary geometry' if self.ordinary else f'region {settings.region}'))
+        return {'FINISHED'}
+
+
+class SILPOM_OT_set_trained_profile(bpy.types.Operator, ImportHelper):
+    bl_idname = 'silpom.set_trained_profile'
+    bl_label = 'Set Trained Profile'
+    bl_description = 'Choose the .silpomprofile (trained height image, relief and networks) for the current profile ID'
+    filename_ext = '.silpomprofile'
+    filter_glob: StringProperty(default='*.silpomprofile', options={'HIDDEN'})
+
+    def execute(self, context):
+        if not self.filepath.endswith('.silpomprofile'):
+            self.report({'ERROR'}, 'Choose a .silpomprofile file')
+            return {'CANCELLED'}
+        mapping = dict(context.scene.get(PROFILE_PROPERTY, {}))
+        mapping[str(context.scene.silpom_export.profile)] = bpy.path.relpath(self.filepath) if bpy.data.filepath else self.filepath
+        context.scene[PROFILE_PROPERTY] = mapping
+        return {'FINISHED'}
+
+
+class SILPOM_OT_clear_trained_profile(bpy.types.Operator):
+    bl_idname = 'silpom.clear_trained_profile'
+    bl_label = 'Clear Trained Profile'
+    bl_description = 'Export the current profile ID without a trained profile'
+
+    def execute(self, context):
+        mapping = dict(context.scene.get(PROFILE_PROPERTY, {}))
+        mapping.pop(str(context.scene.silpom_export.profile), None)
+        context.scene[PROFILE_PROPERTY] = mapping
         return {'FINISHED'}
 
 
@@ -158,6 +187,13 @@ class SILPOM_PT_authoring(bpy.types.Panel):
         column.operator('silpom.assign_region', text='Mark Selected Faces Ordinary').ordinary = True
         if context.mode != 'EDIT_MESH':
             layout.label(text='Enter Edit Mode to tag faces')
+        trained = context.scene.get(PROFILE_PROPERTY, {}).get(str(context.scene.silpom_export.profile))
+        box = layout.box()
+        box.label(text=f'Profile {context.scene.silpom_export.profile} trained profile:')
+        box.label(text=trained or 'none (height set in O3DE)', icon='FILE' if trained else 'BLANK1')
+        row = box.row()
+        row.operator('silpom.set_trained_profile', text='Set...')
+        row.operator('silpom.clear_trained_profile', text='Clear')
         layout.separator()
         layout.operator('export_scene.silpom', text='Export SilPOM Faces', icon='EXPORT')
         layout.label(text='Requires UVs, materials and baked modifiers')
@@ -167,7 +203,8 @@ def menu_export(self, _context):
     self.layout.operator(SILPOM_OT_export.bl_idname, text='SilPOM Faces (.fbx + .json)')
 
 
-CLASSES = (SILPOM_PG_settings, SILPOM_OT_assign_region, SILPOM_OT_export, SILPOM_PT_authoring)
+CLASSES = (SILPOM_PG_settings, SILPOM_OT_assign_region, SILPOM_OT_set_trained_profile, SILPOM_OT_clear_trained_profile,
+           SILPOM_OT_export, SILPOM_PT_authoring)
 
 
 def register():

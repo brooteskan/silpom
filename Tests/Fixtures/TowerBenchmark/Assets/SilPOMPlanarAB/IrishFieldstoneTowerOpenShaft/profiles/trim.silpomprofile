@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Height": "../welded-doorway/trim-blocks/height.png",
+  "Width": 1728,
+  "HeightPixels": 1728,
+  "Scale": 0.052,
+  "Reference": 0.5000076295109483,
+  "AddressMode": 1,
+  "Role": "Opening",
+  "ShaderModel": 6
+}

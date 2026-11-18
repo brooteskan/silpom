@@ -3,6 +3,7 @@
 #include <SilPOM/MeshSurfaceAsset.h>
 #include <SilPOM/FaceNormals.h>
 #include <AzCore/IO/Path/Path.h>
+#include <AzCore/IO/SystemFile.h>
 #include <AzCore/Serialization/EditContextConstants.inl>
 #include <AzCore/Serialization/Json/JsonUtils.h>
 #include <AzCore/Serialization/Utils.h>
@@ -11,6 +12,7 @@
 #include <AzCore/std/containers/set.h>
 #include <AzCore/std/functional.h>
 #include <AzCore/std/sort.h>
+#include <AzCore/std/string/conversions.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
 #include <SceneAPI/SceneCore/Events/SceneSerializationBus.h>
@@ -25,6 +27,11 @@ namespace SilPOM
 namespace
 {
 using Json = rapidjson::Value;
+AZStd::string ProfileMapPath(const AZStd::string& sidecar)
+{
+    constexpr AZStd::string_view suffix = ".silpom.json";
+    return sidecar.substr(0, sidecar.size() - suffix.size()) + ".silpomprofiles";
+}
 AZStd::string FbxPath(AZStd::string sidecar)
 {
     constexpr size_t suffix = sizeof(".silpom.json") - 1;
@@ -254,7 +261,7 @@ void MeshSurfaceBuilder::Activate()
 {
     m_stopping = false;
     AssetBuilderSDK::AssetBuilderDesc desc;
-    desc.m_name = "SilPOM Mesh Surface"; desc.m_version = 2;
+    desc.m_name = "SilPOM Mesh Surface"; desc.m_version = 3;
     desc.m_analysisFingerprint = "mesh-surface-v2-angle-weighted-tagged-fans";
     desc.m_patterns.emplace_back("*.silpom.json", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
     desc.m_busId = azrtti_typeid<MeshSurfaceBuilder>();
@@ -271,6 +278,8 @@ void MeshSurfaceBuilder::CreateJobs(const AssetBuilderSDK::CreateJobsRequest& re
     // Include missing dependencies so restoring an FBX or manifest retries a job.
     response.m_sourceFileDependencyList.emplace_back(fbx, AZ::Uuid::CreateNull());
     response.m_sourceFileDependencyList.emplace_back(fbx + ".assetinfo", AZ::Uuid::CreateNull());
+    response.m_sourceFileDependencyList.emplace_back(
+        ProfileMapPath((AZ::IO::Path(request.m_watchFolder) / request.m_sourceFile).String()), AZ::Uuid::CreateNull());
     for (const auto& platform : request.m_enabledPlatforms)
     {
         AssetBuilderSDK::JobDescriptor job; job.m_jobKey = "SilPOM Mesh Surface";
@@ -278,6 +287,38 @@ void MeshSurfaceBuilder::CreateJobs(const AssetBuilderSDK::CreateJobsRequest& re
         response.m_createJobOutputs.push_back(AZStd::move(job));
     }
     response.m_result = AssetBuilderSDK::CreateJobsResultCode::Success;
+}
+// Optional <surface>.silpomprofiles next to <surface>.silpom.json:
+// {"<profile id>": "<path>.silpomprofile"}, relative to that file. It is kept
+// out of the geometry sidecar, whose bytes learned bundles hash as training
+// data. Product paths are the profile's path below the scan folder, lower case.
+static bool CompileProfiles(const AZStd::string& sidecar, const AZStd::string& watchFolder,
+    MeshSurfaceAsset& output, AZStd::string& error)
+{
+    const auto mapPath = ProfileMapPath(sidecar);
+    if (!AZ::IO::SystemFile::Exists(mapPath.c_str())) return true;
+    auto document = AZ::JsonSerializationUtils::ReadJsonFile(mapPath);
+    if (!document.IsSuccess()) { error = mapPath + ": " + document.GetError(); return false; }
+    const auto* profiles = &document.GetValue();
+    if (!profiles->IsObject()) { error = mapPath + " must map profile IDs to .silpomprofile paths"; return false; }
+    const AZ::IO::Path folder(AZ::IO::Path(mapPath).ParentPath());
+    constexpr AZStd::string_view extension = ".silpomprofile";
+    for (auto it = profiles->MemberBegin(); it != profiles->MemberEnd(); ++it)
+    {
+        char* end = nullptr;
+        const auto id = strtoul(it->name.GetString(), &end, 10);
+        if (!it->value.IsString() || !end || *end || id == 0 || id >= (1u << 24)
+            || !AZStd::string_view(it->value.GetString()).ends_with(extension) || AZ::IO::Path(it->value.GetString()).IsAbsolute())
+        { error = AZStd::string::format("Invalid profiles entry \"%s\"", it->name.GetString()); return false; }
+        const auto relative = (folder / it->value.GetString()).LexicallyNormal().LexicallyRelative(AZ::IO::Path(watchFolder).LexicallyNormal());
+        if (relative.empty() || relative.Native().starts_with(".."))
+        { error = AZStd::string::format("Profile %lu must be in the surface's scan folder", id); return false; }
+        AZStd::string product = relative.AsPosix();
+        product = product.substr(0, product.size() - extension.size()) + ".silpomprofileasset";
+        AZStd::to_lower(product.begin(), product.end());
+        output.m_profiles.push_back({AZ::u32(id), product});
+    }
+    return true;
 }
 void MeshSurfaceBuilder::ProcessJob(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response)
 {
@@ -305,6 +346,8 @@ void MeshSurfaceBuilder::ProcessJob(const AssetBuilderSDK::ProcessJobRequest& re
     if (!scene) { AZ_Error("SilPOM", false, "%s: O3DE SceneAPI import failed.", fbx.c_str()); return; }
     MeshSurfaceAsset asset; AZStd::string error;
     if (!Compile(root, *scene, asset, error)) { AZ_Error("SilPOM", false, "%s: %s", fbx.c_str(), error.c_str()); return; }
+    if (!CompileProfiles(request.m_fullPath, request.m_watchFolder, asset, error))
+    { AZ_Error("SilPOM", false, "%s: %s", request.m_fullPath.c_str(), error.c_str()); return; }
     auto source = AZ::Utils::ReadFile(request.m_fullPath);
     if (!source.IsSuccess()) return;
     asset.m_generation = Hash(source.GetValue() + fbxHash + "angle-weighted-tagged-fans-v2");
