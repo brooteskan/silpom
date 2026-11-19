@@ -2,6 +2,9 @@
 #pragma once
 // Eight ordered residual/edge probes, two travel rates and incidence. Two
 // independently trained hypotheses are corrected by the original solver.
+// Where the original solver must run, this returns SilPomPredictionFallback
+// with its remaining retry cap and the caller runs it, so the shader carries
+// one inlined copy of SilPomPredictTowerHit rather than three.
 SilPomHit SilPomPredictTowerHit2(Texture2D texture,SilPomPatch p,SilPomMeshFace face,
     SilPomRay worldRay,SilPomRay search,float2 low,SilPomTrainedModel model,uint iterations,uint retryCap,float tolerance,uint reliefMode)
 {
@@ -47,7 +50,7 @@ SilPomHit SilPomPredictTowerHit2(Texture2D texture,SilPomPatch p,SilPomMeshFace 
     {
         // A weak Level 2 prediction retains the complete baseline opportunity.
         SILPOM_DIAGNOSTIC(14,0);
-        return SilPomPredictTowerHit(texture,p,face,worldRay,originalSearch,low,model,iterations,retryCap,tolerance,reliefMode);
+        return SilPomPredictionFallback(retryCap);
     }
     float a=rcp(1.0f+exp(-clamp(output[0],-20.0f,20.0f)));
     float b=rcp(1.0f+exp(-clamp(output[1],-20.0f,20.0f)));
@@ -73,7 +76,7 @@ SilPomHit SilPomPredictTowerHit2(Texture2D texture,SilPomPatch p,SilPomMeshFace 
     {
         // The old seed and descriptor retries share the remaining total cap.
         SILPOM_DIAGNOSTIC(9,0);SILPOM_DIAGNOSTIC(14,0);
-        return SilPomPredictTowerHit(texture,p,face,worldRay,originalSearch,low,model,iterations,retryCap-usedRetries-1u,tolerance,reliefMode);
+        return SilPomPredictionFallback(retryCap-usedRetries-1u);
     }
     return hit;
 }

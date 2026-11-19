@@ -453,6 +453,16 @@ SilPomHit SilPomPredictTowerHit(Texture2D texture, SilPomPatch p, SilPomMeshFace
     return hit;
 }
 
+// A prediction step that hands the first-level solver to its caller: bit 31
+// of the status marks it, the low 16 bits carry the remaining retry cap. SP_*
+// statuses are small, so no published hit or miss has this bit.
+static const uint SP_PREDICTION_FALLBACK=0x80000000u;
+SilPomHit SilPomPredictionFallback(uint retryCap)
+{
+    SilPomHit fallback=SP_ZERO(SilPomHit);
+    fallback.status=SP_PREDICTION_FALLBACK|retryCap;
+    return fallback;
+}
 #ifdef SILPOM_LEVEL2
 #include "LevelTwo.azsli"
 #endif
@@ -538,13 +548,15 @@ SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilP
     if(neural.status==SP_HIT) return neural;
     }
 #if SILPOM_NEURAL_NO_MARCH
-    SilPomHit predicted;
+    // One call site for the first-level solver: Level 2 returns a fallback
+    // marker instead of inlining its own copies (same order and retry caps).
+    SilPomHit predicted=SilPomPredictionFallback(retryCap);
 #ifdef SILPOM_LEVEL2
     SP_BRANCH if(SILPOM_LEVEL2 && SilPomHasLevelTwo(model))
         predicted=SilPomPredictTowerHit2(texture,p,f,worldRay,searchRay,low,model,validationIterations,retryCap,toleranceMultiplier,reliefMode);
-    else
 #endif
-        predicted=SilPomPredictTowerHit(texture,p,f,worldRay,searchRay,low,model,validationIterations,retryCap,toleranceMultiplier,reliefMode);
+    SP_BRANCH if((predicted.status&SP_PREDICTION_FALLBACK)!=0u)
+        predicted=SilPomPredictTowerHit(texture,p,f,worldRay,searchRay,low,model,validationIterations,predicted.status&0xFFFFu,toleranceMultiplier,reliefMode);
     predicted=SilPomRecoverNearestHit(texture,p,f,worldRay,searchRay,low,predicted,model.id);
     if(predicted.status==SP_HIT || !SilPomReliefFillEnabled(reliefMode)) return predicted;
     SILPOM_DIAGNOSTIC(10,0);
