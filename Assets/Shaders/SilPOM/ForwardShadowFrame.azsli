@@ -1,0 +1,100 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#include "NeuralVisibility.azsli"
+// Compact receiver for neural-only forward lighting. It is built once at the
+// hit, so the face record, patch and face UV need not stay live across the
+// light loops. The light rates are linear in the light direction:
+// rate = dot(light, axis), with the axes already divided by the determinant.
+// Heights are sampled through a material-uniform patch (unit span, zero low),
+// which addresses the same texels as the face patch.
+struct SilPomForwardShadowFrame
+{
+    float3 uAxis,vAxis,hAxis;
+    float3 normal,origin;
+    float2 uv;
+    float start;
+    bool valid;
+};
+SilPomForwardShadowFrame SilPomMakeForwardShadowFrame(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,
+    float2 uv,float2 low,bool sampleStart)
+{
+    SilPomForwardShadowFrame s;
+    s.normal=f.normal;s.origin=f.origin;s.uv=uv;
+    const float3 D=SilPomFaceDirection(f,uv);
+    const float3 crossDvDirection=cross(f.dv,D);
+    const float determinant=dot(f.du,crossDvDirection);
+    s.valid=!(abs(determinant)<1e-10f);
+    const float inverse=s.valid?rcp(determinant):0.0f;
+    s.uAxis=crossDvDirection*inverse;
+    s.vAxis=cross(D,f.du)*inverse;
+    s.hAxis=cross(f.du,f.dv)*inverse;
+    s.start=0;
+    if(sampleStart && s.valid && abs(p.scale)>=1e-8f)s.start=SilPomShadowHeight(texture,p,uv,low);
+    return s;
+}
+// One hardware bilinear tap per feature height (one return register instead
+// of a 2x2 gather). The material sampler wraps; clamp-to-edge is the same as
+// clamping the coordinate to the outer texel centres, so both address modes
+// share this path. Bilinear weights have 8-bit subtexel precision.
+float SilPomForwardShadowHeight(SP_TEX texture,SilPomPatch p,float2 uv)
+{
+    SILPOM_SHADOW_STAT(0);
+    float2 coordinate=uv*float2(p.tileU,p.tileV)+float2(p.offsetU,p.offsetV);
+    if(p.addressMode!=0)
+    {
+        const float2 halfTexel=.5f/float2(p.textureWidth,p.textureHeight);
+        coordinate=clamp(coordinate,halfTexel,1.0f-halfTexel);
+    }
+    const float h=texture.SampleLevel(GetMaterialTextureSampler(),coordinate,0).r;
+    return p.scale*(h-p.reference);
+}
+// SilPomVisibilityFeatures with the frame's height sampler.
+bool SilPomForwardVisibilityFeatures(SP_TEX texture,SilPomPatch p,float2 uv,
+    SilPomLocalShadowRay ray,SP_OUT float feature[10])
+{
+    float travelU=ray.uRate*ray.reach*p.textureWidth*p.tileU/p.width;
+    float travelV=ray.vRate*ray.reach*p.textureHeight*p.tileV/p.height;
+    uint indices[4];indices[0]=1u;indices[1]=(ray.count+2u)/3u;indices[2]=(2u*ray.count+2u)/3u;indices[3]=ray.count;
+    SP_UNROLL for(uint i=0;i<4;++i)
+    {
+        float t=SilPomLocalShadowTime(ray,indices[i]);
+        float delta=SilPomForwardShadowHeight(texture,p,float2(uv.x+ray.uRate*t,uv.y+ray.vRate*t))
+            -(ray.start+ray.hRate*t+ray.bias);
+        feature[i]=clamp(delta/abs(p.scale),-2.0f,2.0f);
+        if(delta>0) { SILPOM_SHADOW_STAT(2);return false; }
+    }
+    feature[4]=clamp(travelU/64.0f,-4.0f,4.0f);
+    feature[5]=clamp(travelV/64.0f,-4.0f,4.0f);
+    feature[6]=clamp(ray.hRate*ray.reach/abs(p.scale),-2.0f,2.0f);
+    feature[7]=ray.start/p.scale+p.reference;
+    feature[8]=float(ray.count)/64.0f;
+    feature[9]=ray.step*float(ray.count)/max(ray.reach,1e-8f);
+    return true;
+}
+// Same decisions as SilPomNeuralOnlyVisibilityPrepared.
+float SilPomForwardFrameVisibility(SP_TEX texture,SilPomPatch uniformPatch,SilPomForwardShadowFrame s,
+    float3 light,uint steps,float maxDistance,SilPomTrainedModel model,float threshold)
+{
+    const SilPomPatch p=uniformPatch;
+    if(steps==0 || abs(p.scale)<1e-8f || !s.valid){ SILPOM_SHADOW_STAT(1);return 1; }
+    SilPomLocalShadowRay ray;
+    ray.uRate=dot(light,s.uAxis);ray.vRate=dot(light,s.vAxis);ray.hRate=dot(light,s.hAxis);
+    if(ray.hRate<=0){ SILPOM_SHADOW_STAT(1);return 0; }
+    float rate=max(abs(ray.uRate*p.tileU/p.width)*p.textureWidth,
+                   abs(ray.vRate*p.tileV/p.height)*p.textureHeight);
+    if(rate<1e-8f){ SILPOM_SHADOW_STAT(1);return 1; }
+    ray.start=s.start;
+    ray.top=max(-p.scale*p.reference,p.scale*(1-p.reference));
+    ray.bias=max(1e-5f,abs(p.scale)*.002f);
+    ray.count=min(steps,64u);ray.step=1.0f/rate;ray.extra=0;
+    float reach=SilPomPhysicalShadowReach(ray.start,ray.top,ray.bias,ray.hRate,maxDistance);
+    if(reach<=0){ SILPOM_SHADOW_STAT(1);return 1; }
+    ray.step=min(ray.step,reach/float(ray.count));
+    ray.extra=max(0.0f,reach-ray.step*float(ray.count));
+    ray.reach=ray.step*float(ray.count)+ray.extra;
+    if(ray.start+ray.hRate*ray.step+ray.bias>=ray.top){ SILPOM_SHADOW_STAT(1);return 1; }
+    float feature[10];
+    if(!SilPomForwardVisibilityFeatures(texture,p,s.uv,ray,feature)) return 0;
+    if(SilPomPhysicalVisibilityProbability(feature,model)>=threshold) { SILPOM_SHADOW_STAT(3);return 1; }
+    SILPOM_SHADOW_STAT(4);return 0;
+}

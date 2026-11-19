@@ -1,0 +1,123 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+// Directional cascaded shadow visibility for SilPOM's forward receiver, with
+// the decisions of Atom's DirectionalShadowCalculator (cascade range, PCF with
+// cascade blending, ESM, ESM+PCF, receiver-plane depth bias from explicit
+// receiver derivatives) but no per-cascade arrays. Atom keeps the coordinates
+// and derivatives of every cascade in float3[MaxCascadeCount] members indexed
+// by the selected cascade; gfx90c places those in an indexed register block
+// and scratch. Here each cascade's coordinate is recomputed where it is used
+// (two matrix products). SilPOM's receiver normal derivatives are zero.
+struct SilPomCascadeCoordinate
+{
+    float3 coord,dx,dy;
+};
+SilPomCascadeCoordinate SilPomCascadeAt(uint lightIndex,int cascade,float3 receiver,
+    float3 positionDx,float3 positionDy)
+{
+    const float4x4 toLightView=ViewSrg::m_directionalLightShadows[lightIndex].m_worldToLightViewMatrices[cascade];
+    const float4x4 toShadowmap=ViewSrg::m_directionalLightShadows[lightIndex].m_lightViewToShadowmapMatrices[cascade];
+    float4 lightSpace=mul(toLightView,float4(receiver,1.));
+    lightSpace.z+=ViewSrg::m_directionalLightShadows[lightIndex].m_shadowBias;
+    const float4 clip=mul(toShadowmap,lightSpace);
+    SilPomCascadeCoordinate c;
+    c.coord=clip.xyz/clip.w;
+    const float4 clipDx=mul(toShadowmap,mul(toLightView,float4(positionDx,0)));
+    const float4 clipDy=mul(toShadowmap,mul(toLightView,float4(positionDy,0)));
+    c.dx=(clipDx.xyz-c.coord*clipDx.w)/clip.w;
+    c.dy=(clipDy.xyz-c.coord*clipDy.w)/clip.w;
+    return c;
+}
+real SilPomCascadePcf(uint lightIndex,int cascade,SilPomCascadeCoordinate c,uint size)
+{
+    SampleShadowMapBicubicParameters param;
+    param.shadowMap=PassSrg::m_directionalLightShadowmap;
+    param.shadowPos=float3(c.coord.xy,cascade);
+    param.shadowMapSize=real(size);
+    param.invShadowMapSize=rcp(real(size));
+    param.comparisonValue=c.coord.z;
+    param.samplerState=SceneSrg::m_hwPcfSampler;
+    param.receiverPlaneDepthBias=o_directional_shadow_receiver_plane_bias_enable?ComputeReceiverPlaneDepthBias(c.dx,c.dy):0;
+    switch(o_directional_shadow_filtering_sample_count)
+    {
+        case ShadowFilterSampleCount::PcfTap4: return SampleShadowMapBicubic_4Tap(param);
+        case ShadowFilterSampleCount::PcfTap9: return SampleShadowMapBicubic_9Tap(param);
+        default: return SampleShadowMapBicubic_16Tap(param);
+    }
+}
+real SilPomCascadeShadowVisibility(uint lightIndex,float3 worldPos,real3 worldNormal,
+    float3 positionDx,float3 positionDy)
+{
+    const uint size=ViewSrg::m_directionalLightShadows[lightIndex].m_shadowmapSize;
+    const int count=min(ViewSrg::m_directionalLightShadows[lightIndex].m_cascadeCount,ViewSrg::MaxCascadeCount);
+    const float3 receiver=worldPos+ComputeNormalShadowOffset(
+        ViewSrg::m_directionalLightShadows[lightIndex].m_normalShadowBias,worldNormal,size);
+    // Cascade range, as DirectionalShadowCalculator::GetShadowCascadeRange.
+    const float xyMax=size-PIXEL_MARGIN,xyMin=PIXEL_MARGIN;
+    int minCascade=-1,maxCascade=-1;
+    for(int index=0;index<count;++index)
+    {
+        const float2 xy=SilPomCascadeAt(lightIndex,index,receiver,positionDx,positionDy).coord.xy*real(size);
+        if(all(xy>=xyMin) && all(xy<=xyMax))
+        {
+            minCascade=index;
+            while(index<count && SilPomCascadeAt(lightIndex,index,receiver,positionDx,positionDy).coord.z>(1.0-DEPTH_MARGIN))
+                ++index;
+            // Atom can leave the maximum one past the last cascade; keep it in range.
+            maxCascade=min(index,count-1);
+            break;
+        }
+    }
+    [branch] if(maxCascade<0)return 1.0;
+    switch(o_directional_shadow_filtering_method)
+    {
+        case ShadowFilterMethod::None:
+        {
+            for(int cascade=minCascade;cascade<=maxCascade;++cascade)
+            {
+                const float3 coord=SilPomCascadeAt(lightIndex,cascade,receiver,positionDx,positionDy).coord;
+                const float depth=PassSrg::m_directionalLightShadowmap.SampleLevel(PassSrg::PointSampler,float3(coord.xy,cascade),0).r;
+                if(depth!=1.0 && coord.z-depth>0)return 0.0;
+            }
+            return 1.0;
+        }
+        case ShadowFilterMethod::Pcf:
+        {
+            real lit=1.0;
+            for(int cascade=minCascade;cascade<=maxCascade && lit>0.01;++cascade)
+                lit=min(lit,SilPomCascadePcf(lightIndex,cascade,SilPomCascadeAt(lightIndex,cascade,receiver,positionDx,positionDy),size));
+            if(o_blend_between_cascades_enable)
+            {
+                const real3 texCoord=real3(SilPomCascadeAt(lightIndex,maxCascade,receiver,positionDx,positionDy).coord);
+                const real blend=min(min(texCoord.x,texCoord.y),min3(1.0-texCoord))/0.015;
+                const int next=maxCascade+1;
+                [branch] if(blend<1.0f && next<count)
+                    lit=lerp(SilPomCascadePcf(lightIndex,next,SilPomCascadeAt(lightIndex,next,receiver,positionDx,positionDy),size),lit,blend);
+            }
+            return lit;
+        }
+        default: // Esm, EsmPcf
+        {
+            for(int cascade=minCascade;cascade<=maxCascade;++cascade)
+            {
+                const SilPomCascadeCoordinate c=SilPomCascadeAt(lightIndex,cascade,receiver,positionDx,positionDy);
+                const float distanceMin=ViewSrg::m_esmsDirectional[cascade].m_lightDistanceOfCameraViewFrustum;
+                const float depthDiff=c.coord.z-distanceMin;
+                [branch] if(depthDiff>=0)
+                {
+                    const float within=depthDiff/(1.-distanceMin);
+                    const float occluder=PassSrg::m_directionalLightExponentialShadowmap.SampleLevel(
+                        PassSrg::LinearSampler,float3(c.coord.xy,cascade),0).r;
+                    if(occluder<ESM_CASCADE_MARGIN)
+                    {
+                        float ratio=exp(-EsmExponentialShift*(within-occluder));
+                        if(o_directional_shadow_filtering_method==ShadowFilterMethod::EsmPcf && ratio>1.04)
+                            ratio=SilPomCascadePcf(lightIndex,cascade,c,size);
+                        return saturate(ratio);
+                    }
+                }
+            }
+            return 1.0;
+        }
+    }
+}

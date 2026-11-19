@@ -6,6 +6,14 @@
 #define ApplyDirectionalLights ApplyDirectionalLights_StandardSilPom
 #include <Atom/Features/Pipeline/Forward/ForwardPassDirectionalLights.azsli>
 #undef ApplyDirectionalLights
+// The hit-forward pass with the shadow frame, lit from the scene's SRGs. The
+// UV bake pass also defines SILPOM_HIT_FORWARD but has its own pass SRGs.
+#if SILPOM_FORWARD_SHADOW_FRAME && SILPOM_HIT_FORWARD && !defined(SILPOM_UV_BAKE)
+#define SILPOM_FORWARD_SCENE_LIGHTING 1
+#endif
+#if SILPOM_FORWARD_SCENE_LIGHTING
+#include "../../../Shaders/SilPOM/CascadeShadow.azsli"
+#endif
 #if defined(SILPOM_NEURAL_VISIBILITY_ONLY)
 // One center-owned context is created only at direct-light entry. Compile-time
 // backend guards omit unused families; options gate lazy preparation.
@@ -52,6 +60,46 @@ void SilPomInitLightingReceiver(inout SilPomLightingReceiver receiver)
 #define SILPOM_RECEIVER_PARAMETER
 #define SILPOM_RECEIVER_ARGUMENT
 #endif
+#if SILPOM_FORWARD_SHADOW_FRAME
+SilPomPatch SilPomForwardShadowPatch(MaterialParameters params)
+{
+    SilPomPatch p=(SilPomPatch)0;
+    p.width=1;p.height=1;p.scale=params.m_silpomScale;p.reference=params.m_silpomReference;
+    p.tileU=params.m_silpomTileU;p.tileV=params.m_silpomTileV;
+    p.offsetU=params.m_silpomOffsetU;p.offsetV=params.m_silpomOffsetV;
+    p.addressMode=params.m_silpomAddressMode;p.maxCells=params.m_silpomMaxCells;
+    GetMaterialTexture(params.m_silpomHeightMap).GetDimensions(p.textureWidth,p.textureHeight);
+    return p;
+}
+#define SILPOM_LIT_NORMAL silpomLitShadow.normal
+#define SILPOM_LIT_ORIGIN silpomLitShadow.origin
+#define SILPOM_LIT_LOCAL_VISIBILITY(light,steps,reach,params) \
+    SilPomForwardFrameVisibility(GetMaterialTexture(params.m_silpomHeightMap),SilPomForwardShadowPatch(params), \
+        silpomLitShadow,light,steps,reach,SilPomMaterialModel(params),SilPomNeuralOnlyThreshold(SilPomMaterialModel(params)))
+#else
+#define SILPOM_LIT_NORMAL silpomLitFace.normal
+#define SILPOM_LIT_ORIGIN silpomLitFace.origin
+#define SILPOM_LIT_LOCAL_VISIBILITY(light,steps,reach,params) \
+    SilPomLocalVisibility(GetMaterialTexture(params.m_silpomHeightMap),silpomLitPatch,silpomLitFace,silpomLitUv, \
+        min(silpomLitFace.uv0,min(silpomLitFace.uv1,silpomLitFace.uv2)),light,steps,reach,params SILPOM_RECEIVER_ARGUMENT)
+#endif
+// The object rotation, reloaded where lighting needs it instead of carried in
+// VGPRs from the hit. Without instancing it is uniform per draw. The index is
+// laundered through another uniform constant (a light count that is never
+// 0xFFFFFFFF), so the compiler cannot merge this load with the geometry
+// stage's (which would keep that copy live through lighting) and the loads
+// stay scalar. A per-pixel condition would make them per-lane (150 vs 141
+// peak on gfx1100); wave intrinsics are unavailable on Vulkan.
+float3x3 SilPomLitRotationReload()
+{
+#if SILPOM_FORWARD_SCENE_LIGHTING
+    if(o_meshInstancingIsEnabled)return silpomLitRotation;
+    const uint objectId=SceneSrg::m_directionalLightCount==0xFFFFFFFFu?0u:ObjectSrg::m_objectId;
+    return (float3x3)SceneSrg::GetObjectToWorldMatrix(objectId);
+#else
+    return silpomLitRotation;
+#endif
+}
 float SilPomLocalVisibility(Texture2D texture,SilPomPatch p,SilPomMeshFace face,float2 uv,float2 low,
     float3 light,uint steps,float reach,MaterialParameters params SILPOM_RECEIVER_PARAMETER)
 {
@@ -99,18 +147,16 @@ float SilPomLocalVisibility(Texture2D texture,SilPomPatch p,SilPomMeshFace face,
 
 void ApplySpiralLightRay(Surface surface, inout LightingData lightingData, MaterialParameters params, float3 ray, float lux SILPOM_RECEIVER_PARAMETER)
 {
-    if (lux <= 0.0f || dot(ray, silpomLitFace.normal) <= 0.0f) return;
+    if (lux <= 0.0f || dot(ray, SILPOM_LIT_NORMAL) <= 0.0f) return;
     const float rayLength = length(ray);
     const float3 toLight = ray / rayLength;
     const float intensity = lux * rayLength;
     const real3 diffuse = GetDiffuseLighting(surface, lightingData,
-        real3(intensity, intensity, intensity), real3(mul(silpomLitRotation, toLight)));
+        real3(intensity, intensity, intensity), real3(mul(SilPomLitRotationReload(), toLight)));
     if (!any(diffuse > 0.0f)) return;
 
-    const float2 low = min(silpomLitFace.uv0, min(silpomLitFace.uv1, silpomLitFace.uv2));
-    const float shadowReach = min(0.30f, 8.0f * abs(silpomLitPatch.scale));
-    const float relief = SilPomLocalVisibility(GetMaterialTexture(params.m_silpomHeightMap),
-        silpomLitPatch, silpomLitFace, silpomLitUv, low, toLight, params.m_silpomSpiralLightShadowSteps, shadowReach,params SILPOM_RECEIVER_ARGUMENT);
+    const float shadowReach = min(0.30f, 8.0f * abs(params.m_silpomScale));
+    const float relief = SILPOM_LIT_LOCAL_VISIBILITY(toLight, params.m_silpomSpiralLightShadowSteps, shadowReach, params);
 #if SILPOM_LEVEL_FIVE
     #if SILPOM_DIRECTIONAL_COMPARISON
     float gain=1.0f;
@@ -135,8 +181,8 @@ void ApplySpiralLight(Surface surface, inout LightingData lightingData, Material
     if (params.m_silpomSpiralLightBrightness <= 0.0f || (params.m_silpomSpiralLightPeakLux <= 0.0f && windowCount == 0)) return;
 
     const float4 path = params.m_silpomSpiralLightPath;
-    const float3 position = silpomLitFace.origin
-        + mul(transpose(silpomLitRotation), surface.position - silpomLitOriginWS);
+    const float3 position = SILPOM_LIT_ORIGIN
+        + mul(transpose(SilPomLitRotationReload()), surface.position - silpomLitOriginWS);
     const float2 end = params.m_silpomSpiralLightEnd;
     const float endFade = SilPomSpiralLightGain(position.z,end.x,end.y,params.m_silpomSpiralLightBrightness);
     if (endFade <= 0.0f) return;
@@ -210,8 +256,10 @@ void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,floa
     SilPomInitLightingReceiver(receiver);
 #endif
     MaterialParameters params=GetMaterialParameters();
-    float3 baseNormal=normalize(mul(silpomLitRotation,silpomLitFace.normal));
+    float3 baseNormal=normalize(mul(SilPomLitRotationReload(),SILPOM_LIT_NORMAL));
     float signedHeight=dot(surface.position-silpomLitOriginWS,baseNormal);
+    // Spiral first: its state is dead before the directional loop's.
+    ApplySpiralLight(surface, lightingData, params SILPOM_RECEIVER_ARGUMENT);
     for(uint index=0;index<SceneSrg::m_directionalLightCount;++index)
     {
         DirectionalLight srgLight=SceneSrg::m_directionalLights[index];
@@ -219,22 +267,6 @@ void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,floa
         float3 toLight=normalize(-srgLight.m_direction);
         real visibility=1;
 #if ENABLE_SHADOWS
-        if(o_enableShadows && index==ViewSrg::m_shadowIndexDirectionalLight)
-        {
-            const float lightNormalDot=dot(toLight,baseNormal);
-            float advance=SilPomFlatReceiverAdvance(signedHeight,lightNormalDot,1e-4f);
-            // Bypass the fullscreen shadow result: its receiver is the displaced
-            // camera depth, which can lie below our flat caster.
-            DirectionalShadowCalculator calc=DirectionalLightShadow::MakeShadowCalculator(
-                index,surface.position+toLight*advance,baseNormal);
-#if SILPOM_HIT_FORWARD
-            calc.SetReceiverDerivatives(
-                SilPomFlatReceiverDerivative(silpomPositionDx,baseNormal,toLight,signedHeight,lightNormalDot,1e-4f),
-                SilPomFlatReceiverDerivative(silpomPositionDy,baseNormal,toLight,signedHeight,lightNormalDot,1e-4f),
-                float3(0,0,0),float3(0,0,0));
-#endif
-            visibility=calc.GetVisibility();
-        }
 #if defined(SILPOM_NEURAL_VISIBILITY_ONLY)
         // Separate enablement: trained geometry keeps legacy march steps at 0.
         // Descriptor schedule only. Zero maxDistance below means relief-top
@@ -247,12 +279,32 @@ void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,floa
 #else
         const uint localSchedule=params.m_silpomReliefShadowSteps;
 #endif
-        if(o_enableShadows && localSchedule>0u && visibility>0)
+        // Relief before the cascaded shadow map (same product): the cascade
+        // coordinates are not live across the relief query, and the shadow
+        // map is skipped where the relief occludes.
+        if(o_enableShadows && localSchedule>0u)
+            visibility=SILPOM_LIT_LOCAL_VISIBILITY(mul(transpose(SilPomLitRotationReload()),toLight),localSchedule,0.0f,params);
+        if(o_enableShadows && visibility>0 && index==ViewSrg::m_shadowIndexDirectionalLight)
         {
-            float2 low=min(silpomLitFace.uv0,min(silpomLitFace.uv1,silpomLitFace.uv2));
-            visibility*=SilPomLocalVisibility(GetMaterialTexture(params.m_silpomHeightMap),
-                silpomLitPatch,silpomLitFace,silpomLitUv,low,
-                mul(transpose(silpomLitRotation),toLight),localSchedule,0.0f,params SILPOM_RECEIVER_ARGUMENT);
+            const float lightNormalDot=dot(toLight,baseNormal);
+            float advance=SilPomFlatReceiverAdvance(signedHeight,lightNormalDot,1e-4f);
+            // Bypass the fullscreen shadow result: its receiver is the displaced
+            // camera depth, which can lie below our flat caster.
+#if SILPOM_FORWARD_SCENE_LIGHTING
+            visibility*=SilPomCascadeShadowVisibility(index,surface.position+toLight*advance,baseNormal,
+                SilPomFlatReceiverDerivative(silpomPositionDx,baseNormal,toLight,signedHeight,lightNormalDot,1e-4f),
+                SilPomFlatReceiverDerivative(silpomPositionDy,baseNormal,toLight,signedHeight,lightNormalDot,1e-4f));
+#else
+            DirectionalShadowCalculator calc=DirectionalLightShadow::MakeShadowCalculator(
+                index,surface.position+toLight*advance,baseNormal);
+#if SILPOM_HIT_FORWARD
+            calc.SetReceiverDerivatives(
+                SilPomFlatReceiverDerivative(silpomPositionDx,baseNormal,toLight,signedHeight,lightNormalDot,1e-4f),
+                SilPomFlatReceiverDerivative(silpomPositionDy,baseNormal,toLight,signedHeight,lightNormalDot,1e-4f),
+                float3(0,0,0),float3(0,0,0));
+#endif
+            visibility*=calc.GetVisibility();
+#endif
         }
 #endif
         DirectionalLightUtil light=DirectionalLightUtil::Init(srgLight,surface);
@@ -264,7 +316,7 @@ void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,floa
             {
                 float2 low=min(silpomLitFace.uv0,min(silpomLitFace.uv1,silpomLitFace.uv2));
                 visibility*=SilPomLocalVisibility(GetMaterialTexture(params.m_silpomHeightMap),silpomLitPatch,silpomLitFace,
-                    silpomLitUv,low,mul(transpose(silpomLitRotation),toLight),16u,0.0f,params SILPOM_RECEIVER_ARGUMENT);
+                    silpomLitUv,low,mul(transpose(SilPomLitRotationReload()),toLight),16u,0.0f,params SILPOM_RECEIVER_ARGUMENT);
             }
 #endif
             const real3 beforeDiffuse=lightingData.diffuseLighting;
@@ -278,9 +330,9 @@ void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,floa
 #else
             const float2 gain=
 #if defined(SILPOM_NEURAL_VISIBILITY_ONLY)
-                SilPomAppearanceLightGainPrepared(mul(transpose(silpomLitRotation),toLight),0.0f,params.m_silpomProxyDirectionalResponse,params,receiver.appearance);
+                SilPomAppearanceLightGainPrepared(mul(transpose(SilPomLitRotationReload()),toLight),0.0f,params.m_silpomProxyDirectionalResponse,params,receiver.appearance);
 #else
-                SilPomAppearanceLightGain(mul(transpose(silpomLitRotation),toLight),0.0f,params.m_silpomProxyDirectionalResponse,params);
+                SilPomAppearanceLightGain(mul(transpose(SilPomLitRotationReload()),toLight),0.0f,params.m_silpomProxyDirectionalResponse,params);
 #endif
 #endif
             lightingData.diffuseLighting=beforeDiffuse+(lightingData.diffuseLighting-beforeDiffuse)*gain.x;
@@ -291,7 +343,9 @@ void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,floa
 #endif
         light.Apply(srgLight,surface,visibility,lightingData);
     }
-    ApplySpiralLight(surface, lightingData, params SILPOM_RECEIVER_ARGUMENT);
 }
+#undef SILPOM_LIT_NORMAL
+#undef SILPOM_LIT_ORIGIN
+#undef SILPOM_LIT_LOCAL_VISIBILITY
 #undef SILPOM_RECEIVER_PARAMETER
 #undef SILPOM_RECEIVER_ARGUMENT

@@ -45,6 +45,11 @@ SilPomTrainedModel SilPomMaterialModel(MaterialParameters params)
 #include "../../../Shaders/SilPOM/ReliefShadow.azsli"
 #if defined(SILPOM_NEURAL_VISIBILITY_ONLY)
 #include "../../../Shaders/SilPOM/NeuralVisibility.azsli"
+#if !SILPOM_SHARED_VISIBILITY && !SILPOM_LEVEL_FIVE && !SILPOM_DIRECTIONAL_COMPARISON
+// Neural-only forward lighting reads a compact receiver instead of the face.
+#define SILPOM_FORWARD_SHADOW_FRAME 1
+#include "../../../Shaders/SilPOM/ForwardShadowFrame.azsli"
+#endif
 #else
 #include "../../../Shaders/SilPOM/LevelThree.azsli"
 #endif
@@ -60,6 +65,9 @@ static float3x3 silpomLitRotation;
 static float3 silpomLitOriginWS;
 static bool silpomLitValid=false;
 static bool silpomLitProxy=false;
+#if SILPOM_FORWARD_SHADOW_FRAME
+static SilPomForwardShadowFrame silpomLitShadow;
+#endif
 static uint silpomPaintHeightTexture;
 static float4 silpomUvDerivatives;
 static float3 silpomPositionDx,silpomPositionDy;
@@ -71,8 +79,15 @@ float SilPomPaintHeight()
 {
     if(!silpomLitValid)return -1;
     const SilPomPatch p=silpomLitPatch;
+#if SILPOM_FORWARD_SHADOW_FRAME
+    // Material tiling of the frame's UV: the face record need not reach decals.
+    const MaterialParameters params=GetMaterialParameters();
+    const float2 tiled=silpomLitShadow.uv*float2(params.m_silpomTileU,params.m_silpomTileV)
+        +float2(params.m_silpomOffsetU,params.m_silpomOffsetV);
+#else
     const float2 low=min(silpomLitFace.uv0,min(silpomLitFace.uv1,silpomLitFace.uv2));
     const float2 tiled=(silpomLitUv-low)*float2(p.tileU/p.width,p.tileV/p.height)+float2(p.offsetU,p.offsetV);
+#endif
     const float2 q=tiled*float2(p.textureWidth,p.textureHeight)-.5f;
     const int2 cell=int2(floor(q));const float2 f=frac(q);
     const float a=SilPomTexel(GetMaterialTexture(silpomPaintHeightTexture),p,cell.x,cell.y);
@@ -518,6 +533,10 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     silpomLitFace=f; silpomLitPatch=p; silpomLitReliefMode=params.m_silpomReliefMode; silpomLitUv=uv;
     silpomLitRotation=(float3x3)model;
     silpomLitOriginWS=mul(model,float4(f.origin,1)).xyz;
+#if SILPOM_FORWARD_SHADOW_FRAME
+    silpomLitShadow=SilPomMakeForwardShadowFrame(GetMaterialTexture(params.m_silpomHeightMap),p,f,uv,low,
+        !failed && (params.m_silpomNeuralDirectionalVisibility || params.m_silpomSpiralLightShadowSteps!=0u));
+#endif
     silpomLitValid=!failed;silpomPaintReceiverFace=params.m_silpomHitFaceBase+IN.faceIndex;
     silpomPaintReceiverOwner=params.m_silpomPaintReceiver;
 #endif
@@ -556,6 +575,20 @@ COMMON_OPTIONS_EMISSIVE()
 #if SILPOM_LEVEL_FIVE
 #include "../../../Shaders/SilPOM/ProxyAppearance.azsli"
 #endif
+// SilPOM writes the same relief UV and tangent frame into every UV set, so the
+// per-map UV-set indices select identical data. Constant indices let the
+// compiler drop the copies: a runtime index made gfx90c keep each geo.uvs/
+// tangents/bitangents pair in an indexed register block (v222-v251), which
+// pinned the forward shader's allocation at 252 VGPRs. The one difference: a
+// map authored on UV set 1 now also receives the material's UV transform.
+MaterialParameters SilPomSingleUvSet(MaterialParameters params)
+{
+    params.m_baseColorMapUvIndex=0;params.m_metallicMapUvIndex=0;params.m_specularF0MapUvIndex=0;
+    params.m_roughnessMapUvIndex=0;params.m_normalMapUvIndex=0;params.m_opacityMapUvIndex=0;
+    params.m_emissiveMapUvIndex=0;params.m_diffuseOcclusionMapUvIndex=0;params.m_specularOcclusionMapUvIndex=0;
+    params.m_clearCoatInfluenceMapUvIndex=0;params.m_clearCoatRoughnessMapUvIndex=0;params.m_clearCoatNormalMapUvIndex=0;
+    return params;
+}
 Surface SilPomEvaluateSurfaceCore(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,const MaterialParameters params)
 {
     silpomPaintHeightTexture=params.m_silpomHeightMap;
@@ -660,8 +693,9 @@ PixelGeometryData SilPomVirtualGeometry(PixelGeometryData center,float2 uvOffset
 
 #endif
 
-Surface EvaluateSurface_SilPomMesh(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,const MaterialParameters params)
+Surface EvaluateSurface_SilPomMesh(VsOutput IN,VsSystemValues SV,PixelGeometryData geo,const MaterialParameters materialParams)
 {
+    const MaterialParameters params=SilPomSingleUvSet(materialParams);
 #if SILPOM_HIT_FORWARD && ENABLE_SPECULARAA
     // Local numerical material-normal differential. Every evaluation retains
     // this sample's owner, branch, footprint and pre-paint material stage.
