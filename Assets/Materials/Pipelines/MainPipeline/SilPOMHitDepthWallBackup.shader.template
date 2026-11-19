@@ -21,6 +21,14 @@
     "DrawList": "silpomHitDepthWallBackup",
     "Supervariants": [
         {
+            "Name": "",
+            "AddBuildArguments": {
+                "preprocessor": [
+                    "-DSILPOM_MSAA_PLANE_DEPTH=1"
+                ]
+            }
+        },
+        {
             "Name": "NoMSAA",
             "AddBuildArguments": {
                 "azslc": [

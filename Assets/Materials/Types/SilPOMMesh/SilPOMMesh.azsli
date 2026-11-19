@@ -184,7 +184,7 @@ VsOutput SilPomImplicitVertex(uint faceIndex,float2 quadCorner,SilPomImplicitCov
     return output;
 }
 #if SILPOM_HIT_DEPTH && SILPOM_RELIEF_LOD_NEAR
-bool SilPomTryCachedImplicitVertex(VsInput IN,const MaterialParameters params,out VsOutput output,out float depth)
+bool SilPomTryCachedImplicitVertex(VsInput IN,const MaterialParameters params,float4x4 model,out VsOutput output,out float depth)
 {
     output=(VsOutput)0;depth=0;
     if(params.m_silpomReliefMode!=SP_RELIEF_LOD_4PX_RESOLVE)return false;
@@ -193,6 +193,14 @@ bool SilPomTryCachedImplicitVertex(VsInput IN,const MaterialParameters params,ou
     if(!SilPomReadImplicitFaceCache(params.m_meshBufferIndex,params.m_silpomHitFaceBase,faceIndex,coverage))return false;
     output=SilPomImplicitVertex(faceIndex,IN.position.xy,coverage);
     depth=coverage.depth;
+    if(coverage.status==SP_IMPLICIT_CACHE_LIVE)
+    {
+        const SilPomMeshFace face=SilPomLoadFace(params.m_meshBufferIndex,faceIndex);
+        float4 cornerDepth;
+        SilPomImplicitPlaneDepth(face,params.m_silpomScale,params.m_silpomReference,model,
+            ViewSrg::m_worldPosition.xyz,ViewSrg::m_viewProjectionInverseMatrix,coverage,coverage.depth,cornerDepth);
+        depth=cornerDepth[(IN.position.x>0?1u:0u)+(IN.position.y>0?2u:0u)];
+    }
     return true;
 }
 #endif

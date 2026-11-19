@@ -246,6 +246,57 @@ SilPomImplicitCoverage SilPomBuildImplicitCoverage(SilPomMeshFace f,SilPomImplic
     return result;
 }
 
+// A planar raster depth bound for an implicit proxy. The displacement volume
+// is the convex hull of its six corners (corner directions are linear over
+// the face and the height is constant per layer), so it lies behind the
+// supporting plane facing the camera. Where a pixel's ray reaches the volume
+// it crosses that plane first, and the plane's NDC depth is affine in screen
+// space, so per-vertex plane depths interpolate to an exact per-pixel bound.
+// Early depth testing then rejects proxy pixels behind earlier hits, which a
+// face-wide constant bound cannot do at glancing angles. Returns false (keep
+// the constant bound) when the camera is inside the slab or a corner's plane
+// depth leaves the depth range, where the rasterizer would clip coverage.
+bool SilPomImplicitPlaneDepth(SilPomMeshFace face,float scale,float reference,
+    float4x4 model,float3 camera,float4x4 viewProjectionInverse,SilPomImplicitCoverage coverage,
+    float constantDepth,out float4 cornerDepth)
+{
+    cornerDepth=constantDepth;
+    const float3x3 rotation=(float3x3)model;
+    float3 normal=cross(mul(rotation,face.du),mul(rotation,face.dv));
+    const float lengthSq=dot(normal,normal);
+    if(!(lengthSq>1e-30f))return false;
+    normal*=rsqrt(lengthSq);
+    float lowest=1e30f,highest=-1e30f;
+    [unroll] for(uint i=0;i<6;++i)
+    {
+        const float2 uv=i/2==0?face.uv0:(i/2==1?face.uv1:face.uv2);
+        const float3 D=i/2==0?face.d0:(i/2==1?face.d1:face.d2);
+        const float h=scale*(float(i&1)-reference);
+        const float3 p=face.origin+face.du*(uv.x-face.uv0.x)+face.dv*(uv.y-face.uv0.y)+D*h;
+        const float d=dot(normal,mul(model,float4(p,1)).xyz);
+        lowest=min(lowest,d);highest=max(highest,d);
+    }
+    const float side=dot(normal,camera);
+    float offset;
+    if(side>highest)offset=highest;
+    else if(side<lowest){normal=-normal;offset=-lowest;}
+    else return false;
+    // Move the plane toward the camera by a sliver of the slab and of its
+    // distance, covering the solver's and the projection's rounding.
+    offset+=.01f*(highest-lowest)+1e-5f*(abs(offset)+abs(side));
+    if(!(dot(normal,camera)>offset))return false;
+    const float4 plane=mul(float4(normal,-offset),viewProjectionInverse);
+    if(!(abs(plane.z)>1e-30f))return false;
+    float4 planeDepth;
+    [unroll] for(uint corner=0;corner<4;++corner)
+        planeDepth[corner]=-(plane.x*coverage.ndc[corner].x+plane.y*coverage.ndc[corner].y+plane.w)/plane.z;
+    if(!all(abs(planeDepth)<=1.0f))return false;
+    // Both bounds are conservative; keep the one that is tighter on average.
+    if(dot(planeDepth,1.0f)>=4.0f*constantDepth)return false;
+    cornerDepth=planeDepth;
+    return true;
+}
+
 float SilPomImplicitNearestDepth(SilPomMeshFace face,float scale,float reference,
     float4x4 model,float4x4 vp)
 {

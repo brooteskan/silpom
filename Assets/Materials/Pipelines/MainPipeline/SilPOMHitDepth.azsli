@@ -193,7 +193,16 @@ struct SilPomWallBackupOutput
     uint4 hit : SV_Target0;
     float4 uvGradients : SV_Target1;
     float4 depthGradients : SV_Target2;
+    // The published depth is the fragment's own raster depth (record depth
+    // bits clear none of a [0,1] float's bits), so at 1x it can promise the
+    // conservative bound. Early depth testing then rejects the shell under
+    // every neural hit before the shader runs, instead of after it. Under
+    // MSAA the sample-interpolated depth may round past the raster sample's.
+#if SILPOM_MSAA_PLANE_DEPTH
     precise float depth : SV_Depth;
+#else
+    precise float depth : SV_DepthLessEqual;
+#endif
 };
 SilPomWallBackupOutput PixelShader(SilPomShellVertex IN)
 {
@@ -242,7 +251,7 @@ VsOutput VertexShader(VsInput IN, uint instanceId : SV_InstanceID)
     VsOutput OUT;
 #if SILPOM_RELIEF_LOD_NEAR
     float cachedDepth;
-    if(SilPomTryCachedImplicitVertex(IN,params,OUT,cachedDepth))
+    if(SilPomTryCachedImplicitVertex(IN,params,GetObjectToWorldMatrix(SV),OUT,cachedDepth))
     {
         OUT.position.z=cachedDepth;OUT.m_instanceId=instanceId;
         return OUT;
