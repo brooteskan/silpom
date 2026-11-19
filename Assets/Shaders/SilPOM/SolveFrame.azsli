@@ -21,6 +21,20 @@ struct SilPomSolveFrame
     float cornerMin,cornerMax; // range of dot(normal, corner direction)
 };
 
+#ifndef SILPOM_FRAME_TEXTURE_SCALE
+#define SILPOM_FRAME_TEXTURE_SCALE(p,low) float2((p).tileU/(p).width,(p).tileV/(p).height)
+#define SILPOM_FRAME_TEXTURE_OFFSET(p,low,scale) (float2((p).offsetU,(p).offsetV)-(low)*(scale))
+#endif
+// Select-based access to a float4 by a runtime index. A runtime array index
+// makes gfx90c keep the vector in a waterfall-indexed register block.
+float SilPomPick4(float4 v,uint i)
+{
+    return i<2u ? (i==0u?v.x:v.y) : (i==2u?v.z:v.w);
+}
+float4 SilPomSet4(float4 v,uint i,float x)
+{
+    return float4(i==0u?x:v.x,i==1u?x:v.y,i==2u?x:v.z,i==3u?x:v.w);
+}
 SilPomSolveFrame SilPomMakeSolveFrame(SilPomMeshFace f,SilPomPatch p,float2 low,SilPomRay worldRay)
 {
     SilPomSolveFrame s;
@@ -36,8 +50,8 @@ SilPomSolveFrame SilPomMakeSolveFrame(SilPomMeshFace f,SilPomPatch p,float2 low,
     s.base=f.origin-f.du*f.uv0.x-f.dv*f.uv0.y-worldRay.origin;
     s.ray=worldRay.direction;
     s.normal=f.normal;
-    s.texScale=float2(p.tileU/p.width,p.tileV/p.height);
-    s.texOffset=float2(p.offsetU,p.offsetV)-low*s.texScale;
+    s.texScale=SILPOM_FRAME_TEXTURE_SCALE(p,low);
+    s.texOffset=SILPOM_FRAME_TEXTURE_OFFSET(p,low,s.texScale);
     s.low=low;s.span=float2(p.width,p.height);
     s.tolerance=2e-6f*max(1.0f,max(length(f.du),length(f.dv)));
     s.incidence=min(-dot(f.normal,s.ray),min(-dot(f.d0,s.ray),min(-dot(f.d1,s.ray),-dot(f.d2,s.ray))));
@@ -298,11 +312,11 @@ SilPomHit SilPomFramePredict(SP_TEX texture,SilPomPatch p,SilPomSolveFrame s,Sil
         SILPOM_DIAGNOSTIC(9,0);
         const uint first=residuals.x<=residuals.y?0u:1u;
         const uint second=residuals.z<=residuals.w?2u:3u;
-        const uint nearest=residuals[first]<=residuals[second]?first:second;
+        const uint nearest=min(residuals.x,residuals.y)<=min(residuals.z,residuals.w)?first:second;
         hit=SilPomFrameCandidate(texture,p,s,projected,worldRay.tMin,worldRay.tMax,
             search.tMin+span*((float(nearest)+.5f)*.25f),validationIterations,toleranceMultiplier);
         if(hit.status==SP_HIT) return hit;
-        residuals[nearest]=2.0f;
+        residuals=SilPomSet4(residuals,nearest,2.0f);
     }
     return hit;
 }
@@ -417,10 +431,10 @@ SilPomHit SilPomFrameRecoverNearest(SP_TEX texture,SilPomPatch p,SilPomSolveFram
         {
             const uint offset=(candidates&1u)!=0u?0u:((candidates&2u)!=0u?1u:((candidates&4u)!=0u?2u:3u));
             candidates&=candidates-1u;
-            leftResidual=offset!=0u ? residuals[offset-1u] : previous;
+            leftResidual=offset!=0u ? SilPomPick4(residuals,offset-1u) : previous;
             const uint probe=firstProbe+offset;
             const float leftT=begin+span*(float(probe-1u)/float(count));
-            const float residual=residuals[offset];
+            const float residual=SilPomPick4(residuals,offset);
             const float t=begin+span*(float(probe)/float(count));
             const float difference=leftResidual-residual;
             const float weight=abs(difference)>1e-8f?clamp(leftResidual/difference,0.0f,1.0f):.5f;
@@ -430,7 +444,7 @@ SilPomHit SilPomFrameRecoverNearest(SP_TEX texture,SilPomPatch p,SilPomSolveFram
                 return SilPomFrameHit(s,uv,candidateT);
             if(++attempts==4u) return predicted;
         }
-        previous=residuals[min(batchSize-1u,count-firstProbe)];
+        previous=SilPomPick4(residuals,min(batchSize-1u,count-firstProbe));
     }
     return predicted;
 }

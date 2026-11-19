@@ -31,6 +31,13 @@ static uint silpomPaintReceiverFace=0,silpomPaintReceiverOwner=0;
 #define SILPOM_VALIDATION_GATHER o_silpomValidationGather
 #define SILPOM_LEVEL2 o_silpomLevelTwo
 #endif
+// The solve frame's face-UV -> height-texture map is the material tiling: the
+// per-face patch expresses it through the face span, which the compiler cannot
+// fold, so it would hold four per-pixel registers through the whole solve.
+#define SILPOM_FRAME_TEXTURE_SCALE(p,low) \
+    float2(GetMaterialParameters().m_silpomTileU,GetMaterialParameters().m_silpomTileV)
+#define SILPOM_FRAME_TEXTURE_OFFSET(p,low,scale) \
+    float2(GetMaterialParameters().m_silpomOffsetU,GetMaterialParameters().m_silpomOffsetV)
 #include "../../../Shaders/SilPOM/BlendedFace.azsli"
 #include "../../../Shaders/SilPOM/ProfileNetworks.azsli"
 // The batch's surface profile: its shader model, role and network flags, and
