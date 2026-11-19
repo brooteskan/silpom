@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+// The hit-record pixel, for per-pixel images written by other SilPOM passes.
+static int2 silpomHitPixel;
 #if MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE
 float SilPomPaintHeight();
 static uint silpomPaintReceiverFace=0,silpomPaintReceiverOwner=0;
@@ -73,7 +75,8 @@ static float3 silpomLitOriginWS;
 static bool silpomLitValid=false;
 static bool silpomLitProxy=false;
 #if SILPOM_FORWARD_SHADOW_FRAME
-static SilPomForwardShadowFrame silpomLitShadow;
+static SilPomForwardShadowFrame silpomLitShadow; // built at directional-light entry
+static uint silpomLitFaceIndex;
 #endif
 static uint silpomPaintHeightTexture;
 static float4 silpomUvDerivatives;
@@ -87,9 +90,9 @@ float SilPomPaintHeight()
     if(!silpomLitValid)return -1;
     const SilPomPatch p=silpomLitPatch;
 #if SILPOM_FORWARD_SHADOW_FRAME
-    // Material tiling of the frame's UV: the face record need not reach decals.
+    // Material tiling of the hit UV: the face record need not reach decals.
     const MaterialParameters params=GetMaterialParameters();
-    const float2 tiled=silpomLitShadow.uv*float2(params.m_silpomTileU,params.m_silpomTileV)
+    const float2 tiled=silpomLitUv*float2(params.m_silpomTileU,params.m_silpomTileV)
         +float2(params.m_silpomOffsetU,params.m_silpomOffsetV);
 #else
     const float2 low=min(silpomLitFace.uv0,min(silpomLitFace.uv1,silpomLitFace.uv2));
@@ -261,6 +264,7 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     return geo;
 #else
 #if SILPOM_HIT_FORWARD
+    silpomHitPixel=int2(IN.position.xy);
     uint4 record=PassSrg::m_silpomHitBuffer.Load(int2(IN.position.xy),silpomHitSampleIndex);
     const uint localFace=(record.w>>2)-params.m_silpomHitFaceBase;
     if(params.m_silpomReliefMode==SP_RELIEF_LOD_4PX_RESOLVE)
@@ -541,8 +545,7 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     silpomLitRotation=(float3x3)model;
     silpomLitOriginWS=mul(model,float4(f.origin,1)).xyz;
 #if SILPOM_FORWARD_SHADOW_FRAME
-    silpomLitShadow=SilPomMakeForwardShadowFrame(GetMaterialTexture(params.m_silpomHeightMap),p,f,uv,low,
-        !failed && (params.m_silpomNeuralDirectionalVisibility || params.m_silpomSpiralLightShadowSteps!=0u));
+    silpomLitFaceIndex=IN.faceIndex;
 #endif
     silpomLitValid=!failed;silpomPaintReceiverFace=params.m_silpomHitFaceBase+IN.faceIndex;
     silpomPaintReceiverOwner=params.m_silpomPaintReceiver;

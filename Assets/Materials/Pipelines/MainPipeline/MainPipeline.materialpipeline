@@ -136,6 +136,11 @@
             "tag": "silpom_hit_forward_neural_only"
         },
         {
+            "shader": "./SilPOMHitShadow.shader.template",
+            "azsli": "./SilPOMHitShadow.azsli",
+            "tag": "silpom_hit_shadow"
+        },
+        {
             "shader": "./SilPOMHitForwardLearnedMaterial.shader.template",
             "azsli": "./SilPOMHitForwardLearnedMaterial.azsli",
             "tag": "silpom_hit_forward_learned_material"

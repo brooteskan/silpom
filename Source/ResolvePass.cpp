@@ -224,7 +224,8 @@ namespace SilPOM
         if (!batch || !packet.GetRHIDrawPacket()) return;
         const auto tag = AZ::RHI::RHISystemInterface::Get()->GetDrawListTagRegistry()->FindTag(AZ::Name("silpomHitForward"));
         const auto depthTag = AZ::RHI::RHISystemInterface::Get()->GetDrawListTagRegistry()->FindTag(AZ::Name("silpomHitDepth"));
-        if (!tag.IsValid() && !depthTag.IsValid()) return;
+        const auto shadowTag = AZ::RHI::RHISystemInterface::Get()->GetDrawListTagRegistry()->FindTag(AZ::Name("silpomHitShadow"));
+        if (!tag.IsValid() && !depthTag.IsValid() && !shadowTag.IsValid()) return;
         auto snapshot = AZStd::make_shared<PacketSnapshot>(packet);
         const auto* draw = snapshot->packet.get();
         auto& registry = GetRegistry();
@@ -234,7 +235,7 @@ namespace SilPOM
         keys.clear();
         for (size_t i = 0; i < draw->GetDrawItemCount(); ++i)
         {
-            if (draw->GetDrawListTag(i) != tag && draw->GetDrawListTag(i) != depthTag) continue;
+            if (draw->GetDrawListTag(i) != tag && draw->GetDrawListTag(i) != depthTag && draw->GetDrawListTag(i) != shadowTag) continue;
             const auto* key = draw->GetDrawItem(i);
             registry.items[key] = {batch, snapshot, i};
             keys.push_back(key);

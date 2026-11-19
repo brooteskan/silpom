@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: MIT
+// This shader is not used for rendering. It provides the PassSrg layout of
+// the SilPOM hit-shadow pass: the hit-forward PassSrg without the shadow
+// visibility image, which this pass writes.
+#define SILPOM_HIT_SHADOW_PASS 1
+#include "SilPOMHitForwardSrg.azsli"
+#include <Atom/RPI/DummyEntryFunctions.azsli>

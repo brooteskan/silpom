@@ -1,0 +1,36 @@
+{
+    "Source": "",
+    "DepthStencilState": {
+        "Depth": {
+            "Enable": true,
+            "CompareFunc": "Equal",
+            "WriteMask": "Zero"
+        },
+        "Stencil": {
+            "Enable": false
+        }
+    },
+    "ProgramSettings": {
+        "EntryPoints": [
+            {
+                "name": "VertexShader",
+                "type": "Vertex"
+            },
+            {
+                "name": "PixelShader",
+                "type": "Fragment"
+            }
+        ]
+    },
+    "DrawList": "silpomHitShadow",
+    "Supervariants": [
+        {
+            "Name": "NoMSAA",
+            "AddBuildArguments": {
+                "azslc": [
+                    "--no-ms"
+                ]
+            }
+        }
+    ]
+}

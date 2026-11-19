@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: MIT
+// SilPOM hit-shadow pass: per sample of a neural-only hit-forward surface, the
+// shadow-casting directional light's visibility (neural relief x cascaded
+// shadow map PCF), written to a pipeline image that the hit-forward pass reads.
+// It moves that work out of the forward shader, where its registers limited
+// occupancy, and makes the shadow filter cheap to vary.
+#pragma once
+#define SILPOM_HIT_SHADOW_PASS 1
+#define SILPOM_NEURAL_VISIBILITY_ONLY 1
+#define SILPOM_HIT_FORWARD 1
+#define SILPOM_FACE_CACHE_PASS 1
+float SilPomExplicitSpecularAA(float3 normal,float roughnessA2);
+#define ATOM_CUSTOM_SPECULAR_AA(normal,roughnessA2) SilPomExplicitSpecularAA(normal,roughnessA2)
+#define ATOM_EXPLICIT_SHADOW_GRADIENTS 1
+#define ATOM_EXPLICIT_LIGHTING_LOOKUPS 1
+float4 SilPomProjectedUvDerivatives(float4 clip,float4 clipDx,float4 clipDy);
+float4 SilPomGoboUvGradients(float4x4 worldToLightClip,float4 lightClip);
+#define ATOM_CUSTOM_GOBOTEXTURE_GRADIENTS(matrix,clip) SilPomGoboUvGradients(matrix,clip)
+
+#include <Atom/Features/SrgSemantics.azsli>
+
+#define MATERIALPIPELINE_SHADER_HAS_PIXEL_STAGE 1
+#define OUTPUT_DEPTH 1
+#define FORCE_OPAQUE 1
+#define OUTPUT_SUBSURFACE 0
+#define ENABLE_TRANSMISSION 0
+#define ENABLE_SHADER_DEBUGGING 0
+#define ENABLE_CLEAR_COAT 1
+
+#ifdef MATERIAL_TYPE_DEFINES_AZSLI_FILE_PATH
+#include MATERIAL_TYPE_DEFINES_AZSLI_FILE_PATH
+#endif
+
+#include <viewsrg_all.srgi>
+#include <scenesrg_all.srgi>
+#include "../../../Shaders/SilPOM/HitReuse/SilPOMHitForwardSrg.azsli"
+#include <Atom/Features/Pipeline/Forward/ForwardPassVertexData.azsli>
+#include <Atom/Features/Pipeline/Forward/ForwardPassPipelineCallbacks.azsli>
+
+#include MATERIAL_TYPE_AZSLI_FILE_PATH
+
+#include <Atom/Features/Pipeline/Forward/ForwardPassEvaluateLighting.azsli>
+
+// The vertex stage is the hit-forward one. Atom's forward pixel entry is
+// compiled under another name and not used.
+#define PixelShader SilPomHitShadowUnusedForward
+#include <Atom/Feature/Common/Assets/Materials/Pipelines/MainPipeline/ForwardPassVertexAndPixel.azsli>
+#undef PixelShader
+struct SilPomHitShadowOutput
+{
+    float m_visibility : SV_Target0;
+    // As in the hit-forward pass, geometry evaluation replaces the rasterized
+    // depth with the hit record's; the Equal depth test uses this value.
+    float m_depth : SV_Depth;
+};
+SilPomHitShadowOutput PixelShader(VsOutput IN,bool isFrontFace:SV_IsFrontFace,uint sampleIndex:SV_SampleIndex)
+{
+    silpomHitSampleIndex=sampleIndex;
+    VsSystemValues SV;
+    SV.m_instanceId=IN.m_instanceId;
+    const PixelGeometryData geo=EvaluatePixelGeometry(IN,SV,isFrontFace,GetMaterialParameters());
+    SilPomHitShadowOutput OUT;
+    OUT.m_visibility=SilPomHitShadowVisibility(geo.positionWS);
+    OUT.m_depth=IN.position.z;
+    return OUT;
+}

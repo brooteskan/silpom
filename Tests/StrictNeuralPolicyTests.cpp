@@ -161,6 +161,20 @@ int main()
         Require(!lightingOnly.Complete(),"Analytic recovery substituted for the trained primary depth path");
         lightingOnly.Add(Product("silpom_hit_depth_neural_cache","silpomhitdepthneuralcache.azshader"));
         Require(lightingOnly.Complete(),"Trained depth with analytic recovery failed certification");
+        // The hit-shadow pass's shader is a valid member of a strict
+        // generation, but it is not the lighting proof.
+        Require(Product("silpom_hit_shadow","silpomhitshadow.azshader")==Capability::ShadowVisibility,
+            "The strict hit-shadow shader was not recognised");
+        Require(Classify("silpom_hit_shadow","custom/hit-shadow.azshader","")==Capability::Unsupported,
+            "The hit-shadow tag certified an override");
+        Require(Product("silpom_hit_shadow","silpomhitshadow.azshader","Custom")==Capability::Unsupported,
+            "The hit-shadow shader trusted an unknown supervariant");
+        auto withShadow=Pair();withShadow.Add(Product("silpom_hit_shadow","silpomhitshadow.azshader"));
+        Require(withShadow.Complete(),"The hit-shadow shader broke an otherwise valid generation proof");
+        PacketProof shadowOnly;
+        shadowOnly.Add(Product("silpom_hit_shadow","silpomhitshadow.azshader"));
+        shadowOnly.Add(Product("silpom_hit_depth_neural_cache","silpomhitdepthneuralcache.azshader"));
+        Require(!shadowOnly.Complete(),"The hit-shadow shader substituted for strict forward lighting");
 
         // Policy changes affect an already published generation immediately;
         // loading/validation failures never authorize an incompatible draw.

@@ -59,6 +59,10 @@
       {
         "Name": "SilPOMFaceCacheTemplate",
         "Path": "Passes/SilPOMFaceCache.pass"
+      },
+      {
+        "Name": "SilPOMHitShadowTemplate",
+        "Path": "Passes/SilPOMHitShadow.pass"
       }
     ]
   }

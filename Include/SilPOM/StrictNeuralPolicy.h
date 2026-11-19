@@ -8,7 +8,10 @@ namespace SilPOM::StrictNeuralPolicy
 // Other supported profiles retain their physical neural-only visibility route.
 inline unsigned LightingEstimatorForProfile(unsigned model,unsigned requested)
 { return model==4u?requested:0u; }
-enum class Capability { Unsupported, Flat, Visibility, TrainedDepth, AnalyticDepth };
+// ShadowVisibility: the SilPOMHitShadow pass's shader. It evaluates the same
+// neural-only relief visibility as the forward shader (one compile boundary),
+// but it is not the batch's lighting proof.
+enum class Capability { Unsupported, Flat, Visibility, ShadowVisibility, TrainedDepth, AnalyticDepth };
 
 // Tags alone are insufficient: a material can override a shader while keeping
 // its logical tag. Certify the actual built-in generated product as well.
@@ -32,6 +35,7 @@ inline Capability Classify(std::string_view tag, std::string_view product, std::
         {"silpom_uv_bake_learned", "silpomuvbakelearned.azshader", Capability::Flat},
         {"silpom_uv_usage", "silpomuvusage.azshader", Capability::Flat},
         {"silpom_hit_forward_neural_only", "silpomhitforwardneuralonly.azshader", Capability::Visibility},
+        {"silpom_hit_shadow", "silpomhitshadow.azshader", Capability::ShadowVisibility},
         {"silpom_hit_forward_learned_material", "silpomhitforwardlearnedmaterial.azshader", Capability::Visibility},
         {"silpom_hit_forward_level_five", "silpomhitforwardlevelfive.azshader", Capability::Visibility},
         {"silpom_hit_forward_shared", "silpomhitforwardshared.azshader", Capability::Visibility},

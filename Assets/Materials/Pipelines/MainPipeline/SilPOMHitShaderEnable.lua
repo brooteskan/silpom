@@ -41,6 +41,8 @@ function Process(context)
     context:GetShaderByTag("silpom_hit_forward_shared_proxy_ambient"):SetEnabled(useHit and visibilityOnly and proxy and shared and comparison and ambient and not angular)
     context:GetShaderByTag("silpom_hit_forward"):SetEnabled(useHit and not visibilityOnly and not decoded and not proxy)
     context:GetShaderByTag("silpom_hit_forward_neural_only"):SetEnabled(useHit and visibilityOnly and not decoded and not proxy)
+    -- The shadow-casting directional light for neural-only hit-forward surfaces.
+    context:GetShaderByTag("silpom_hit_shadow"):SetEnabled(useHit and visibilityOnly and not decoded and not proxy)
     context:GetShaderByTag("silpom_hit_forward_learned_material"):SetEnabled(useHit and visibilityOnly and decoded and not proxy and not shared)
     context:GetShaderByTag("silpom_hit_forward_shared"):SetEnabled(useHit and visibilityOnly and decoded and not proxy and shared and not comparison)
     context:GetShaderByTag("silpom_hit_forward_shared_compare"):SetEnabled(useHit and visibilityOnly and decoded and not proxy and shared and comparison and not ambient and not angular)

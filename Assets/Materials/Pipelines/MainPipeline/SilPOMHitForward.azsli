@@ -8,6 +8,9 @@
 #pragma once
 #define SILPOM_HIT_FORWARD 1
 #define SILPOM_FACE_CACHE_PASS 1
+// Neural-only surfaces read the shadow-casting light's visibility from the
+// SilPOMHitShadow pass instead of evaluating it here.
+#define SILPOM_HIT_SHADOW_READ 1
 // Material definitions can include MaterialUtils before the material body.
 // Select explicit shading policies before that first include is processed.
 float SilPomExplicitSpecularAA(float3 normal,float roughnessA2);

@@ -16,17 +16,53 @@ SilPomCascadeCoordinate SilPomCascadeAt(uint lightIndex,int cascade,float3 recei
     float3 positionDx,float3 positionDy)
 {
     const float4x4 toLightView=ViewSrg::m_directionalLightShadows[lightIndex].m_worldToLightViewMatrices[cascade];
-    const float4x4 toShadowmap=ViewSrg::m_directionalLightShadows[lightIndex].m_lightViewToShadowmapMatrices[cascade];
     float4 lightSpace=mul(toLightView,float4(receiver,1.));
+    const float4 lightDx=mul(toLightView,float4(positionDx,0));
+    const float4 lightDy=mul(toLightView,float4(positionDy,0));
     lightSpace.z+=ViewSrg::m_directionalLightShadows[lightIndex].m_shadowBias;
+    // Load the second matrix only after the first products: its index depends
+    // on them (lightSpace.w is never this NaN pattern). Otherwise the compiler
+    // issues all eight matrix rows at once, 32 registers in flight on gfx90c.
+    const int shadowmapCascade=asuint(lightSpace.w)==0xFFFFFFFFu?0:cascade;
+    const float4x4 toShadowmap=ViewSrg::m_directionalLightShadows[lightIndex].m_lightViewToShadowmapMatrices[shadowmapCascade];
     const float4 clip=mul(toShadowmap,lightSpace);
     SilPomCascadeCoordinate c;
     c.coord=clip.xyz/clip.w;
-    const float4 clipDx=mul(toShadowmap,mul(toLightView,float4(positionDx,0)));
-    const float4 clipDy=mul(toShadowmap,mul(toLightView,float4(positionDy,0)));
+    const float4 clipDx=mul(toShadowmap,lightDx);
+    const float4 clipDy=mul(toShadowmap,lightDy);
     c.dx=(clipDx.xyz-c.coord*clipDx.w)/clip.w;
     c.dy=(clipDy.xyz-c.coord*clipDy.w)/clip.w;
     return c;
+}
+// Atom's 16-tap bicubic PCF (same offsets, weights and receiver-plane bias),
+// evaluated four taps per iteration. Atom's fully unrolled version keeps all 16
+// compare samples, their coordinates and depths in flight at once; the trip
+// count is laundered through the map size so the compiler cannot unroll it.
+real SilPomCascadePcf16(SampleShadowMapBicubicParameters param)
+{
+    const real2 shadowXY=param.shadowPos.xy*param.shadowMapSize+real2(0.5,0.5);
+    const real2 shadowUV=floor(shadowXY);
+    const real2 f=shadowXY-shadowUV;
+    const real2 texelCenter=(shadowUV-real2(0.5,0.5))*param.invShadowMapSize;
+    const real2 w0=5.0*f-6.0,w1=11.0*f-28.0,w2=-(11.0*f+17.0),w3=-(5.0*f+1.0);
+    const real2 o0=((4.0*f-5.0)/w0)-3.0,o1=((4.0*f-16.0)/w1)-1.0,o2=-((7.0*f+5.0)/w2)+1.0,o3=-(f/w3)+3.0;
+    real shadow=0;
+    const uint rows=asuint(float(param.shadowMapSize))==0xFFFFFFFFu?0u:4u;
+    [loop] for(uint row=0u;row<rows;++row)
+    {
+        const real wy=row==0u?w0.y:row==1u?w1.y:row==2u?w2.y:w3.y;
+        const real oy=row==0u?o0.y:row==1u?o1.y:row==2u?o2.y:o3.y;
+        [unroll] for(uint column=0u;column<4u;++column)
+        {
+            const real wx=column==0u?w0.x:column==1u?w1.x:column==2u?w2.x:w3.x;
+            const real ox=column==0u?o0.x:column==1u?o1.x:column==2u?o2.x:o3.x;
+            const real2 offset=real2(ox,oy)*param.invShadowMapSize;
+            const real depth=min(param.comparisonValue+ApplyReceiverPlaneDepthBias(real2(param.receiverPlaneDepthBias),offset),DepthMargin);
+            shadow+=wx*wy*real(param.shadowMap.SampleCmpLevelZero(param.samplerState,real3(texelCenter+offset,param.shadowPos.z),depth));
+        }
+    }
+    shadow/=2704;
+    return shadow*shadow;
 }
 real SilPomCascadePcf(uint lightIndex,int cascade,SilPomCascadeCoordinate c,uint size)
 {
@@ -42,7 +78,7 @@ real SilPomCascadePcf(uint lightIndex,int cascade,SilPomCascadeCoordinate c,uint
     {
         case ShadowFilterSampleCount::PcfTap4: return SampleShadowMapBicubic_4Tap(param);
         case ShadowFilterSampleCount::PcfTap9: return SampleShadowMapBicubic_9Tap(param);
-        default: return SampleShadowMapBicubic_16Tap(param);
+        default: return SilPomCascadePcf16(param);
     }
 }
 real SilPomCascadeShadowVisibility(uint lightIndex,float3 worldPos,real3 worldNormal,

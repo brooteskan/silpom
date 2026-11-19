@@ -58,5 +58,10 @@ ShaderResourceGroup PassSrg : SRG_PerPass
     Texture2DMS<uint4> m_silpomHitBuffer;
     Texture2DMS<float4> m_silpomHitUvGradients;
     Texture2DMS<float4> m_silpomHitDepthGradients;
+#if !defined(SILPOM_HIT_SHADOW_PASS)
+    // The shadow-casting directional light's visibility, per sample, written
+    // by the SilPOMHitShadow pass for neural-only hit-forward surfaces.
+    Texture2DMS<float> m_silpomHitShadow;
+#endif
 }
 static uint silpomHitSampleIndex;

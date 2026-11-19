@@ -467,6 +467,7 @@ bool InstallHitPasses(AZ::RPI::Scene& scene, bool required)
     const AZ::Name classifyName("SilPOMClassifyWallHoles"), fillName("SilPOMFillWallHoles");
     const AZ::Name backupName("SilPOMHitDepthWallBackup"), backupTemplate("SilPOMHitDepthWallBackupTemplate");
     const AZ::Name depthTemplate("SilPOMHitDepthTemplate"), forwardTemplate("SilPOMHitForwardTemplate");
+    const AZ::Name shadowName("SilPOMHitShadow"), shadowTemplate("SilPOMHitShadowTemplate");
     const AZ::Name clearName("SilPOMClearHits"),clearTemplate("SilPOMClearHitsTemplate"),msaaDepthTemplate("SilPOMHitDepthMsaaTemplate");
     const AZ::Name classifyTemplate("SilPOMClassifyWallHolesTemplate"), fillTemplate("SilPOMFillWallHolesTemplate");
     const AZ::Name msaaClassifyTemplate("SilPOMClassifyWallHolesMsaaTemplate");
@@ -482,6 +483,7 @@ bool InstallHitPasses(AZ::RPI::Scene& scene, bool required)
     }
     if (!foundMainPipeline) return false;
     if ((!system->GetPassTemplate(depthTemplate) || !system->GetPassTemplate(clearTemplate) || !system->GetPassTemplate(msaaDepthTemplate)
+        || !system->GetPassTemplate(shadowTemplate)
         || !system->GetPassTemplate(msaaClassifyTemplate) || (required && !system->GetPassTemplate(backupTemplate))
         ||(r_silpomMsaaInspect&&!system->GetPassTemplate(AZ::Name("SilPOMInspectSamplesTemplate"))))
         && !system->LoadPassTemplateMappings("passes/silpomhittemplates.azasset"))
@@ -512,6 +514,13 @@ bool InstallHitPasses(AZ::RPI::Scene& scene, bool required)
                 depth->QueueForRemoval();
                 return false;
             }
+        }
+        // The shadow-casting directional light's visibility for neural-only
+        // hit-forward surfaces, written before SilPOMHitForward reads it.
+        if (!pipeline->FindFirstPass(shadowName))
+        {
+            auto shadow = MakeHitPass(shadowName, shadowTemplate, *pipeline->FindFirstPass(forwardName));
+            if (!shadow || !pipeline->AddPassBefore(shadow, hitForwardName)) return false;
         }
         if(!pipeline->FindFirstPass(AZ::Name("SilPOMFaceCache")))
         {

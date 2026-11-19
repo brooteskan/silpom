@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "NeuralVisibility.azsli"
-// Compact receiver for neural-only forward lighting. It is built once at the
-// hit, so the face record, patch and face UV need not stay live across the
-// light loops. The light rates are linear in the light direction:
-// rate = dot(light, axis), with the axes already divided by the determinant.
-// Heights are sampled through a material-uniform patch (unit span, zero low),
-// which addresses the same texels as the face patch.
+// Compact receiver for neural-only forward lighting, built at the start of
+// directional lighting from the reloaded face, so neither the face record nor
+// this frame is live through surface evaluation and decals. The light rates
+// are linear in the light direction: rate = dot(light, axis), with the axes
+// already divided by the determinant. Heights are sampled through a
+// material-uniform patch (unit span, zero low), which addresses the same texels
+// as the face patch.
 struct SilPomForwardShadowFrame
 {
     float3 uAxis,vAxis,hAxis;
@@ -15,23 +16,6 @@ struct SilPomForwardShadowFrame
     float start;
     bool valid;
 };
-SilPomForwardShadowFrame SilPomMakeForwardShadowFrame(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,
-    float2 uv,float2 low,bool sampleStart)
-{
-    SilPomForwardShadowFrame s;
-    s.normal=f.normal;s.origin=f.origin;s.uv=uv;
-    const float3 D=SilPomFaceDirection(f,uv);
-    const float3 crossDvDirection=cross(f.dv,D);
-    const float determinant=dot(f.du,crossDvDirection);
-    s.valid=!(abs(determinant)<1e-10f);
-    const float inverse=s.valid?rcp(determinant):0.0f;
-    s.uAxis=crossDvDirection*inverse;
-    s.vAxis=cross(D,f.du)*inverse;
-    s.hAxis=cross(f.du,f.dv)*inverse;
-    s.start=0;
-    if(sampleStart && s.valid && abs(p.scale)>=1e-8f)s.start=SilPomShadowHeight(texture,p,uv,low);
-    return s;
-}
 // One hardware bilinear tap per feature height (one return register instead
 // of a 2x2 gather). The material sampler wraps; clamp-to-edge is the same as
 // clamping the coordinate to the outer texel centres, so both address modes
@@ -47,6 +31,23 @@ float SilPomForwardShadowHeight(SP_TEX texture,SilPomPatch p,float2 uv)
     }
     const float h=texture.SampleLevel(GetMaterialTextureSampler(),coordinate,0).r;
     return p.scale*(h-p.reference);
+}
+SilPomForwardShadowFrame SilPomMakeForwardShadowFrame(SP_TEX texture,SilPomPatch uniformPatch,SilPomMeshFace f,
+    float2 uv,bool sampleStart)
+{
+    SilPomForwardShadowFrame s;
+    s.normal=f.normal;s.origin=f.origin;s.uv=uv;
+    const float3 D=SilPomFaceDirection(f,uv);
+    const float3 crossDvDirection=cross(f.dv,D);
+    const float determinant=dot(f.du,crossDvDirection);
+    s.valid=!(abs(determinant)<1e-10f);
+    const float inverse=s.valid?rcp(determinant):0.0f;
+    s.uAxis=crossDvDirection*inverse;
+    s.vAxis=cross(D,f.du)*inverse;
+    s.hAxis=cross(f.du,f.dv)*inverse;
+    s.start=0;
+    if(sampleStart && s.valid && abs(uniformPatch.scale)>=1e-8f)s.start=SilPomForwardShadowHeight(texture,uniformPatch,uv);
+    return s;
 }
 // SilPomVisibilityFeatures with the frame's height sampler.
 bool SilPomForwardVisibilityFeatures(SP_TEX texture,SilPomPatch p,float2 uv,

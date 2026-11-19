@@ -144,6 +144,13 @@
                     "ScopeAttachmentUsage": "Shader",
                     "ShaderInputName": "m_silpomHitDepthGradients",
                     "ScopeAttachmentStage": "FragmentShader"
+                },
+                {
+                    "Name": "HitShadow",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_silpomHitShadow",
+                    "ScopeAttachmentStage": "FragmentShader"
                 }
             ],
             "Connections": [
@@ -264,6 +271,13 @@
                     "AttachmentRef": {
                         "Pass": "PipelineGlobal",
                         "Attachment": "SilPOMHitDepthGradients"
+                    }
+                },
+                {
+                    "LocalSlot": "HitShadow",
+                    "AttachmentRef": {
+                        "Pass": "PipelineGlobal",
+                        "Attachment": "SilPOMHitShadow"
                     }
                 }
             ],

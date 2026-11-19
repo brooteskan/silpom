@@ -53,6 +53,9 @@ BakeOutput MainPS(VSOutput input)
     for(uint i=0;i<UvSetCount;++i){geo.uvs[i]=uv;geo.tangents[i]=normalize(mul((float3x3)PassSrg::m_receiverModel,tangent));geo.bitangents[i]=handedness*normalize(cross(geo.vertexNormal,geo.tangents[i]));}
     silpomLitFace=f;silpomLitPatch=p;silpomLitReliefMode=params.m_silpomReliefMode;silpomLitUv=uv;silpomLitRotation=(float3x3)PassSrg::m_receiverModel;
     silpomLitOriginWS=mul(PassSrg::m_receiverModel,float4(f.origin,1)).xyz;silpomLitValid=true;
+#if SILPOM_FORWARD_SHADOW_FRAME
+    silpomLitFaceIndex=face; // the shadow frame is built from it at light entry
+#endif
     silpomPaintReceiverFace=params.m_silpomHitFaceBase+face;silpomPaintHeightTexture=params.m_silpomHeightMap;
     // This pass has one authored chart, rather than visibility winners. Its
     // source-UV footprint is the atlas texel step, including gutter texels.

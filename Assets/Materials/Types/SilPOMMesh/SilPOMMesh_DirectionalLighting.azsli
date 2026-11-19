@@ -71,6 +71,25 @@ SilPomPatch SilPomForwardShadowPatch(MaterialParameters params)
     GetMaterialTexture(params.m_silpomHeightMap).GetDimensions(p.textureWidth,p.textureHeight);
     return p;
 }
+// Reloads the hit face and builds the shadow frame at directional-light entry.
+// In the hit-forward pass the index is laundered through a uniform scene
+// constant so the compiler cannot reuse the geometry stage's face load (which
+// would keep the face live through surface evaluation and decals).
+SilPomForwardShadowFrame SilPomLitShadowFrame(MaterialParameters params)
+{
+#if SILPOM_FORWARD_SCENE_LIGHTING
+    const uint faceIndex=SceneSrg::m_directionalLightCount==0xFFFFFFFFu?0u:silpomLitFaceIndex;
+#else
+    const uint faceIndex=silpomLitFaceIndex;
+#endif
+    const SilPomMeshFace face=SilPomLoadFace(params.m_meshBufferIndex,faceIndex
+#if SILPOM_FACE_COEFFICIENT_CACHE
+        ,params.m_silpomFaceCoefficientBuffer
+#endif
+    );
+    return SilPomMakeForwardShadowFrame(GetMaterialTexture(params.m_silpomHeightMap),SilPomForwardShadowPatch(params),
+        face,silpomLitUv,params.m_silpomNeuralDirectionalVisibility || params.m_silpomSpiralLightShadowSteps!=0u);
+}
 #define SILPOM_LIT_NORMAL silpomLitShadow.normal
 #define SILPOM_LIT_ORIGIN silpomLitShadow.origin
 #define SILPOM_LIT_LOCAL_VISIBILITY(light,steps,reach,params) \
@@ -239,6 +258,43 @@ void ApplySpiralLight(Surface surface, inout LightingData lightingData, Material
     ApplySpiralLightRay(surface, lightingData, params, -tangent + towardCorridor, lobes.y * endFade SILPOM_RECEIVER_ARGUMENT);
 }
 
+#if SILPOM_FORWARD_SCENE_LIGHTING
+// The shadow-casting directional light's visibility at a neural-only hit:
+// relief first (the cascaded shadow map is skipped where the relief occludes),
+// then the cascade PCF from the flat receiver. The fullscreen shadow result is
+// bypassed: its receiver is the displaced camera depth, which can lie below
+// the flat caster. The SilPOMHitShadow pass evaluates this per sample.
+real SilPomSunVisibility(uint index,float3 position,float3 toLight,float3 baseNormal,float signedHeight,
+    uint localSchedule,MaterialParameters params)
+{
+    real visibility=1;
+    if(!o_enableShadows)return visibility;
+    if(localSchedule>0u)
+        visibility=SILPOM_LIT_LOCAL_VISIBILITY(mul(transpose(SilPomLitRotationReload()),toLight),localSchedule,0.0f,params);
+    if(visibility>0)
+    {
+        const float lightNormalDot=dot(toLight,baseNormal);
+        const float advance=SilPomFlatReceiverAdvance(signedHeight,lightNormalDot,1e-4f);
+        visibility*=SilPomCascadeShadowVisibility(index,position+toLight*advance,baseNormal,
+            SilPomFlatReceiverDerivative(silpomPositionDx,baseNormal,toLight,signedHeight,lightNormalDot,1e-4f),
+            SilPomFlatReceiverDerivative(silpomPositionDy,baseNormal,toLight,signedHeight,lightNormalDot,1e-4f));
+    }
+    return visibility;
+}
+// Entry for the SilPOMHitShadow pass, after EvaluatePixelGeometry.
+float SilPomHitShadowVisibility(float3 position)
+{
+    const uint index=ViewSrg::m_shadowIndexDirectionalLight;
+    if(!silpomLitValid || !o_enableShadows || index>=SceneSrg::m_directionalLightCount)return 1;
+    MaterialParameters params=GetMaterialParameters();
+    silpomLitShadow=SilPomLitShadowFrame(params);
+    const float3 baseNormal=normalize(mul(SilPomLitRotationReload(),SILPOM_LIT_NORMAL));
+    const float3 toLight=normalize(-SceneSrg::m_directionalLights[index].m_direction);
+    return SilPomSunVisibility(index,position,toLight,baseNormal,dot(position-silpomLitOriginWS,baseNormal),
+        params.m_silpomNeuralDirectionalVisibility?16u:0u,params);
+}
+#endif
+
 void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,float4 screenUv)
 {
     if(!silpomLitValid)
@@ -256,6 +312,9 @@ void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,floa
     SilPomInitLightingReceiver(receiver);
 #endif
     MaterialParameters params=GetMaterialParameters();
+#if SILPOM_FORWARD_SHADOW_FRAME
+    silpomLitShadow=SilPomLitShadowFrame(params);
+#endif
     float3 baseNormal=normalize(mul(SilPomLitRotationReload(),SILPOM_LIT_NORMAL));
     float signedHeight=dot(surface.position-silpomLitOriginWS,baseNormal);
     // Spiral first: its state is dead before the directional loop's.
@@ -279,6 +338,19 @@ void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,floa
 #else
         const uint localSchedule=params.m_silpomReliefShadowSteps;
 #endif
+#if SILPOM_FORWARD_SCENE_LIGHTING
+        if(index==ViewSrg::m_shadowIndexDirectionalLight)
+        {
+#if SILPOM_HIT_SHADOW_READ
+            // Written for this sample by the SilPOMHitShadow pass.
+            visibility=o_enableShadows?real(PassSrg::m_silpomHitShadow.Load(silpomHitPixel,silpomHitSampleIndex)):1;
+#else
+            visibility=SilPomSunVisibility(index,surface.position,toLight,baseNormal,signedHeight,localSchedule,params);
+#endif
+        }
+        else if(o_enableShadows && localSchedule>0u)
+            visibility=SILPOM_LIT_LOCAL_VISIBILITY(mul(transpose(SilPomLitRotationReload()),toLight),localSchedule,0.0f,params);
+#else
         // Relief before the cascaded shadow map (same product): the cascade
         // coordinates are not live across the relief query, and the shadow
         // map is skipped where the relief occludes.
@@ -290,11 +362,6 @@ void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,floa
             float advance=SilPomFlatReceiverAdvance(signedHeight,lightNormalDot,1e-4f);
             // Bypass the fullscreen shadow result: its receiver is the displaced
             // camera depth, which can lie below our flat caster.
-#if SILPOM_FORWARD_SCENE_LIGHTING
-            visibility*=SilPomCascadeShadowVisibility(index,surface.position+toLight*advance,baseNormal,
-                SilPomFlatReceiverDerivative(silpomPositionDx,baseNormal,toLight,signedHeight,lightNormalDot,1e-4f),
-                SilPomFlatReceiverDerivative(silpomPositionDy,baseNormal,toLight,signedHeight,lightNormalDot,1e-4f));
-#else
             DirectionalShadowCalculator calc=DirectionalLightShadow::MakeShadowCalculator(
                 index,surface.position+toLight*advance,baseNormal);
 #if SILPOM_HIT_FORWARD
@@ -304,8 +371,8 @@ void ApplyDirectionalLights(Surface surface,inout LightingData lightingData,floa
                 float3(0,0,0),float3(0,0,0));
 #endif
             visibility*=calc.GetVisibility();
-#endif
         }
+#endif
 #endif
         DirectionalLightUtil light=DirectionalLightUtil::Init(srgLight,surface);
 #if SILPOM_LEVEL_FIVE

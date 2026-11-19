@@ -7,6 +7,7 @@
       "Name": "SilPOMUvUsageTemplate",
             "PassClass": "SilPOMHitRasterPass",
       "Slots": [
+        {"Name": "HitShadow", "SlotType": "Input", "ScopeAttachmentUsage": "Shader", "ShaderInputName": "m_silpomHitShadow", "ScopeAttachmentStage": "FragmentShader"},
         {
           "Name": "Hit",
           "SlotType": "Input",
@@ -126,6 +127,7 @@
         }
       ],
       "Connections": [
+        {"LocalSlot": "HitShadow", "AttachmentRef": {"Pass": "PipelineGlobal", "Attachment": "SilPOMHitShadow"}},
         {
           "LocalSlot": "HitUvGradients",
           "AttachmentRef": { "Pass": "PipelineGlobal", "Attachment": "SilPOMHitUvGradients" }
