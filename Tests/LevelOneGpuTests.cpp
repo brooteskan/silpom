@@ -149,6 +149,11 @@ int main(int argc,char** argv)
                     // still agree on final geometry, while Newton's iteration
                     // count can differ by FP32 roundoff near convergence.
                     if(pattern) continue;
+                    // Slot 15 counts a second Level 2 seed more than 1e-6
+                    // nearer than the first. The solve-frame refinement is not
+                    // bit-identical between C++ and DXC, so two seeds reaching
+                    // the same root can fall either side of that margin.
+                    if(k==15) continue;
                     if(result.counts[k]!=levelOneStats[k]) countersMatch=false;
                 }
                 if(expected.status!=uint(result.hit[0])||(expected.status==SP_HIT&&depthError>2e-5f)

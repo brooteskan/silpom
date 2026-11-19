@@ -267,7 +267,7 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     float4x4 model=GetObjectToWorldMatrix(SV);
     float2 low=min(f.uv0,min(f.uv1,f.uv2)),high=max(f.uv0,max(f.uv1,f.uv2));
     float2 span=high-low;
-    const float2 coarseSpan=max(span,rcp(max(abs(float2(params.m_silpomTileU,params.m_silpomTileV)),1e-20f)));
+    float2 coarseSpan=max(span,rcp(max(abs(float2(params.m_silpomTileU,params.m_silpomTileV)),1e-20f)));
     SilPomPatch p;
     p.width=span.x; p.height=span.y;
     p.scale=params.m_silpomScale; p.reference=params.m_silpomReference;
@@ -363,12 +363,25 @@ PixelGeometryData EvaluatePixelGeometry(inout VsOutput IN,VsSystemValues SV,bool
     if(hit.status==SP_MISS) discard;
 #if SILPOM_NEURAL_NO_MARCH
     {
-        // Recompute the view ray after the solver instead of holding it live
-        // through it (about 30 registers; 5700G hit depth 241 -> 226 VGPRs).
-        // ndcAfter equals IN.ndc, since no hit has that status, but depends
-        // on the solver's result, so the compiler cannot reuse the values
-        // computed before it. Same expressions, same results.
+        // Recompute the view ray, and reload the face and its patch, after
+        // the solver instead of holding them live through it: the solver
+        // works from its compact frame. ndcAfter and faceAfter equal IN.ndc
+        // and IN.faceIndex, since no hit has that status, but depend on the
+        // solver's result, so the compiler cannot reuse the earlier values.
         const float2 ndcAfter=hit.status==0xFFFFFFFFu?float2(0,0):IN.ndc;
+        const uint faceAfter=hit.status==0xFFFFFFFFu?0u:IN.faceIndex;
+        f=SilPomLoadFace(params.m_meshBufferIndex,faceAfter
+#if SILPOM_FACE_COEFFICIENT_CACHE
+            ,params.m_silpomFaceCoefficientBuffer
+#endif
+        );
+        low=min(f.uv0,min(f.uv1,f.uv2));high=max(f.uv0,max(f.uv1,f.uv2));
+        span=high-low;
+        coarseSpan=max(span,rcp(max(abs(float2(params.m_silpomTileU,params.m_silpomTileV)),1e-20f)));
+        p.width=span.x;p.height=span.y;
+        p.tileU=span.x*params.m_silpomTileU;p.tileV=span.y*params.m_silpomTileV;
+        p.offsetU=low.x*params.m_silpomTileU+params.m_silpomOffsetU;
+        p.offsetV=low.y*params.m_silpomTileV+params.m_silpomOffsetV;
         nearH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(ndcAfter,1,1));
         midH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(ndcAfter,.5,1));
         originWS=nearH.xyz/nearH.w;

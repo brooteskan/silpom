@@ -496,6 +496,7 @@ SilPomHit SilPomTowerBaseHit(SilPomPatch p, SilPomMeshFace face, SilPomRay ray, 
     return hit;
 }
 
+#include "SolveFrame.azsli"
 #endif
 #endif
 
@@ -536,9 +537,38 @@ SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilP
 
 #if SILPOM_HIT_NEURAL
 #if SILPOM_NEURAL_NO_MARCH
-    // The welded profiles do not have a legacy cache or compatible legacy weights.
+    // From here on the solve works from the compact frame (SolveFrame.azsli),
+    // so the face, patch and UV bounds need not stay live through it.
+    const SilPomSolveFrame frame=SilPomMakeSolveFrame(f,p,low,worldRay);
     if(model.id==0u)
+    {
+#ifdef SILPOM_EVALUATION
+        SilPomHit neural=SilPomTryTowerNeural(texture,p,f,worldRay,searchRay,low,model.weights);
+#else
+        SilPomHit neural=SilPomFrameSeed(texture,p,frame,worldRay,searchRay,model.weights
+#if SILPOM_HIT_NEURAL_CACHE
+            ,neuralCache
 #endif
+        );
+#endif
+        if(neural.status==SP_HIT) return neural;
+    }
+    // One call site for the first-level solver: Level 2 returns a fallback
+    // marker instead of inlining its own copies (same order and retry caps).
+    SilPomHit predicted=SilPomPredictionFallback(retryCap);
+#ifdef SILPOM_LEVEL2
+    SP_BRANCH if(SILPOM_LEVEL2 && SilPomHasLevelTwo(model))
+        predicted=SilPomFramePredict2(texture,p,frame,worldRay,searchRay,model,validationIterations,retryCap,toleranceMultiplier,reliefMode);
+#endif
+    SP_BRANCH if((predicted.status&SP_PREDICTION_FALLBACK)!=0u)
+        predicted=SilPomFramePredict(texture,p,frame,worldRay,searchRay,model,validationIterations,predicted.status&0xFFFFu,toleranceMultiplier,reliefMode);
+    predicted=SilPomFrameRecoverNearest(texture,p,frame,worldRay,searchRay,predicted,model.id);
+    if(predicted.status==SP_HIT || !SilPomReliefFillEnabled(reliefMode)) return predicted;
+    SILPOM_DIAGNOSTIC(10,0);
+    SilPomHit fill=SilPomFrameBaseHit(frame,worldRay.tMin,worldRay.tMax,true);
+    SILPOM_DIAGNOSTIC(11,fill.status);
+    return fill;
+#else
     {
     SilPomHit neural=SilPomTryTowerNeural(texture,p,f,worldRay,searchRay,low,model.weights
 #if SILPOM_HIT_NEURAL_CACHE
@@ -547,22 +577,6 @@ SilPomHit SilPomIntersectFace(SP_TEX texture,SilPomPatch p,SilPomMeshFace f,SilP
     );
     if(neural.status==SP_HIT) return neural;
     }
-#if SILPOM_NEURAL_NO_MARCH
-    // One call site for the first-level solver: Level 2 returns a fallback
-    // marker instead of inlining its own copies (same order and retry caps).
-    SilPomHit predicted=SilPomPredictionFallback(retryCap);
-#ifdef SILPOM_LEVEL2
-    SP_BRANCH if(SILPOM_LEVEL2 && SilPomHasLevelTwo(model))
-        predicted=SilPomPredictTowerHit2(texture,p,f,worldRay,searchRay,low,model,validationIterations,retryCap,toleranceMultiplier,reliefMode);
-#endif
-    SP_BRANCH if((predicted.status&SP_PREDICTION_FALLBACK)!=0u)
-        predicted=SilPomPredictTowerHit(texture,p,f,worldRay,searchRay,low,model,validationIterations,predicted.status&0xFFFFu,toleranceMultiplier,reliefMode);
-    predicted=SilPomRecoverNearestHit(texture,p,f,worldRay,searchRay,low,predicted,model.id);
-    if(predicted.status==SP_HIT || !SilPomReliefFillEnabled(reliefMode)) return predicted;
-    SILPOM_DIAGNOSTIC(10,0);
-    SilPomHit fill=SilPomTowerBaseHit(p,f,worldRay,low);
-    SILPOM_DIAGNOSTIC(11,fill.status);
-    return fill;
 #endif
 #endif
 

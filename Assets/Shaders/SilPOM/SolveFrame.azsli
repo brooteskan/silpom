@@ -1,0 +1,452 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+// Compact per-pixel state for the no-march hit solver. Position, displacement
+// direction, texture coordinates and barycentric weights are affine in the
+// face UV, so they are precomputed once relative to the ray origin. The face,
+// patch, UV bounds and world ray need not stay live through the solve, which
+// is what limits how many pixels a GPU keeps in flight (registers).
+struct SilPomSolveFrame
+{
+    float3 base;          // surface point at uv=(0,0), height 0, minus the ray origin
+    float3 du,dv;         // d position / d uv
+    float3 direction0,directionU,directionV; // displacement direction D(uv), affine
+    float3 ray;           // ray direction
+    float3 normal;        // authored face normal
+    float3 weightB,weightC; // barycentric b and c = dot(weight, (u, v, 1))
+    float2 uv0,edge1,edge2; // corner uv0 and the edges to uv1 and uv2
+    float2 texScale,texOffset; // face uv -> height texture uv
+    float2 low,span;      // UV bounding box of the face
+    float tolerance;      // Newton convergence distance, before the multiplier
+    float incidence;      // min(-dot(normal or corner direction, ray))
+    float cornerMin,cornerMax; // range of dot(normal, corner direction)
+};
+
+SilPomSolveFrame SilPomMakeSolveFrame(SilPomMeshFace f,SilPomPatch p,float2 low,SilPomRay worldRay)
+{
+    SilPomSolveFrame s;
+    s.uv0=f.uv0;s.edge1=f.uv1-f.uv0;s.edge2=f.uv2-f.uv0;
+    const float inverseArea=1/(s.edge1.x*s.edge2.y-s.edge1.y*s.edge2.x);
+    s.weightB=float3(s.edge2.y,-s.edge2.x,s.uv0.y*s.edge2.x-s.uv0.x*s.edge2.y)*inverseArea;
+    s.weightC=float3(-s.edge1.y,s.edge1.x,s.uv0.x*s.edge1.y-s.uv0.y*s.edge1.x)*inverseArea;
+    const float3 toB=f.d1-f.d0,toC=f.d2-f.d0;
+    s.directionU=toB*s.weightB.x+toC*s.weightC.x;
+    s.directionV=toB*s.weightB.y+toC*s.weightC.y;
+    s.direction0=f.d0+toB*s.weightB.z+toC*s.weightC.z;
+    s.du=f.du;s.dv=f.dv;
+    s.base=f.origin-f.du*f.uv0.x-f.dv*f.uv0.y-worldRay.origin;
+    s.ray=worldRay.direction;
+    s.normal=f.normal;
+    s.texScale=float2(p.tileU/p.width,p.tileV/p.height);
+    s.texOffset=float2(p.offsetU,p.offsetV)-low*s.texScale;
+    s.low=low;s.span=float2(p.width,p.height);
+    s.tolerance=2e-6f*max(1.0f,max(length(f.du),length(f.dv)));
+    s.incidence=min(-dot(f.normal,s.ray),min(-dot(f.d0,s.ray),min(-dot(f.d1,s.ray),-dot(f.d2,s.ray))));
+    const float3 corners=float3(dot(f.normal,f.d0),dot(f.normal,f.d1),dot(f.normal,f.d2));
+    s.cornerMin=min(corners.x,min(corners.y,corners.z));
+    s.cornerMax=max(corners.x,max(corners.y,corners.z));
+    return s;
+}
+float3 SilPomFrameWeights(SilPomSolveFrame s,float2 uv)
+{
+    const float3 homogeneous=float3(uv.x,uv.y,1.0f);
+    const float b=dot(s.weightB,homogeneous),c=dot(s.weightC,homogeneous);
+    return float3(1-b-c,b,c);
+}
+float SilPomFrameInside(SilPomSolveFrame s,float2 uv)
+{
+    const float3 w=SilPomFrameWeights(s,uv);
+    return min(w.x,min(w.y,w.z));
+}
+float3 SilPomFrameDirection(SilPomSolveFrame s,float2 uv)
+{
+    return s.direction0+s.directionU*uv.x+s.directionV*uv.y;
+}
+// The nearest point of the triangle along its clamped barycentric weights.
+float2 SilPomFrameClampUv(SilPomSolveFrame s,float2 uv)
+{
+    const float3 w=max(SilPomFrameWeights(s,uv),0.0f);
+    return s.uv0+(s.edge1*w.y+s.edge2*w.z)/(w.x+w.y+w.z);
+}
+float2 SilPomFrameTexture(SilPomSolveFrame s,float2 uv)
+{
+    return uv*s.texScale+s.texOffset;
+}
+// The ray in (u, v, height along D) coordinates: the face plane displaced
+// along the constant direction D.
+bool SilPomFrameSeedRay(SilPomSolveFrame s,float3 D,SP_REF(SilPomRay) ray)
+{
+    const float determinant=dot(s.du,cross(s.dv,D));
+    if(abs(determinant)<1e-10f) return false;
+    const float inverse=1/determinant;
+    const float3 U=cross(s.dv,D)*inverse,V=cross(D,s.du)*inverse,Z=cross(s.du,s.dv)*inverse;
+    ray.origin=float3(-dot(U,s.base),-dot(V,s.base),-dot(Z,s.base));
+    ray.direction=float3(dot(U,s.ray),dot(V,s.ray),dot(Z,s.ray));
+    return true;
+}
+float SilPomFrameSample(SP_TEX texture,SilPomPatch p,SilPomSolveFrame s,float2 uv)
+{
+    const float2 inset=.5f/float2(p.textureWidth,p.textureHeight);
+    const float2 tex=SilPomFrameTexture(s,uv);
+    return SP_SAMPLE_HEIGHT(texture,p.addressMode==0 ? frac(tex) : clamp(tex,inset,1-inset));
+}
+// Height and its derivatives in face UV at uv, reusing the bilinear cell.
+float3 SilPomFrameHeight(SP_TEX texture,SilPomPatch p,SilPomSolveFrame s,float2 uv,SP_REF(SilPomRefineHeightCell) cell)
+{
+    const float2 tex=SilPomFrameTexture(s,uv);
+    const float x=tex.x*p.textureWidth-.5f,y=tex.y*p.textureHeight-.5f;
+    const int ix=int(floor(x)),iy=int(floor(y));
+    const float fx=x-floor(x),fy=y-floor(y);
+    if(!cell.valid || cell.ix!=ix || cell.iy!=iy)
+    {
+#if !defined(SILPOM_CPU) && defined(SILPOM_VALIDATION_GATHER)
+        bool gathered=false;
+        [branch] if(SILPOM_VALIDATION_GATHER)
+        {
+            const int ax=SilPomAddress(ix,int(p.textureWidth),p.addressMode);
+            const int ay=SilPomAddress(iy,int(p.textureHeight),p.addressMode);
+            if(ax+1<int(p.textureWidth) && ay+1<int(p.textureHeight) && (p.addressMode==0 || (ix>=0 && iy>=0)))
+            {
+                const float4 quad=texture.GatherRed(GetMaterialTextureSampler(),
+                    (float2(ax,ay)+1.0f)/float2(p.textureWidth,p.textureHeight));
+                cell.h00=quad.w;cell.h10=quad.z;cell.h01=quad.x;cell.h11=quad.y;
+                gathered=true;
+            }
+        }
+        if(!gathered)
+#endif
+        {
+            cell.h00=SilPomTexel(texture,p,ix,iy);cell.h10=SilPomTexel(texture,p,ix+1,iy);
+            cell.h01=SilPomTexel(texture,p,ix,iy+1);cell.h11=SilPomTexel(texture,p,ix+1,iy+1);
+        }
+        cell.ix=ix;cell.iy=iy;cell.valid=true;
+    }
+    const float a=cell.h00,b=cell.h10-a,c=cell.h01-a,d=cell.h11-a-b-c;
+    return float3(p.scale*(a+b*fx+c*fy+d*fx*fy-p.reference),
+        p.scale*(b+d*fy)*p.textureWidth*s.texScale.x,
+        p.scale*(c+d*fx)*p.textureHeight*s.texScale.y);
+}
+// Bounded, damped Newton refinement on the displaced surface. Never accepts
+// an unconverged iterate as geometry.
+uint SilPomFrameRefine(SP_TEX texture,SilPomPatch p,SilPomSolveFrame s,float tMin,float tMax,
+    SP_REF(float2) uv,SP_REF(float) t,uint maxIterations,float toleranceMultiplier)
+{
+    SilPomRefineHeightCell cell=SP_ZERO(SilPomRefineHeightCell);
+    const float tolerance=s.tolerance*toleranceMultiplier;
+    for(uint iteration=0;iteration<maxIterations;++iteration)
+    {
+        SILPOM_DIAGNOSTIC(1,iteration);
+        const float3 D=SilPomFrameDirection(s,uv);
+        const float3 h=SilPomFrameHeight(texture,p,s,uv,cell);
+        const float3 residual=s.base+s.du*uv.x+s.dv*uv.y+D*h.x-s.ray*t;
+        if(dot(residual,residual)<=tolerance*tolerance)
+        {
+            const uint status=SilPomFrameInside(s,uv)>=-2e-6f && t>=tMin && t<=tMax ? SP_HIT : SP_MISS;
+            SILPOM_DIAGNOSTIC(2,status);
+            return status;
+        }
+        const float3 U=s.du+s.directionU*h.x+D*h.y,V=s.dv+s.directionV*h.x+D*h.z;
+        const float3 crossVR=cross(V,s.ray);
+        const float determinant=dot(U,crossVR);
+        if(abs(determinant)<1e-9f) { SILPOM_DIAGNOSTIC(3,0); return SP_REFINE_REJECTED; }
+        const float inverse=1/determinant;
+        const float deltaU=-dot(residual,crossVR)*inverse;
+        const float deltaV=-dot(U,cross(residual,s.ray))*inverse;
+        const float deltaT=dot(U,cross(V,residual))*inverse;
+        // Keep Newton from jumping across many unrelated heightfield features.
+        const float step=max(abs(deltaU)/s.span.x,abs(deltaV)/s.span.y);
+        const float damping=step>.25f?.25f/step:1.0f;
+        uv+=float2(deltaU,deltaV)*damping;t+=deltaT*damping;
+        const float2 offset=uv-s.low;
+        if(offset.x<-s.span.x || offset.x>2*s.span.x || offset.y<-s.span.y || offset.y>2*s.span.y)
+        { SILPOM_DIAGNOSTIC(4,0); return SP_REFINE_REJECTED; }
+    }
+    SILPOM_DIAGNOSTIC(5,0);
+    return SP_REFINE_REJECTED;
+}
+SilPomHit SilPomFrameHit(SilPomSolveFrame s,float2 uv,float t)
+{
+    SilPomHit hit=SP_ZERO(SilPomHit);
+    hit.status=SP_HIT;hit.t=t;hit.faceUv=uv;hit.uv=SilPomFrameTexture(s,uv);
+    return hit;
+}
+// A validated candidate from a seed depth along the projected ray.
+SilPomHit SilPomFrameCandidate(SP_TEX texture,SilPomPatch p,SilPomSolveFrame s,SilPomRay projected,
+    float tMin,float tMax,float seedT,uint validationIterations,float toleranceMultiplier)
+{
+    float t=seedT;
+    float2 uv=SilPomFrameClampUv(s,SP_XY(projected.origin)+SP_XY(projected.direction)*t);
+    SILPOM_DIAGNOSTIC(6,0);
+    if(SilPomFrameRefine(texture,p,s,tMin,tMax,uv,t,validationIterations,toleranceMultiplier)!=SP_HIT)
+        return SP_ZERO(SilPomHit);
+    SILPOM_DIAGNOSTIC(7,0);
+    return SilPomFrameHit(s,uv,t);
+}
+
+#if SILPOM_HIT_NEURAL && !defined(SILPOM_EVALUATION)
+// Model 0: the seed network (or seed cache) proposes a depth along the
+// centroid direction; one short refinement validates it.
+SilPomHit SilPomFrameSeed(SP_TEX texture,SilPomPatch p,SilPomSolveFrame s,SilPomRay worldRay,SilPomRay search,SilPomWeights w
+#if SILPOM_HIT_NEURAL_CACHE
+    ,SP_TEX cache
+#endif
+)
+{
+    SilPomHit miss=SP_ZERO(SilPomHit);
+    // Grazing rays and hits near triangle edges keep the full prediction.
+    if(s.incidence<.30f) return miss;
+    SilPomRay seed;
+    if(!SilPomFrameSeedRay(s,SilPomFrameDirection(s,s.uv0+(s.edge1+s.edge2)*(1.0f/3.0f)),seed) || seed.direction.z>=-.01f) return miss;
+    const float2 size=float2(p.textureWidth,p.textureHeight);
+    float prediction;
+#if SILPOM_HIT_NEURAL_CACHE
+    const float top=(p.scale*(1.0f-p.reference)-seed.origin.z)/seed.direction.z;
+    const float2 entry=SilPomFrameTexture(s,SP_XY(seed.origin)+SP_XY(seed.direction)*top)*size;
+    const float2 delta=SP_XY(seed.direction)*(p.scale/seed.direction.z)*s.texScale*size;
+    if(!SilPomReadTowerNeuralCache(cache,w,entry,delta,prediction)) return miss;
+#else
+    const float2 inset=.5f/size;
+    const float2 slopes=clamp(SP_XY(seed.direction)*(p.scale/(16*seed.direction.z))*s.texScale*size,-2.0f,2.0f);
+    float4 heights;
+    SP_UNROLL for(uint i=0;i<4;++i)
+    {
+        const float level=(float(i)+.5f)*.25f;
+        const float t=(p.scale*(level-p.reference)-seed.origin.z)/seed.direction.z;
+        heights[i]=SP_SAMPLE_HEIGHT(texture,clamp(SilPomFrameTexture(s,SP_XY(seed.origin)+SP_XY(seed.direction)*t),inset,1-inset));
+    }
+    prediction=SilPomSeedNetwork(2*heights-1,slopes,(heights.y+heights.z)*.5f,w);
+#endif
+    const float predictedT=(p.scale*(saturate(prediction)-p.reference)-seed.origin.z)/seed.direction.z;
+    if(predictedT<search.tMin || predictedT>search.tMax) return miss;
+    float t=predictedT;
+    float2 uv=SP_XY(seed.origin)+SP_XY(seed.direction)*t;
+    if(SilPomFrameInside(s,uv)<.015f) return miss;
+    if(SilPomFrameRefine(texture,p,s,worldRay.tMin,worldRay.tMax,uv,t,5u,1.0f)!=SP_HIT) return miss;
+    if(SilPomFrameInside(s,uv)<.015f || abs(t-predictedT)*s.incidence>.004f) return miss;
+    return SilPomFrameHit(s,uv,t);
+}
+#endif
+
+// Clips the search to the displacement slab and projects the ray along the
+// direction at the middle of the search.
+bool SilPomFramePrepare(SilPomPatch p,SilPomSolveFrame s,SP_REF(SilPomRay) search,SP_REF(SilPomRay) projected)
+{
+    projected=search;
+    if(!SilPomFrameSeedRay(s,SilPomFrameDirection(s,s.uv0+(s.edge1+s.edge2)*(1.0f/3.0f)),projected)) return false;
+    const float middle=(search.tMin+search.tMax)*.5f;
+    const float3 local=SilPomFrameDirection(s,SilPomFrameClampUv(s,SP_XY(projected.origin)+SP_XY(projected.direction)*middle));
+    if(!SilPomFrameSeedRay(s,local,projected)) return false;
+    // Heights along the normal at the corners, relative to the local direction.
+    const float scaleNormal=1/dot(s.normal,local);
+    const float a=s.cornerMin*scaleNormal,b=s.cornerMax*scaleNormal;
+    const float h0=-p.scale*p.reference,h1=p.scale*(1-p.reference);
+    const float minZ=min(min(h0*a,h1*a),min(h0*b,h1*b))-1e-5f;
+    const float maxZ=max(max(h0*a,h1*a),max(h0*b,h1*b))+1e-5f;
+    if(abs(projected.direction.z)>1e-7f)
+    {
+        const float first=(minZ-projected.origin.z)/projected.direction.z;
+        const float second=(maxZ-projected.origin.z)/projected.direction.z;
+        search.tMin=max(search.tMin,min(first,second));
+        search.tMax=min(search.tMax,max(first,second));
+    }
+    else if(projected.origin.z<minZ || projected.origin.z>maxZ) return false;
+    return search.tMax-search.tMin>1e-7f;
+}
+
+#if SILPOM_HIT_NEURAL
+// First-level prediction: four height probes along the projected ray and the
+// hit network choose the seed; retries use the probes in residual order.
+SilPomHit SilPomFramePredict(SP_TEX texture,SilPomPatch p,SilPomSolveFrame s,SilPomRay worldRay,SilPomRay search,
+    SilPomTrainedModel model,uint validationIterations,uint retryCap,float toleranceMultiplier,uint reliefMode)
+{
+    SilPomHit miss=SP_ZERO(SilPomHit);
+    SilPomRay projected;
+    if(!SilPomFramePrepare(p,s,search,projected)) return miss;
+    const float span=search.tMax-search.tMin;
+    float feature[11];
+    SP_UNROLL for(uint i=0;i<4;++i)
+    {
+        const float t=search.tMin+span*((float(i)+.5f)*.25f);
+        const float3 location=projected.origin+projected.direction*t;
+        feature[i]=clamp(SilPomFrameSample(texture,p,s,SP_XY(location))-(location.z/p.scale+p.reference),-1.5f,1.5f);
+        feature[6+i]=clamp(24.0f*SilPomFrameInside(s,SP_XY(location)),-1.0f,1.0f);
+    }
+    const float2 rate=clamp(SP_XY(projected.direction)*span*s.texScale*float2(p.textureWidth,p.textureHeight)/16.0f,-2.0f,2.0f);
+    feature[4]=rate.x;feature[5]=rate.y;
+    feature[10]=-dot(s.normal,s.ray);
+#ifdef SILPOM_CAPTURE_FEATURES
+    SILPOM_CAPTURE_INTERVAL(search.tMin,span);
+    if(SILPOM_CAPTURE_FEATURES(feature,11)) return miss;
+#endif
+    float2 logits;
+#ifdef SILPOM_OVERRIDE_MODEL
+    if(!SILPOM_OVERRIDE_MODEL(feature,model,logits))
+#endif
+    {
+        logits=SilPomHitNetwork(feature,model.weights);
+    }
+    float4 residuals=abs(float4(feature[0],feature[1],feature[2],feature[3]));
+    const float nearestResidual=min(min(residuals.x,residuals.y),min(residuals.z,residuals.w));
+    const float insideFace=max(max(feature[6],feature[7]),max(feature[8],feature[9]));
+    const bool recoverMiss=SilPomReliefFillEnabled(reliefMode) && insideFace>=0.0f && nearestResidual<.12f;
+    if(logits.y<(recoverMiss?-3.5f:-2.944439f)) { SILPOM_DIAGNOSTIC(8,0); return miss; }
+    const float fraction=rcp(1.0f+exp(-clamp(logits.x,-20.0f,20.0f)));
+    SilPomHit hit=SilPomFrameCandidate(texture,p,s,projected,worldRay.tMin,worldRay.tMax,search.tMin+fraction*span,validationIterations,toleranceMultiplier);
+    if(hit.status==SP_HIT || !SilPomReliefNoMarch(reliefMode)) return hit;
+    const uint attempts=min(retryCap,(!SilPomIsWallProfile(model) && recoverMiss && logits.y>0.0f) ? 4u : 1u);
+    SP_LOOP for(uint attempt=0;attempt<attempts;++attempt)
+    {
+        SILPOM_DIAGNOSTIC(9,0);
+        const uint first=residuals.x<=residuals.y?0u:1u;
+        const uint second=residuals.z<=residuals.w?2u:3u;
+        const uint nearest=residuals[first]<=residuals[second]?first:second;
+        hit=SilPomFrameCandidate(texture,p,s,projected,worldRay.tMin,worldRay.tMax,
+            search.tMin+span*((float(nearest)+.5f)*.25f),validationIterations,toleranceMultiplier);
+        if(hit.status==SP_HIT) return hit;
+        residuals[nearest]=2.0f;
+    }
+    return hit;
+}
+
+#ifdef SILPOM_LEVEL2
+// Level 2: eight probes and two trained hypotheses; where the first-level
+// solver must run instead, returns SilPomPredictionFallback with its cap.
+SilPomHit SilPomFramePredict2(SP_TEX texture,SilPomPatch p,SilPomSolveFrame s,SilPomRay worldRay,SilPomRay search,
+    SilPomTrainedModel model,uint iterations,uint retryCap,float tolerance,uint reliefMode)
+{
+    SilPomHit miss=SP_ZERO(SilPomHit);
+    SilPomRay projected;
+    if(!SilPomFramePrepare(p,s,search,projected)) return miss;
+    const float span=search.tMax-search.tMin;
+    float feature[19];
+    float nearestResidual=1e20f,inside=-1.0f;
+    SP_UNROLL for(uint i=0;i<8;++i)
+    {
+        const float t=search.tMin+span*((float(i)+.5f)*.125f);
+        const float3 location=projected.origin+projected.direction*t;
+        SILPOM_DIAGNOSTIC(12,0);
+        feature[i]=clamp(SilPomFrameSample(texture,p,s,SP_XY(location))-(location.z/p.scale+p.reference),-1.5f,1.5f);
+        feature[10+i]=clamp(24.0f*SilPomFrameInside(s,SP_XY(location)),-1.0f,1.0f);
+        nearestResidual=min(nearestResidual,abs(feature[i]));
+        inside=max(inside,feature[10+i]);
+    }
+    const float2 rate=clamp(SP_XY(projected.direction)*span*s.texScale*float2(p.textureWidth,p.textureHeight)/16.0f,-2.0f,2.0f);
+    feature[8]=rate.x;feature[9]=rate.y;feature[18]=-dot(s.normal,s.ray);
+#ifdef SILPOM_CAPTURE_FEATURES
+    SILPOM_CAPTURE_INTERVAL(search.tMin,span);
+    if(SILPOM_CAPTURE_FEATURES(feature,19)) return miss;
+#endif
+    float output[5];
+#ifdef SILPOM_OVERRIDE_LEVEL2
+    if(!SILPOM_OVERRIDE_LEVEL2(feature,model,output))
+#endif
+    {
+        SilPomLevelTwoNetwork(feature,model.weights,output);
+    }
+    const bool recover=SilPomReliefFillEnabled(reliefMode) && inside>=0.0f && nearestResidual<.12f;
+    if(output[2]<(recover?-3.5f:-2.944439f)) { SILPOM_DIAGNOSTIC(14,0); return SilPomPredictionFallback(retryCap); }
+    float a=rcp(1.0f+exp(-clamp(output[0],-20.0f,20.0f)));
+    float b=rcp(1.0f+exp(-clamp(output[1],-20.0f,20.0f)));
+    if(output[4]>output[3]) { const float temporary=a;a=b;b=temporary; }
+    SilPomHit hit=SilPomFrameCandidate(texture,p,s,projected,worldRay.tMin,worldRay.tMax,search.tMin+a*span,iterations,tolerance);
+    uint usedRetries=0;
+    if(retryCap>0u)
+    {
+        SILPOM_DIAGNOSTIC(9,0);SILPOM_DIAGNOSTIC(13,0);
+        const SilPomHit second=SilPomFrameCandidate(texture,p,s,projected,worldRay.tMin,worldRay.tMax,search.tMin+b*span,iterations,tolerance);
+        if(second.status==SP_HIT && (hit.status!=SP_HIT || second.t<hit.t))
+        {
+            // Count a distinct nearer solution, excluding sub-micrometre
+            // roundoff when both seeds reach the same root. Depth keeps min(t).
+            const bool distinct=hit.status!=SP_HIT || second.t<hit.t-1e-6f;
+            hit=second;
+            if(distinct) { SILPOM_DIAGNOSTIC(15,0); }
+        }
+        usedRetries=1u;
+    }
+    if(hit.status==SP_HIT) return hit;
+    if(retryCap>usedRetries) { SILPOM_DIAGNOSTIC(9,0);SILPOM_DIAGNOSTIC(14,0); return SilPomPredictionFallback(retryCap-usedRetries-1u); }
+    return hit;
+}
+#endif
+#endif
+
+// Grazing wall rays (model 4): ordered half-texel probes find an earlier
+// sign change; only the validator publishes geometry, within a fixed budget.
+SilPomHit SilPomFrameRecoverNearest(SP_TEX texture,SilPomPatch p,SilPomSolveFrame s,SilPomRay worldRay,
+    SilPomRay search,SilPomHit predicted,uint model)
+{
+    SP_BRANCH if(model!=4u || abs(dot(s.normal,s.ray))>=.30f*length(s.ray) || p.scale<=0.0f) return predicted;
+    SilPomRay projected=search;
+    if(!SilPomFrameSeedRay(s,SilPomFrameDirection(s,s.uv0+(s.edge1+s.edge2)*(1.0f/3.0f)),projected)) return predicted;
+    SilPomRay bounded=projected;
+    const float2 center=s.low+s.span*.5f;
+    bounded.origin.x-=center.x;bounded.origin.y-=center.y;
+    float begin=0,end=0;
+    if(!SilPomInterval(bounded,p,begin,end)) return predicted;
+    const float span=end-begin;
+    const float travel=max(abs(projected.direction.x*s.texScale.x)*p.textureWidth,
+        abs(projected.direction.y*s.texScale.y)*p.textureHeight)*span;
+    const uint count=uint(min(max(floor(travel*2.0f)+1.0f,1.0f),128.0f));
+    const float validationEnd=predicted.status==SP_HIT ? min(worldRay.tMax,predicted.t) : worldRay.tMax;
+    float previous=0;
+    uint attempts=0;
+    static const uint batchSize=4u;
+    SP_LOOP for(uint firstProbe=0u;firstProbe<=count;firstProbe+=batchSize)
+    {
+        float4 residuals=float4(0,0,0,0);
+        SP_UNROLL for(uint offset=0u;offset<batchSize;++offset)
+        {
+            const uint probe=firstProbe+offset;
+            if(probe<=count)
+            {
+                const float t=begin+span*(float(probe)/float(count));
+                const float3 location=projected.origin+projected.direction*t;
+                residuals[offset]=SilPomFrameSample(texture,p,s,SP_XY(location))-(location.z/p.scale+p.reference);
+            }
+        }
+        uint candidates=0u;
+        float leftResidual=previous;
+        SP_UNROLL for(uint offset=0u;offset<batchSize;++offset)
+        {
+            const uint probe=firstProbe+offset;
+            if(probe>0u && probe<=count && (leftResidual*residuals[offset]<=0.0f || abs(residuals[offset])<.002f))
+                candidates|=1u<<offset;
+            leftResidual=residuals[offset];
+        }
+        SP_LOOP while(candidates!=0u)
+        {
+            const uint offset=(candidates&1u)!=0u?0u:((candidates&2u)!=0u?1u:((candidates&4u)!=0u?2u:3u));
+            candidates&=candidates-1u;
+            leftResidual=offset!=0u ? residuals[offset-1u] : previous;
+            const uint probe=firstProbe+offset;
+            const float leftT=begin+span*(float(probe-1u)/float(count));
+            const float residual=residuals[offset];
+            const float t=begin+span*(float(probe)/float(count));
+            const float difference=leftResidual-residual;
+            const float weight=abs(difference)>1e-8f?clamp(leftResidual/difference,0.0f,1.0f):.5f;
+            float candidateT=leftT+(t-leftT)*weight;
+            float2 uv=SP_XY(projected.origin)+SP_XY(projected.direction)*candidateT;
+            if(SilPomFrameRefine(texture,p,s,worldRay.tMin,validationEnd,uv,candidateT,8u,1.0f)==SP_HIT)
+                return SilPomFrameHit(s,uv,candidateT);
+            if(++attempts==4u) return predicted;
+        }
+        previous=residuals[min(batchSize-1u,count-firstProbe)];
+    }
+    return predicted;
+}
+// The authored base plane, for the grazing fill or the shell transition.
+SilPomHit SilPomFrameBaseHit(SilPomSolveFrame s,float tMin,float tMax,bool grazingOnly)
+{
+    SilPomHit hit=SP_ZERO(SilPomHit);
+    const float incidence=dot(s.normal,s.ray);
+    if(grazingOnly ? (incidence>=-1e-7f || incidence<=-SP_TOWER_MAX_FILL_INCIDENCE) : abs(incidence)<=1e-7f) return hit;
+    SilPomRay plane;
+    if(!SilPomFrameSeedRay(s,s.normal,plane) || abs(plane.direction.z)<=1e-12f) return hit;
+    const float t=-plane.origin.z/plane.direction.z;
+    if(t<tMin || t>tMax) return hit;
+    const float2 uv=SP_XY(plane.origin)+SP_XY(plane.direction)*t;
+    if(SilPomFrameInside(s,uv)<0.0f) return hit;
+    hit=SilPomFrameHit(s,uv,t);
+    hit.gradientRepresentation=2u; // authored base plane, including ordinary-status grazing fill
+    return hit;
+}
