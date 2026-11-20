@@ -127,6 +127,8 @@ bool FindLearnedWallMaterialImages(AZ::Data::AssetId (&ids)[3])
 }
 
 AZStd::atomic_uint64_t ReceiverSurfaceRevision{0};
+AZ_CVAR(bool, r_silpomHitDepthPrepass, true, nullptr, AZ::ConsoleFunctorFlags::Null,
+    "Draw the wall-backup bottom shell depth-only before SilPOMHitDepth (1x), so hidden relief is rejected by early depth testing regardless of draw order.");
 AZ_CVAR(bool, r_silpomReuseDepthHits, false, nullptr, AZ::ConsoleFunctorFlags::Null,
     "Use the DX12 SilPOM hit buffer in MainPipeline (1x, 2x or 4x).");
 AZ_CVAR(bool,r_silpomMsaa4,false,nullptr,AZ::ConsoleFunctorFlags::Null,
@@ -466,6 +468,7 @@ bool InstallHitPasses(AZ::RPI::Scene& scene, bool required)
     const AZ::Name hitDepthName("SilPOMHitDepth"), hitForwardName("SilPOMHitForward");
     const AZ::Name classifyName("SilPOMClassifyWallHoles"), fillName("SilPOMFillWallHoles");
     const AZ::Name backupName("SilPOMHitDepthWallBackup"), backupTemplate("SilPOMHitDepthWallBackupTemplate");
+    const AZ::Name prepassName("SilPOMHitDepthPrepass"), prepassTemplate("SilPOMHitDepthPrepassTemplate");
     const AZ::Name depthTemplate("SilPOMHitDepthTemplate"), forwardTemplate("SilPOMHitForwardTemplate");
     const AZ::Name shadowName("SilPOMHitShadow"), shadowTemplate("SilPOMHitShadowTemplate");
     const AZ::Name clearName("SilPOMClearHits"),clearTemplate("SilPOMClearHitsTemplate"),msaaDepthTemplate("SilPOMHitDepthMsaaTemplate");
@@ -484,7 +487,8 @@ bool InstallHitPasses(AZ::RPI::Scene& scene, bool required)
     if (!foundMainPipeline) return false;
     if ((!system->GetPassTemplate(depthTemplate) || !system->GetPassTemplate(clearTemplate) || !system->GetPassTemplate(msaaDepthTemplate)
         || !system->GetPassTemplate(shadowTemplate)
-        || !system->GetPassTemplate(msaaClassifyTemplate) || (required && !system->GetPassTemplate(backupTemplate))
+        || !system->GetPassTemplate(msaaClassifyTemplate) || (required && (!system->GetPassTemplate(backupTemplate)
+            || !system->GetPassTemplate(prepassTemplate)))
         ||(r_silpomMsaaInspect&&!system->GetPassTemplate(AZ::Name("SilPOMInspectSamplesTemplate"))))
         && !system->LoadPassTemplateMappings("passes/silpomhittemplates.azasset"))
         return false;
@@ -557,6 +561,13 @@ bool InstallHitPasses(AZ::RPI::Scene& scene, bool required)
         // neural misses must not become sky-visible cracks through solid walls.
         // Keep experimental 4x raw coverage independent of this continuity path.
         if(auto backup=pipeline->FindFirstPass(backupName))backup->SetEnabled(repairedCoverage);
+        // Depth pre-pass for the 1x route only (MSAA keeps its sample-depth contract).
+        if (required && !msaa && !pipeline->FindFirstPass(prepassName))
+        {
+            auto prepass = MakeHitPass(prepassName, prepassTemplate, *pipeline->FindFirstPass(depthName));
+            if (!prepass || !pipeline->AddPassBefore(prepass, hitDepthName)) return false;
+        }
+        if(auto prepass=pipeline->FindFirstPass(prepassName))prepass->SetEnabled(!msaa && repairedCoverage && r_silpomHitDepthPrepass);
         const char* inspectionNames[]={"SilPOMInspectRaw","SilPOMInspectFinal","SilPOMInspectColors"};
         for(unsigned i=0;i<3;++i)
         {

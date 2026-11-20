@@ -126,6 +126,11 @@
             "tag": "silpom_hit_depth_wall_backup"
         },
         {
+            "shader": "./SilPOMHitDepthPrepass.shader.template",
+            "azsli": "./SilPOMHitDepthPrepass.azsli",
+            "tag": "silpom_hit_depth_prepass"
+        },
+        {
             "shader": "./SilPOMHitForward.shader.template",
             "azsli": "./SilPOMHitForward.azsli",
             "tag": "silpom_hit_forward"

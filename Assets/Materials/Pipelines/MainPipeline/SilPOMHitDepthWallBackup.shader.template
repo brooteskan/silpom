@@ -3,7 +3,7 @@
     "DepthStencilState": {
         "Depth": {
             "Enable": true,
-            "CompareFunc": "Greater"
+            "CompareFunc": "GreaterEqual"
         }
     },
     "ProgramSettings": {

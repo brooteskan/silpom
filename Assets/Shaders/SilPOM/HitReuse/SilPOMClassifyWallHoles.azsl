@@ -92,14 +92,23 @@ uint4 FillIsolatedSky(int2 pixel,uint4 left, uint4 right, uint4 top, uint4 botto
     return fill;
 }
 
+// A pixel without any SilPOM record whose depth is at or behind an anchor shows
+// nothing nearer than the wall there: with the depth pre-pass that is the
+// bottom shell, a few centimetres behind its neighbours rather than the far
+// plane. Treat it like background; foreground geometry is still nearer.
+bool BehindAnchor(float depth, float anchor, uint centerOwner)
+{
+    return depth < MaximumGapDepthRatio * anchor || (centerOwner == 0u && depth <= anchor);
+}
+
 uint4 BridgeGap(int2 pixel, int2 axis, float centerDepth, uint centerOwner, uint4 a, uint4 b,out SilPomGradientContext context)
 {
     context=(SilPomGradientContext)0;
     int2 aPixel=pixel-axis,bPixel=pixel+axis;
     float za = RecordDepth(a);
     float zb = RecordDepth(b);
-    const bool nearA = IsWallHit(a) && centerDepth < MaximumGapDepthRatio * za;
-    const bool nearB = IsWallHit(b) && centerDepth < MaximumGapDepthRatio * zb;
+    const bool nearA = IsWallHit(a) && BehindAnchor(centerDepth, za, centerOwner);
+    const bool nearB = IsWallHit(b) && BehindAnchor(centerDepth, zb, centerOwner);
     if (!nearA && !nearB)
         return 0;
 
@@ -129,7 +138,7 @@ uint4 BridgeGap(int2 pixel, int2 axis, float centerDepth, uint centerOwner, uint
     }
 
     const float farAnchor = min(za, zb);
-    if (a.w != b.w || a.w == centerOwner || gapDepth >= MaximumGapDepthRatio * farAnchor ||
+    if (a.w != b.w || a.w == centerOwner || !BehindAnchor(gapDepth, farAnchor, centerOwner) ||
         farAnchor < MinimumPairAgreement * max(za, zb))
         return 0;
 
@@ -171,7 +180,9 @@ SilPomClassifyOutput MainPS(VSOutput input,uint sampleIndex:SV_SampleIndex)
     const uint4 top = PassSrg::m_hits.Load(pixel - vertical,silpomRepairSample);
     const uint4 bottom = PassSrg::m_hits.Load(pixel + vertical,silpomRepairSample);
     SilPomGradientContext context=(SilPomGradientContext)0;
-    if (centerDepth == 0.0f)
+    const uint centerRecord = PassSrg::m_hits.Load(pixel,silpomRepairSample).w;
+    const float nearestAnchor = max(max(RecordDepth(left), RecordDepth(right)), max(RecordDepth(top), RecordDepth(bottom)));
+    if (centerDepth == 0.0f || (centerRecord == 0u && centerDepth <= nearestAnchor))
     {
         const uint4 skyFill = FillIsolatedSky(pixel,left, right, top, bottom,context);
         if (skyFill.w != 0)

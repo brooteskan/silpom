@@ -25,6 +25,10 @@
         "Path": "Passes/SilPOMHitDepthWallBackup.pass"
       },
       {
+        "Name": "SilPOMHitDepthPrepassTemplate",
+        "Path": "Passes/SilPOMHitDepthPrepass.pass"
+      },
+      {
         "Name": "SilPOMInspectSamplesTemplate",
         "Path": "Passes/SilPOMInspectSamples.pass"
       },

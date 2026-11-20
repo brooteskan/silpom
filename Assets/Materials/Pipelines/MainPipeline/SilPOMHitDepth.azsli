@@ -187,7 +187,15 @@ SilPomGradientContext SilPomShellGradient(SilPomShellVertex IN)
         PassSrg::m_silpomViewport.zw,coarseSpan,representation);
 }
 
-#if SILPOM_WALL_BACKUP_SHELL
+#if SILPOM_WALL_BACKUP_SHELL && SILPOM_WALL_BACKUP_PREPASS
+// Depth-only pre-pass: the wall-backup shell's own raster depth, drawn before
+// SilPOMHitDepth. The visible relief is never behind the nearest bottom shell
+// (a ray from outside crosses the relief to reach it), so early depth testing
+// rejects hidden relief fragments regardless of draw order. The backup later
+// draws the same vertices with GreaterEqual, so every pixel the hit, repair
+// and fill passes leave at this depth still receives a backup record.
+// Vertex-only, like Atom's DepthPass: no fragment entry, no output contract.
+#elif SILPOM_WALL_BACKUP_SHELL
 struct SilPomWallBackupOutput
 {
     uint4 hit : SV_Target0;

@@ -196,10 +196,18 @@ bool SilPomTryCachedImplicitVertex(VsInput IN,const MaterialParameters params,fl
     if(coverage.status==SP_IMPLICIT_CACHE_LIVE)
     {
         const SilPomMeshFace face=SilPomLoadFace(params.m_meshBufferIndex,faceIndex);
-        float4 cornerDepth;
+        // Clip W is view depth; the near plane's W comes from unprojecting
+        // NDC depth 1 (reverse Z). Keep faces within a relief overlap of it.
+        const float4 clipRowW=ViewSrg::m_viewProjectionMatrix[3];
+        const float4 nearH=mul(ViewSrg::m_viewProjectionInverseMatrix,float4(0,0,1,1));
+        const float nearW=dot(clipRowW,float4(nearH.xyz/nearH.w,1));
+        float4 cornerDepth;bool behindVolume;
         SilPomImplicitPlaneDepth(face,params.m_silpomScale,params.m_silpomReference,model,
-            ViewSrg::m_worldPosition.xyz,ViewSrg::m_viewProjectionInverseMatrix,coverage,coverage.depth,cornerDepth);
+            ViewSrg::m_worldPosition.xyz,ViewSrg::m_viewProjectionInverseMatrix,coverage,coverage.depth,
+            clipRowW,nearW+SilPomQualityLodOverlap(params.m_silpomScale,params.m_silpomMaxReliefDistance),
+            cornerDepth,behindVolume);
         depth=cornerDepth[(IN.position.x>0?1u:0u)+(IN.position.y>0?2u:0u)];
+        if(behindVolume)output.position=float4(2,2,0,1);
     }
     return true;
 }

@@ -256,27 +256,44 @@ SilPomImplicitCoverage SilPomBuildImplicitCoverage(SilPomMeshFace f,SilPomImplic
 // face-wide constant bound cannot do at glancing angles. Returns false (keep
 // the constant bound) when the camera is inside the slab or a corner's plane
 // depth leaves the depth range, where the rasterizer would clip coverage.
+// Behind-volume cull: drop a face's proxy when the camera lies beyond its
+// whole displacement volume on the side opposite the relief's rise. Every ray
+// then reaches the face from inside the solid, behind the surface that faces
+// the camera. Corner directions stay within 75 degrees of the face normal
+// (FaceNormals::Build), so this is a back-face test on the volume. Faces whose
+// volume reaches the near clip plane are kept: where the near plane slices a
+// wall open, their back-side hits keep the cut looking solid instead of
+// showing through to whatever lies beyond.
+#ifndef SILPOM_CULL_BEHIND_VOLUME
+#define SILPOM_CULL_BEHIND_VOLUME 1
+#endif
 bool SilPomImplicitPlaneDepth(SilPomMeshFace face,float scale,float reference,
     float4x4 model,float3 camera,float4x4 viewProjectionInverse,SilPomImplicitCoverage coverage,
-    float constantDepth,out float4 cornerDepth)
+    float constantDepth,float4 clipRowW,float keepWithinW,out float4 cornerDepth,out bool behindVolume)
 {
-    cornerDepth=constantDepth;
+    cornerDepth=constantDepth;behindVolume=false;
     const float3x3 rotation=(float3x3)model;
     float3 normal=cross(mul(rotation,face.du),mul(rotation,face.dv));
     const float lengthSq=dot(normal,normal);
     if(!(lengthSq>1e-30f))return false;
     normal*=rsqrt(lengthSq);
-    float lowest=1e30f,highest=-1e30f;
+    float lowest=1e30f,highest=-1e30f,nearestW=1e30f;
     [unroll] for(uint i=0;i<6;++i)
     {
         const float2 uv=i/2==0?face.uv0:(i/2==1?face.uv1:face.uv2);
         const float3 D=i/2==0?face.d0:(i/2==1?face.d1:face.d2);
         const float h=scale*(float(i&1)-reference);
         const float3 p=face.origin+face.du*(uv.x-face.uv0.x)+face.dv*(uv.y-face.uv0.y)+D*h;
-        const float d=dot(normal,mul(model,float4(p,1)).xyz);
+        const float3 world=mul(model,float4(p,1)).xyz;
+        const float d=dot(normal,world);
         lowest=min(lowest,d);highest=max(highest,d);
+        nearestW=min(nearestW,dot(clipRowW,float4(world,1)));
     }
     const float side=dot(normal,camera);
+    const float rise=dot(normal,mul(rotation,face.d0+face.d1+face.d2))*(scale>=0?1.0f:-1.0f);
+    const float margin=.01f*(highest-lowest)+1e-5f*(abs(lowest)+abs(highest)+abs(side));
+    behindVolume=SILPOM_CULL_BEHIND_VOLUME&&nearestW>keepWithinW
+        &&(rise>0?side<lowest-margin:(rise<0?side>highest+margin:false));
     float offset;
     if(side>highest)offset=highest;
     else if(side<lowest){normal=-normal;offset=-lowest;}

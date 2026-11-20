@@ -1,0 +1,36 @@
+{
+    "Source": "",
+    "DepthStencilState": {
+        "Depth": {
+            "Enable": true,
+            "CompareFunc": "Greater"
+        }
+    },
+    "ProgramSettings": {
+        "EntryPoints": [
+            {
+                "name": "VertexShader",
+                "type": "Vertex"
+            }
+        ]
+    },
+    "DrawList": "silpomHitDepthPrepass",
+    "Supervariants": [
+        {
+            "Name": "",
+            "AddBuildArguments": {
+                "preprocessor": [
+                    "-DSILPOM_MSAA_PLANE_DEPTH=1"
+                ]
+            }
+        },
+        {
+            "Name": "NoMSAA",
+            "AddBuildArguments": {
+                "azslc": [
+                    "--no-ms"
+                ]
+            }
+        }
+    ]
+}

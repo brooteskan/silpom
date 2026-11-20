@@ -53,6 +53,7 @@ inline Capability Classify(std::string_view tag, std::string_view product, std::
         {"silpom_hit_depth_lod_near_wall", "silpomhitdepthlodnearwall.azshader", Capability::TrainedDepth},
         {"silpom_hit_depth_lod_shell", "silpomhitdepthlodshell.azshader", Capability::AnalyticDepth},
         {"silpom_hit_depth_wall_backup", "silpomhitdepthwallbackup.azshader", Capability::AnalyticDepth},
+        {"silpom_hit_depth_prepass", "silpomhitdepthprepass.azshader", Capability::AnalyticDepth},
         {"silpom_hit_depth_proxy", "silpomhitdepthproxy.azshader", Capability::AnalyticDepth},
         {"silpom_hit_depth_learned_proxy", "silpomhitdepthlearnedproxy.azshader", Capability::AnalyticDepth}
     };

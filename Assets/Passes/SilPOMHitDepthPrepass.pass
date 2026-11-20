@@ -1,0 +1,39 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "SilPOMHitDepthPrepassTemplate",
+            "PassClass": "SilPOMHitRasterPass",
+            "Slots": [
+                {
+                    "Name": "Depth",
+                    "SlotType": "InputOutput",
+                    "ScopeAttachmentUsage": "DepthStencil",
+                    "LoadStoreAction": {
+                        "LoadAction": "Load",
+                        "LoadActionStencil": "Load"
+                    }
+                }
+            ],
+            "Connections": [
+                {
+                    "LocalSlot": "Depth",
+                    "AttachmentRef": {
+                        "Pass": "DepthPass",
+                        "Attachment": "Output"
+                    }
+                }
+            ],
+            "PassData": {
+                "$type": "RasterPassData",
+                "DrawListTag": "silpomHitDepthPrepass",
+                "BindViewSrg": true,
+                "PassSrgShaderAsset": {
+                    "FilePath": "Shaders/SilPOM/HitReuse/SilPOMHitDepthSrg.shader"
+                }
+            }
+        }
+    }
+}
